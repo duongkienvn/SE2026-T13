@@ -154,7 +154,9 @@ Giữ `board_id` trực tiếp trên `Card` để query card theo board, kiểm 
 | `assigned_by_id` | `uuid`          | Có       | FK → `users.id`; người assign nếu có. |
 | `created_at`     | `timestamptz`   | Không    | Thời điểm assign.                     |
 
-`UNIQUE(card_id, user_id)` ngăn assign trùng. Một card có thể có nhiều assignee; user được assign phải là `BoardMember` của board chứa card.
+`UNIQUE(card_id, user_id)` ngăn assign trùng. Một card có thể có nhiều assignee. Đây là continuing invariant: user chỉ được tồn tại trong `card_assignees` của card khi hiện là `BoardMember` của board chứa card. Backend phải kiểm tra membership khi tạo assignment.
+
+Khi remove member khỏi board, backend phải xóa tất cả `card_assignees` của user đó trên các card thuộc board và remove `BoardMember` một cách nhất quán, dự kiến trong cùng transaction. Sau khi operation thành công, backend có thể tạo `MEMBER_REMOVED` `Activity` theo activity model hiện tại. User đã bị remove không được tiếp tục là assignee của card trong board đó.
 
 ### `comments`
 
