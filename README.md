@@ -1,14 +1,26 @@
 # Realtime Collaborative Kanban
 
-Initial pnpm monorepo for a React frontend, NestJS API, and PostgreSQL development database.
+Ứng dụng Kanban cộng tác nhiều người theo thời gian thực. Thành viên có thể cùng quản lý board, column và card, trao đổi qua comment và thấy thay đổi mà không cần tải lại trang. Project hiện ở giai đoạn chuẩn bị nền tảng và kiến trúc; các business feature chưa được implement.
 
-## Requirements
+## Tech Stack
 
-- Node.js 22.13 or newer
-- pnpm 10 or newer
-- Docker with Docker Compose
+- **Frontend:** React, TypeScript, Vite, Tailwind CSS, TanStack Query, dnd-kit, Socket.IO Client.
+- **Backend:** NestJS, TypeScript, REST API, Socket.IO, TypeORM.
+- **Database:** PostgreSQL; **tooling:** pnpm workspace, Jest, Supertest, Vitest, ESLint, Prettier, Docker Compose, GitHub Actions và CodeRabbit review.
 
-## Start locally
+## Repository Structure
+
+```text
+apps/frontend/   React application
+apps/backend/    NestJS application
+packages/shared/ Contracts, types và enums dùng chung
+docs/            Project, architecture và task documentation
+.github/         CI/workflow configuration
+```
+
+## Getting Started
+
+Cần Node.js 22.13 trở lên, pnpm 10 trở lên và Docker với Docker Compose. Từ root của repository:
 
 ```sh
 pnpm install
@@ -17,10 +29,25 @@ docker compose up -d
 pnpm dev
 ```
 
-On PowerShell, use `Copy-Item .env.example .env` instead of `cp` if preferred.
+Trên PowerShell, có thể dùng `Copy-Item .env.example .env` thay cho `cp`. Kiểm tra và chỉnh các giá trị trong `.env` trước khi khởi động. Frontend chạy tại `http://localhost:5173`; API health endpoint tại `http://localhost:3000/`. PostgreSQL dùng host port `5433` mặc định để tránh xung đột với PostgreSQL cài trên máy; `DATABASE_PORT` đổi host port này, còn container dùng port `5432`. `WEB_PORT` và `API_PORT` đổi port của hai app. Các biến `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD` cấu hình cả container và API; `DATABASE_HOST=localhost` cho API chạy trên máy kết nối qua published port.
 
-The frontend is available at `http://localhost:5173` and the API health endpoint at `http://localhost:3000/`. PostgreSQL uses host port 5433 by default to avoid conflicts with a local PostgreSQL installation. Set `DATABASE_PORT` in `.env` to change that host port; Compose maps it to port 5432 inside the container. Set `WEB_PORT` and `API_PORT` to change the app ports. To run one app at a time, use `pnpm dev:frontend` or `pnpm dev:backend` after starting PostgreSQL.
+Có thể chạy riêng từng app bằng `pnpm dev:frontend` hoặc `pnpm dev:backend` sau khi khởi động PostgreSQL. Kiểm tra workspace bằng:
 
-`DATABASE_NAME`, `DATABASE_USER`, and `DATABASE_PASSWORD` configure both the local PostgreSQL container and the API. `DATABASE_HOST=localhost` points the locally running API to the container's published port.
+```sh
+pnpm lint
+pnpm test
+pnpm build
+pnpm format:check
+```
 
-`pnpm build`, `pnpm lint`, `pnpm test`, and `pnpm format:check` run workspace checks. Database migrations will be added with the first schema change; TypeORM schema synchronization is disabled.
+Database migration sẽ được thêm cùng thay đổi schema đầu tiên; TypeORM schema synchronization đang tắt.
+
+## Documentation
+
+- [Project overview](docs/project-overview.md): mục tiêu, phạm vi MVP, thuật ngữ, kiến trúc tổng quan và trạng thái hiện tại.
+- [Architecture](docs/architecture/): tài liệu kiến trúc chi tiết khi được bổ sung.
+- [Tasks](docs/tasks/): tài liệu task.
+
+## Development Workflow
+
+Issue → branch từ `main` → Pull Request → CI và review → merge. `main` được bảo vệ; không push trực tiếp. Xem [project overview](docs/project-overview.md) để biết tên branch và commit convention.
