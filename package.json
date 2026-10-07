@@ -6,9 +6,9 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "dev": "pnpm --filter @kanban/shared build && pnpm -r --parallel --filter @kanban/web --filter @kanban/api dev",
-    "dev:web": "pnpm --filter @kanban/shared build && pnpm --filter @kanban/web dev",
-    "dev:api": "pnpm --filter @kanban/shared build && pnpm --filter @kanban/api dev",
+    "dev": "pnpm --filter @kanban/shared build && pnpm -r --parallel --filter @kanban/frontend --filter @kanban/backend dev",
+    "dev:frontend": "pnpm --filter @kanban/shared build && pnpm --filter @kanban/frontend dev",
+    "dev:backend": "pnpm --filter @kanban/shared build && pnpm --filter @kanban/backend dev",
     "build": "pnpm -r build",
     "lint": "eslint apps packages",
     "test": "pnpm --filter @kanban/shared build && pnpm -r test",

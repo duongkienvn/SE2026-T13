@@ -1,13 +1,13 @@
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { AppController } from '../src/app.controller';
-import { AppService } from '../src/app.service';
+import { HealthController } from '../src/api/health/health.controller';
+import { HealthService } from '../src/api/health/health.service';
 
 describe('GET /', () => {
   it('returns API health', async () => {
     const module = await Test.createTestingModule({
-      controllers: [AppController],
-      providers: [AppService],
+      controllers: [HealthController],
+      providers: [HealthService],
     }).compile();
     const app = module.createNestApplication();
     await app.init();

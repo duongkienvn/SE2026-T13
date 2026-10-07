@@ -15,7 +15,7 @@ export function databaseOptions(env: NodeJS.ProcessEnv): DataSourceOptions {
     database: required(env, 'DATABASE_NAME'),
     username: required(env, 'DATABASE_USER'),
     password: required(env, 'DATABASE_PASSWORD'),
-    entities: [join(__dirname, '..', '**', '*.entity.{ts,js}')],
+    entities: [join(__dirname, 'entities', '**', '*.entity.{ts,js}')],
     migrations: [join(__dirname, 'migrations', '*.{ts,js}')],
     synchronize: false,
     migrationsRun: false,

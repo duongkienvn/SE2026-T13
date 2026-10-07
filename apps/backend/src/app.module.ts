@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { resolve } from 'node:path';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { HealthController } from './api/health/health.controller';
+import { HealthService } from './api/health/health.service';
 import { databaseOptions } from './database/database-options';
 
 @Module({
@@ -16,7 +16,7 @@ import { databaseOptions } from './database/database-options';
       useFactory: () => databaseOptions(process.env),
     }),
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [HealthController],
+  providers: [HealthService],
 })
 export class AppModule {}
