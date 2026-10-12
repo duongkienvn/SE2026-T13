@@ -1,0 +1,325 @@
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import console from 'node:console';
+import { randomBytes } from 'node:crypto';
+import { createRequire } from 'node:module';
+import { resolve } from 'node:path';
+import process from 'node:process';
+import { fileURLToPath, URL } from 'node:url';
+
+const require = createRequire(import.meta.url);
+require('dotenv').config({
+  path: resolve(fileURLToPath(new URL('../', import.meta.url)), '../../.env'),
+  quiet: true,
+});
+const { Client } = require('pg');
+const { DataSource } = require('typeorm');
+const { NestFactory } = require('@nestjs/core');
+const { databaseOptions } = require('../dist/database/database-options.js');
+
+const testDatabase = `kanban_foundation_verify_${randomBytes(8).toString('hex')}`;
+const baseOptions = databaseOptions(process.env);
+const admin = new Client({
+  host: baseOptions.host,
+  port: baseOptions.port,
+  database: baseOptions.database,
+  user: baseOptions.username,
+  password: baseOptions.password,
+});
+let source;
+let created = false;
+
+async function expectConstraint(query, parameters, code) {
+  await assert.rejects(
+    source.query(query, parameters),
+    (error) => error.code === code,
+  );
+}
+
+async function inspectSchema() {
+  const tables =
+    await source.query(`SELECT table_name FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name <> 'migrations'
+    ORDER BY table_name`);
+  assert.deepEqual(
+    tables.map((row) => row.table_name),
+    [
+      'activities',
+      'board_columns',
+      'board_members',
+      'boards',
+      'card_assignees',
+      'cards',
+      'comments',
+      'users',
+    ],
+  );
+
+  const constraints =
+    await source.query(`SELECT conname, contype, confdeltype FROM pg_constraint
+    WHERE connamespace = 'public'::regnamespace ORDER BY conname`);
+  const byName = new Map(constraints.map((row) => [row.conname, row]));
+  for (const table of tables.map((row) => row.table_name)) {
+    assert.equal(byName.get(`PK_${table}`)?.contype, 'p');
+  }
+  for (const name of [
+    'UQ_users_email',
+    'UQ_board_members_board_id_user_id',
+    'UQ_card_assignees_card_id_user_id',
+  ]) {
+    assert.equal(byName.get(name)?.contype, 'u');
+  }
+  const deletes = {
+    FK_board_members_board_id: 'c',
+    FK_board_columns_board_id: 'c',
+    FK_cards_board_id: 'c',
+    FK_cards_column_id: 'r',
+    FK_card_assignees_card_id: 'c',
+    FK_comments_card_id: 'c',
+  };
+  for (const [name, behavior] of Object.entries(deletes)) {
+    assert.equal(byName.get(name)?.confdeltype, behavior, name);
+  }
+  assert.equal(constraints.filter((row) => row.contype === 'f').length, 14);
+  for (const row of constraints.filter(
+    (row) => row.contype === 'f' && !(row.conname in deletes),
+  )) {
+    assert.equal(row.confdeltype, 'a', row.conname);
+  }
+
+  const indexes = await source.query(
+    `SELECT indexname FROM pg_indexes WHERE schemaname = 'public'`,
+  );
+  const indexNames = new Set(indexes.map((row) => row.indexname));
+  for (const name of [
+    'IDX_board_members_user_id',
+    'IDX_board_columns_board_id_position',
+    'IDX_cards_board_id_column_id',
+    'IDX_cards_column_id',
+    'IDX_comments_card_id',
+    'IDX_activities_board_id_created_at',
+  ]) {
+    assert.ok(indexNames.has(name), name);
+  }
+  assert.ok(!indexNames.has('IDX_cards_board_id'));
+
+  const enumRows =
+    await source.query(`SELECT t.typname, e.enumlabel FROM pg_type t
+    JOIN pg_enum e ON e.enumtypid = t.oid WHERE t.typname IN
+    ('board_members_role_enum', 'activities_action_type_enum', 'activities_entity_type_enum')
+    ORDER BY t.typname, e.enumsortorder`);
+  const enumValues = (name) =>
+    enumRows.filter((row) => row.typname === name).map((row) => row.enumlabel);
+  assert.deepEqual(enumValues('board_members_role_enum'), ['OWNER', 'MEMBER']);
+  assert.deepEqual(enumValues('activities_entity_type_enum'), [
+    'BOARD',
+    'MEMBER',
+    'COLUMN',
+    'CARD',
+    'COMMENT',
+  ]);
+  assert.equal(enumValues('activities_action_type_enum').length, 15);
+
+  const columns =
+    await source.query(`SELECT table_name, column_name, data_type, numeric_precision,
+    numeric_scale, is_nullable, column_default FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name <> 'migrations'`);
+  const column = (table, name) =>
+    columns.find((row) => row.table_name === table && row.column_name === name);
+  for (const [table, name] of [
+    ['board_columns', 'position'],
+    ['cards', 'position'],
+  ]) {
+    assert.equal(column(table, name)?.data_type, 'numeric');
+    assert.equal(column(table, name)?.numeric_precision, 20);
+    assert.equal(column(table, name)?.numeric_scale, 10);
+  }
+  assert.equal(column('activities', 'metadata')?.data_type, 'jsonb');
+  assert.equal(column('comments', 'deleted_at')?.is_nullable, 'YES');
+  assert.equal(column('cards', 'is_archived')?.column_default, 'false');
+  assert.equal(column('users', 'email')?.is_nullable, 'NO');
+  for (const table of tables.map((row) => row.table_name)) {
+    assert.equal(column(table, 'id')?.data_type, 'uuid');
+    assert.match(
+      column(table, 'id')?.column_default ?? '',
+      /gen_random_uuid\(\)/,
+    );
+  }
+
+  const drift = await source.driver.createSchemaBuilder().log();
+  assert.deepEqual(
+    drift.upQueries.map((query) => query.query),
+    [],
+    'Entity metadata must match migration schema',
+  );
+}
+
+async function inspectBehavior() {
+  const [user] =
+    await source.query(`INSERT INTO users (email, password_hash, display_name)
+    VALUES ('foundation@example.test', 'hash', 'Test') RETURNING id`);
+  await expectConstraint(
+    `INSERT INTO users (email, password_hash, display_name)
+    VALUES ('foundation@example.test', 'hash', 'Duplicate')`,
+    [],
+    '23505',
+  );
+  const [board] = await source.query(
+    `INSERT INTO boards (name, created_by_id)
+    VALUES ('Test', $1) RETURNING id`,
+    [user.id],
+  );
+  const [column] = await source.query(
+    `INSERT INTO board_columns (board_id, name, position)
+    VALUES ($1, 'Todo', '100.1234567890') RETURNING id, position`,
+    [board.id],
+  );
+  assert.equal(column.position, '100.1234567890');
+  const [card] = await source.query(
+    `INSERT INTO cards (board_id, column_id, created_by_id, title, position, is_archived)
+    VALUES ($1, $2, $3, 'Card', '200.1234567890', true) RETURNING id, position`,
+    [board.id, column.id, user.id],
+  );
+  assert.equal(card.position, '200.1234567890');
+  await source.query(
+    `INSERT INTO board_members (board_id, user_id, role) VALUES ($1, $2, 'OWNER')`,
+    [board.id, user.id],
+  );
+  await expectConstraint(
+    `INSERT INTO board_members (board_id, user_id, role) VALUES ($1, $2, 'MEMBER')`,
+    [board.id, user.id],
+    '23505',
+  );
+  await source.query(
+    `INSERT INTO card_assignees (card_id, user_id) VALUES ($1, $2)`,
+    [card.id, user.id],
+  );
+  await expectConstraint(
+    `INSERT INTO card_assignees (card_id, user_id) VALUES ($1, $2)`,
+    [card.id, user.id],
+    '23505',
+  );
+  await expectConstraint(
+    `INSERT INTO comments (card_id, author_id, content)
+    VALUES ('00000000-0000-0000-0000-000000000000', $1, 'Invalid')`,
+    [user.id],
+    '23503',
+  );
+  await expectConstraint(
+    `DELETE FROM board_columns WHERE id = $1`,
+    [column.id],
+    '23503',
+  );
+  await source.query(
+    `INSERT INTO comments (card_id, author_id, content) VALUES ($1, $2, 'Hello')`,
+    [card.id, user.id],
+  );
+  await source.query(`DELETE FROM cards WHERE id = $1`, [card.id]);
+  assert.equal(
+    (await source.query(`SELECT count(*)::int AS n FROM card_assignees`))[0].n,
+    0,
+  );
+  assert.equal(
+    (await source.query(`SELECT count(*)::int AS n FROM comments`))[0].n,
+    0,
+  );
+}
+
+try {
+  await admin.connect();
+  await admin.query(`CREATE DATABASE "${testDatabase}"`);
+  created = true;
+  source = new DataSource({ ...baseOptions, database: testDatabase });
+  await source.initialize();
+  assert.equal(source.entityMetadatas.length, 8);
+  assert.deepEqual(
+    source.entityMetadatas.map((entity) => entity.tableName).sort(),
+    [
+      'activities',
+      'board_columns',
+      'board_members',
+      'boards',
+      'card_assignees',
+      'cards',
+      'comments',
+      'users',
+    ],
+  );
+  assert.equal(source.migrations.length, 1);
+
+  const originalDatabase = process.env.DATABASE_NAME;
+  process.env.DATABASE_NAME = testDatabase;
+  try {
+    const { AppModule } = require('../dist/app.module.js');
+    const app = await NestFactory.createApplicationContext(AppModule, {
+      logger: false,
+    });
+    try {
+      const nestDataSource = app.get(DataSource);
+      assert.equal(nestDataSource.entityMetadatas.length, 8);
+      assert.equal(nestDataSource.migrations.length, 1);
+    } finally {
+      await app.close();
+    }
+  } finally {
+    process.env.DATABASE_NAME = originalDatabase;
+  }
+
+  assert.equal((await source.runMigrations()).length, 1);
+  const cliOutput = execFileSync(
+    process.execPath,
+    [
+      require.resolve('typeorm/cli-ts-node-commonjs.js'),
+      'migration:show',
+      '-d',
+      'src/database/data-source.ts',
+    ],
+    {
+      cwd: resolve(fileURLToPath(new URL('../', import.meta.url))),
+      env: { ...process.env, DATABASE_NAME: testDatabase },
+      encoding: 'utf8',
+    },
+  );
+  assert.match(cliOutput, /\[X\].*InitialDatabaseFoundation1791763200000/);
+  execFileSync(
+    process.execPath,
+    [
+      '-r',
+      require.resolve('ts-node/register'),
+      '-e',
+      `const dataSource = require('./src/database/data-source.ts').default;
+       dataSource.initialize().then(async () => {
+         if (dataSource.entityMetadatas.length !== 8 || dataSource.migrations.length !== 1) {
+           throw new Error('TypeScript DataSource discovery mismatch');
+         }
+         await dataSource.destroy();
+       }).catch((error) => { console.error(error); process.exitCode = 1; });`,
+    ],
+    {
+      cwd: resolve(fileURLToPath(new URL('../', import.meta.url))),
+      env: { ...process.env, DATABASE_NAME: testDatabase },
+      encoding: 'utf8',
+    },
+  );
+  await inspectSchema();
+  await inspectBehavior();
+  console.log('Migration run and schema/behavior inspection: PASS');
+
+  await source.undoLastMigration();
+  const remaining =
+    await source.query(`SELECT table_name FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name <> 'migrations'`);
+  assert.equal(remaining.length, 0);
+  const types = await source.query(`SELECT typname FROM pg_type WHERE typname IN
+    ('board_members_role_enum', 'activities_action_type_enum', 'activities_entity_type_enum')`);
+  assert.equal(types.length, 0);
+  console.log('Migration revert: PASS');
+
+  assert.equal((await source.runMigrations()).length, 1);
+  await inspectSchema();
+  console.log('Migration run again and schema inspection: PASS');
+} finally {
+  if (source?.isInitialized) await source.destroy();
+  if (created) await admin.query(`DROP DATABASE "${testDatabase}"`);
+  await admin.end();
+}

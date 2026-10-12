@@ -8,6 +8,7 @@ function required(env: NodeJS.ProcessEnv, name: string): string {
 }
 
 export function databaseOptions(env: NodeJS.ProcessEnv): DataSourceOptions {
+  const extension = __filename.endsWith('.ts') ? 'ts' : 'js';
   return {
     type: 'postgres',
     host: required(env, 'DATABASE_HOST'),
@@ -15,8 +16,11 @@ export function databaseOptions(env: NodeJS.ProcessEnv): DataSourceOptions {
     database: required(env, 'DATABASE_NAME'),
     username: required(env, 'DATABASE_USER'),
     password: required(env, 'DATABASE_PASSWORD'),
-    entities: [join(__dirname, 'entities', '**', '*.entity.{ts,js}')],
-    migrations: [join(__dirname, 'migrations', '*.{ts,js}')],
+    uuidExtension: 'pgcrypto',
+    entities: [
+      join(__dirname, '..', 'api', '**', 'entities', `*.entity.${extension}`),
+    ],
+    migrations: [join(__dirname, 'migrations', `*.${extension}`)],
     synchronize: false,
     migrationsRun: false,
   };
