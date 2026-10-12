@@ -1,11 +1,17 @@
-import { INestApplication, RequestMethod } from '@nestjs/common';
+import {
+  ClassSerializerInterceptor,
+  INestApplication,
+  RequestMethod,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Reflector } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { EnvironmentConfig } from './config/environment';
 import { createValidationPipe } from './config/validation';
 import { GlobalExceptionFilter } from './filters/global-exception.filter';
+import { ApiResponseInterceptor } from './interceptors/api-response.interceptor';
 
 export function configureHttpApplication(app: INestApplication): void {
   const config = app.get<ConfigService<EnvironmentConfig, true>>(ConfigService);
@@ -34,10 +40,16 @@ export function configureHttpApplication(app: INestApplication): void {
     exclude: [
       { path: '/', method: RequestMethod.GET },
       { path: 'health', method: RequestMethod.GET },
+      { path: 'health/ready', method: RequestMethod.GET },
     ],
   });
   app.useGlobalPipes(createValidationPipe());
   app.useGlobalFilters(new GlobalExceptionFilter(app.get(Logger)));
+  const reflector = app.get(Reflector);
+  app.useGlobalInterceptors(
+    new ClassSerializerInterceptor(reflector),
+    new ApiResponseInterceptor(reflector),
+  );
   app.enableShutdownHooks();
 
   if (swaggerEnabled) {

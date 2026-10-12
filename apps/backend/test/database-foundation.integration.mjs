@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { Buffer } from 'node:buffer';
 import { execFileSync } from 'node:child_process';
 import console from 'node:console';
 import { randomBytes } from 'node:crypto';
@@ -16,6 +17,8 @@ const { Client } = require('pg');
 const { DataSource } = require('typeorm');
 const { NestFactory } = require('@nestjs/core');
 const { databaseOptions } = require('../dist/database/database-options.js');
+const { paginateQueryBuilder } = require('../dist/utils/offset-pagination.js');
+const { paginateCursor } = require('../dist/utils/cursor-pagination.js');
 
 const testDatabase = `kanban_foundation_verify_${randomBytes(8).toString('hex')}`;
 const baseOptions = databaseOptions(process.env);
@@ -225,12 +228,108 @@ async function inspectBehavior() {
   );
 }
 
+async function inspectPagination() {
+  const ids = [];
+  for (let index = 0; index < 5; index += 1) {
+    const [row] = await source.query(
+      `INSERT INTO users (email, password_hash, display_name, created_at)
+       VALUES ($1, 'hash', 'Pagination', '2026-10-12T12:34:56.123456Z') RETURNING id`,
+      [`page-${index}@example.test`],
+    );
+    ids.push(row.id);
+  }
+  const ordered = ids.toSorted().reverse();
+  const repository = source.getRepository('users');
+  const builder = () =>
+    repository
+      .createQueryBuilder('user')
+      .where('user.email LIKE :prefix', { prefix: 'page-%' });
+
+  const first = await paginateQueryBuilder(
+    builder(),
+    { page: 1, limit: 2 },
+    'createdAt',
+  );
+  const last = await paginateQueryBuilder(
+    builder(),
+    { page: 3, limit: 2 },
+    'createdAt',
+  );
+  const empty = await paginateQueryBuilder(
+    builder(),
+    { page: 4, limit: 2 },
+    'createdAt',
+  );
+  assert.deepEqual(
+    first.data.map((row) => row.id),
+    ordered.slice(0, 2),
+  );
+  assert.deepEqual(first.meta, { page: 1, limit: 2, total: 5, totalPages: 3 });
+  assert.deepEqual(
+    last.data.map((row) => row.id),
+    ordered.slice(4),
+  );
+  assert.deepEqual(empty.data, []);
+  assert.equal(empty.meta.total, 5);
+
+  const seen = [];
+  let cursor;
+  for (let page = 0; page < 3; page += 1) {
+    const result = await paginateCursor(
+      builder(),
+      { limit: 2, cursor },
+      'createdAt',
+    );
+    seen.push(...result.data.map((row) => row.id));
+    cursor = result.meta.nextCursor ?? undefined;
+    if (page < 2) assert.ok(cursor);
+    else assert.equal(cursor, undefined);
+  }
+  assert.deepEqual(seen, ordered);
+  await assert.rejects(
+    paginateCursor(builder(), { limit: 2, cursor: '!invalid' }, 'createdAt'),
+  );
+  const invalidDate = Buffer.from(
+    JSON.stringify({
+      v: 1,
+      timestamp: '2026-02-30T12:34:56.123456Z',
+      id: ids[0],
+    }),
+  ).toString('base64url');
+  await assert.rejects(
+    paginateCursor(builder(), { limit: 2, cursor: invalidDate }, 'createdAt'),
+  );
+  await assert.rejects(
+    paginateCursor(builder().skip(1), { limit: 2 }, 'createdAt'),
+  );
+  await assert.rejects(
+    paginateQueryBuilder(
+      builder().limit(1),
+      { page: 1, limit: 2 },
+      'createdAt',
+    ),
+  );
+  await assert.rejects(paginateCursor(builder(), { limit: 101 }, 'createdAt'));
+  await assert.rejects(
+    paginateCursor(builder(), { limit: 2 }, 'email; DROP TABLE users'),
+  );
+  console.log(
+    'TypeORM offset/cursor pagination including duplicate timestamps: PASS',
+  );
+}
+
 try {
   await admin.connect();
   await admin.query(`CREATE DATABASE "${testDatabase}"`);
   created = true;
   source = new DataSource({ ...baseOptions, database: testDatabase });
   await source.initialize();
+  assert.equal(source.options.poolSize, 10);
+  assert.equal(source.options.connectTimeoutMS, 5000);
+  assert.equal(source.options.ssl, false);
+  assert.equal(source.options.logging, false);
+  assert.equal(source.options.synchronize, false);
+  assert.equal(source.options.migrationsRun, false);
   assert.equal(source.entityMetadatas.length, 8);
   assert.deepEqual(
     source.entityMetadatas.map((entity) => entity.tableName).sort(),
@@ -258,6 +357,12 @@ try {
       const nestDataSource = app.get(DataSource);
       assert.equal(nestDataSource.entityMetadatas.length, 8);
       assert.equal(nestDataSource.migrations.length, 1);
+      assert.equal(nestDataSource.options.poolSize, source.options.poolSize);
+      assert.equal(
+        nestDataSource.options.connectTimeoutMS,
+        source.options.connectTimeoutMS,
+      );
+      assert.equal(nestDataSource.options.ssl, source.options.ssl);
     } finally {
       await app.close();
     }
@@ -303,6 +408,7 @@ try {
   );
   await inspectSchema();
   await inspectBehavior();
+  await inspectPagination();
   console.log('Migration run and schema/behavior inspection: PASS');
 
   await source.undoLastMigration();

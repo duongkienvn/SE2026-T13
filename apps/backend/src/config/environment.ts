@@ -14,6 +14,11 @@ export interface EnvironmentConfig {
   DATABASE_NAME: string;
   DATABASE_USER: string;
   DATABASE_PASSWORD: string;
+  DATABASE_POOL_SIZE: number;
+  DATABASE_CONNECT_TIMEOUT_MS: number;
+  DATABASE_SSL: boolean;
+  RATE_LIMIT_TTL_MS: number;
+  RATE_LIMIT_MAX: number;
 }
 
 function required(input: Record<string, unknown>, key: string): string {
@@ -44,6 +49,28 @@ function boolean(value: unknown, key: string, defaultValue: boolean): boolean {
   if (value === true || value === 'true') return true;
   if (value === false || value === 'false') return false;
   throw new Error(`${key} must be true or false`);
+}
+
+function positiveInteger(
+  value: unknown,
+  key: string,
+  defaultValue: number,
+  maximum: number,
+): number {
+  if (value === undefined || value === '') return defaultValue;
+  if (
+    (typeof value === 'string' && !/^[1-9]\d*$/.test(value)) ||
+    (typeof value !== 'string' && typeof value !== 'number')
+  ) {
+    throw new Error(`${key} must be a positive integer`);
+  }
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > maximum) {
+    throw new Error(
+      `${key} must be a positive integer no greater than ${maximum}`,
+    );
+  }
+  return parsed;
 }
 
 export function validateEnvironment(
@@ -108,5 +135,30 @@ export function validateEnvironment(
     DATABASE_NAME: required(input, 'DATABASE_NAME'),
     DATABASE_USER: required(input, 'DATABASE_USER'),
     DATABASE_PASSWORD: required(input, 'DATABASE_PASSWORD'),
+    DATABASE_POOL_SIZE: positiveInteger(
+      input.DATABASE_POOL_SIZE,
+      'DATABASE_POOL_SIZE',
+      10,
+      100,
+    ),
+    DATABASE_CONNECT_TIMEOUT_MS: positiveInteger(
+      input.DATABASE_CONNECT_TIMEOUT_MS,
+      'DATABASE_CONNECT_TIMEOUT_MS',
+      5000,
+      60000,
+    ),
+    DATABASE_SSL: boolean(input.DATABASE_SSL, 'DATABASE_SSL', false),
+    RATE_LIMIT_TTL_MS: positiveInteger(
+      input.RATE_LIMIT_TTL_MS,
+      'RATE_LIMIT_TTL_MS',
+      60000,
+      3600000,
+    ),
+    RATE_LIMIT_MAX: positiveInteger(
+      input.RATE_LIMIT_MAX,
+      'RATE_LIMIT_MAX',
+      120,
+      10000,
+    ),
   };
 }

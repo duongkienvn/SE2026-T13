@@ -40,7 +40,7 @@ pnpm build
 pnpm format:check
 ```
 
-Initial database migration đã có; TypeORM schema synchronization và tự động chạy migrations đều đang tắt. Xem [backend architecture](docs/architecture/backend-architecture.md) để biết quy ước configuration, lỗi API, pagination và logging.
+Initial database migration đã có; TypeORM schema synchronization và tự động chạy migrations đều đang tắt. Backend readiness tại `http://localhost:3000/health/ready` kiểm tra kết nối PostgreSQL. Xem [backend architecture](docs/architecture/backend-architecture.md) và [Backend Developer Guide](docs/architecture/backend-developer-guide.md) để biết quy ước configuration, response DTO, pagination và logging. Chạy `pnpm --filter @kanban/backend test:database` để kiểm tra migrations và TypeORM trong database tạm riêng; script tạo rồi xóa database kiểm thử, nên tài khoản PostgreSQL phải có quyền `CREATEDB`.
 
 ## Documentation
 

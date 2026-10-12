@@ -7,3 +7,11 @@ export class HealthResponseDto {
   @ApiProperty({ example: 'ok' })
   status!: string;
 }
+
+export class ReadinessResponseDto {
+  @ApiProperty({ example: 'ok' })
+  status!: 'ok';
+
+  @ApiProperty({ example: 'ok' })
+  database!: 'ok';
+}

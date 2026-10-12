@@ -1,11 +1,11 @@
-export interface PaginationMeta {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-}
+import type { PaginationMeta } from '@kanban/shared';
+
+export type { PaginationMeta };
+
+export const PAGINATED_RESULT = Symbol('paginatedResult');
 
 export interface PaginatedResponse<T> {
+  readonly [PAGINATED_RESULT]: true;
   data: T[];
   meta: PaginationMeta;
 }
@@ -18,7 +18,7 @@ export function paginate<T>(
   if (!Number.isSafeInteger(total) || total < 0) {
     throw new RangeError('total must be a non-negative integer');
   }
-  return {
+  const result = {
     data,
     meta: {
       page: query.page,
@@ -26,7 +26,9 @@ export function paginate<T>(
       total,
       totalPages: Math.ceil(total / query.limit),
     },
-  };
+  } as PaginatedResponse<T>;
+  Object.defineProperty(result, PAGINATED_RESULT, { value: true });
+  return result;
 }
 
 export interface PageQuery {
@@ -35,5 +37,15 @@ export interface PageQuery {
 }
 
 export function pageOffset(query: PageQuery): number {
-  return (query.page - 1) * query.limit;
+  const offset = (query.page - 1) * query.limit;
+  if (
+    !Number.isSafeInteger(query.page) ||
+    query.page < 1 ||
+    !Number.isSafeInteger(query.limit) ||
+    query.limit < 1 ||
+    !Number.isSafeInteger(offset)
+  ) {
+    throw new RangeError('Pagination offset must be a safe integer');
+  }
+  return offset;
 }

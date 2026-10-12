@@ -9,6 +9,7 @@ import type { Request, Response } from 'express';
 import { Logger } from 'nestjs-pino';
 import { EntityNotFoundError, QueryFailedError } from 'typeorm';
 import { ApiError, ErrorCode } from '../common/dto/api-error';
+import { ApplicationException } from '../exceptions/application.exception';
 
 interface ErrorWithCode {
   code?: string;
@@ -26,6 +27,8 @@ function codeForStatus(status: number): string {
       return ErrorCode.NOT_FOUND;
     case 409:
       return ErrorCode.CONFLICT;
+    case 429:
+      return ErrorCode.TOO_MANY_REQUESTS;
     default:
       return status >= 500 ? ErrorCode.INTERNAL_ERROR : 'HTTP_ERROR';
   }
@@ -66,7 +69,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           code = ErrorCode.VALIDATION_FAILED;
         }
       }
-      if (statusCode >= 500) {
+      if (statusCode >= 500 && !(exception instanceof ApplicationException)) {
         message = 'Internal server error';
         code = ErrorCode.INTERNAL_ERROR;
         details = undefined;
@@ -95,6 +98,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       );
     }
     const body: ApiError = {
+      success: false,
       statusCode,
       code,
       message,
