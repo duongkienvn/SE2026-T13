@@ -29,7 +29,7 @@ docker compose up -d
 pnpm dev
 ```
 
-Trên PowerShell, có thể dùng `Copy-Item .env.example .env` thay cho `cp`. Kiểm tra và chỉnh các giá trị trong `.env` trước khi khởi động. Frontend chạy tại `http://localhost:5173`; API health endpoint tại `http://localhost:3000/`. PostgreSQL dùng host port `5433` mặc định để tránh xung đột với PostgreSQL cài trên máy; `DATABASE_PORT` đổi host port này, còn container dùng port `5432`. `WEB_PORT` và `API_PORT` đổi port của hai app. Các biến `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD` cấu hình cả container và API; `DATABASE_HOST=localhost` cho API chạy trên máy kết nối qua published port.
+Trên PowerShell, có thể dùng `Copy-Item .env.example .env` thay cho `cp`. Kiểm tra và chỉnh các giá trị trong `.env` trước khi khởi động. Frontend chạy tại `http://localhost:5173`; backend liveness tại `http://localhost:3000/health` (route `/` cũ vẫn hoạt động), REST API dùng prefix `/api`, và Swagger UI ở `http://localhost:3000/api-docs` khi được bật. PostgreSQL dùng host port `5433` mặc định để tránh xung đột với PostgreSQL cài trên máy; `DATABASE_PORT` đổi host port này, còn container dùng port `5432`. `WEB_PORT` và `API_PORT` đổi port của hai app. Các biến `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD` cấu hình cả container và API; `DATABASE_HOST=localhost` cho API chạy trên máy kết nối qua published port.
 
 Có thể chạy riêng từng app bằng `pnpm dev:frontend` hoặc `pnpm dev:backend` sau khi khởi động PostgreSQL. Kiểm tra workspace bằng:
 
@@ -40,7 +40,7 @@ pnpm build
 pnpm format:check
 ```
 
-Database migration sẽ được thêm cùng thay đổi schema đầu tiên; TypeORM schema synchronization đang tắt.
+Initial database migration đã có; TypeORM schema synchronization và tự động chạy migrations đều đang tắt. Backend readiness tại `http://localhost:3000/health/ready` kiểm tra kết nối PostgreSQL. Xem [backend architecture](docs/architecture/backend-architecture.md) và [Backend Developer Guide](docs/architecture/backend-developer-guide.md) để biết quy ước configuration, response DTO, pagination và logging. Chạy `pnpm --filter @kanban/backend test:database` để kiểm tra migrations và TypeORM trong database tạm riêng; script tạo rồi xóa database kiểm thử, nên tài khoản PostgreSQL phải có quyền `CREATEDB`.
 
 ## Documentation
 

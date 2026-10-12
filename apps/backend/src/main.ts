@@ -1,12 +1,25 @@
 import 'reflect-metadata';
-import { ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
+import { EnvironmentConfig } from './config/environment';
+import { configureHttpApplication } from './http-application';
 
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
-  await app.listen(Number(process.env.API_PORT || 3000));
+export async function createApplication(): Promise<INestApplication> {
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.useLogger(app.get(Logger));
+  configureHttpApplication(app);
+  return app;
 }
 
-void bootstrap();
+async function bootstrap(): Promise<void> {
+  const app = await createApplication();
+  const config = app.get<ConfigService<EnvironmentConfig, true>>(ConfigService);
+  await app.listen(config.get('API_PORT', { infer: true }));
+}
+
+if (require.main === module) {
+  void bootstrap();
+}

@@ -48,6 +48,32 @@ Trong đó:
 - TypeORM discovery nạp entities từ `api/**/entities/` và migrations từ `database/migrations/` theo đúng đuôi `.ts` khi chạy source hoặc `.js` khi chạy build.
 - `api/health/` là module hiện có; `realtime/` vẫn là layer cross-cutting.
 
+### Application foundation hiện có
+
+`AppModule` tích hợp global `ConfigModule`, TypeORM và `nestjs-pino`. `main.ts` khởi tạo HTTP app; `http-application.ts` cấu hình Helmet, CORS, prefix, validation, exception filter, Swagger và shutdown hooks. Các thành phần dùng chung có implementation thực tế nằm trong `config/`, `common/dto/`, `filters/` và `logging/`. Không có business controller/service giả trong foundation.
+
+- `NODE_ENV`: `development`, `test` hoặc `production`; mặc định `development`.
+- `API_PORT`: cổng backend, mặc định `3000`; `API_PREFIX`: prefix REST, mặc định `api`.
+- `CORS_ORIGINS`: danh sách origin chính xác, ngăn cách bằng dấu phẩy. Development mặc định `http://localhost:5173`; production bắt buộc cấu hình tường minh. Browser request từ origin ngoài danh sách không nhận CORS allow header.
+- `LOG_LEVEL`: Pino level; mặc định `debug` ở development/test và `info` ở production. Development dùng `pino-pretty`; các môi trường khác xuất JSON ra stdout/stderr.
+- `SWAGGER_ENABLED`: chỉ nhận `true` hoặc `false`; mặc định bật ở development/test, tắt ở production. Khi bật: UI `/api-docs`, JSON `/api-docs-json`.
+- `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD` giữ conventions hiện tại và được validate khi Nest khởi động. TypeORM CLI vẫn đọc `.env` trực tiếp qua `data-source.ts`, không phụ thuộc Nest ConfigModule.
+
+`GET /health` là liveness check không truy vấn database; `GET /` giữ tương thích với health route cũ. Cả hai ở ngoài `/api`. Liveness trả `{ name, status: "ok" }` với HTTP 200 khi process hoạt động. `GET /health/ready` kiểm tra PostgreSQL bằng `SELECT 1` trong transaction có `SET LOCAL statement_timeout = 1000`; response cũng có timeout 1 giây. Các request readiness đồng thời dùng chung một probe để tránh chiếm nhiều kết nối khi database bị treo. Khi database không sẵn sàng, endpoint trả HTTP 503. Health routes được miễn response wrapping và rate limiting.
+
+#### REST response conventions
+
+- Response thành công REST được interceptor chuẩn hóa thành `{ success: true, statusCode, message, data }`; danh sách phân trang thêm `meta`. `@SkipResponseWrap()` dành cho health, stream hoặc contract ngoại lệ. HTTP status vẫn giữ nguyên; `204` không có body. Dùng `@SerializeResponse(ResponseDto)` hoặc `toResponseDto()` với `@Expose()` để giới hạn trường trả về, kể cả nested DTO.
+- Response lỗi có `{ success: false, statusCode, code, message, timestamp, path }`, thêm `details` cho validation và `requestId` khi có correlation ID. Các mã nền tảng: `BAD_REQUEST`, `VALIDATION_FAILED`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `TOO_MANY_REQUESTS`, `INTERNAL_ERROR`. Validation từ global pipe dùng `forbidNonWhitelisted: true`; nested DTO dùng `@ValidateNested` và `@Type`.
+- SQLSTATE `23505` và `23503` được map thành HTTP 409; `EntityNotFoundError` thành 404; lỗi database khác và lỗi bất ngờ thành 500 với thông điệp an toàn. Response không chứa SQL, query parameters hay stack trace. Business errors được định nghĩa tại feature tương ứng khi có yêu cầu.
+- List APIs tương lai dùng `PageQueryDto` (`page=1`, `limit=20`, tối đa `100`) và `paginateQueryBuilder()` để lấy `data` và `meta` bằng TypeORM; feed theo thời gian dùng `CursorQueryDto` và `paginateCursor()` với timestamp cùng UUID tie breaker. Client nhận envelope chung. Chưa có business list endpoint trong foundation.
+
+`DATABASE_POOL_SIZE` (mặc định 10), `DATABASE_CONNECT_TIMEOUT_MS` (5000) và `DATABASE_SSL` (`false`) dùng chung cho Nest runtime và TypeORM CLI. SSL khi bật xác minh certificate máy chủ; deployment cần cung cấp trust chain phù hợp. SQL query logging tắt để không ghi parameters nhạy cảm. Global HTTP rate limit mặc định 120 requests/60 giây/IP mỗi process, chỉnh bằng `RATE_LIMIT_MAX` và `RATE_LIMIT_TTL_MS`; Auth có thể đặt ngưỡng chặt hơn bằng `@Throttle`. Server không bật `trust proxy`, nên forwarded IP headers không tự trở thành client identity. Nếu triển khai nhiều instance, rate limit cần shared storage hoặc enforcement tại ingress.
+
+Request log có `reqId`, method, path, response status và thời gian. `X-Request-Id` hợp lệ từ client được giữ lại; nếu không hợp lệ server tạo UUID và trả cùng header. Logger không ghi raw headers, query, cookies hay request body; các trường nhạy cảm còn được redact. Exception filter log loại lỗi và request ID cho lỗi 5xx, không log SQL hoặc message nội bộ.
+
+Reference implementation: [vndevteam/nestjs-boilerplate](https://github.com/vndevteam/nestjs-boilerplate). Bootstrap, config, filter, logging, Swagger và pagination được điều chỉnh cho NestJS 11 và Kanban; không đưa auth, Redis, cloud logging, Active Record hoặc các dependency nghiệp vụ từ boilerplate vào foundation.
+
 ### Planned state for MVP
 
 Theo hướng architecture đã thống nhất, từng feature sẽ bổ sung controller, service, module definition, DTO, repository/query code và các thành phần liên quan khi có feature issue. Database Foundation chưa tạo các thành phần đó. Các feature dự kiến gồm:
