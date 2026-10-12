@@ -4,55 +4,53 @@
 
 Backend của project là một NestJS modular monolith theo hướng MVP. Mục tiêu của layer này là làm nơi duy nhất xử lý business logic, xác thực quyền, giao tiếp với database và phát sự kiện realtime sau khi thay đổi đã được persist thành công.
 
-Project hiện tại đang ở giai đoạn cấu trúc nền tảng: các module business chưa triển khai đầy đủ, nhưng folder và cấu trúc cơ bản đã có sẵn trong `apps/backend/src` và đã thể hiện hướng kiến trúc dự định.
+Project hiện tại đang ở giai đoạn cấu trúc nền tảng. Tám TypeORM entities của MVP đã được đặt theo feature trong `apps/backend/src/api/`; controller, service, DTO và module definition của các feature nghiệp vụ sẽ được bổ sung theo từng issue sau.
 
 Backend không phải là nơi lưu trữ UI state; backend là source of truth cho dữ liệu nghiệp vụ và các thay đổi trạng thái board.
 
 ---
 
-## 2. Current vs Planned structure
+## 2. Feature-Based Modular Architecture
 
 ### Current state
 
-Repository hiện có các folder và file nền tảng sau:
+Business code được tổ chức theo domain. Cấu trúc hiện có của Database Foundation:
 
 ```text
 apps/backend/src/
 ├── api/
+│   ├── activities/entities/activity.entity.ts
+│   ├── board-members/entities/board-member.entity.ts
+│   ├── boards/entities/board.entity.ts
+│   ├── cards/entities/
+│   │   ├── card.entity.ts
+│   │   └── card-assignee.entity.ts
+│   ├── columns/entities/board-column.entity.ts
+│   ├── comments/entities/comment.entity.ts
+│   ├── users/entities/user.entity.ts
 │   └── health/
 ├── common/
-│   ├── dto/
-│   ├── interfaces/
-│   └── types/
-├── config/
-├── constants/
+│   └── enums/database-enums.ts
 ├── database/
-│   ├── entities/
 │   ├── migrations/
-│   ├── repositories/
 │   ├── data-source.ts
 │   └── database-options.ts
-├── decorators/
-├── exceptions/
-├── filters/
-├── guards/
 ├── realtime/
-├── utils/
 ├── app.module.ts
-├── main.ts
-└── ...
+└── main.ts
 ```
 
 Trong đó:
 
-- `api/health/` là module hiện có, dùng để kiểm tra health endpoint.
-- `database/` đã có cấu hình TypeORM, data source và kế hoạch cho entities/migrations/repositories.
-- `realtime/` hiện là layer cross-cutting, chưa có business gateway logic thực tế.
-- `guards/`, `decorators/`, `filters/`, `exceptions/` là các cross-cutting concerns sẽ được bổ sung khi cần.
+- Mỗi feature trong `api/` sở hữu entity của domain mình; `CardAssignee` thuộc feature `cards`. `auth` là feature riêng cho xác thực, không sở hữu `User` entity.
+- Các enum backend dùng chung giữa nhiều feature hiện nằm trong `common/enums/`. Nếu contract tương ứng được đưa vào `packages/shared`, cần tái sử dụng định nghĩa chung thay vì nhân đôi enum.
+- `database/` chỉ giữ database infrastructure, DataSource và migrations; không giữ business entities.
+- TypeORM discovery nạp entities từ `api/**/entities/` và migrations từ `database/migrations/` theo đúng đuôi `.ts` khi chạy source hoặc `.js` khi chạy build.
+- `api/health/` là module hiện có; `realtime/` vẫn là layer cross-cutting.
 
 ### Planned state for MVP
 
-Theo hướng architecture đã thống nhất, backend dự kiến tổ chức theo các business module:
+Theo hướng architecture đã thống nhất, từng feature sẽ bổ sung controller, service, module definition, DTO, repository/query code và các thành phần liên quan khi có feature issue. Database Foundation chưa tạo các thành phần đó. Các feature dự kiến gồm:
 
 ```text
 apps/backend/src/
@@ -67,9 +65,7 @@ apps/backend/src/
 │   ├── activities/
 │   └── health/
 ├── database/
-│   ├── entities/
 │   ├── migrations/
-│   ├── repositories/
 │   ├── data-source.ts
 │   └── database-options.ts
 ├── realtime/
@@ -97,7 +93,7 @@ apps/backend/src/
 Lưu ý:
 
 - `realtime` không phải business domain module; nó là cross-cutting layer cho socket connection, room, presence và broadcast.
-- `auth`, `boards`, `columns`, `cards`, ... là các module nghiệp vụ cần được tạo theo từng domain.
+- `auth`, `users`, `boards`, `board-members`, `columns`, `cards`, `comments` và `activities` quản lý code theo domain. `auth` dùng `User` từ `users` khi cần; không khai báo một `User` entity thứ hai.
 
 ---
 
@@ -131,7 +127,7 @@ Service là trung tâm của backend: nó là nơi quyết định điều gì h
 
 ### Database layer
 
-Database layer dùng TypeORM theo dạng Data Mapper style với `Repository<Entity>` và `@InjectRepository(...)`.
+Database layer dùng TypeORM theo dạng Data Mapper style với `Repository<Entity>` và `@InjectRepository(...)`. Entity nằm trong feature tương ứng; DataSource và migrations nằm trong `src/database/`.
 
 Các concern chính:
 
@@ -321,7 +317,7 @@ Database changes không được tự động sửa schema bằng sync; thay và
 
 Khi tạo một business module mới, nên tuân thủ các nguyên tắc sau:
 
-1. Tách rõ controller/service/repository/entity.
+1. Đặt entity trong `api/<feature>/entities/`; tổ chức controller, service, DTO, module definition và query/repository code theo cùng feature khi triển khai feature đó.
 2. Chỉ đặt logic nghiệp vụ trong service, không đặt trong controller.
 3. Dùng `@InjectRepository` và `Repository<Entity>`.
 4. Validate authz tại service hoặc guard thích hợp.
