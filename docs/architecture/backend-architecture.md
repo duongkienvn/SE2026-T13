@@ -59,7 +59,7 @@ Trong đó:
 - `SWAGGER_ENABLED`: chỉ nhận `true` hoặc `false`; mặc định bật ở development/test, tắt ở production. Khi bật: UI `/api-docs`, JSON `/api-docs-json`.
 - `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD` giữ conventions hiện tại và được validate khi Nest khởi động. TypeORM CLI vẫn đọc `.env` trực tiếp qua `data-source.ts`, không phụ thuộc Nest ConfigModule.
 
-`GET /health` là liveness check không truy vấn database; `GET /` giữ tương thích với health route cũ. Cả hai ở ngoài `/api`. Liveness trả `{ name, status: "ok" }` với HTTP 200 khi process hoạt động. `GET /health/ready` kiểm tra PostgreSQL bằng `SELECT 1` với timeout 1 giây; khi database không sẵn sàng, endpoint trả HTTP 503. Health routes được miễn response wrapping và rate limiting.
+`GET /health` là liveness check không truy vấn database; `GET /` giữ tương thích với health route cũ. Cả hai ở ngoài `/api`. Liveness trả `{ name, status: "ok" }` với HTTP 200 khi process hoạt động. `GET /health/ready` kiểm tra PostgreSQL bằng `SELECT 1` trong transaction có `SET LOCAL statement_timeout = 1000`; response cũng có timeout 1 giây. Các request readiness đồng thời dùng chung một probe để tránh chiếm nhiều kết nối khi database bị treo. Khi database không sẵn sàng, endpoint trả HTTP 503. Health routes được miễn response wrapping và rate limiting.
 
 #### REST response conventions
 

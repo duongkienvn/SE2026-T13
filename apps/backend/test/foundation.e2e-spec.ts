@@ -225,6 +225,21 @@ const environment = validateEnvironment({
 });
 
 const databaseQuery = jest.fn().mockResolvedValue([{ result: 1 }]);
+const queryRunner = {
+  isTransactionActive: false,
+  connect: jest.fn().mockResolvedValue(undefined),
+  startTransaction: jest.fn().mockImplementation(async () => {
+    queryRunner.isTransactionActive = true;
+  }),
+  query: jest.fn((sql: string) =>
+    sql === 'SELECT 1' ? databaseQuery() : Promise.resolve([]),
+  ),
+  rollbackTransaction: jest.fn().mockImplementation(async () => {
+    queryRunner.isTransactionActive = false;
+  }),
+  release: jest.fn().mockResolvedValue(undefined),
+};
+const createQueryRunner = jest.fn(() => queryRunner);
 
 @Module({
   imports: [
@@ -241,7 +256,7 @@ const databaseQuery = jest.fn().mockResolvedValue([{ result: 1 }]);
     ReadinessService,
     {
       provide: DataSource,
-      useValue: { isInitialized: true, query: databaseQuery },
+      useValue: { isInitialized: true, createQueryRunner },
     },
   ],
 })
@@ -270,6 +285,12 @@ describe('backend foundation HTTP behavior', () => {
       .get('/health/ready')
       .expect(200)
       .expect({ status: 'ok', database: 'ok' });
+    expect(queryRunner.query).toHaveBeenCalledWith(
+      'SET LOCAL statement_timeout = 1000',
+    );
+    expect(queryRunner.query).toHaveBeenCalledWith('SELECT 1');
+    expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
+    expect(queryRunner.release).toHaveBeenCalled();
     databaseQuery.mockRejectedValueOnce(new Error('secret connection detail'));
     const unavailable = await request(app.getHttpServer())
       .get('/health/ready')
@@ -279,11 +300,25 @@ describe('backend foundation HTTP behavior', () => {
       code: 'SERVICE_UNAVAILABLE',
     });
     expect(JSON.stringify(unavailable.body)).not.toContain('secret');
-    databaseQuery.mockImplementationOnce(() => new Promise(() => undefined));
-    const timedOut = await request(app.getHttpServer())
-      .get('/health/ready')
-      .expect(503);
+    let completeStalledQuery:
+      ((rows: { result: number }[]) => void) | undefined;
+    databaseQuery.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          completeStalledQuery = resolve;
+        }),
+    );
+    const queryCount = databaseQuery.mock.calls.length;
+    const runnerCount = createQueryRunner.mock.calls.length;
+    const [timedOut, concurrentTimeout] = await Promise.all([
+      request(app.getHttpServer()).get('/health/ready').expect(503),
+      request(app.getHttpServer()).get('/health/ready').expect(503),
+    ]);
     expect(timedOut.body.code).toBe('SERVICE_UNAVAILABLE');
+    expect(concurrentTimeout.body.code).toBe('SERVICE_UNAVAILABLE');
+    expect(databaseQuery).toHaveBeenCalledTimes(queryCount + 1);
+    expect(createQueryRunner).toHaveBeenCalledTimes(runnerCount + 1);
+    completeStalledQuery?.([{ result: 1 }]);
     await request(app.getHttpServer()).get('/api/health').expect(404);
     const spec = await request(app.getHttpServer())
       .get('/api-docs-json')

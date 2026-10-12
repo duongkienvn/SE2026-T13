@@ -168,7 +168,6 @@ function emailField(
     stringField(options, optional),
     ToLowerCase(),
     IsEmail({}, { each: options.each }),
-    property(String, options, optional),
   );
 }
 

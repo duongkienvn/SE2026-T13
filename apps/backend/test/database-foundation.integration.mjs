@@ -17,6 +17,7 @@ const { Client } = require('pg');
 const { DataSource } = require('typeorm');
 const { NestFactory } = require('@nestjs/core');
 const { databaseOptions } = require('../dist/database/database-options.js');
+const { ReadinessService } = require('../dist/api/health/readiness.service.js');
 const { paginateQueryBuilder } = require('../dist/utils/offset-pagination.js');
 const { paginateCursor } = require('../dist/utils/cursor-pagination.js');
 
@@ -324,6 +325,24 @@ try {
   created = true;
   source = new DataSource({ ...baseOptions, database: testDatabase });
   await source.initialize();
+  assert.deepEqual(await new ReadinessService(source).check(), {
+    status: 'ok',
+    database: 'ok',
+  });
+  const timeoutRunner = source.createQueryRunner();
+  try {
+    await timeoutRunner.connect();
+    await timeoutRunner.startTransaction();
+    await timeoutRunner.query('SET LOCAL statement_timeout = 100');
+    await assert.rejects(
+      timeoutRunner.query('SELECT pg_sleep(1)'),
+      (error) => error.driverError?.code === '57014',
+    );
+  } finally {
+    if (timeoutRunner.isTransactionActive)
+      await timeoutRunner.rollbackTransaction();
+    await timeoutRunner.release();
+  }
   assert.equal(source.options.poolSize, 10);
   assert.equal(source.options.connectTimeoutMS, 5000);
   assert.equal(source.options.ssl, false);
