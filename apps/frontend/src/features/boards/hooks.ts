@@ -30,13 +30,14 @@ export function useBoards() {
   });
 }
 
-export function useBoard(boardId: string) {
+export function useBoard(boardId: string, { enabled = true } = {}) {
   const { runAuthorized } = useAuth();
   return useQuery({
     queryKey: boardKeys.detail(boardId),
     queryFn: ({ signal }) =>
       runAuthorized((token) => getBoard(token, boardId, signal)),
     retry: retryUnlessClientError,
+    enabled,
   });
 }
 

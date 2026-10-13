@@ -1,5 +1,6 @@
 import { BoardRole } from '@kanban/shared';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
 import { FolderIcon, PlusIcon } from '../../../components/icons';
@@ -21,6 +22,11 @@ import {
 import { useBoards } from '../hooks';
 import type { Board } from '../types';
 
+/** Router state other pages can pass to show a one-time notice here. */
+export interface BoardsLocationState {
+  notice?: string;
+}
+
 function matches(board: Board, query: string): boolean {
   const text = `${board.name} ${board.description ?? ''}`.toLowerCase();
   return text.includes(query);
@@ -33,7 +39,15 @@ export function BoardsPage() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Board | null>(null);
   const [archiving, setArchiving] = useState<Board | null>(null);
-  const [notice, setNotice] = useState<string>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const incoming = (location.state as BoardsLocationState | null)?.notice;
+  const [notice, setNotice] = useState<string | undefined>(incoming);
+
+  // Show an incoming notice once; drop it from history so reloads don't repeat it.
+  useEffect(() => {
+    if (incoming) navigate(location.pathname, { replace: true, state: null });
+  }, [incoming, location.pathname, navigate]);
 
   const loaded = useMemo(
     () =>

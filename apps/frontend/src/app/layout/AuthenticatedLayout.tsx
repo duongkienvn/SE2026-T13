@@ -1,33 +1,62 @@
-import { Outlet, useLocation, useNavigate } from 'react-router';
+import {
+  Link,
+  Outlet,
+  useLocation,
+  useMatches,
+  useNavigate,
+} from 'react-router';
 import { UserMenu } from '../../features/auth/components/UserMenu';
+import { useBoard } from '../../features/boards/hooks';
 import { AppShell } from './AppShell';
 import { primaryNavItems, secondaryNavItems, type NavItem } from './navigation';
 
-function isActive(item: NavItem, pathname: string): boolean {
-  return (
-    !!item.path &&
-    (pathname === item.path || pathname.startsWith(`${item.path}/`))
-  );
+function matchesPath(path: string, pathname: string): boolean {
+  return pathname === path || pathname.startsWith(`${path}/`);
 }
 
 /** Application shell for signed-in routes, with routable navigation and the user menu. */
 export function AuthenticatedLayout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  // The deepest match carries every route param, e.g. `boardId` on board pages.
+  const boardId = useMatches().at(-1)?.params.boardId;
+  // Shares the board page's cached query; nothing is shown until it loads.
+  const boardName = useBoard(boardId ?? '', { enabled: !!boardId }).data?.name;
 
-  const withNavigation = (items: NavItem[]) =>
-    items.map((item) =>
-      item.path ? { ...item, onSelect: () => navigate(item.path!) } : item,
-    );
-  const activeItem = [...primaryNavItems, ...secondaryNavItems].find((item) =>
-    isActive(item, pathname),
-  );
+  const resolve = (item: NavItem): NavItem => {
+    // Members belong to one board: the item only works inside a board.
+    const path =
+      item.id === 'members'
+        ? boardId && `/boards/${boardId}/members`
+        : item.path;
+    return path
+      ? { ...item, path, onSelect: () => navigate(path) }
+      : { ...item, path: undefined };
+  };
+  const primary = primaryNavItems.map(resolve);
+  const secondary = secondaryNavItems.map(resolve);
+
+  // Most specific match wins: /boards/1/members highlights Members, not Boards.
+  const activeItem = [...primary, ...secondary]
+    .filter((item) => item.path && matchesPath(item.path, pathname))
+    .sort((a, b) => b.path!.length - a.path!.length)[0];
 
   return (
     <AppShell
-      primaryNavItems={withNavigation(primaryNavItems)}
-      secondaryNavItems={withNavigation(secondaryNavItems)}
+      primaryNavItems={primary}
+      secondaryNavItems={secondary}
       activeNavItemId={activeItem?.id}
+      headerContext={
+        boardId &&
+        boardName && (
+          <Link
+            to={`/boards/${boardId}`}
+            className="truncate hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
+          >
+            {boardName}
+          </Link>
+        )
+      }
       headerActions={<UserMenu />}
     >
       <Outlet />
