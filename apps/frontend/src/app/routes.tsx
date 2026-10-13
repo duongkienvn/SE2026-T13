@@ -2,7 +2,7 @@ import type { RouteObject } from 'react-router';
 import { LoginPage } from '../features/auth/pages/LoginPage';
 import { ProfilePage } from '../features/auth/pages/ProfilePage';
 import { RegisterPage } from '../features/auth/pages/RegisterPage';
-import { BoardsPage } from '../pages/BoardsPage';
+import { BoardsPage } from '../features/boards/pages/BoardsPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { RouteErrorPage } from '../pages/RouteErrorPage';
 import { PublicOnly, RequireAuth, RootRedirect } from './guards';
