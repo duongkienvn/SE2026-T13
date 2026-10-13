@@ -6,6 +6,12 @@ import { Board } from './entities/board.entity';
 import { BoardMemberRole } from '../../common/enums/database-enums';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { BoardResponseDto, toBoardResponseDto } from './dto/board-response.dto';
+import { PageQueryDto } from '../../common/dto/page-query.dto';
+import {
+  PaginatedResponse,
+  paginate,
+} from '../../common/dto/paginated-response';
+import { paginateQueryBuilder } from '../../utils/offset-pagination';
 
 @Injectable()
 export class BoardsService {
@@ -14,6 +20,33 @@ export class BoardsService {
     @InjectRepository(BoardMember)
     private readonly members: Repository<BoardMember>,
   ) {}
+
+  async list(
+    userId: string,
+    query: PageQueryDto,
+  ): Promise<PaginatedResponse<BoardResponseDto>> {
+    const page = await paginateQueryBuilder(
+      this.boards
+        .createQueryBuilder('board')
+        .innerJoinAndSelect(
+          'board.members',
+          'member',
+          'member.userId = :userId',
+          { userId },
+        )
+        .where('board.isArchived = :isArchived', { isArchived: false }),
+      query,
+      'createdAt',
+      'DESC',
+    );
+    return paginate(
+      page.data.map((board) =>
+        toBoardResponseDto(board, board.members[0].role),
+      ),
+      page.meta.total,
+      query,
+    );
+  }
 
   async create(
     userId: string,
