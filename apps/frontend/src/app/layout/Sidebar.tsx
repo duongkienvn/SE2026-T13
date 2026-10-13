@@ -1,4 +1,3 @@
-import { APP_NAME } from '@kanban/shared';
 import { LogoIcon } from '../../components/icons';
 import type { NavItem } from './navigation';
 
@@ -18,10 +17,7 @@ export function Sidebar({
       aria-label="Primary"
       className="flex w-14 shrink-0 flex-col border-r border-line bg-surface md:w-[68px]"
     >
-      <div
-        className="grid h-16 shrink-0 place-items-center bg-brand-soft text-white md:h-[72px]"
-        title={APP_NAME}
-      >
+      <div className="grid h-16 shrink-0 place-items-center bg-brand-soft text-white md:h-[72px]">
         <LogoIcon className="size-6 md:size-7" />
       </div>
       <ul className="mt-4 flex flex-col">
@@ -53,7 +49,8 @@ interface SidebarItemProps {
 
 function SidebarItem({ item, active }: SidebarItemProps) {
   const { icon: Icon, label, onSelect } = item;
-  const available = Boolean(onSelect);
+  // The current page is never "coming soon", even before its handler is wired.
+  const available = active || Boolean(onSelect);
   const stateClasses = active
     ? 'bg-primary-soft text-primary shadow-[inset_-3px_0_0_var(--color-primary)]'
     : available
