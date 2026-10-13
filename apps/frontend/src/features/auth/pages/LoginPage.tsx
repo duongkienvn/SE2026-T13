@@ -8,7 +8,7 @@ import { MailIcon } from '../../../components/icons';
 import { PasswordField } from '../../../components/PasswordField';
 import { TextField } from '../../../components/TextField';
 import { login } from '../api';
-import { AuthLayout, BrandLockup } from '../components/AuthLayout';
+import { AuthLayout } from '../components/AuthLayout';
 import { AuthSwitch } from '../components/AuthSwitch';
 import { toFormErrors } from '../errors';
 import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
@@ -73,11 +73,10 @@ export function LoginPage() {
 
   return (
     <AuthLayout>
-      <BrandLockup />
-      <h1 className="mt-14 text-[30px] leading-tight font-bold tracking-tight text-ink">
+      <h1 className="text-2xl leading-tight font-bold tracking-tight text-ink">
         Welcome back
       </h1>
-      <p className="mt-2 text-lg text-muted">
+      <p className="mt-1.5 text-[15px] text-muted">
         Log in to your account to continue.
       </p>
 
@@ -85,7 +84,7 @@ export function LoginPage() {
         ref={formRef}
         noValidate
         onSubmit={handleSubmit}
-        className="mt-9 space-y-6"
+        className="mt-6 space-y-4"
       >
         {registeredEmail && !formError && (
           <Alert variant="success">Account created. Log in to continue.</Alert>
