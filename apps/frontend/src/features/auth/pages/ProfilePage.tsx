@@ -9,7 +9,7 @@ import { TextField } from '../../../components/TextField';
 import { updateCurrentUser } from '../api';
 import { currentUserQueryKey } from '../AuthProvider';
 import { UserAvatar } from '../components/UserAvatar';
-import { toFormErrors } from '../errors';
+import { toFormErrors } from '../../../lib/form-errors';
 import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
 import { usePageTitle } from '../../../hooks/usePageTitle';
 import type { UpdateProfileRequest, User } from '../types';

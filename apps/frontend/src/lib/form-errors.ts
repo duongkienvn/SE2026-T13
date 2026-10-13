@@ -1,4 +1,4 @@
-import { ClientErrorCode, isApiError } from '../../lib/api-client';
+import { ClientErrorCode, isApiError } from './api-client';
 
 export interface FormErrorState<Field extends string> {
   formError?: string;
@@ -81,6 +81,18 @@ export function toFormErrors<Field extends string>(
   if (error.code === 'TOO_MANY_REQUESTS' || error.status === 429) {
     return {
       formError: 'Too many attempts. Please wait a moment and try again.',
+      fieldErrors: {},
+    };
+  }
+  if (error.status === 403) {
+    return {
+      formError: "You don't have permission to do this.",
+      fieldErrors: {},
+    };
+  }
+  if (error.status === 404) {
+    return {
+      formError: 'This no longer exists, or you no longer have access to it.',
       fieldErrors: {},
     };
   }

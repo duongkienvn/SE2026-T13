@@ -10,7 +10,7 @@ import { TextField } from '../../../components/TextField';
 import { register } from '../api';
 import { AuthLayout, BrandLockup } from '../components/AuthLayout';
 import { AuthSwitch } from '../components/AuthSwitch';
-import { toFormErrors } from '../errors';
+import { toFormErrors } from '../../../lib/form-errors';
 import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
 import { usePageTitle } from '../../../hooks/usePageTitle';
 import {
