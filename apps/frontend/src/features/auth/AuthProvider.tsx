@@ -86,8 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const runAuthorized = useCallback(
     async <T,>(request: (token: string) => Promise<T>): Promise<T> => {
+      // Already signed out: fail without ending the session again, which would
+      // clear the cache and make the calling query refetch in a loop.
       if (!accessToken) {
-        endSession();
         throw new ApiError(401, 'UNAUTHORIZED', 'Your session has ended.');
       }
       try {
