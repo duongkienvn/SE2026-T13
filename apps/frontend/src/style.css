@@ -24,7 +24,13 @@
   --color-ink: #172038;
   --color-muted: #626a83;
   --color-line: #e4e8f1;
-  --color-danger: #e5484d;
+  --color-danger: #d1343a;
+  --color-success: #16803c;
+
+  /* Authentication screens (login.png). */
+  --color-auth-backdrop: #e6e8f9;
+  --color-auth-panel-from: #f1f1fe;
+  --color-auth-panel-to: #e1e2fe;
 
   --shadow-card: 0 1px 2px rgb(23 32 56 / 0.04), 0 1px 3px rgb(23 32 56 / 0.06);
   --shadow-frame: 0 10px 40px rgb(23 32 56 / 0.1);

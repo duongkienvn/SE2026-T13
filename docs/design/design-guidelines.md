@@ -65,21 +65,24 @@ Refine tokens through side-by-side comparison with the source images. Avoid inve
 
 The frontend defines these tokens in `apps/frontend/src/style.css` (Tailwind `@theme`, so `--color-line` is used as `border-line`, and so on). Values marked _refined_ were re-sampled from the authenticated screenshots or adjusted for WCAG AA text contrast. Keep this table and `style.css` in sync.
 
-| Provisional token        | Implemented token        | Value     | Note                                                                                        |
-| ------------------------ | ------------------------ | --------- | ------------------------------------------------------------------------------------------- |
-| `--color-primary`        | `--color-primary`        | `#615CF7` |                                                                                             |
-| `--color-primary-strong` | `--color-primary-strong` | `#6058F9` |                                                                                             |
-| —                        | `--color-primary-hover`  | `#4F49E6` | Added: visible hover for primary buttons                                                    |
-| —                        | `--color-primary-soft`   | `#F0F2FE` | Added: active navigation background                                                         |
-| —                        | `--color-brand`          | `#6466FA` | Added: "Kanban" wordmark                                                                    |
-| —                        | `--color-brand-soft`     | `#9294FC` | Added: side-rail logo tile                                                                  |
-| `--color-bg-app`         | `--color-app`            | `#F7F7F9` |                                                                                             |
-| `--color-surface`        | `--color-surface`        | `#FFFFFF` |                                                                                             |
-| `--color-outer-frame`    | `--color-frame`          | `#A6A9D0` | _Refined_: sampled from boards/kanban/team screens (`#E5E8F9` matches the login background) |
-| `--color-text-primary`   | `--color-ink`            | `#172038` |                                                                                             |
-| `--color-text-muted`     | `--color-muted`          | `#626A83` | _Refined_: sampled; `#6E7891` is below 4.5:1 on `#F7F7F9`                                   |
-| `--color-border`         | `--color-line`           | `#E4E8F1` |                                                                                             |
-| —                        | `--color-danger`         | `#E5484D` | Added: error states                                                                         |
+| Provisional token        | Implemented token        | Value                 | Note                                                                                        |
+| ------------------------ | ------------------------ | --------------------- | ------------------------------------------------------------------------------------------- |
+| `--color-primary`        | `--color-primary`        | `#615CF7`             |                                                                                             |
+| `--color-primary-strong` | `--color-primary-strong` | `#6058F9`             |                                                                                             |
+| —                        | `--color-primary-hover`  | `#4F49E6`             | Added: visible hover for primary buttons                                                    |
+| —                        | `--color-primary-soft`   | `#F0F2FE`             | Added: active navigation background                                                         |
+| —                        | `--color-brand`          | `#6466FA`             | Added: "Kanban" wordmark                                                                    |
+| —                        | `--color-brand-soft`     | `#9294FC`             | Added: side-rail logo tile                                                                  |
+| `--color-bg-app`         | `--color-app`            | `#F7F7F9`             |                                                                                             |
+| `--color-surface`        | `--color-surface`        | `#FFFFFF`             |                                                                                             |
+| `--color-outer-frame`    | `--color-frame`          | `#A6A9D0`             | _Refined_: sampled from boards/kanban/team screens (`#E5E8F9` matches the login background) |
+| `--color-text-primary`   | `--color-ink`            | `#172038`             |                                                                                             |
+| `--color-text-muted`     | `--color-muted`          | `#626A83`             | _Refined_: sampled; `#6E7891` is below 4.5:1 on `#F7F7F9`                                   |
+| `--color-border`         | `--color-line`           | `#E4E8F1`             |                                                                                             |
+| —                        | `--color-danger`         | `#D1343A`             | Added: error states; darkened from `#E5484D` (3.9:1) to pass 4.5:1 for error text on white  |
+| —                        | `--color-success`        | `#16803C`             | Added: success feedback (5.0:1 on white)                                                    |
+| —                        | `--color-auth-backdrop`  | `#E6E8F9`             | Added: login/register page background (sampled from `login.png`)                            |
+| —                        | `--color-auth-panel-*`   | `#F1F1FE` → `#E1E2FE` | Added: login product-panel gradient (sampled from `login.png`)                              |
 
 Font: Inter (400/500/600/700) with a system sans-serif fallback.
 

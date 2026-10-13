@@ -29,6 +29,98 @@ export function LogoIcon(props: IconProps) {
   );
 }
 
+/** Four-square brand mark used on the authentication screens. */
+export function BrandMarkIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="2" y="2" width="9" height="9" rx="2" />
+      <rect x="13" y="2" width="9" height="9" rx="2" />
+      <rect x="2" y="13" width="9" height="9" rx="2" />
+      <rect x="13" y="13" width="9" height="9" rx="2" />
+    </Svg>
+  );
+}
+
+function StrokeSvg({ children, ...props }: IconProps) {
+  return (
+    <Svg
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      {children}
+    </Svg>
+  );
+}
+
+export function MailIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <rect x="3" y="5" width="18" height="14" rx="2.5" />
+      <path d="m4 7 8 6 8-6" />
+    </StrokeSvg>
+  );
+}
+
+export function LockIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <rect x="5" y="10.5" width="14" height="10" rx="2.5" />
+      <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+    </StrokeSvg>
+  );
+}
+
+export function UserIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4.5 20c.8-3.6 3.9-6 7.5-6s6.7 2.4 7.5 6" />
+    </StrokeSvg>
+  );
+}
+
+export function EyeIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </StrokeSvg>
+  );
+}
+
+export function EyeOffIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M10.6 5.6A9.8 9.8 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.6 3.4M6.6 6.6C3.9 8.4 2.5 12 2.5 12S6 18.5 12 18.5a9.6 9.6 0 0 0 5.4-1.6" />
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+      <path d="m3 3 18 18" />
+    </StrokeSvg>
+  );
+}
+
+export function ChevronDownIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="m6 9 6 6 6-6" />
+    </StrokeSvg>
+  );
+}
+
+export function CheckCircleIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path
+        fillRule="evenodd"
+        d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm4.3 7.2a1 1 0 0 0-1.4-1.4L10.5 12.2 9 10.7a1 1 0 0 0-1.4 1.4l2.2 2.2a1 1 0 0 0 1.4 0z"
+      />
+    </Svg>
+  );
+}
+
 export function FolderIcon(props: IconProps) {
   return (
     <Svg {...props}>
