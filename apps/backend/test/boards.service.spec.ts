@@ -1,9 +1,16 @@
 import { Test } from '@nestjs/testing';
+import { Inject } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { BoardsService } from '../src/api/boards/boards.service';
 import { Board } from '../src/api/boards/entities/board.entity';
 import { BoardMember } from '../src/api/board-members/entities/board-member.entity';
 import { BoardMemberRole } from '../src/common/enums/database-enums';
+
+jest.mock('@nestjs/typeorm', () => ({
+  InjectRepository: (entity: { name: string }) =>
+    Inject(`${entity.name}Repository`),
+  getRepositoryToken: (entity: { name: string }) => `${entity.name}Repository`,
+}));
 
 const USER_ID = '1c5e2d5b-1e13-4b31-9cc4-8e4f849d75e5';
 const BOARD_ID = 'c6ba7134-97ef-4c1b-a342-001a982a7721';
@@ -73,6 +80,55 @@ describe('BoardsService', () => {
       createdAt: '2026-10-13T00:00:00.000Z',
     });
     expect(result).not.toHaveProperty('members');
+  });
+
+  it('filters by membership and archive state, uses stable ordering and preserves page metadata', async () => {
+    const builder = {
+      innerJoinAndSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      clone: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([
+        [
+          Object.assign(board, {
+            members: [{ role: BoardMemberRole.MEMBER }],
+          }),
+        ],
+        3,
+      ]),
+      expressionMap: {
+        mainAlias: {
+          name: 'board',
+          metadata: {
+            findColumnWithPropertyPath: () => ({ propertyPath: 'createdAt' }),
+            primaryColumns: [{ propertyPath: 'id' }],
+          },
+        },
+      },
+    };
+    boards.createQueryBuilder.mockReturnValue(builder);
+    const result = await service.list(USER_ID, { page: 2, limit: 1 });
+    expect(builder.innerJoinAndSelect).toHaveBeenCalledWith(
+      'board.members',
+      'member',
+      'member.userId = :userId',
+      { userId: USER_ID },
+    );
+    expect(builder.where).toHaveBeenCalledWith(
+      'board.isArchived = :isArchived',
+      { isArchived: false },
+    );
+    expect(builder.orderBy).toHaveBeenCalledWith('board.createdAt', 'DESC');
+    expect(builder.addOrderBy).toHaveBeenCalledWith('board.id', 'DESC');
+    expect(builder.skip).toHaveBeenCalledWith(1);
+    expect(builder.take).toHaveBeenCalledWith(1);
+    expect(builder.getManyAndCount).toHaveBeenCalledTimes(1);
+    expect(result.meta).toEqual({ page: 2, limit: 1, total: 3, totalPages: 3 });
+    expect(result.data[0].currentUserRole).toBe('MEMBER');
+    expect(result.data[0]).not.toHaveProperty('members');
   });
 
   it('propagates membership failure out of the transaction so TypeORM rolls back', async () => {
