@@ -8,7 +8,7 @@ import { MailIcon, UserIcon } from '../../../components/icons';
 import { PasswordField } from '../../../components/PasswordField';
 import { TextField } from '../../../components/TextField';
 import { register } from '../api';
-import { AuthLayout, BrandLockup } from '../components/AuthLayout';
+import { AuthLayout } from '../components/AuthLayout';
 import { AuthSwitch } from '../components/AuthSwitch';
 import { toFormErrors } from '../../../lib/form-errors';
 import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
@@ -95,11 +95,10 @@ export function RegisterPage() {
 
   return (
     <AuthLayout>
-      <BrandLockup />
-      <h1 className="mt-10 text-[30px] leading-tight font-bold tracking-tight text-ink">
+      <h1 className="text-2xl leading-tight font-bold tracking-tight text-ink">
         Create your account
       </h1>
-      <p className="mt-2 text-lg text-muted">
+      <p className="mt-1.5 text-[15px] text-muted">
         Start organizing work with your team.
       </p>
 
@@ -107,7 +106,7 @@ export function RegisterPage() {
         ref={formRef}
         noValidate
         onSubmit={handleSubmit}
-        className="mt-7 space-y-4"
+        className="mt-5 space-y-3"
       >
         {formError && <Alert variant="error">{formError}</Alert>}
 
@@ -132,25 +131,28 @@ export function RegisterPage() {
           onChange={update('email')}
           error={fieldErrors.email}
         />
-        <PasswordField
-          label="Password"
-          name="password"
-          autoComplete="new-password"
-          placeholder="Create a password"
-          hint={`${PASSWORD_MIN_LENGTH}–${PASSWORD_MAX_LENGTH} characters.`}
-          value={values.password}
-          onChange={update('password')}
-          error={fieldErrors.password}
-        />
-        <PasswordField
-          label="Confirm password"
-          name="confirmPassword"
-          autoComplete="new-password"
-          placeholder="Repeat your password"
-          value={values.confirmPassword}
-          onChange={update('confirmPassword')}
-          error={fieldErrors.confirmPassword}
-        />
+        {/* Side by side on wider screens so the form fits without scrolling. */}
+        <div className="grid items-start gap-3 sm:grid-cols-2">
+          <PasswordField
+            label="Password"
+            name="password"
+            autoComplete="new-password"
+            placeholder="Create password"
+            hint={`${PASSWORD_MIN_LENGTH}–${PASSWORD_MAX_LENGTH} characters.`}
+            value={values.password}
+            onChange={update('password')}
+            error={fieldErrors.password}
+          />
+          <PasswordField
+            label="Confirm password"
+            name="confirmPassword"
+            autoComplete="new-password"
+            placeholder="Repeat password"
+            value={values.confirmPassword}
+            onChange={update('confirmPassword')}
+            error={fieldErrors.confirmPassword}
+          />
+        </div>
 
         <Button
           type="submit"

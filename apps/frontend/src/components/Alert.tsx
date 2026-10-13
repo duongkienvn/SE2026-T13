@@ -18,10 +18,10 @@ export function Alert({ variant, children }: AlertProps) {
   return (
     <div
       role={variant === 'error' ? 'alert' : 'status'}
-      className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-[15px] ${variantClasses[variant]}`}
+      className={`flex items-start gap-2.5 rounded-lg border px-3.5 py-2.5 text-sm ${variantClasses[variant]}`}
     >
       <Icon
-        className={`mt-0.5 size-5 shrink-0 ${variant === 'error' ? 'text-danger' : 'text-success'}`}
+        className={`size-5 shrink-0 ${variant === 'error' ? 'text-danger' : 'text-success'}`}
       />
       <div>{children}</div>
     </div>

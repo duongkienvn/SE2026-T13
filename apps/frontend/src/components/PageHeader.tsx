@@ -10,19 +10,17 @@ export function PageHeader({ title, description, actions }: PageHeaderProps) {
   return (
     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div className="min-w-0">
-        <h1 className="text-[28px] leading-tight font-bold tracking-tight text-ink md:text-[32px]">
+        <h1 className="text-2xl leading-tight font-bold tracking-tight text-ink md:text-[26px]">
           {title}
         </h1>
         {description && (
-          <p className="mt-1 text-base text-muted md:text-[17px]">
+          <p className="mt-1 text-sm text-muted md:text-[15px]">
             {description}
           </p>
         )}
       </div>
       {actions && (
-        <div className="flex flex-wrap items-center gap-3 md:gap-4">
-          {actions}
-        </div>
+        <div className="flex flex-wrap items-center gap-3">{actions}</div>
       )}
     </div>
   );

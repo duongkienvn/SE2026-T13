@@ -18,8 +18,8 @@ const variantClasses: Record<ButtonVariant, string> = {
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  md: 'h-11 px-5 text-[15px]',
-  lg: 'h-[50px] px-6 text-base',
+  md: 'h-10 px-4 text-sm',
+  lg: 'h-11 px-5 text-[15px]',
 };
 
 /** Button styling, also usable on links that should look like buttons. */
