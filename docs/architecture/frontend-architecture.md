@@ -27,9 +27,9 @@ apps/frontend/src/
 │   ├── boards/               # api, query keys + hooks, Boards list / Board detail pages
 │   └── board-members/        # api, hooks, membership rules, Board Members page
 ├── pages/                    # NotFoundPage, RouteErrorPage
-├── components/               # UI primitives dùng chung (Button, TextField, Dialog, ActionMenu, states, ...)
-├── hooks/                    # usePageTitle, useFocusFirstInvalid
-├── lib/                      # env, api-client (REST envelope + pagination), query-client, form-errors, format
+├── components/               # UI primitives dùng chung (Button, TextField, Dialog, ActionMenu, Pagination, states, ...)
+├── hooks/                    # usePageTitle, useFocusFirstInvalid, useFitGrid, usePageParam, useMediaQuery
+├── lib/                      # env, api-client (REST envelope + pagination), query-client, form-errors, format, pagination
 ├── test/                     # test setup và helpers
 ├── App.tsx
 ├── main.tsx
@@ -40,6 +40,8 @@ apps/frontend/src/
 - REST client dùng chung nằm ở `lib/api-client.ts`; API calls theo feature nằm trong `features/<feature>/api.ts`, chưa có thư mục `api/` riêng.
 - Auth, Board và BoardMember types hiện định nghĩa trong `features/<feature>/types.ts` cho đến khi backend bổ sung shared contracts vào `packages/shared`.
 - TanStack Query keys của board nằm dưới `['boards']` (`features/boards/query-keys.ts`) để mutation có thể invalidate list, detail và members cùng lúc.
+- Màn hình không được scroll (xem "Fit-to-viewport rule" trong `docs/design/design-guidelines.md`). Danh sách dài (boards, members) dùng phân trang đánh số: `useFitGrid` đo số hàng vừa với vùng còn trống, `lib/pagination.ts` cắt trang, số trang lưu ở `?page=` (`usePageParam`).
+- `GET /boards` (#20) chưa có search phía server, nên `useBoards` tải tất cả các trang (`limit=100`, mức tối đa của `PageQueryDto`) rồi search và phân trang ở client. Nếu số board mỗi user tăng lớn, cần bổ sung search/paging phía server.
 
 Hiện chưa có:
 
