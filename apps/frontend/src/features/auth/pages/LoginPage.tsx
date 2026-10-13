@@ -11,6 +11,8 @@ import { login } from '../api';
 import { AuthLayout, BrandLockup } from '../components/AuthLayout';
 import { AuthSwitch } from '../components/AuthSwitch';
 import { toFormErrors } from '../errors';
+import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
+import { usePageTitle } from '../../../hooks/usePageTitle';
 import { useAuth } from '../useAuth';
 import { hasErrors, normalizeEmail, validateEmail } from '../validation';
 
@@ -18,6 +20,8 @@ const FIELD_LABELS = { email: 'Email', password: 'Password' };
 type Field = keyof typeof FIELD_LABELS;
 
 export function LoginPage() {
+  usePageTitle('Log in');
+  const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
   const { signIn } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -45,6 +49,7 @@ export function LoginPage() {
       const result = toFormErrors(error, FIELD_LABELS);
       setFieldErrors(result.fieldErrors);
       setFormError(result.formError);
+      focusFirstInvalid();
     },
   });
 
@@ -58,7 +63,10 @@ export function LoginPage() {
     };
     setFieldErrors(errors);
     setFormError(undefined);
-    if (hasErrors(errors)) return;
+    if (hasErrors(errors)) {
+      focusFirstInvalid();
+      return;
+    }
 
     mutation.mutate({ email: normalizeEmail(email), password });
   };
@@ -73,7 +81,12 @@ export function LoginPage() {
         Log in to your account to continue.
       </p>
 
-      <form noValidate onSubmit={handleSubmit} className="mt-9 space-y-6">
+      <form
+        ref={formRef}
+        noValidate
+        onSubmit={handleSubmit}
+        className="mt-9 space-y-6"
+      >
         {registeredEmail && !formError && (
           <Alert variant="success">Account created. Log in to continue.</Alert>
         )}

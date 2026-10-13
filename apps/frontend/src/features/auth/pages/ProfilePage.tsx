@@ -10,6 +10,8 @@ import { updateCurrentUser } from '../api';
 import { currentUserQueryKey } from '../AuthProvider';
 import { UserAvatar } from '../components/UserAvatar';
 import { toFormErrors } from '../errors';
+import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
+import { usePageTitle } from '../../../hooks/usePageTitle';
 import type { UpdateProfileRequest, User } from '../types';
 import { useAuth } from '../useAuth';
 import {
@@ -39,12 +41,14 @@ function buildPatch(
 }
 
 export function ProfilePage() {
+  usePageTitle('Profile');
   const { user } = useAuth();
   // Protected route: the guard only renders this page with a verified user.
   return user ? <ProfileForm user={user} /> : null;
 }
 
 function ProfileForm({ user }: { user: User }) {
+  const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
   const { runAuthorized } = useAuth();
   const queryClient = useQueryClient();
   const [displayName, setDisplayName] = useState(user.displayName);
@@ -68,6 +72,7 @@ function ProfileForm({ user }: { user: User }) {
       const result = toFormErrors(error, FIELD_LABELS);
       setFieldErrors(result.fieldErrors);
       setFormError(result.formError);
+      focusFirstInvalid();
     },
   });
 
@@ -88,7 +93,10 @@ function ProfileForm({ user }: { user: User }) {
     setFieldErrors(errors);
     setFormError(undefined);
     setSaved(false);
-    if (hasErrors(errors)) return;
+    if (hasErrors(errors)) {
+      focusFirstInvalid();
+      return;
+    }
 
     mutation.mutate(patch);
   };
@@ -101,6 +109,7 @@ function ProfileForm({ user }: { user: User }) {
       />
 
       <form
+        ref={formRef}
         noValidate
         onSubmit={handleSubmit}
         className="mt-8 max-w-2xl rounded-xl border border-line bg-surface p-6 shadow-card md:p-8"

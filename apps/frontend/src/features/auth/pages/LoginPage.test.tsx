@@ -40,6 +40,22 @@ describe('LoginPage', () => {
     expect(screen.getByRole('button', { name: 'Hide password' })).toBeTruthy();
   });
 
+  it('sets the tab title', () => {
+    renderApp('/login');
+    expect(document.title).toBe('Log in · Kanban');
+  });
+
+  it('moves focus to the first invalid field after a failed submit', () => {
+    mockApi({});
+    renderApp('/login');
+
+    fillLogin('', '');
+    expect(document.activeElement).toBe(screen.getByLabelText('Email address'));
+
+    fillLogin('ada@example.com', '');
+    expect(document.activeElement).toBe(screen.getByLabelText('Password'));
+  });
+
   it('validates input before sending a request', () => {
     const calls = mockApi({});
     renderApp('/login');

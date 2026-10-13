@@ -1,6 +1,7 @@
 import { isRouteErrorResponse, Link, useRouteError } from 'react-router';
 import { Button, buttonClassName } from '../components/Button';
 import { FullPageNotice } from '../components/FullPageNotice';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { NotFoundPage } from './NotFoundPage';
 
 /**
@@ -9,8 +10,11 @@ import { NotFoundPage } from './NotFoundPage';
  */
 export function RouteErrorPage() {
   const error = useRouteError();
+  const notFound = isRouteErrorResponse(error) && error.status === 404;
+  // Set here too: this parent effect runs after NotFoundPage's own.
+  usePageTitle(notFound ? 'Page not found' : 'Something went wrong');
 
-  if (isRouteErrorResponse(error) && error.status === 404) {
+  if (notFound) {
     return <NotFoundPage />;
   }
 

@@ -11,6 +11,8 @@ import { register } from '../api';
 import { AuthLayout, BrandLockup } from '../components/AuthLayout';
 import { AuthSwitch } from '../components/AuthSwitch';
 import { toFormErrors } from '../errors';
+import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
+import { usePageTitle } from '../../../hooks/usePageTitle';
 import {
   hasErrors,
   normalizeEmail,
@@ -30,6 +32,8 @@ const FIELD_LABELS = {
 type Field = keyof typeof FIELD_LABELS;
 
 export function RegisterPage() {
+  usePageTitle('Create account');
+  const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
   const navigate = useNavigate();
   const from = (useLocation().state as RedirectState | null)?.from;
   const [values, setValues] = useState<Record<Field, string>>({
@@ -54,6 +58,7 @@ export function RegisterPage() {
       const result = toFormErrors(error, FIELD_LABELS);
       setFieldErrors(result.fieldErrors);
       setFormError(result.formError);
+      focusFirstInvalid();
     },
   });
 
@@ -75,7 +80,10 @@ export function RegisterPage() {
     };
     setFieldErrors(errors);
     setFormError(undefined);
-    if (hasErrors(errors)) return;
+    if (hasErrors(errors)) {
+      focusFirstInvalid();
+      return;
+    }
 
     // confirmPassword is a client-side check only and is never sent.
     mutation.mutate({
@@ -95,7 +103,12 @@ export function RegisterPage() {
         Start organizing work with your team.
       </p>
 
-      <form noValidate onSubmit={handleSubmit} className="mt-7 space-y-4">
+      <form
+        ref={formRef}
+        noValidate
+        onSubmit={handleSubmit}
+        className="mt-7 space-y-4"
+      >
         {formError && <Alert variant="error">{formError}</Alert>}
 
         <TextField

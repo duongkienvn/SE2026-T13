@@ -1,8 +1,10 @@
 import { Link } from 'react-router';
 import { buttonClassName } from '../components/Button';
 import { FullPageNotice } from '../components/FullPageNotice';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export function NotFoundPage() {
+  usePageTitle('Page not found');
   return (
     <FullPageNotice
       eyebrow="404"

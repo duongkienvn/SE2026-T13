@@ -25,6 +25,7 @@ describe('ProfilePage', () => {
     const email = screen.getByLabelText('Email address') as HTMLInputElement;
     expect(email.value).toBe(testUser.email);
     expect(email.readOnly).toBe(true);
+    expect(document.title).toBe('Profile · Kanban');
     expect(
       (screen.getByLabelText('Display name') as HTMLInputElement).value,
     ).toBe(testUser.displayName);
@@ -72,6 +73,7 @@ describe('ProfilePage', () => {
     expect(
       screen.getByText('Enter a valid HTTPS image URL, or leave it empty.'),
     ).toBeTruthy();
+    expect(document.activeElement).toBe(avatar);
     expect(calls.some((call) => call.method === 'PATCH')).toBe(false);
   });
 

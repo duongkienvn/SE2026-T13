@@ -136,6 +136,9 @@ describe('RegisterPage', () => {
     expect(
       screen.getByLabelText('Email address').getAttribute('aria-invalid'),
     ).toBe('true');
+    // Server-side field errors also move focus to the field.
+    expect(document.activeElement).toBe(screen.getByLabelText('Email address'));
+    expect(document.title).toBe('Create account · Kanban');
   });
 
   it('maps backend validation details to fields', async () => {

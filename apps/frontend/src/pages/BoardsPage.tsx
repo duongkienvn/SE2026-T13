@@ -1,10 +1,12 @@
 import { FolderIcon } from '../components/icons';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { PageContainer } from '../components/PageContainer';
 import { PageHeader } from '../components/PageHeader';
 import { EmptyState } from '../components/states';
 
 /** Signed-in landing page. The board list arrives with the Boards feature. */
 export function BoardsPage() {
+  usePageTitle('Boards');
   return (
     <PageContainer>
       <PageHeader
