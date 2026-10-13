@@ -203,13 +203,13 @@ export function BoardMembersPage() {
                   </th>
                   <th
                     scope="col"
-                    className="hidden px-4 py-4 font-medium sm:table-cell"
+                    className="hidden px-4 py-4 font-medium whitespace-nowrap sm:table-cell"
                   >
                     Role
                   </th>
                   <th
                     scope="col"
-                    className="hidden px-4 py-4 font-medium md:table-cell"
+                    className="hidden px-4 py-4 font-medium whitespace-nowrap md:table-cell"
                   >
                     Joined
                   </th>
@@ -253,10 +253,10 @@ export function BoardMembersPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="hidden px-4 py-4 sm:table-cell">
+                      <td className="hidden px-4 py-4 whitespace-nowrap sm:table-cell">
                         <RoleChip role={member.role} />
                       </td>
-                      <td className="hidden px-4 py-4 text-[15px] text-muted md:table-cell">
+                      <td className="hidden px-4 py-4 text-[15px] whitespace-nowrap text-muted md:table-cell">
                         <time dateTime={member.joinedAt}>
                           {formatDate(member.joinedAt)}
                         </time>
