@@ -1,6 +1,12 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { fail, mockApi, ok, testUser } from '../../../test/mock-api';
+import {
+  fail,
+  loginResponse,
+  mockApi,
+  ok,
+  testUser,
+} from '../../../test/mock-api';
 import { renderApp } from '../../../test/render';
 
 function fillRegister(values: {
@@ -50,6 +56,28 @@ describe('RegisterPage', () => {
     });
     expect(calls[0].body).not.toHaveProperty('confirmPassword');
     expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    // The one-time feedback is removed from history so reloads don't repeat it.
+    expect(router.state.location.state).not.toHaveProperty('registeredEmail');
+  });
+
+  it('keeps the originally requested page through register and login', async () => {
+    mockApi({
+      'POST /auth/register': ok(testUser, 201),
+      'POST /auth/login': ok(loginResponse()),
+    });
+    const { router } = renderApp('/profile');
+
+    fireEvent.click(await screen.findByRole('link', { name: 'Create one' }));
+    fillRegister(validInput);
+    await screen.findByRole('status');
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: validInput.password },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Log In' }));
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/profile'),
+    );
   });
 
   it('checks the password confirmation and lengths on the client', () => {
@@ -71,6 +99,23 @@ describe('RegisterPage', () => {
     ).toBeTruthy();
     expect(screen.getByText('Passwords do not match.')).toBeTruthy();
     expect(calls).toHaveLength(0);
+  });
+
+  it('treats a generic 409 conflict as a duplicate email', async () => {
+    mockApi({
+      'POST /auth/register': fail(
+        409,
+        'CONFLICT',
+        'Database constraint conflict',
+      ),
+    });
+    renderApp('/register');
+
+    fillRegister(validInput);
+
+    expect(
+      await screen.findByText('This email is already registered.'),
+    ).toBeTruthy();
   });
 
   it('shows a duplicate-email error on the email field', async () => {
@@ -95,7 +140,11 @@ describe('RegisterPage', () => {
         400,
         'VALIDATION_FAILED',
         'Validation failed',
-        ['displayName must be shorter than or equal to 80 characters'],
+        // Real backend format: "<path>: <class-validator message>".
+        [
+          'displayName: displayName must be shorter than or equal to 80 characters',
+          'unexpectedField: property unexpectedField should not exist',
+        ],
       ),
     });
     renderApp('/register');
@@ -107,5 +156,11 @@ describe('RegisterPage', () => {
         'Display name must be shorter than or equal to 80 characters',
       ),
     ).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Property unexpectedField should not exist',
+    );
+    expect(screen.getByRole('alert').textContent).not.toContain(
+      'unexpectedField:',
+    );
   });
 });

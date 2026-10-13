@@ -18,6 +18,9 @@ import type { LoginResponse } from './types';
 
 export const currentUserQueryKey = ['auth', 'current-user'] as const;
 
+/** Largest delay `setTimeout` accepts; longer delays fire immediately. */
+const MAX_TIMEOUT_MS = 2_147_483_647;
+
 function isUnauthorized(error: unknown): boolean {
   return isApiError(error) && error.status === 401;
 }
@@ -50,9 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // The token has a fixed lifetime and no refresh flow: end the session when it expires.
   useEffect(() => {
     if (!session) return;
+    const remaining = session.expiresAt - Date.now();
     const timeout = setTimeout(
-      endSession,
-      Math.max(0, session.expiresAt - Date.now()),
+      () => {
+        if (Date.now() >= session.expiresAt) endSession();
+        // Lifetime exceeded one timer: re-arm with the same session values.
+        else setSession({ ...session });
+      },
+      Math.min(Math.max(0, remaining), MAX_TIMEOUT_MS),
     );
     return () => clearTimeout(timeout);
   }, [session, endSession]);
@@ -60,6 +68,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(
     (response: LoginResponse) => {
       const stored = saveSession(response.accessToken, response.expiresIn);
+      // Never let a previous (possibly unverified) session's cache reach the new user.
+      queryClient.clear();
       queryClient.setQueryData(currentUserQueryKey, response.user);
       setSession(stored);
     },

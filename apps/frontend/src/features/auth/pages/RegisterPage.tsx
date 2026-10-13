@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import type { RedirectState } from '../../../app/redirect';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
@@ -31,6 +31,7 @@ type Field = keyof typeof FIELD_LABELS;
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const from = (useLocation().state as RedirectState | null)?.from;
   const [values, setValues] = useState<Record<Field, string>>({
     displayName: '',
     email: '',
@@ -46,7 +47,7 @@ export function RegisterPage() {
     mutationFn: register,
     // Registration does not sign the user in: continue to the login page.
     onSuccess: (user) => {
-      const state: RedirectState = { registeredEmail: user.email };
+      const state: RedirectState = { registeredEmail: user.email, from };
       navigate('/login', { replace: true, state });
     },
     onError: (error) => {

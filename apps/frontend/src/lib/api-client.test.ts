@@ -27,6 +27,13 @@ describe('apiRequest', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('resolves to undefined for an empty 2xx body', async () => {
+    mockApi({ 'POST /auth/logout': { status: 201 } });
+    await expect(
+      apiRequest('/auth/logout', { method: 'POST' }),
+    ).resolves.toBeUndefined();
+  });
+
   it('maps the error envelope to ApiError', async () => {
     mockApi({
       'POST /auth/register': fail(409, 'EMAIL_ALREADY_EXISTS', 'Email taken'),

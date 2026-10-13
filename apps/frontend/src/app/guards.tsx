@@ -12,24 +12,28 @@ function FullPageMessage({ children }: { children: ReactNode }) {
   );
 }
 
+function SessionCheckScreen() {
+  return (
+    <FullPageMessage>
+      <LoadingState label="Checking your session…" />
+    </FullPageMessage>
+  );
+}
+
 /** Renders protected routes only once the stored session has been verified. */
 export function RequireAuth() {
   const { status, retry } = useAuth();
   const location = useLocation();
 
   if (status === 'loading') {
-    return (
-      <FullPageMessage>
-        <LoadingState label="Checking your session…" />
-      </FullPageMessage>
-    );
+    return <SessionCheckScreen />;
   }
   if (status === 'error') {
     return (
       <FullPageMessage>
         <ErrorState
           title="We couldn't verify your session"
-          description="The server could not be reached. Your session has been kept."
+          description="The server could not be reached or had a problem. You are still signed in on this tab."
           onRetry={retry}
         />
       </FullPageMessage>
@@ -50,11 +54,7 @@ export function PublicOnly() {
   const location = useLocation();
 
   if (status === 'loading') {
-    return (
-      <FullPageMessage>
-        <LoadingState label="Checking your session…" />
-      </FullPageMessage>
-    );
+    return <SessionCheckScreen />;
   }
   if (status === 'authenticated') {
     const from = (location.state as RedirectState | null)?.from;
@@ -66,11 +66,7 @@ export function PublicOnly() {
 export function RootRedirect() {
   const { status } = useAuth();
   if (status === 'loading') {
-    return (
-      <FullPageMessage>
-        <LoadingState label="Checking your session…" />
-      </FullPageMessage>
-    );
+    return <SessionCheckScreen />;
   }
   return (
     <Navigate to={status === 'anonymous' ? '/login' : '/boards'} replace />

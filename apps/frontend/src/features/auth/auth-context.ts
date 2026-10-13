@@ -2,7 +2,7 @@ import { createContext } from 'react';
 import type { LoginResponse, User } from './types';
 
 /**
- * - `loading`: a stored token is being verified with `GET /users/me`.
+ * - `loading`: a stored token is being verified (or re-verified after "Try again") with `GET /users/me`.
  * - `error`: verification failed for a reason other than 401 (network/5xx); retry is offered.
  */
 export type AuthStatus = 'loading' | 'authenticated' | 'anonymous' | 'error';

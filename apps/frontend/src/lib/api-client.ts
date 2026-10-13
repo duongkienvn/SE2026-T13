@@ -61,7 +61,8 @@ function isSuccessEnvelope(
 
 /**
  * Calls the backend REST API and unwraps the shared response envelope.
- * Resolves to `undefined` for `204 No Content`; rejects with `ApiError` otherwise.
+ * Resolves to `undefined` for `204 No Content` or an empty 2xx body; rejects
+ * with `ApiError` otherwise.
  */
 export async function apiRequest<T>(
   path: string,
@@ -113,6 +114,9 @@ export async function apiRequest<T>(
       'The server returned an unexpected response.',
     );
   }
+
+  // Void handlers may answer 200/201 with an empty body instead of 204.
+  if (payload === undefined) return undefined as T;
 
   if (!isSuccessEnvelope(payload)) {
     throw new ApiError(

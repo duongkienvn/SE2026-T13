@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import { buttonClassName } from '../components/Button';
 
 export function NotFoundPage() {
   return (
@@ -11,10 +12,7 @@ export function NotFoundPage() {
         <p className="mt-2 text-muted">
           The page you are looking for does not exist.
         </p>
-        <Link
-          to="/"
-          className="mt-6 inline-flex h-11 items-center rounded-lg bg-primary px-5 text-[15px] font-medium text-white hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        >
+        <Link to="/" className={`mt-6 ${buttonClassName()}`}>
           Go to home
         </Link>
       </div>

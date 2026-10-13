@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
-import { useLocation } from 'react-router';
+import { useEffect, useState, type FormEvent } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import type { RedirectState } from '../../../app/redirect';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
@@ -19,13 +19,23 @@ type Field = keyof typeof FIELD_LABELS;
 
 export function LoginPage() {
   const { signIn } = useAuth();
-  const state = useLocation().state as RedirectState | null;
-  const [email, setEmail] = useState(state?.registeredEmail ?? '');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const state = location.state as RedirectState | null;
+  // Registration feedback is shown once; it must not reappear on reload or back.
+  const [registeredEmail] = useState(state?.registeredEmail);
+  const [email, setEmail] = useState(registeredEmail ?? '');
   const [password, setPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<Field, string>>
   >({});
   const [formError, setFormError] = useState<string>();
+
+  useEffect(() => {
+    if (!state?.registeredEmail) return;
+    const remaining: RedirectState = state.from ? { from: state.from } : {};
+    navigate(location.pathname, { replace: true, state: remaining });
+  }, [state, location.pathname, navigate]);
 
   const mutation = useMutation({
     mutationFn: login,
@@ -64,7 +74,7 @@ export function LoginPage() {
       </p>
 
       <form noValidate onSubmit={handleSubmit} className="mt-9 space-y-6">
-        {state?.registeredEmail && !formError && (
+        {registeredEmail && !formError && (
           <Alert variant="success">Account created. Log in to continue.</Alert>
         )}
         {formError && <Alert variant="error">{formError}</Alert>}

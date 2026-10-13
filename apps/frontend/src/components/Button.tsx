@@ -20,6 +20,14 @@ const sizeClasses: Record<ButtonSize, string> = {
   lg: 'h-[50px] px-6 text-base',
 };
 
+/** Button styling, also usable on links that should look like buttons. */
+export function buttonClassName(
+  variant: ButtonVariant = 'primary',
+  size: ButtonSize = 'md',
+): string {
+  return `inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed ${sizeClasses[size]} ${variantClasses[variant]}`;
+}
+
 export function Button({
   variant = 'primary',
   size = 'md',
@@ -30,7 +38,7 @@ export function Button({
   return (
     <button
       type={type}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed ${sizeClasses[size]} ${variantClasses[variant]} ${className}`}
+      className={`${buttonClassName(variant, size)} ${className}`}
       {...props}
     />
   );

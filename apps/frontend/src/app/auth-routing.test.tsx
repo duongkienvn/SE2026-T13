@@ -1,6 +1,13 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { fail, mockApi, ok, storeSession, testUser } from '../test/mock-api';
+import {
+  fail,
+  loginResponse,
+  mockApi,
+  ok,
+  storeSession,
+  testUser,
+} from '../test/mock-api';
 import { renderApp } from '../test/render';
 
 describe('auth routing and session restore', () => {
@@ -66,10 +73,16 @@ describe('auth routing and session restore', () => {
 
   it('does not treat network or server errors as an expired session', async () => {
     storeSession('kept-token');
-    let available = false;
+    let respond: (() => void) | undefined;
+    let attempt = 0;
     mockApi({
-      'GET /users/me': () =>
-        available ? ok(testUser) : fail(500, 'INTERNAL_ERROR'),
+      'GET /users/me': () => {
+        attempt += 1;
+        if (attempt === 1) return fail(500, 'INTERNAL_ERROR');
+        return new Promise((resolve) => {
+          respond = () => resolve(ok(testUser));
+        });
+      },
     });
     renderApp('/boards');
 
@@ -78,9 +91,40 @@ describe('auth routing and session restore', () => {
     ).toBeTruthy();
     expect(sessionStorage.getItem('kanban.session')).not.toBeNull();
 
-    available = true;
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    // Retrying shows progress instead of leaving the error screen untouched.
+    expect((await screen.findByRole('status')).textContent).toContain(
+      'Checking your session',
+    );
+    respond?.();
     expect(await screen.findByRole('heading', { name: 'Boards' })).toBeTruthy();
+  });
+
+  it('lets a different user sign in over an unverified stored session', async () => {
+    storeSession('stale-token');
+    const other = { ...testUser, displayName: 'Grace Hopper' };
+    mockApi({
+      'GET /users/me': fail(503, 'INTERNAL_ERROR'),
+      'POST /auth/login': ok(loginResponse(other)),
+    });
+    renderApp('/login');
+
+    fireEvent.change(await screen.findByLabelText('Email address'), {
+      target: { value: 'grace@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'nanoseconds' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Log In' }));
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'Account menu for Grace Hopper',
+      }),
+    ).toBeTruthy();
+    expect(
+      JSON.parse(sessionStorage.getItem('kanban.session')!).accessToken,
+    ).toBe('test-access-token');
   });
 
   it('shows a not-found page for unknown routes', () => {
