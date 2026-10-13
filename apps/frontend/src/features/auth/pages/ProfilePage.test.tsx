@@ -38,6 +38,25 @@ describe('ProfilePage', () => {
     ).toBe(true);
   });
 
+  it('never sends a PATCH when nothing changed', async () => {
+    const { calls } = await openProfile();
+    const name = screen.getByLabelText('Display name');
+    const save = screen.getByRole('button', {
+      name: 'Save changes',
+    }) as HTMLButtonElement;
+
+    // Edit and revert (with surrounding spaces that trim back to the same value).
+    fireEvent.change(name, { target: { value: 'Someone' } });
+    expect(save.disabled).toBe(false);
+    fireEvent.change(name, { target: { value: ` ${testUser.displayName} ` } });
+    expect(save.disabled).toBe(true);
+
+    // Submitting anyway (e.g. Enter in a field) must not send an empty PATCH.
+    fireEvent.submit(name.closest('form')!);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(calls.some((call) => call.method === 'PATCH')).toBe(false);
+  });
+
   it('sends only the changed fields and updates the header', async () => {
     const updated = { ...testUser, displayName: 'Countess Ada' };
     const { calls } = await openProfile({
