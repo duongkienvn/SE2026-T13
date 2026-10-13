@@ -4,7 +4,7 @@
 
 Frontend của project là ứng dụng React + TypeScript chạy trong trình duyệt, mục tiêu render board, column, card và interaction workflow cho team làm việc cùng lúc trên cùng một board. Frontend không phải nơi lưu trữ dữ liệu nghiệp vụ lâu dài; nó là client layer của hệ thống, phục vụ initial data loading, business command và realtime synchronization.
 
-Hiện tại frontend đã có application foundation (Issue #11) và feature Authentication (Issue #17); các feature board/card/realtime chưa được triển khai. Tài liệu này mô tả architecture direction đã thống nhất và phân biệt rõ phần hiện có và phần dự kiến cho MVP.
+Hiện tại frontend đã có application foundation (Issue #11), Authentication (Issue #17) và Boards + Board Members (Issue #22); các feature column/card/realtime chưa được triển khai. Tài liệu này mô tả architecture direction đã thống nhất và phân biệt rõ phần hiện có và phần dự kiến cho MVP.
 
 ---
 
@@ -23,11 +23,13 @@ apps/frontend/src/
 │   ├── redirect.ts           # post-login redirect an toàn
 │   └── layout/               # AppShell, Sidebar, AppHeader, AuthenticatedLayout
 ├── features/
-│   └── auth/                 # api, session, AuthProvider, pages, components
-├── pages/                    # BoardsPage (placeholder), NotFoundPage, RouteErrorPage
-├── components/               # UI primitives dùng chung (Button, TextField, states, ...)
+│   ├── auth/                 # api, session, AuthProvider, pages, components
+│   ├── boards/               # api, query keys + hooks, Boards list / Board detail pages
+│   └── board-members/        # api, hooks, membership rules, Board Members page
+├── pages/                    # NotFoundPage, RouteErrorPage
+├── components/               # UI primitives dùng chung (Button, TextField, Dialog, ActionMenu, states, ...)
 ├── hooks/                    # usePageTitle, useFocusFirstInvalid
-├── lib/                      # env, api-client (REST envelope), query-client
+├── lib/                      # env, api-client (REST envelope + pagination), query-client, form-errors, format
 ├── test/                     # test setup và helpers
 ├── App.tsx
 ├── main.tsx
@@ -36,11 +38,12 @@ apps/frontend/src/
 
 - Routing dùng React Router; route config và guards nằm trong `app/` (theo Issue #17), chưa tách thư mục `routes/` riêng.
 - REST client dùng chung nằm ở `lib/api-client.ts`; API calls theo feature nằm trong `features/<feature>/api.ts`, chưa có thư mục `api/` riêng.
-- Auth types hiện định nghĩa trong `features/auth/types.ts` cho đến khi Backend Authentication bổ sung shared contracts vào `packages/shared`.
+- Auth, Board và BoardMember types hiện định nghĩa trong `features/<feature>/types.ts` cho đến khi backend bổ sung shared contracts vào `packages/shared`.
+- TanStack Query keys của board nằm dưới `['boards']` (`features/boards/query-keys.ts`) để mutation có thể invalidate list, detail và members cùng lúc.
 
 Hiện chưa có:
 
-- feature folder `boards`, `board-members`, `columns`, `cards`, `comments`, `presence`;
+- feature folder `columns`, `cards`, `comments`, `presence`;
 - realtime socket module thực tế;
 - dnd-kit integration.
 
