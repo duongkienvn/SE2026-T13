@@ -85,17 +85,14 @@ rules through that shared boundary; those APIs are outside D1.
 | `pnpm lint`                                          | PASS                                                  |
 | `pnpm test`                                          | PASS: backend 108, frontend 75, shared 2 tests        |
 | `pnpm build`                                         | PASS; existing frontend chunk-size warning remains    |
-| `pnpm format:check`                                  | FAIL: 168 pre-existing files, listed separately       |
+| `pnpm format:check`                                  | FAIL: pre-existing formatting errors                  |
 | Prettier on every file changed by D1                 | PASS                                                  |
 | `pnpm --filter @kanban/backend test:database`        | PASS on an isolated PostgreSQL 17 cluster             |
 | `pnpm --filter @kanban/backend test:boards:database` | PASS on an isolated PostgreSQL 17 cluster             |
 | Real compiled `AppModule` HTTP bootstrap             | PASS with real PostgreSQL, JWT and all five endpoints |
 
-The remaining formatting failures are listed exactly in
-[board-management-format-baseline.txt](board-management-format-baseline.txt).
-The initial baseline had 170 failures; formatting the two modified existing files
-(`src/app.module.ts` and backend `package.json`) reduced that to 168. Unrelated
-files were not reformatted.
+`pnpm format:check` has not passed because of pre-existing formatting errors.
+All files changed for Issue #20 have passed Prettier checks.
 
 The 74 Boards tests in default Jest comprise DTO validation, service behavior,
 HTTP contracts/security and a full module-wiring test. HTTP tests use mock
