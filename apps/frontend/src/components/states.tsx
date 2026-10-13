@@ -12,7 +12,7 @@ export function LoadingState({ label = 'Loading…' }: LoadingStateProps) {
       role="status"
       className="flex items-center justify-center gap-3 py-16 text-muted"
     >
-      <SpinnerIcon className="size-5 animate-spin text-primary" />
+      <SpinnerIcon className="size-5 text-primary motion-safe:animate-spin" />
       <span className="text-[15px]">{label}</span>
     </div>
   );
