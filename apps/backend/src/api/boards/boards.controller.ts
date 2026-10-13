@@ -7,6 +7,7 @@ import {
   Query,
   Param,
   ParseUUIDPipe,
+  Patch,
   UseGuards,
 } from '@nestjs/common';
 import { ApiParam, ApiTags } from '@nestjs/swagger';
@@ -26,12 +27,32 @@ import { BoardResponseDto } from './dto/board-response.dto';
 import { PageQueryDto } from '../../common/dto/page-query.dto';
 import { PaginatedResponse } from '../../common/dto/paginated-response';
 import { ApiQuery } from '@nestjs/swagger';
+import { UpdateBoardDto } from './dto/update-board.dto';
+import { ResponseMessage } from '../../decorators/response.decorators';
 
 @ApiTags('boards')
 @Controller('boards')
 @UseGuards(JwtAuthGuard)
 export class BoardsController {
   constructor(private readonly boardsService: BoardsService) {}
+
+  @Patch(':boardId')
+  @SerializeResponse(BoardResponseDto)
+  @ResponseMessage('Board updated')
+  @ApiBearerToken()
+  @ApiParam({ name: 'boardId', format: 'uuid' })
+  @ApiSuccess({
+    type: BoardResponseDto,
+    summary: 'Update an active board as OWNER',
+  })
+  @ApiCommonErrors([400, 401, 403, 404, 409, 429, 500])
+  update(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+    @Body() input: UpdateBoardDto,
+  ): Promise<BoardResponseDto> {
+    return this.boardsService.update(user.userId, boardId, input);
+  }
 
   @Get(':boardId')
   @SerializeResponse(BoardResponseDto)
