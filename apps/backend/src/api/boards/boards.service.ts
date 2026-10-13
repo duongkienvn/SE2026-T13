@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BoardMember } from '../board-members/entities/board-member.entity';
@@ -12,6 +12,8 @@ import {
   paginate,
 } from '../../common/dto/paginated-response';
 import { paginateQueryBuilder } from '../../utils/offset-pagination';
+import { ApplicationException } from '../../exceptions/application.exception';
+import { ErrorCode } from '../../common/dto/api-error';
 
 @Injectable()
 export class BoardsService {
@@ -20,6 +22,23 @@ export class BoardsService {
     @InjectRepository(BoardMember)
     private readonly members: Repository<BoardMember>,
   ) {}
+
+  async getDetail(userId: string, boardId: string): Promise<BoardResponseDto> {
+    const member = await this.members.findOne({
+      where: { boardId, userId },
+      relations: { board: true },
+    });
+    if (!member) throw this.notFound();
+    return toBoardResponseDto(member.board, member.role);
+  }
+
+  private notFound(): ApplicationException {
+    return new ApplicationException(
+      HttpStatus.NOT_FOUND,
+      ErrorCode.NOT_FOUND,
+      'Board not found',
+    );
+  }
 
   async list(
     userId: string,

@@ -5,9 +5,11 @@ import {
   HttpStatus,
   Post,
   Query,
+  Param,
+  ParseUUIDPipe,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiParam, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { BoardsService } from './boards.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -30,6 +32,22 @@ import { ApiQuery } from '@nestjs/swagger';
 @UseGuards(JwtAuthGuard)
 export class BoardsController {
   constructor(private readonly boardsService: BoardsService) {}
+
+  @Get(':boardId')
+  @SerializeResponse(BoardResponseDto)
+  @ApiBearerToken()
+  @ApiParam({ name: 'boardId', format: 'uuid' })
+  @ApiSuccess({
+    type: BoardResponseDto,
+    summary: 'Get a board as OWNER or MEMBER, including archived boards',
+  })
+  @ApiCommonErrors([400, 401, 404, 429, 500])
+  getDetail(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+  ): Promise<BoardResponseDto> {
+    return this.boardsService.getDetail(user.userId, boardId);
+  }
 
   @Get()
   @SerializeResponse(BoardResponseDto)
