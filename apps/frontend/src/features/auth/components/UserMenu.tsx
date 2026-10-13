@@ -51,7 +51,7 @@ export function UserMenu() {
         onClick={() => setOpen((value) => !value)}
         className="flex items-center gap-2 rounded-full p-0.5 text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
-        <UserAvatar user={user} className="size-10 md:size-11" />
+        <UserAvatar user={user} className="size-9 text-sm" />
         <ChevronDownIcon className="hidden size-4 md:block" />
       </button>
 

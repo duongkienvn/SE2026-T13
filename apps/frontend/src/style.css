@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 
+/* Short laptop viewports: tighten vertical spacing so screens fit without scrolling. */
+@custom-variant short (@media (max-height: 640px));
+
 /*
  * Design tokens sampled from docs/design/screens/. The mapping to the
  * provisional palette is recorded in docs/design/design-guidelines.md;

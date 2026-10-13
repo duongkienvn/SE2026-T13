@@ -26,7 +26,7 @@ export function AppShell({
   headerActions,
 }: AppShellProps) {
   return (
-    <div className="h-dvh bg-frame md:p-4">
+    <div className="h-dvh bg-frame md:p-3">
       <a
         href="#main-content"
         className="sr-only z-10 rounded-lg bg-surface px-4 py-2 font-medium text-primary shadow-card focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
