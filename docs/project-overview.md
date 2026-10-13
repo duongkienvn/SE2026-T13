@@ -117,8 +117,8 @@ Issue → tạo branch từ `main` → implement hoặc viết tài liệu → c
 
 ## Trạng thái hiện tại
 
-Project đang ở giai đoạn **Foundation / architecture preparation**.
+Project đang ở giai đoạn **Foundation và Authentication/User MVP**.
 
-- **Đã có:** pnpm monorepo, frontend và backend skeleton, PostgreSQL development environment bằng Docker Compose, shared package, GitHub Actions CI. Theo quy trình nhóm, CodeRabbit review và bảo vệ `main` được cấu hình ở GitHub.
-- **Chưa có:** business feature, database entity/migration, authentication, board/card features và realtime business logic.
-- **Hướng tiếp theo:** architecture documentation → database foundation → authentication → board/member → columns/cards → realtime/presence → comments/activity. Đây là roadmap tổng quan, chưa phải task implementation.
+- **Đã có:** pnpm monorepo, frontend và backend foundation, PostgreSQL schema/migration, Authentication/User Profile API, shared package, GitHub Actions CI. Theo quy trình nhóm, CodeRabbit review và bảo vệ `main` được cấu hình ở GitHub.
+- **Chưa có:** board/card features và realtime business logic.
+- **Hướng tiếp theo:** board/member → columns/cards → realtime/presence → comments/activity. Đây là roadmap tổng quan.

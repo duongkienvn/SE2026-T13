@@ -4,7 +4,7 @@
 
 Backend của project là một NestJS modular monolith theo hướng MVP. Mục tiêu của layer này là làm nơi duy nhất xử lý business logic, xác thực quyền, giao tiếp với database và phát sự kiện realtime sau khi thay đổi đã được persist thành công.
 
-Project hiện tại đang ở giai đoạn cấu trúc nền tảng. Tám TypeORM entities của MVP đã được đặt theo feature trong `apps/backend/src/api/`; controller, service, DTO và module definition của các feature nghiệp vụ sẽ được bổ sung theo từng issue sau.
+Project hiện tại đã có Application Foundation và Authentication/User Profile MVP. Tám TypeORM entities của MVP được đặt theo feature trong `apps/backend/src/api/`; các feature nghiệp vụ còn lại sẽ được bổ sung theo từng issue sau.
 
 Backend không phải là nơi lưu trữ UI state; backend là source of truth cho dữ liệu nghiệp vụ và các thay đổi trạng thái board.
 
@@ -27,7 +27,8 @@ apps/backend/src/
 │   │   └── card-assignee.entity.ts
 │   ├── columns/entities/board-column.entity.ts
 │   ├── comments/entities/comment.entity.ts
-│   ├── users/entities/user.entity.ts
+│   ├── auth/                 # register, login, logout, JWT guard
+│   ├── users/                # User entity và profile API
 │   └── health/
 ├── common/
 │   └── enums/database-enums.ts
@@ -57,6 +58,7 @@ Trong đó:
 - `CORS_ORIGINS`: danh sách origin chính xác, ngăn cách bằng dấu phẩy. Development mặc định `http://localhost:5173`; production bắt buộc cấu hình tường minh. Browser request từ origin ngoài danh sách không nhận CORS allow header.
 - `LOG_LEVEL`: Pino level; mặc định `debug` ở development/test và `info` ở production. Development dùng `pino-pretty`; các môi trường khác xuất JSON ra stdout/stderr.
 - `SWAGGER_ENABLED`: chỉ nhận `true` hoặc `false`; mặc định bật ở development/test, tắt ở production. Khi bật: UI `/api-docs`, JSON `/api-docs-json`.
+- `JWT_SECRET` là secret bắt buộc, phải có tối thiểu 32 byte và được validate khi Nest khởi động. Không commit secret thật; `.env.example` chỉ có hướng dẫn sinh secret ngẫu nhiên.
 - `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD` giữ conventions hiện tại và được validate khi Nest khởi động. TypeORM CLI vẫn đọc `.env` trực tiếp qua `data-source.ts`, không phụ thuộc Nest ConfigModule.
 
 `GET /health` là liveness check không truy vấn database; `GET /` giữ tương thích với health route cũ. Cả hai ở ngoài `/api`. Liveness trả `{ name, status: "ok" }` với HTTP 200 khi process hoạt động. `GET /health/ready` kiểm tra PostgreSQL bằng `SELECT 1` trong transaction có `SET LOCAL statement_timeout = 1000`; response cũng có timeout 1 giây. Các request readiness đồng thời dùng chung một probe để tránh chiếm nhiều kết nối khi database bị treo. Khi database không sẵn sàng, endpoint trả HTTP 503. Health routes được miễn response wrapping và rate limiting.
@@ -64,11 +66,11 @@ Trong đó:
 #### REST response conventions
 
 - Response thành công REST được interceptor chuẩn hóa thành `{ success: true, statusCode, message, data }`; danh sách phân trang thêm `meta`. `@SkipResponseWrap()` dành cho health, stream hoặc contract ngoại lệ. HTTP status vẫn giữ nguyên; `204` không có body. Dùng `@SerializeResponse(ResponseDto)` hoặc `toResponseDto()` với `@Expose()` để giới hạn trường trả về, kể cả nested DTO.
-- Response lỗi có `{ success: false, statusCode, code, message, timestamp, path }`, thêm `details` cho validation và `requestId` khi có correlation ID. Các mã nền tảng: `BAD_REQUEST`, `VALIDATION_FAILED`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `TOO_MANY_REQUESTS`, `INTERNAL_ERROR`. Validation từ global pipe dùng `forbidNonWhitelisted: true`; nested DTO dùng `@ValidateNested` và `@Type`.
+- Response lỗi có `{ success: false, statusCode, code, message, timestamp, path }`, thêm `details` cho validation và `requestId` khi có correlation ID. Auth bổ sung `EMAIL_ALREADY_EXISTS` và `INVALID_CREDENTIALS`; các mã nền tảng gồm `BAD_REQUEST`, `VALIDATION_FAILED`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `TOO_MANY_REQUESTS`, `INTERNAL_ERROR`. Validation từ global pipe dùng `forbidNonWhitelisted: true`; nested DTO dùng `@ValidateNested` và `@Type`.
 - SQLSTATE `23505` và `23503` được map thành HTTP 409; `EntityNotFoundError` thành 404; lỗi database khác và lỗi bất ngờ thành 500 với thông điệp an toàn. Response không chứa SQL, query parameters hay stack trace. Business errors được định nghĩa tại feature tương ứng khi có yêu cầu.
 - List APIs tương lai dùng `PageQueryDto` (`page=1`, `limit=20`, tối đa `100`) và `paginateQueryBuilder()` để lấy `data` và `meta` bằng TypeORM; feed theo thời gian dùng `CursorQueryDto` và `paginateCursor()` với timestamp cùng UUID tie breaker. Client nhận envelope chung. Chưa có business list endpoint trong foundation.
 
-`DATABASE_POOL_SIZE` (mặc định 10), `DATABASE_CONNECT_TIMEOUT_MS` (5000) và `DATABASE_SSL` (`false`) dùng chung cho Nest runtime và TypeORM CLI. SSL khi bật xác minh certificate máy chủ; deployment cần cung cấp trust chain phù hợp. SQL query logging tắt để không ghi parameters nhạy cảm. Global HTTP rate limit mặc định 120 requests/60 giây/IP mỗi process, chỉnh bằng `RATE_LIMIT_MAX` và `RATE_LIMIT_TTL_MS`; Auth có thể đặt ngưỡng chặt hơn bằng `@Throttle`. Server không bật `trust proxy`, nên forwarded IP headers không tự trở thành client identity. Nếu triển khai nhiều instance, rate limit cần shared storage hoặc enforcement tại ingress.
+`DATABASE_POOL_SIZE` (mặc định 10), `DATABASE_CONNECT_TIMEOUT_MS` (5000) và `DATABASE_SSL` (`false`) dùng chung cho Nest runtime và TypeORM CLI. SSL khi bật xác minh certificate máy chủ; deployment cần cung cấp trust chain phù hợp. SQL query logging tắt để không ghi parameters nhạy cảm. Global HTTP rate limit mặc định 120 requests/60 giây/IP mỗi process; Auth giới hạn login 10 requests/60 giây và register 5 requests/300 giây bằng `@Throttle`. Server không bật `trust proxy`, nên forwarded IP headers không tự trở thành client identity. Nếu triển khai nhiều instance, rate limit cần shared storage hoặc enforcement tại ingress.
 
 Request log có `reqId`, method, path, response status và thời gian. `X-Request-Id` hợp lệ từ client được giữ lại; nếu không hợp lệ server tạo UUID và trả cùng header. Logger không ghi raw headers, query, cookies hay request body; các trường nhạy cảm còn được redact. Exception filter log loại lỗi và request ID cho lỗi 5xx, không log SQL hoặc message nội bộ.
 
@@ -221,7 +223,16 @@ Authentication và authorization là hai concern khác nhau.
 
 ### Authentication
 
-Authentication xác định người dùng đang là ai. Trong MVP, hướng chuẩn là JWT-based hoặc cơ chế tương đương. Mục tiêu là xác nhận user identity trước khi cho phép truy cập protected resource.
+Authentication MVP dùng JWT access token stateless với HS256, TTL 3600 giây, issuer `kanban-api`, audience `kanban-web` và secret từ `JWT_SECRET`. `JwtAuthGuard` kiểm tra Bearer header, signature, algorithm, expiration, issuer, audience và user còn tồn tại trong PostgreSQL; identity được đưa vào `CurrentUser` dưới dạng user ID.
+
+Các endpoint đã triển khai:
+
+- `POST /api/auth/register` trả `201`, tạo user với Argon2id và không phát token.
+- `POST /api/auth/login` trả `200` cùng `accessToken`, `tokenType`, `expiresIn` và public user DTO.
+- `POST /api/auth/logout` là protected stateless endpoint trả `204`; server không revoke hoặc blacklist token.
+- `GET /api/users/me` và `PATCH /api/users/me` là protected profile endpoints; chỉ cập nhật user lấy từ JWT context.
+
+Public user response luôn whitelist `id`, `email`, `displayName`, `avatarUrl`, `createdAt` và `updatedAt`; `passwordHash` không được trả về hoặc đưa vào JWT.
 
 ### Authorization
 

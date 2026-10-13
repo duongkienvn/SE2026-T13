@@ -9,6 +9,7 @@ export interface EnvironmentConfig {
   CORS_ORIGINS: string[];
   LOG_LEVEL: LogLevel;
   SWAGGER_ENABLED: boolean;
+  JWT_SECRET: string;
   DATABASE_HOST: string;
   DATABASE_PORT: number;
   DATABASE_NAME: string;
@@ -118,6 +119,10 @@ export function validateEnvironment(
   ) {
     throw new Error('LOG_LEVEL is invalid');
   }
+  const jwtSecret = required(input, 'JWT_SECRET');
+  if (Buffer.byteLength(jwtSecret, 'utf8') < 32) {
+    throw new Error('JWT_SECRET must be at least 32 bytes');
+  }
 
   return {
     NODE_ENV: nodeEnv,
@@ -125,6 +130,7 @@ export function validateEnvironment(
     API_PREFIX: apiPrefix,
     CORS_ORIGINS: origins,
     LOG_LEVEL: level as LogLevel,
+    JWT_SECRET: jwtSecret,
     SWAGGER_ENABLED: boolean(
       input.SWAGGER_ENABLED,
       'SWAGGER_ENABLED',
