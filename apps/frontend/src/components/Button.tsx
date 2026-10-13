@@ -1,9 +1,11 @@
 import type { ButtonHTMLAttributes } from 'react';
 
 type ButtonVariant = 'primary' | 'secondary';
+type ButtonSize = 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
+  size?: ButtonSize;
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
@@ -13,8 +15,14 @@ const variantClasses: Record<ButtonVariant, string> = {
     'border border-line bg-surface text-ink hover:bg-app disabled:text-muted',
 };
 
+const sizeClasses: Record<ButtonSize, string> = {
+  md: 'h-11 px-5 text-[15px]',
+  lg: 'h-[50px] px-6 text-base',
+};
+
 export function Button({
   variant = 'primary',
+  size = 'md',
   type = 'button',
   className = '',
   ...props
@@ -22,7 +30,7 @@ export function Button({
   return (
     <button
       type={type}
-      className={`inline-flex h-11 items-center justify-center gap-2 rounded-lg px-5 text-[15px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed ${variantClasses[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed ${sizeClasses[size]} ${variantClasses[variant]} ${className}`}
       {...props}
     />
   );

@@ -1,10 +1,16 @@
 import type { ReactNode } from 'react';
 import { AppHeader } from './AppHeader';
-import { primaryNavItems, secondaryNavItems } from './navigation';
+import {
+  primaryNavItems as defaultPrimaryNavItems,
+  secondaryNavItems as defaultSecondaryNavItems,
+  type NavItem,
+} from './navigation';
 import { Sidebar } from './Sidebar';
 
 interface AppShellProps {
   children: ReactNode;
+  primaryNavItems?: NavItem[];
+  secondaryNavItems?: NavItem[];
   activeNavItemId?: string;
   headerContext?: ReactNode;
   headerActions?: ReactNode;
@@ -13,6 +19,8 @@ interface AppShellProps {
 /** Authenticated application frame: lavender outer frame, side rail, top header and scrollable content. */
 export function AppShell({
   children,
+  primaryNavItems = defaultPrimaryNavItems,
+  secondaryNavItems = defaultSecondaryNavItems,
   activeNavItemId,
   headerContext,
   headerActions,
