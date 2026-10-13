@@ -10,6 +10,7 @@ import { PageQueryDto } from '../../common/dto/page-query.dto';
 import {
   PaginatedResponse,
   paginate,
+  pageOffset,
 } from '../../common/dto/paginated-response';
 import { paginateQueryBuilder } from '../../utils/offset-pagination';
 import { ApplicationException } from '../../exceptions/application.exception';
@@ -122,6 +123,16 @@ export class BoardsService {
     userId: string,
     query: PageQueryDto,
   ): Promise<PaginatedResponse<BoardResponseDto>> {
+    try {
+      pageOffset(query);
+    } catch {
+      throw new ApplicationException(
+        HttpStatus.BAD_REQUEST,
+        ErrorCode.VALIDATION_FAILED,
+        'Validation failed',
+        ['Pagination offset must be a safe integer'],
+      );
+    }
     const page = await paginateQueryBuilder(
       this.boards
         .createQueryBuilder('board')

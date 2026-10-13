@@ -11,7 +11,13 @@ import {
   Patch,
   UseGuards,
 } from '@nestjs/common';
-import { ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiExtraModels,
+  ApiParam,
+  ApiTags,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { BoardsService } from './boards.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -56,6 +62,13 @@ export class BoardsController {
   }
 
   @Patch(':boardId')
+  @ApiExtraModels(UpdateBoardDto)
+  @ApiBody({
+    schema: {
+      allOf: [{ $ref: getSchemaPath(UpdateBoardDto) }],
+      anyOf: [{ required: ['name'] }, { required: ['description'] }],
+    },
+  })
   @SerializeResponse(BoardResponseDto)
   @ResponseMessage('Board updated')
   @ApiBearerToken()

@@ -366,6 +366,7 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
     '?page=1.2',
     '?search=board',
     '?isArchived=true',
+    '?page=9007199254740991&limit=100',
   ])('rejects pagination or out-of-scope query %s', async (query) => {
     await get(`/api/boards${query}`).expect(400);
     expect(boards.createQueryBuilder).not.toHaveBeenCalled();
