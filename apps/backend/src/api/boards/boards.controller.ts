@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpStatus,
+  HttpCode,
   Post,
   Query,
   Param,
@@ -35,6 +36,24 @@ import { ResponseMessage } from '../../decorators/response.decorators';
 @UseGuards(JwtAuthGuard)
 export class BoardsController {
   constructor(private readonly boardsService: BoardsService) {}
+
+  @Post(':boardId/archive')
+  @HttpCode(HttpStatus.OK)
+  @SerializeResponse(BoardResponseDto)
+  @ResponseMessage('Board archived')
+  @ApiBearerToken()
+  @ApiParam({ name: 'boardId', format: 'uuid' })
+  @ApiSuccess({
+    type: BoardResponseDto,
+    summary: 'Archive an active board as OWNER',
+  })
+  @ApiCommonErrors([400, 401, 403, 404, 409, 429, 500])
+  archive(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+  ): Promise<BoardResponseDto> {
+    return this.boardsService.archive(user.userId, boardId);
+  }
 
   @Patch(':boardId')
   @SerializeResponse(BoardResponseDto)

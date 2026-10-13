@@ -24,6 +24,22 @@ export class BoardsService {
     private readonly members: Repository<BoardMember>,
   ) {}
 
+  async archive(userId: string, boardId: string): Promise<BoardResponseDto> {
+    return this.boards.manager.transaction(async (manager) => {
+      const { board, member } = await this.findMutableBoard(
+        manager,
+        userId,
+        boardId,
+      );
+      board.isArchived = true;
+      board.archivedAt = new Date();
+      return toBoardResponseDto(
+        await manager.getRepository(Board).save(board),
+        member.role,
+      );
+    });
+  }
+
   async update(
     userId: string,
     boardId: string,
