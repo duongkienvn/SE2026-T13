@@ -81,7 +81,7 @@ export function BoardDetailPage() {
   return (
     <PageContainer>
       <div className="flex flex-col gap-5 md:flex-row md:items-start">
-        <BoardIcon boardId={data.id} />
+        <BoardIcon boardId={data.id} className="size-12 rounded-xl text-2xl" />
         <div className="min-w-0 flex-1">
           <PageHeader
             title={data.name}
@@ -93,7 +93,7 @@ export function BoardDetailPage() {
                   to={`/boards/${data.id}/members`}
                   className={buttonClassName('secondary')}
                 >
-                  <UsersIcon aria-hidden="true" className="size-5" />
+                  <UsersIcon aria-hidden="true" className="size-4.5" />
                   Members
                 </Link>
                 {canManage && (
@@ -115,7 +115,7 @@ export function BoardDetailPage() {
         </div>
       </div>
 
-      <div className="mt-6 space-y-4">
+      <div className="mt-4 space-y-3">
         {notice && <Alert variant="success">{notice}</Alert>}
         {data.isArchived && (
           <Alert variant="error">
@@ -124,7 +124,7 @@ export function BoardDetailPage() {
         )}
       </div>
 
-      <div className="mt-8">
+      <div className="mt-5">
         <EmptyState
           title="Columns and cards are coming soon"
           description="This board's Kanban workspace will be available in an upcoming release."

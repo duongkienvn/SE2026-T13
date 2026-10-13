@@ -11,7 +11,7 @@ import {
 } from '../../../test/mock-api';
 import { renderApp } from '../../../test/render';
 
-const LIST = 'GET /boards?page=1&limit=24';
+const LIST = 'GET /boards?page=1&limit=100';
 type Handler = MockResponse | (() => MockResponse | Promise<MockResponse>);
 
 function openBoards(handlers: Record<string, Handler>) {

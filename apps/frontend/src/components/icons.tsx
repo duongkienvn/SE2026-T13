@@ -110,6 +110,22 @@ export function ChevronDownIcon(props: IconProps) {
   );
 }
 
+export function ChevronLeftIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="m15 18-6-6 6-6" />
+    </StrokeSvg>
+  );
+}
+
+export function ChevronRightIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="m9 18 6-6-6-6" />
+    </StrokeSvg>
+  );
+}
+
 export function CheckCircleIcon(props: IconProps) {
   return (
     <Svg {...props}>

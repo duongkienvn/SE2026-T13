@@ -66,6 +66,39 @@ function changes(before: BoardMember[], after: BoardMember[]): Handler {
 describe('BoardMembersPage (as OWNER)', () => {
   const board = makeBoard({ name: 'Design Team', currentUserRole: 'OWNER' });
 
+  it('splits a long member list into numbered pages', async () => {
+    // Without layout (jsdom) a page holds the fallback of 8 rows.
+    const others = Array.from({ length: 9 }, (_, index) =>
+      makeMember({
+        user: {
+          id: `00000000-0000-4000-8000-0000000001${String(index).padStart(2, '0')}`,
+          email: `person${index + 1}@example.com`,
+          displayName: `Person ${index + 1}`,
+          avatarUrl: null,
+        },
+        role: 'MEMBER',
+      }),
+    );
+    const { router } = openMembers(board, [me, ...others]);
+
+    const table = await screen.findByRole('table', {
+      name: 'Members of Design Team',
+    });
+    expect(within(table).getAllByRole('row')).toHaveLength(1 + 8);
+
+    fireEvent.click(
+      within(
+        screen.getByRole('navigation', { name: 'Members pages' }),
+      ).getByRole('button', { name: 'Page 2' }),
+    );
+
+    await waitFor(() =>
+      expect(within(table).getAllByRole('row')).toHaveLength(1 + 2),
+    );
+    expect(within(table).getByText('Person 9')).toBeTruthy();
+    expect(router.state.location.search).toBe('?page=2');
+  });
+
   it('lists members with role and join date, owners first', async () => {
     openMembers(board, [graceMember, me]);
 
@@ -253,7 +286,7 @@ describe('BoardMembersPage (as OWNER)', () => {
       [makeMember({ user: alan, role: 'OWNER' }), me],
       {
         [`DELETE ${membersPath(shared)}/${testUser.id}`]: { status: 204 },
-        'GET /boards?page=1&limit=24': okPage([]),
+        'GET /boards?page=1&limit=100': okPage([]),
       },
     );
 
@@ -382,7 +415,7 @@ describe('BoardMembersPage edge cases', () => {
       [makeMember({ user: alan, role: 'OWNER' }), me],
       {
         [`DELETE ${membersPath(shared)}/${testUser.id}`]: { status: 204 },
-        'GET /boards?page=1&limit=24': okPage([]),
+        'GET /boards?page=1&limit=100': okPage([]),
       },
     );
 

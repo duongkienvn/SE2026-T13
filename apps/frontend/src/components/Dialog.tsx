@@ -96,17 +96,17 @@ export function Dialog({
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
-        className="relative max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-surface p-6 shadow-frame focus:outline-none sm:p-8"
+        className="relative max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-surface p-5 shadow-frame focus:outline-none sm:p-6"
       >
-        <h2 id={titleId} className="text-xl font-semibold text-ink">
+        <h2 id={titleId} className="text-lg font-semibold text-ink">
           {title}
         </h2>
         {description && (
-          <p id={descriptionId} className="mt-1.5 text-[15px] text-muted">
+          <p id={descriptionId} className="mt-1 text-sm text-muted">
             {description}
           </p>
         )}
-        <div className="mt-6">{children}</div>
+        <div className="mt-5">{children}</div>
       </div>
     </div>,
     document.body,

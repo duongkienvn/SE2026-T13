@@ -13,37 +13,31 @@ const wrapper = ({ children }: { children: ReactNode }) => (
   <AppProviders>{children}</AppProviders>
 );
 
-const PAGE_1 = 'GET /boards?page=1&limit=24';
-const PAGE_2 = 'GET /boards?page=2&limit=24';
+const PAGE_1 = 'GET /boards?page=1&limit=100';
+const PAGE_2 = 'GET /boards?page=2&limit=100';
 
 describe('board hooks', () => {
-  it('loads boards page by page with the bearer token', async () => {
+  it('loads every page of boards with the bearer token', async () => {
     storeSession('board-token');
     const first = makeBoard({ name: 'First' });
     const second = makeBoard({ name: 'Second' });
     const calls = mockApi({
       'GET /users/me': ok(testUser),
-      [PAGE_1]: okPage([first], { page: 1, limit: 24, total: 25 }),
-      [PAGE_2]: okPage([second], { page: 2, limit: 24, total: 25 }),
+      [PAGE_1]: okPage([first], { page: 1, limit: 100, total: 101 }),
+      [PAGE_2]: okPage([second], { page: 2, limit: 100, total: 101 }),
     });
 
     const { result } = renderHook(() => useBoards(), { wrapper });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.hasNextPage).toBe(true);
-    expect(
-      calls.find((c) => c.path.startsWith('/boards'))!.headers,
-    ).toMatchObject({
+    expect(result.current.data).toEqual([first, second]);
+    const listCalls = calls.filter((c) => c.path.startsWith('/boards'));
+    expect(listCalls.map((c) => c.path)).toEqual([
+      '/boards?page=1&limit=100',
+      '/boards?page=2&limit=100',
+    ]);
+    expect(listCalls[0].headers).toMatchObject({
       Authorization: 'Bearer board-token',
     });
-
-    await act(() => result.current.fetchNextPage());
-    await waitFor(() =>
-      expect(result.current.data?.pages.flatMap((p) => p.items)).toEqual([
-        first,
-        second,
-      ]),
-    );
-    expect(result.current.hasNextPage).toBe(false);
   });
 
   it('refreshes the board list after creating a board', async () => {
@@ -77,9 +71,7 @@ describe('board hooks', () => {
       name: 'New board',
       description: null,
     });
-    await waitFor(() =>
-      expect(result.current.boards.data?.pages[0].items).toEqual([created]),
-    );
+    await waitFor(() => expect(result.current.boards.data).toEqual([created]));
   });
 
   it('archives a board and refreshes the list', async () => {
@@ -102,9 +94,7 @@ describe('board hooks', () => {
     await waitFor(() => expect(result.current.boards.isSuccess).toBe(true));
     await act(() => result.current.archive.mutateAsync());
 
-    await waitFor(() =>
-      expect(result.current.boards.data?.pages[0].items).toEqual([]),
-    );
+    await waitFor(() => expect(result.current.boards.data).toEqual([]));
   });
 
   it('refreshes members and the board after adding a member', async () => {

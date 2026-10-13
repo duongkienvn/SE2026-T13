@@ -6,13 +6,17 @@ import { Button } from '../../../components/Button';
 import { FolderIcon, PlusIcon } from '../../../components/icons';
 import { PageContainer } from '../../../components/PageContainer';
 import { PageHeader } from '../../../components/PageHeader';
+import { Pagination } from '../../../components/Pagination';
 import { SearchField } from '../../../components/SearchField';
 import {
   EmptyState,
   ErrorState,
   LoadingState,
 } from '../../../components/states';
+import { useFitGrid } from '../../../hooks/useFitGrid';
+import { usePageParam } from '../../../hooks/usePageParam';
 import { usePageTitle } from '../../../hooks/usePageTitle';
+import { paginate } from '../../../lib/pagination';
 import { ArchiveBoardDialog } from '../components/ArchiveBoardDialog';
 import { BoardCard, CreateBoardTile } from '../components/BoardCard';
 import {
@@ -27,6 +31,8 @@ export interface BoardsLocationState {
   notice?: string;
 }
 
+const CREATE_TILE = 'create' as const;
+
 function matches(board: Board, query: string): boolean {
   const text = `${board.name} ${board.description ?? ''}`.toLowerCase();
   return text.includes(query);
@@ -35,6 +41,14 @@ function matches(board: Board, query: string): boolean {
 export function BoardsPage() {
   usePageTitle('Boards');
   const boards = useBoards();
+  const fit = useFitGrid({
+    gap: 16,
+    minColumnWidth: 280,
+    maxColumns: 3,
+    reserve: 8,
+    fallbackRows: 4,
+  });
+  const [page, setPage] = usePageParam();
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Board | null>(null);
@@ -52,25 +66,30 @@ export function BoardsPage() {
   }, [incoming, location, navigate]);
 
   const loaded = useMemo(
-    () =>
-      (boards.data?.pages.flatMap((page) => page.items) ?? []).filter(
-        (board) => !board.isArchived,
-      ),
+    () => (boards.data ?? []).filter((board) => !board.isArchived),
     [boards.data],
   );
   const query = search.trim().toLowerCase();
-  // Client-side only: searches the boards loaded so far.
   const visible = query
     ? loaded.filter((board) => matches(board, query))
     : loaded;
+  // The dashed "create" tile follows the last board, except in search results.
+  const tiles: (Board | typeof CREATE_TILE)[] = query
+    ? visible
+    : [...visible, CREATE_TILE];
+  const shown = paginate(tiles, page, fit.pageSize);
 
   const openCreate = () => {
     setNotice(undefined);
     setCreating(true);
   };
+  const changeSearch = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
 
   return (
-    <PageContainer>
+    <PageContainer fill>
       <PageHeader
         title="Boards"
         description="Organize your work with Kanban boards for different projects and teams."
@@ -81,12 +100,12 @@ export function BoardsPage() {
                 label="Search boards"
                 placeholder="Search boards..."
                 value={search}
-                onChange={setSearch}
-                className="w-full sm:w-[306px]"
+                onChange={changeSearch}
+                className="w-full sm:w-[280px]"
               />
             )}
-            <Button size="lg" onClick={openCreate}>
-              <PlusIcon aria-hidden="true" className="size-5" />
+            <Button onClick={openCreate}>
+              <PlusIcon aria-hidden="true" className="size-4.5" />
               New Board
             </Button>
           </>
@@ -94,12 +113,13 @@ export function BoardsPage() {
       />
 
       {notice && (
-        <div className="mt-6">
+        <div className="mt-4">
           <Alert variant="success">{notice}</Alert>
         </div>
       )}
 
-      <div className="mt-8">
+      {/* Fills the remaining height; the page size is however many rows fit here. */}
+      <div ref={fit.ref} className="mt-5 min-h-0 flex-1">
         {boards.isPending ? (
           <LoadingState label="Loading boards…" />
         ) : boards.isError && !boards.data ? (
@@ -118,50 +138,50 @@ export function BoardsPage() {
         ) : visible.length === 0 ? (
           <EmptyState
             title="No matching boards"
-            description={`No loaded board matches “${search.trim()}”.`}
+            description={`No board matches “${search.trim()}”.`}
           />
         ) : (
-          <ul className="grid grid-cols-1 gap-7 md:grid-cols-2 xl:grid-cols-3">
-            {visible.map((board) => {
-              // UI hint only: the backend enforces OWNER-only actions.
-              const isOwner = board.currentUserRole === BoardRole.OWNER;
-              return (
-                <li key={board.id} className="flex">
+          <ul
+            className="-mx-1 grid gap-4 p-1"
+            style={{
+              gridTemplateColumns: `repeat(${fit.columns}, minmax(0, 1fr))`,
+            }}
+          >
+            {shown.items.map((tile) =>
+              tile === CREATE_TILE ? (
+                <li key="create" data-fit-row className="flex">
+                  <CreateBoardTile onClick={openCreate} />
+                </li>
+              ) : (
+                <li key={tile.id} data-fit-row className="flex">
                   <BoardCard
-                    board={board}
-                    onEdit={isOwner ? () => setEditing(board) : undefined}
-                    onArchive={isOwner ? () => setArchiving(board) : undefined}
+                    board={tile}
+                    // UI hint only: the backend enforces OWNER-only actions.
+                    onEdit={
+                      tile.currentUserRole === BoardRole.OWNER
+                        ? () => setEditing(tile)
+                        : undefined
+                    }
+                    onArchive={
+                      tile.currentUserRole === BoardRole.OWNER
+                        ? () => setArchiving(tile)
+                        : undefined
+                    }
                   />
                 </li>
-              );
-            })}
-            {!query && (
-              <li className="flex">
-                <CreateBoardTile onClick={openCreate} />
-              </li>
+              ),
             )}
           </ul>
         )}
-
-        {boards.isFetchNextPageError && (
-          <div className="mt-8">
-            <Alert variant="error">
-              We couldn't load more boards. Try again.
-            </Alert>
-          </div>
-        )}
-        {boards.hasNextPage && (
-          <div className="mt-8 flex justify-center">
-            <Button
-              variant="secondary"
-              disabled={boards.isFetchingNextPage}
-              onClick={() => void boards.fetchNextPage()}
-            >
-              {boards.isFetchingNextPage ? 'Loading…' : 'Load more boards'}
-            </Button>
-          </div>
-        )}
       </div>
+
+      <Pagination
+        label="Boards pages"
+        page={shown.page}
+        pageCount={shown.pageCount}
+        onChange={setPage}
+        className="mt-4 shrink-0"
+      />
 
       <CreateBoardDialog
         open={creating}

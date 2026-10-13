@@ -25,7 +25,7 @@ export function SearchField({
       </label>
       <SearchIcon
         aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted"
+        className="pointer-events-none absolute top-1/2 left-3.5 size-4.5 -translate-y-1/2 text-muted"
       />
       <input
         id={id}
@@ -33,7 +33,7 @@ export function SearchField({
         value={value}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
-        className="h-12 w-full rounded-lg border border-line bg-surface pr-4 pl-12 text-[15px] text-ink placeholder:text-muted/80 focus:border-primary focus:ring-3 focus:ring-primary/15 focus:outline-none"
+        className="h-10 w-full rounded-lg border border-line bg-surface pr-3.5 pl-10 text-sm text-ink placeholder:text-muted/80 focus:border-primary focus:ring-3 focus:ring-primary/15 focus:outline-none"
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { MoreVerticalIcon } from './icons';
 
 export interface ActionMenuItem {
@@ -19,9 +19,29 @@ interface ActionMenuProps {
 /** "⋮" disclosure with a short list of actions. Closes on Escape and outside click. */
 export function ActionMenu({ label, items, className = '' }: ActionMenuProps) {
   const [open, setOpen] = useState(false);
+  const [above, setAbove] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLUListElement>(null);
   const panelId = useId();
+
+  // Open upwards when the panel would run past the bottom of the scroll area
+  // (e.g. on the last table row), so it never makes the page scroll.
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    const button = buttonRef.current;
+    if (!open || !panel || !button) return;
+    const area = button.closest('main')?.getBoundingClientRect() ?? {
+      top: 0,
+      bottom: window.innerHeight,
+    };
+    const trigger = button.getBoundingClientRect();
+    // Panel height plus its 4px offset from the trigger (mt-1 / mb-1).
+    const space = panel.getBoundingClientRect().height + 4;
+    setAbove(
+      trigger.bottom + space > area.bottom && trigger.top - space >= area.top,
+    );
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -50,15 +70,21 @@ export function ActionMenu({ label, items, className = '' }: ActionMenuProps) {
         aria-label={label}
         aria-expanded={open}
         aria-controls={panelId}
-        onClick={() => setOpen((value) => !value)}
-        className="grid size-9 place-items-center rounded-lg text-xl text-muted hover:bg-app hover:text-ink focus-visible:outline-2 focus-visible:outline-primary"
+        onClick={() => {
+          setAbove(false);
+          setOpen((value) => !value);
+        }}
+        className="grid size-8 place-items-center rounded-lg text-lg text-muted hover:bg-app hover:text-ink focus-visible:outline-2 focus-visible:outline-primary"
       >
         <MoreVerticalIcon />
       </button>
       {open && (
         <ul
+          ref={panelRef}
           id={panelId}
-          className="absolute top-full right-0 z-20 mt-1 w-60 rounded-xl border border-line bg-surface p-1.5 shadow-frame"
+          className={`absolute right-0 z-20 w-60 rounded-xl border border-line bg-surface p-1.5 shadow-frame ${
+            above ? 'bottom-full mb-1' : 'top-full mt-1'
+          }`}
         >
           {items.map((item) => {
             const disabled = !!item.disabledReason;
@@ -77,7 +103,7 @@ export function ActionMenu({ label, items, className = '' }: ActionMenuProps) {
                     setOpen(false);
                     item.onSelect();
                   }}
-                  className={`block w-full rounded-lg px-3 py-2 text-left text-[15px] focus-visible:outline-2 focus-visible:outline-primary ${
+                  className={`block w-full rounded-lg px-3 py-2 text-left text-sm focus-visible:outline-2 focus-visible:outline-primary ${
                     disabled
                       ? 'cursor-not-allowed text-muted'
                       : item.tone === 'danger'

@@ -10,7 +10,7 @@ export function RoleChip({ role }: { role: BoardRole }) {
   const { label, className } = ROLE_STYLES[role];
   return (
     <span
-      className={`inline-flex h-8 items-center rounded-full px-3.5 text-[15px] font-medium ${className}`}
+      className={`inline-flex h-6 items-center rounded-full px-2.5 text-[13px] font-medium ${className}`}
     >
       {label}
     </span>

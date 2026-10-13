@@ -72,7 +72,7 @@ describe('BoardDetailPage', () => {
     storeSession();
     mockApi({
       'GET /users/me': ok(testUser),
-      'GET /boards?page=1&limit=24': okPage([]),
+      'GET /boards?page=1&limit=100': okPage([]),
     });
     renderApp('/boards');
 
@@ -129,7 +129,7 @@ describe('BoardDetailPage', () => {
     const board = makeBoard({ name: 'Old project' });
     const { router } = openBoard(board, {
       [`POST /boards/${board.id}/archive`]: ok({ ...board, isArchived: true }),
-      'GET /boards?page=1&limit=24': okPage([]),
+      'GET /boards?page=1&limit=100': okPage([]),
     });
 
     fireEvent.click(

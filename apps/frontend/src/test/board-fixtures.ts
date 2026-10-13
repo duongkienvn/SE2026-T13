@@ -39,7 +39,7 @@ export function makeMember(overrides: Partial<BoardMember> = {}): BoardMember {
 /** Paginated success envelope (`data` + `meta`) as used by list endpoints. */
 export function okPage<T>(
   items: T[],
-  { page = 1, limit = 24, total = items.length } = {},
+  { page = 1, limit = 100, total = items.length } = {},
 ): MockResponse {
   return {
     status: 200,

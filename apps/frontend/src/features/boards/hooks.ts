@@ -1,31 +1,23 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { retryUnlessClientError } from '../../lib/query-client';
 import { useAuth } from '../auth/useAuth';
 import {
   archiveBoard,
   createBoard,
   getBoard,
-  listBoards,
+  listAllBoards,
   updateBoard,
 } from './api';
 import { boardKeys } from './query-keys';
 import type { Board, CreateBoardRequest, UpdateBoardRequest } from './types';
 
-/** Boards the user belongs to, loaded page by page ("Load more"). */
+/** Every board the user belongs to; the page searches and paginates them. */
 export function useBoards() {
   const { runAuthorized } = useAuth();
-  return useInfiniteQuery({
+  return useQuery({
     queryKey: boardKeys.lists(),
-    queryFn: ({ pageParam, signal }) =>
-      runAuthorized((token) => listBoards(token, pageParam, signal)),
-    initialPageParam: 1,
-    getNextPageParam: (last) =>
-      last.meta.page < last.meta.totalPages ? last.meta.page + 1 : undefined,
+    queryFn: ({ signal }) =>
+      runAuthorized((token) => listAllBoards(token, signal)),
     retry: retryUnlessClientError,
   });
 }

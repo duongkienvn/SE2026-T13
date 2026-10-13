@@ -25,7 +25,7 @@ export function TextAreaField({
 
   return (
     <div className={className}>
-      <label htmlFor={id} className="block text-[15px] font-medium text-ink">
+      <label htmlFor={id} className="block text-sm font-medium text-ink">
         {label}
       </label>
       <textarea
@@ -33,7 +33,7 @@ export function TextAreaField({
         rows={rows}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
-        className={`mt-2 block w-full resize-y rounded-lg border bg-surface px-4 py-3 text-[15px] text-ink placeholder:text-muted/80 focus:ring-3 focus:ring-primary/15 focus:outline-none ${
+        className={`mt-1.5 block w-full resize-y rounded-lg border bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-muted/80 focus:ring-3 focus:ring-primary/15 focus:outline-none ${
           error
             ? 'border-danger focus:border-danger'
             : 'border-line focus:border-primary'
@@ -41,12 +41,12 @@ export function TextAreaField({
         {...props}
       />
       {hint && !error && (
-        <p id={hintId} className="mt-1.5 text-sm text-muted">
+        <p id={hintId} className="mt-1 text-[13px] text-muted">
           {hint}
         </p>
       )}
       {error && (
-        <p id={errorId} className="mt-1.5 text-sm text-danger">
+        <p id={errorId} className="mt-1 text-[13px] text-danger">
           {error}
         </p>
       )}
