@@ -97,6 +97,16 @@ Font: Inter (400/500/600/700) with a system sans-serif fallback.
 
 These are measured design guides, not hard-coded fixed dimensions. Use CSS grid/flex, responsive constraints and tokens.
 
+### Fit-to-viewport rule (implemented)
+
+The reference images were drawn at about 1672 px wide, so copying their pixel sizes 1:1 made screens scroll on common laptops (for example 1366×657 and 1536×730 browser viewports). The frontend therefore uses compact sizes and must fit the viewport **without scrolling**:
+
+- Controls: inputs and large buttons are 44 px high, regular buttons 40 px, field labels 14 px. The header is 60 px high and the side rail 60 px wide.
+- Login and register share one frame that follows the viewport height (at most 600 px); the register password fields sit side by side from the `sm` breakpoint. The form column omits the duplicate brand on large screens because the side panel already shows it.
+- `short:` is a custom Tailwind variant (`max-height: 640px`, defined in `apps/frontend/src/style.css`) that tightens vertical spacing on short viewports.
+- When data does not fit (for example many boards or members), use numbered pagination sized to the available space instead of scrolling or "Load more".
+- Verify new screens at 1280×600, 1366×657, 1536×730, 1920×945 and 390×844, including error states.
+
 ## 3. Screen-by-screen contract
 
 ### A. `login.png`
