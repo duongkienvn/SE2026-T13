@@ -10,10 +10,10 @@ export function LoadingState({ label = 'Loading…' }: LoadingStateProps) {
   return (
     <div
       role="status"
-      className="flex items-center justify-center gap-3 py-16 text-muted"
+      className="flex items-center justify-center gap-3 py-10 text-muted"
     >
       <SpinnerIcon className="size-5 text-primary motion-safe:animate-spin" />
-      <span className="text-[15px]">{label}</span>
+      <span className="text-sm">{label}</span>
     </div>
   );
 }
@@ -32,7 +32,7 @@ export function EmptyState({
   action,
 }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-line bg-surface/60 px-6 py-16 text-center">
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-line bg-surface/60 px-6 py-10 text-center">
       {icon && (
         <div className="mb-4 grid size-14 place-items-center rounded-full bg-app text-2xl text-muted">
           {icon}
@@ -61,7 +61,7 @@ export function ErrorState({
   return (
     <div
       role="alert"
-      className="flex flex-col items-center justify-center rounded-xl border border-line bg-surface px-6 py-16 text-center shadow-card"
+      className="flex flex-col items-center justify-center rounded-xl border border-line bg-surface px-6 py-10 text-center shadow-card"
     >
       <AlertIcon className="mb-3 size-8 text-danger" />
       <h2 className="text-lg font-semibold text-ink">{title}</h2>

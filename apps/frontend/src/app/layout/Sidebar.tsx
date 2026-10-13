@@ -15,12 +15,12 @@ export function Sidebar({
   return (
     <nav
       aria-label="Primary"
-      className="flex w-14 shrink-0 flex-col border-r border-line bg-surface md:w-[68px]"
+      className="flex w-14 shrink-0 flex-col border-r border-line bg-surface md:w-15"
     >
-      <div className="grid h-16 shrink-0 place-items-center bg-brand-soft text-white md:h-[72px]">
-        <LogoIcon className="size-6 md:size-7" />
+      <div className="grid h-14 shrink-0 place-items-center bg-brand-soft text-white md:h-15">
+        <LogoIcon className="size-6" />
       </div>
-      <ul className="mt-4 flex flex-col">
+      <ul className="mt-3 flex flex-col">
         {primaryItems.map((item) => (
           <SidebarItem
             key={item.id}
@@ -29,7 +29,7 @@ export function Sidebar({
           />
         ))}
       </ul>
-      <ul className="mt-auto mb-4 flex flex-col">
+      <ul className="mt-auto mb-3 flex flex-col">
         {secondaryItems.map((item) => (
           <SidebarItem
             key={item.id}
@@ -66,9 +66,9 @@ function SidebarItem({ item, active }: SidebarItemProps) {
         aria-disabled={available ? undefined : true}
         title={available ? label : `${label} — coming soon`}
         onClick={onSelect}
-        className={`grid h-14 w-full place-items-center transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary ${stateClasses}`}
+        className={`grid h-12 w-full place-items-center transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary ${stateClasses}`}
       >
-        <Icon className="size-6" />
+        <Icon className="size-5" />
       </button>
     </li>
   );

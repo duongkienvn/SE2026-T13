@@ -112,71 +112,76 @@ function ProfileForm({ user }: { user: User }) {
         ref={formRef}
         noValidate
         onSubmit={handleSubmit}
-        className="mt-8 max-w-2xl rounded-xl border border-line bg-surface p-6 shadow-card md:p-8"
+        className="mt-6 grid max-w-4xl gap-6 rounded-xl border border-line bg-surface p-5 shadow-card md:grid-cols-[200px_1fr] md:p-6"
       >
-        <div className="flex items-center gap-4">
+        {/* Identity on the left, editable fields on the right, so the page fits without scrolling. */}
+        <div className="flex min-w-0 items-center gap-4 md:flex-col md:items-start md:border-r md:border-line md:pr-6">
           <UserAvatar
             user={{
               displayName: displayName.trim() || user.displayName,
               avatarUrl: previewUrl,
             }}
-            className="size-16 text-xl"
+            className="size-16 text-xl md:size-20 md:text-2xl"
           />
-          <div className="min-w-0">
-            <p className="truncate text-lg font-semibold text-ink">
+          <div className="min-w-0 max-w-full">
+            <p className="truncate text-base font-semibold text-ink">
               {user.displayName}
             </p>
-            <p className="truncate text-[15px] text-muted">{user.email}</p>
+            <p className="truncate text-sm text-muted">{user.email}</p>
           </div>
         </div>
 
-        <div className="mt-8 space-y-5">
-          {saved && !isDirty && (
-            <Alert variant="success">Profile updated.</Alert>
-          )}
-          {formError && <Alert variant="error">{formError}</Alert>}
+        <div className="min-w-0">
+          <div className="space-y-4">
+            {saved && !isDirty && (
+              <Alert variant="success">Profile updated.</Alert>
+            )}
+            {formError && <Alert variant="error">{formError}</Alert>}
 
-          <TextField
-            label="Email address"
-            type="email"
-            icon={<MailIcon />}
-            value={user.email}
-            readOnly
-            disabled
-            hint="Email cannot be changed."
-          />
-          <TextField
-            label="Display name"
-            name="displayName"
-            autoComplete="name"
-            icon={<UserIcon />}
-            value={displayName}
-            onChange={(event) => {
-              setDisplayName(event.target.value);
-              setSaved(false);
-            }}
-            error={fieldErrors.displayName}
-          />
-          <TextField
-            label="Avatar URL"
-            name="avatarUrl"
-            type="url"
-            inputMode="url"
-            placeholder="https://example.com/avatar.png"
-            hint="Optional. Leave empty to use your initials."
-            value={avatarUrl}
-            onChange={(event) => {
-              setAvatarUrl(event.target.value);
-              setSaved(false);
-            }}
-            error={fieldErrors.avatarUrl}
-          />
-        </div>
+            <div className="grid items-start gap-4 lg:grid-cols-2">
+              <TextField
+                label="Email address"
+                type="email"
+                icon={<MailIcon />}
+                value={user.email}
+                readOnly
+                disabled
+                hint="Email cannot be changed."
+              />
+              <TextField
+                label="Display name"
+                name="displayName"
+                autoComplete="name"
+                icon={<UserIcon />}
+                value={displayName}
+                onChange={(event) => {
+                  setDisplayName(event.target.value);
+                  setSaved(false);
+                }}
+                error={fieldErrors.displayName}
+              />
+            </div>
+            <TextField
+              label="Avatar URL"
+              name="avatarUrl"
+              type="url"
+              inputMode="url"
+              placeholder="https://example.com/avatar.png"
+              hint="Optional. Leave empty to use your initials."
+              value={avatarUrl}
+              onChange={(event) => {
+                setAvatarUrl(event.target.value);
+                setSaved(false);
+              }}
+              error={fieldErrors.avatarUrl}
+            />
+          </div>
 
-        <div className="mt-8 flex justify-end">
-          <Button type="submit" disabled={!isDirty || mutation.isPending}>
-            {mutation.isPending ? 'Saving…' : 'Save changes'}
-          </Button>
+          <div className="mt-5 flex justify-end">
+            <Button type="submit" disabled={!isDirty || mutation.isPending}>
+              {mutation.isPending ? 'Saving…' : 'Save changes'}
+            </Button>
+          </div>
         </div>
       </form>
     </PageContainer>
