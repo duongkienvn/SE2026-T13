@@ -12,6 +12,11 @@ import { LoginRequestDto } from '../src/api/auth/dto/login-request.dto';
 import { RegisterRequestDto } from '../src/api/auth/dto/register-request.dto';
 import { User } from '../src/api/users/entities/user.entity';
 
+jest.mock('argon2', () => {
+  const actual = jest.requireActual<typeof argon2>('argon2');
+  return { ...actual, verify: jest.fn(actual.verify) };
+});
+
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: () => Inject('UserRepository'),
 }));
@@ -144,6 +149,25 @@ describe('AuthService', () => {
       status: 401,
       response: { code: 'INVALID_CREDENTIALS' },
     });
+  });
+
+  it('verifies a dummy Argon2id hash for an unknown email', async () => {
+    const verify = jest.mocked(argon2.verify);
+    verify.mockClear();
+    repository.findOne.mockResolvedValue(null);
+    const input: LoginRequestDto = {
+      email: 'unknown@example.com',
+      password: 'wrong password',
+    };
+
+    await expect(service.login(input)).rejects.toMatchObject({
+      status: 401,
+      response: { code: 'INVALID_CREDENTIALS' },
+    });
+    expect(verify).toHaveBeenCalledWith(
+      expect.stringMatching(/^\$argon2id\$/),
+      input.password,
+    );
   });
 
   it('issues a one-hour HS256 token with the required claims', async () => {

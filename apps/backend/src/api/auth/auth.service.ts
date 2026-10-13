@@ -21,6 +21,8 @@ import { RegisterRequestDto } from './dto/register-request.dto';
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const DUMMY_PASSWORD_HASH =
+  '$argon2id$v=19$m=65536,t=3,p=4$FkCAAQOfeN/lp3mMq1O8aw$LWh98eRvcVRX1VCWEcG9asSUZIBwaYSxzn6jPGgxQ9I';
 
 function isUniqueViolation(error: QueryFailedError): boolean {
   const driverError = error.driverError;
@@ -65,8 +67,8 @@ export class AuthService {
 
   async login(input: LoginRequestDto): Promise<LoginResponseDto> {
     const user = await this.users.findOne({ where: { email: input.email } });
-    const validPassword =
-      user !== null && (await argon2.verify(user.passwordHash, input.password));
+    const passwordHash = user?.passwordHash ?? DUMMY_PASSWORD_HASH;
+    const validPassword = await argon2.verify(passwordHash, input.password);
     if (!user || !validPassword) throw this.invalidCredentials();
 
     const accessToken = await this.jwt.signAsync({ sub: user.id });
