@@ -17,12 +17,12 @@ export function AuthSwitch({
 
   return (
     <>
-      <div className="my-7 flex items-center gap-4 text-sm text-muted">
+      <div className="my-4 flex items-center short:my-2.5 gap-4 text-sm text-muted">
         <span className="h-px flex-1 bg-line" />
         or
         <span className="h-px flex-1 bg-line" />
       </div>
-      <p className="flex min-h-[52px] items-center justify-center gap-2 rounded-lg border border-line px-4 text-[15px] text-ink">
+      <p className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line px-4 text-sm text-ink">
         {prompt}
         <Link
           to={to}
