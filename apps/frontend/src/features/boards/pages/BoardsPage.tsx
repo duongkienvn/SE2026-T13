@@ -46,8 +46,10 @@ export function BoardsPage() {
 
   // Show an incoming notice once; drop it from history so reloads don't repeat it.
   useEffect(() => {
-    if (incoming) navigate(location.pathname, { replace: true, state: null });
-  }, [incoming, location.pathname, navigate]);
+    if (!incoming) return;
+    const { pathname, search, hash } = location;
+    navigate({ pathname, search, hash }, { replace: true, state: null });
+  }, [incoming, location, navigate]);
 
   const loaded = useMemo(
     () =>
@@ -100,7 +102,7 @@ export function BoardsPage() {
       <div className="mt-8">
         {boards.isPending ? (
           <LoadingState label="Loading boards…" />
-        ) : boards.isError ? (
+        ) : boards.isError && !boards.data ? (
           <ErrorState
             title="We couldn't load your boards"
             description="Check your connection and try again."
@@ -141,6 +143,13 @@ export function BoardsPage() {
           </ul>
         )}
 
+        {boards.isFetchNextPageError && (
+          <div className="mt-8">
+            <Alert variant="error">
+              We couldn't load more boards. Try again.
+            </Alert>
+          </div>
+        )}
         {boards.hasNextPage && (
           <div className="mt-8 flex justify-center">
             <Button

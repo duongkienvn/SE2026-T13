@@ -154,6 +154,29 @@ describe('BoardsPage', () => {
     ).toBeNull();
   });
 
+  it('keeps loaded boards when loading more fails', async () => {
+    openBoards({
+      [PAGE_1]: okPage([makeBoard({ name: 'Already here' })], {
+        page: 1,
+        limit: 24,
+        total: 25,
+      }),
+      [PAGE_2]: fail(403, 'FORBIDDEN'),
+    });
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Load more boards' }),
+    );
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      "We couldn't load more boards.",
+    );
+    expect(screen.getByRole('link', { name: 'Already here' })).toBeTruthy();
+    expect(
+      screen.queryByRole('heading', { name: "We couldn't load your boards" }),
+    ).toBeNull();
+  });
+
   it('never shows archived boards', async () => {
     openBoards({
       [PAGE_1]: okPage([
@@ -166,5 +189,19 @@ describe('BoardsPage', () => {
       await screen.findByRole('link', { name: 'Active board' }),
     ).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Old board' })).toBeNull();
+  });
+
+  it('clears a one-time notice without losing the query string', async () => {
+    storeSession();
+    mockApi({ 'GET /users/me': ok(testUser), [PAGE_1]: okPage([]) });
+    const { router } = renderApp({
+      pathname: '/boards',
+      search: '?view=grid',
+      state: { notice: 'Board “X” archived.' },
+    });
+
+    expect(await screen.findByText('Board “X” archived.')).toBeTruthy();
+    await waitFor(() => expect(router.state.location.state).toBeNull());
+    expect(router.state.location.search).toBe('?view=grid');
   });
 });

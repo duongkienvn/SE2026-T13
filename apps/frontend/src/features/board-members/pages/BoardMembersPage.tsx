@@ -79,7 +79,9 @@ export function BoardMembersPage() {
       </PageContainer>
     );
   }
-  if (board.isError || members.isError) {
+  // A failed background refresh keeps the data on screen; only a failed first load
+  // replaces the page.
+  if ((board.isError && !board.data) || (members.isError && !members.data)) {
     const error = board.error ?? members.error;
     return (
       <PageContainer>
@@ -99,8 +101,8 @@ export function BoardMembersPage() {
     );
   }
 
-  const boardData = board.data;
-  const all = members.data;
+  const boardData = board.data!;
+  const all = members.data!;
   // UI hint only: the backend enforces OWNER-only membership management.
   const canManage =
     boardData.currentUserRole === BoardRole.OWNER && !boardData.isArchived;
@@ -111,6 +113,8 @@ export function BoardMembersPage() {
   };
 
   const changeRole = (member: BoardMember, role: BoardRole) => {
+    // One role change at a time; the list refreshes before the next one.
+    if (updateRole.isPending) return;
     setNotice(undefined);
     setActionError(undefined);
     updateRole.mutate(
@@ -151,7 +155,8 @@ export function BoardMembersPage() {
         description={`People who can access “${boardData.name}”.`}
         actions={
           <>
-            {all.length > 1 && (
+            {/* Keep the box while a query is active, so it can always be cleared. */}
+            {(all.length > 1 || search) && (
               <SearchField
                 label="Search members"
                 placeholder="Search members..."

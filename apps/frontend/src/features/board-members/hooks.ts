@@ -52,11 +52,21 @@ export function useUpdateMemberRole(boardId: string) {
 }
 
 export function useRemoveMember(boardId: string) {
-  const { runAuthorized } = useAuth();
+  const { runAuthorized, user } = useAuth();
+  const queryClient = useQueryClient();
   const invalidate = useInvalidateBoard(boardId);
   return useMutation({
     mutationFn: (userId: string) =>
       runAuthorized((token) => removeMember(token, boardId, userId)),
-    onSuccess: invalidate,
+    onSuccess: (_result, userId) => {
+      if (userId !== user?.id) return invalidate();
+      // The user just left: refetching this board would only return 403/404
+      // and flash "Board not found". Mark it stale and refresh the list.
+      void queryClient.invalidateQueries({
+        queryKey: boardKeys.detail(boardId),
+        refetchType: 'none',
+      });
+      return queryClient.invalidateQueries({ queryKey: boardKeys.lists() });
+    },
   });
 }

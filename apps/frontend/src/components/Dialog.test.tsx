@@ -35,6 +35,16 @@ describe('Dialog', () => {
     expect(document.activeElement).toBe(screen.getByLabelText('Name'));
   });
 
+  it('prefers the element marked data-autofocus', () => {
+    render(
+      <Dialog open onClose={() => undefined} title="Pick">
+        <a href="#help">Help</a>
+        <input aria-label="Name" data-autofocus />
+      </Dialog>,
+    );
+    expect(document.activeElement).toBe(screen.getByLabelText('Name'));
+  });
+
   it('keeps Tab focus inside the dialog', () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));

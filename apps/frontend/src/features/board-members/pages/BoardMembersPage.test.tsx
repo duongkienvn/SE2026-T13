@@ -308,6 +308,29 @@ describe('BoardMembersPage (as MEMBER)', () => {
 });
 
 describe('BoardMembersPage errors', () => {
+  it.each(['/boards/abc', '/boards/abc/members'])(
+    'sends anonymous visitors from %s to login without requesting board data',
+    async (path) => {
+      const calls = mockApi({});
+      const { router } = renderApp(path);
+
+      await waitFor(() =>
+        expect(router.state.location.pathname).toBe('/login'),
+      );
+      expect(calls).toHaveLength(0);
+    },
+  );
+
+  it('ends the session when board data returns 401', async () => {
+    const board = makeBoard();
+    const { router } = openMembers(board, fail(401, 'UNAUTHORIZED'), {
+      [`GET /boards/${board.id}`]: fail(401, 'UNAUTHORIZED'),
+    });
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
+    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+  });
+
   it('shows "Board not found" when access is denied', async () => {
     const board = makeBoard();
     openMembers(board, fail(403, 'FORBIDDEN'), {
@@ -317,5 +340,100 @@ describe('BoardMembersPage errors', () => {
     expect(
       await screen.findByRole('heading', { name: 'Board not found' }),
     ).toBeTruthy();
+  });
+});
+
+describe('BoardMembersPage edge cases', () => {
+  const board = makeBoard({ name: 'Edge', currentUserRole: 'OWNER' });
+
+  it('keeps an active search clearable when the list shrinks', async () => {
+    openMembers(board, changes([me, graceMember], [me]), {
+      [`DELETE ${membersPath(board)}/${grace.id}`]: { status: 204 },
+    });
+    fireEvent.change(
+      await screen.findByRole('searchbox', { name: 'Search members' }),
+      { target: { value: 'grace' } },
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Grace Hopper' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from board' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Remove member',
+      }),
+    );
+    await screen.findByRole('heading', { name: 'No matching members' });
+
+    const search = screen.getByRole('searchbox', { name: 'Search members' });
+    fireEvent.change(search, { target: { value: '' } });
+    expect(await screen.findByText(testUser.displayName)).toBeTruthy();
+  });
+
+  it('does not refetch a board the user just left', async () => {
+    const shared = makeBoard({
+      name: 'Left',
+      currentUserRole: 'OWNER',
+      createdById: alan.id,
+    });
+    const { calls, router } = openMembers(
+      shared,
+      [makeMember({ user: alan, role: 'OWNER' }), me],
+      {
+        [`DELETE ${membersPath(shared)}/${testUser.id}`]: { status: 204 },
+        'GET /boards?page=1&limit=24': okPage([]),
+      },
+    );
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: `Actions for ${testUser.displayName}`,
+      }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Leave board' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Leave board',
+      }),
+    );
+    await waitFor(() => expect(router.state.location.pathname).toBe('/boards'));
+
+    const deleteAt = calls.findIndex((call) => call.method === 'DELETE');
+    const after = calls.slice(deleteAt + 1).map((call) => call.path);
+    expect(after.some((path) => path.startsWith(`/boards/${shared.id}`))).toBe(
+      false,
+    );
+    expect(
+      screen.queryByRole('heading', { name: 'Board not found' }),
+    ).toBeNull();
+  });
+
+  it('sends one role change at a time', async () => {
+    let release: () => void = () => undefined;
+    const { calls } = openMembers(board, [me, graceMember], {
+      [`PATCH ${membersPath(board)}/${grace.id}`]: () =>
+        new Promise((resolve) => {
+          release = () => resolve(ok({ ...graceMember, role: 'OWNER' }));
+        }) as unknown as MockResponse,
+    });
+
+    const actions = await screen.findByRole('button', {
+      name: 'Actions for Grace Hopper',
+    });
+    fireEvent.click(actions);
+    fireEvent.click(screen.getByRole('button', { name: 'Make owner' }));
+    // The first request is now in flight; a second attempt must be ignored.
+    await waitFor(() =>
+      expect(calls.some((call) => call.method === 'PATCH')).toBe(true),
+    );
+    fireEvent.click(actions);
+    fireEvent.click(screen.getByRole('button', { name: 'Make owner' }));
+
+    release();
+    expect(
+      await screen.findByText('Grace Hopper is now an owner.'),
+    ).toBeTruthy();
+    expect(calls.filter((call) => call.method === 'PATCH')).toHaveLength(1);
   });
 });

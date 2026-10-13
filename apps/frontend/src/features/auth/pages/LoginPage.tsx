@@ -38,8 +38,9 @@ export function LoginPage() {
   useEffect(() => {
     if (!state?.registeredEmail) return;
     const remaining: RedirectState = state.from ? { from: state.from } : {};
-    navigate(location.pathname, { replace: true, state: remaining });
-  }, [state, location.pathname, navigate]);
+    const { pathname, search, hash } = location;
+    navigate({ pathname, search, hash }, { replace: true, state: remaining });
+  }, [state, location, navigate]);
 
   const mutation = useMutation({
     mutationFn: login,

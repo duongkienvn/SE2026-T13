@@ -24,11 +24,10 @@ export function AuthenticatedLayout() {
   const boardName = useBoard(boardId ?? '', { enabled: !!boardId }).data?.name;
 
   const resolve = (item: NavItem): NavItem => {
-    // Members belong to one board: the item only works inside a board.
-    const path =
-      item.id === 'members'
-        ? boardId && `/boards/${boardId}/members`
-        : item.path;
+    // Board-scoped items (e.g. members) only work inside a board.
+    const path = item.boardPath
+      ? boardId && item.boardPath(boardId)
+      : item.path;
     return path
       ? { ...item, path, onSelect: () => navigate(path) }
       : { ...item, path: undefined };

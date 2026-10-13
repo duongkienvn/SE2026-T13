@@ -29,9 +29,10 @@ interface BoardFormProps {
   pendingLabel: string;
   /** Edit mode: keep Save disabled until something changed. */
   requireChange?: boolean;
+  /** True while the create/update request runs (the mutation's own state). */
+  pending: boolean;
   onSubmit: (values: BoardValues) => Promise<unknown>;
   onCancel: () => void;
-  onPendingChange: (pending: boolean) => void;
 }
 
 function BoardForm({
@@ -39,9 +40,9 @@ function BoardForm({
   submitLabel,
   pendingLabel,
   requireChange = false,
+  pending,
   onSubmit,
   onCancel,
-  onPendingChange,
 }: BoardFormProps) {
   const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
   const [name, setName] = useState(initial.name);
@@ -50,7 +51,6 @@ function BoardForm({
     Partial<Record<Field, string>>
   >({});
   const [formError, setFormError] = useState<string>();
-  const [pending, setPending] = useState(false);
 
   const values: BoardValues = {
     name: name.trim(),
@@ -74,8 +74,6 @@ function BoardForm({
       return;
     }
 
-    setPending(true);
-    onPendingChange(true);
     try {
       await onSubmit(values);
     } catch (error) {
@@ -83,8 +81,6 @@ function BoardForm({
       setFieldErrors(result.fieldErrors);
       setFormError(result.formError);
       focusFirstInvalid();
-      setPending(false);
-      onPendingChange(false);
     }
   };
 
@@ -136,7 +132,6 @@ export function CreateBoardDialog({
   onCreated,
 }: CreateBoardDialogProps) {
   const create = useCreateBoard();
-  const [pending, setPending] = useState(false);
 
   return (
     <Dialog
@@ -144,19 +139,15 @@ export function CreateBoardDialog({
       onClose={onClose}
       title="Create a new board"
       description="Start a new Kanban board for your project or team."
-      dismissible={!pending}
+      dismissible={!create.isPending}
     >
       <BoardForm
         initial={{ name: '', description: null }}
         submitLabel="Create board"
         pendingLabel="Creating…"
-        onPendingChange={setPending}
+        pending={create.isPending}
         onCancel={onClose}
-        onSubmit={async (values) => {
-          const board = await create.mutateAsync(values);
-          setPending(false);
-          onCreated(board);
-        }}
+        onSubmit={async (values) => onCreated(await create.mutateAsync(values))}
       />
     </Dialog>
   );
@@ -176,7 +167,6 @@ export function EditBoardDialog({
   onSaved,
 }: EditBoardDialogProps) {
   const update = useUpdateBoard(board.id);
-  const [pending, setPending] = useState(false);
   const initial = { name: board.name, description: board.description };
 
   return (
@@ -184,14 +174,14 @@ export function EditBoardDialog({
       open={open}
       onClose={onClose}
       title="Edit board"
-      dismissible={!pending}
+      dismissible={!update.isPending}
     >
       <BoardForm
         initial={initial}
         submitLabel="Save changes"
         pendingLabel="Saving…"
         requireChange
-        onPendingChange={setPending}
+        pending={update.isPending}
         onCancel={onClose}
         onSubmit={async (values) => {
           // Send only what changed; the API rejects an empty update.
@@ -199,9 +189,7 @@ export function EditBoardDialog({
           if (values.name !== initial.name) patch.name = values.name;
           if (values.description !== initial.description)
             patch.description = values.description;
-          const saved = await update.mutateAsync(patch);
-          setPending(false);
-          onSaved(saved);
+          onSaved(await update.mutateAsync(patch));
         }}
       />
     </Dialog>

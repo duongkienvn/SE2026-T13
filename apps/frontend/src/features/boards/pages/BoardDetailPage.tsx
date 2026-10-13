@@ -56,7 +56,8 @@ export function BoardDetailPage() {
       </PageContainer>
     );
   }
-  if (board.isError) {
+  // A failed background refresh keeps the board on screen (and open dialogs intact).
+  if (board.isError && !board.data) {
     return (
       <PageContainer>
         {isBoardUnavailable(board.error) ? (
@@ -72,7 +73,7 @@ export function BoardDetailPage() {
     );
   }
 
-  const data = board.data;
+  const data = board.data!;
   // UI hint only: the backend enforces OWNER-only actions.
   const canManage =
     data.currentUserRole === BoardRole.OWNER && !data.isArchived;

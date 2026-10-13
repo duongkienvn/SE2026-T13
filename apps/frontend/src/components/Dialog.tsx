@@ -43,9 +43,9 @@ export function Dialog({
     document.body.style.overflow = 'hidden';
 
     const panel = panelRef.current;
-    const first = panel?.querySelector<HTMLElement>(
-      '[data-autofocus], ' + FOCUSABLE,
-    );
+    const first =
+      panel?.querySelector<HTMLElement>('[data-autofocus]') ??
+      panel?.querySelector<HTMLElement>(FOCUSABLE);
     (first ?? panel)?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
