@@ -221,6 +221,7 @@ const environment = validateEnvironment({
   DATABASE_NAME: 'test',
   DATABASE_USER: 'test',
   DATABASE_PASSWORD: 'secret',
+  JWT_SECRET: 'test-secret-that-is-at-least-32-bytes-long',
   LOG_LEVEL: 'silent',
 });
 
