@@ -57,7 +57,11 @@ describe('RegisterPage', () => {
     expect(calls[0].body).not.toHaveProperty('confirmPassword');
     expect(sessionStorage.getItem('kanban.session')).toBeNull();
     // The one-time feedback is removed from history so reloads don't repeat it.
-    expect(router.state.location.state).not.toHaveProperty('registeredEmail');
+    // The history update happens in an effect after the message renders.
+    await waitFor(() =>
+      expect(router.state.location.state).not.toHaveProperty('registeredEmail'),
+    );
+    expect(screen.getByRole('status').textContent).toContain('Account created');
   });
 
   it('keeps the originally requested page through register and login', async () => {
