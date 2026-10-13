@@ -1,9 +1,9 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens sampled from docs/design/screens/ (see design-guidelines.md).
- * Values are approximations of the approved screenshots; refine them by
- * side-by-side comparison rather than adding new colors elsewhere.
+ * Design tokens sampled from docs/design/screens/. The mapping to the
+ * provisional palette is recorded in docs/design/design-guidelines.md;
+ * refine values there and here together rather than adding colors elsewhere.
  */
 @theme {
   --font-sans:
@@ -12,17 +12,17 @@
 
   --color-primary: #615cf7;
   --color-primary-strong: #6058f9;
+  --color-primary-hover: #4f49e6;
   --color-primary-soft: #f0f2fe;
   --color-brand: #6466fa;
   --color-brand-soft: #9294fc;
 
   --color-app: #f7f7f9;
   --color-surface: #ffffff;
-  /* Sampled from the screenshots; the guidelines' provisional value is #e5e8f9. */
   --color-frame: #a6a9d0;
 
   --color-ink: #172038;
-  --color-muted: #6e7891;
+  --color-muted: #626a83;
   --color-line: #e4e8f1;
   --color-danger: #e5484d;
 

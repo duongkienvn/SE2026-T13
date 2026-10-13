@@ -1,9 +1,7 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { render, screen, within } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 import App from './App';
 import { AppProviders } from './app/AppProviders';
-
-afterEach(cleanup);
 
 describe('App', () => {
   it('renders the application shell inside the providers', () => {
@@ -22,7 +20,11 @@ describe('App', () => {
   });
 
   it('marks navigation items without a feature as unavailable', () => {
-    render(<App />);
+    render(
+      <AppProviders>
+        <App />
+      </AppProviders>,
+    );
 
     const nav = screen.getByRole('navigation', { name: 'Primary' });
     const items = within(nav).getAllByRole('button');
