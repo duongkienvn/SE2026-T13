@@ -167,4 +167,128 @@ describe('BoardsService', () => {
       role: BoardMemberRole.OWNER,
     });
   });
+
+  it.each([BoardMemberRole.OWNER, BoardMemberRole.MEMBER])(
+    'allows %s to read persisted board role, including archived boards',
+    async (role) => {
+      board.isArchived = true;
+      board.archivedAt = new Date();
+      members.findOne.mockResolvedValue({ board, role });
+      const result = await service.getDetail(USER_ID, BOARD_ID);
+      expect(members.findOne).toHaveBeenCalledWith({
+        where: { boardId: BOARD_ID, userId: USER_ID },
+        relations: { board: true },
+      });
+      expect(result.currentUserRole).toBe(role);
+      expect(result.isArchived).toBe(true);
+    },
+  );
+
+  it('conceals missing and inaccessible boards', async () => {
+    members.findOne.mockResolvedValue(null);
+    await expect(service.getDetail(USER_ID, BOARD_ID)).rejects.toMatchObject({
+      status: 404,
+      response: { code: 'NOT_FOUND' },
+    });
+  });
+
+  it('updates only supplied fields and distinguishes null from omitted description', async () => {
+    txBoards.findOne.mockResolvedValue(board);
+    txMembers.findOne.mockResolvedValue({ role: BoardMemberRole.OWNER });
+    board.description = 'Keep';
+    const input = {
+      name: 'Changed',
+      isArchived: true,
+      createdById: 'attacker',
+    };
+    const result = await service.update(USER_ID, BOARD_ID, input);
+    expect(result).toMatchObject({
+      name: 'Changed',
+      description: 'Keep',
+      isArchived: false,
+      createdById: USER_ID,
+    });
+    expect(txBoards.findOne).toHaveBeenCalledWith({
+      where: { id: BOARD_ID },
+      lock: { mode: 'pessimistic_write' },
+    });
+    expect(txMembers.findOne).toHaveBeenCalledWith({
+      where: { boardId: BOARD_ID, userId: USER_ID },
+    });
+    expect(
+      (await service.update(USER_ID, BOARD_ID, { description: null }))
+        .description,
+    ).toBeNull();
+    expect(
+      (await service.update(USER_ID, BOARD_ID, { description: '' }))
+        .description,
+    ).toBe('');
+  });
+
+  it('rejects an empty update before touching persistence', async () => {
+    await expect(service.update(USER_ID, BOARD_ID, {})).rejects.toMatchObject({
+      status: 400,
+      response: { code: 'VALIDATION_FAILED' },
+    });
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it('archives through one save without deleting relations and rejects further writes', async () => {
+    txBoards.findOne.mockResolvedValue(board);
+    txMembers.findOne.mockResolvedValue({ role: BoardMemberRole.OWNER });
+    board.members = [
+      Object.assign(new BoardMember(), { role: BoardMemberRole.OWNER }),
+    ];
+    const before = Date.now();
+    const result = await service.archive(USER_ID, BOARD_ID);
+    expect(result.isArchived).toBe(true);
+    expect(Date.parse(result.archivedAt!)).toBeGreaterThanOrEqual(before);
+    expect(board.members).toHaveLength(1);
+    expect(txBoards.save).toHaveBeenCalledTimes(1);
+    const archivedAt = board.archivedAt;
+    await expect(service.archive(USER_ID, BOARD_ID)).rejects.toMatchObject({
+      status: 409,
+      response: { code: 'BOARD_ARCHIVED' },
+    });
+    await expect(
+      service.update(USER_ID, BOARD_ID, { name: 'No' }),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(board.archivedAt).toBe(archivedAt);
+    expect(txBoards.save).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['update', 'archive'] as const)(
+    'enforces role, membership, existence and archive state on %s',
+    async (operation) => {
+      const execute = () =>
+        operation === 'update'
+          ? service.update(USER_ID, BOARD_ID, { name: 'Changed' })
+          : service.archive(USER_ID, BOARD_ID);
+      txBoards.findOne.mockResolvedValue(null);
+      await expect(execute()).rejects.toMatchObject({ status: 404 });
+      txBoards.findOne.mockResolvedValue(board);
+      txMembers.findOne.mockResolvedValue(null);
+      await expect(execute()).rejects.toMatchObject({ status: 404 });
+      txMembers.findOne.mockResolvedValue({ role: BoardMemberRole.MEMBER });
+      await expect(execute()).rejects.toMatchObject({ status: 403 });
+      txMembers.findOne.mockResolvedValue({ role: BoardMemberRole.OWNER });
+      board.isArchived = true;
+      await expect(execute()).rejects.toMatchObject({ status: 409 });
+      expect(txBoards.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['update', 'archive'] as const)(
+    'propagates persistence failures from %s',
+    async (operation) => {
+      txBoards.findOne.mockResolvedValue(board);
+      txMembers.findOne.mockResolvedValue({ role: BoardMemberRole.OWNER });
+      txBoards.save.mockRejectedValue(new Error('Persistence failed'));
+      const result =
+        operation === 'update'
+          ? service.update(USER_ID, BOARD_ID, { name: 'Changed' })
+          : service.archive(USER_ID, BOARD_ID);
+      await expect(result).rejects.toThrow('Persistence failed');
+    },
+  );
 });
