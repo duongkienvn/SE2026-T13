@@ -13,7 +13,6 @@ import request from 'supertest';
 import { BoardsController } from '../src/api/boards/boards.controller';
 import { BoardsService } from '../src/api/boards/boards.service';
 import { Board } from '../src/api/boards/entities/board.entity';
-import { BoardMember } from '../src/api/board-members/entities/board-member.entity';
 import { AuthService } from '../src/api/auth/auth.service';
 import { JwtAuthGuard } from '../src/api/auth/guards/jwt-auth.guard';
 import {
@@ -221,8 +220,8 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
         `Bearer ${await jwt.signAsync({ sub: OWNER }, { expiresIn: -1 })}`,
         `Bearer ${tokens[OWNER]}tampered`,
       ]) {
-        const response = await request(app.getHttpServer())
-          [method](path)
+        const client = request(app.getHttpServer());
+        const response = await client[method](path)
           .set('Authorization', authorization)
           .send({ name: 'Board' })
           .expect(401);

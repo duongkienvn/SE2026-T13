@@ -250,12 +250,10 @@ try {
   try {
     await runner.connect();
     await runner.startTransaction();
-    const locked = await runner.manager
-      .getRepository(Board)
-      .findOne({
-        where: { id: queued.id },
-        lock: { mode: 'pessimistic_write' },
-      });
+    const locked = await runner.manager.getRepository(Board).findOne({
+      where: { id: queued.id },
+      lock: { mode: 'pessimistic_write' },
+    });
     locked.isArchived = true;
     locked.archivedAt = new Date();
     await runner.manager.getRepository(Board).save(locked);
