@@ -5,6 +5,8 @@ export interface ActionMenuItem {
   label: string;
   onSelect: () => void;
   tone?: 'default' | 'danger';
+  /** When set, the item is shown but unavailable, with this reason under it. */
+  disabledReason?: string;
 }
 
 interface ActionMenuProps {
@@ -56,27 +58,43 @@ export function ActionMenu({ label, items, className = '' }: ActionMenuProps) {
       {open && (
         <ul
           id={panelId}
-          className="absolute top-full right-0 z-20 mt-1 w-44 rounded-xl border border-line bg-surface p-1.5 shadow-frame"
+          className="absolute top-full right-0 z-20 mt-1 w-60 rounded-xl border border-line bg-surface p-1.5 shadow-frame"
         >
-          {items.map((item) => (
-            <li key={item.label}>
-              <button
-                type="button"
-                onClick={() => {
-                  // Items unmount on close; keep focus on the trigger so a
-                  // dialog opened by the action can return focus there.
-                  buttonRef.current?.focus();
-                  setOpen(false);
-                  item.onSelect();
-                }}
-                className={`block w-full rounded-lg px-3 py-2 text-left text-[15px] hover:bg-app focus-visible:outline-2 focus-visible:outline-primary ${
-                  item.tone === 'danger' ? 'text-danger' : 'text-ink'
-                }`}
-              >
-                {item.label}
-              </button>
-            </li>
-          ))}
+          {items.map((item) => {
+            const disabled = !!item.disabledReason;
+            const reasonId = `${panelId}-${item.label.replace(/\W+/g, '-')}`;
+            return (
+              <li key={item.label}>
+                <button
+                  type="button"
+                  aria-disabled={disabled || undefined}
+                  aria-describedby={disabled ? reasonId : undefined}
+                  onClick={() => {
+                    if (disabled) return;
+                    // Items unmount on close; keep focus on the trigger so a
+                    // dialog opened by the action can return focus there.
+                    buttonRef.current?.focus();
+                    setOpen(false);
+                    item.onSelect();
+                  }}
+                  className={`block w-full rounded-lg px-3 py-2 text-left text-[15px] focus-visible:outline-2 focus-visible:outline-primary ${
+                    disabled
+                      ? 'cursor-not-allowed text-muted'
+                      : item.tone === 'danger'
+                        ? 'text-danger hover:bg-app'
+                        : 'text-ink hover:bg-app'
+                  }`}
+                >
+                  {item.label}
+                  {disabled && (
+                    <span id={reasonId} className="mt-0.5 block text-[13px]">
+                      {item.disabledReason}
+                    </span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

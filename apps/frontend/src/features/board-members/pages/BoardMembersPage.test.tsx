@@ -1,0 +1,321 @@
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import type { Board } from '../../boards/types';
+import { makeBoard, makeMember, okPage } from '../../../test/board-fixtures';
+import {
+  fail,
+  mockApi,
+  ok,
+  storeSession,
+  testUser,
+  type MockResponse,
+} from '../../../test/mock-api';
+import { renderApp } from '../../../test/render';
+import type { BoardMember } from '../types';
+
+type Handler = MockResponse | (() => MockResponse);
+
+const grace = {
+  id: '00000000-0000-4000-8000-000000000002',
+  email: 'grace@example.com',
+  displayName: 'Grace Hopper',
+  avatarUrl: null,
+};
+const alan = {
+  id: '00000000-0000-4000-8000-000000000003',
+  email: 'alan@example.com',
+  displayName: 'Alan Turing',
+  avatarUrl: null,
+};
+
+/** The signed-in test user created the board and is its only owner. */
+const me = makeMember({ role: 'OWNER', joinedAt: '2026-10-01T12:00:00.000Z' });
+const graceMember = makeMember({ user: grace, role: 'MEMBER' });
+
+function membersPath(board: Board) {
+  return `/boards/${board.id}/members`;
+}
+
+function openMembers(
+  board: Board,
+  members: BoardMember[] | Handler,
+  extra: Record<string, Handler> = {},
+) {
+  storeSession();
+  const calls = mockApi({
+    'GET /users/me': ok(testUser),
+    [`GET /boards/${board.id}`]: ok(board),
+    [`GET ${membersPath(board)}`]: Array.isArray(members)
+      ? ok(members)
+      : members,
+    ...extra,
+  });
+  const view = renderApp(membersPath(board));
+  return { calls, ...view };
+}
+
+/** Members handler that returns `before` first and `after` once refetched. */
+function changes(before: BoardMember[], after: BoardMember[]): Handler {
+  let calls = 0;
+  return () => {
+    calls += 1;
+    return ok(calls === 1 ? before : after);
+  };
+}
+
+describe('BoardMembersPage (as OWNER)', () => {
+  const board = makeBoard({ name: 'Design Team', currentUserRole: 'OWNER' });
+
+  it('lists members with role and join date, owners first', async () => {
+    openMembers(board, [graceMember, me]);
+
+    const table = await screen.findByRole('table', {
+      name: 'Members of Design Team',
+    });
+    const rows = within(table).getAllByRole('row').slice(1);
+    // Owners first: the signed-in owner, then the member.
+    expect(rows[0].textContent).toContain(`${testUser.displayName}(you)`);
+    expect(rows[1].textContent).toContain('Grace Hopper');
+    // Role column (a duplicate chip under the email is shown only on phones).
+    expect(within(rows[0]).getAllByRole('cell')[1].textContent).toBe('Owner');
+    expect(within(rows[1]).getAllByRole('cell')[1].textContent).toBe('Member');
+    expect(within(rows[0]).getByText('Oct 1, 2026')).toBeTruthy();
+    expect(document.title).toBe('Members · Design Team · Kanban');
+  });
+
+  it('highlights Board members in the sidebar', async () => {
+    openMembers(board, [me]);
+    const nav = await screen.findByRole('navigation', { name: 'Primary' });
+    await waitFor(() =>
+      expect(
+        within(nav)
+          .getByRole('button', { name: 'Board members' })
+          .getAttribute('aria-current'),
+      ).toBe('page'),
+    );
+    expect(
+      within(nav)
+        .getByRole('button', { name: 'Boards' })
+        .getAttribute('aria-current'),
+    ).toBeNull();
+  });
+
+  it('adds a registered user by email and refreshes the list', async () => {
+    const { calls } = openMembers(board, changes([me], [me, graceMember]), {
+      [`POST ${membersPath(board)}`]: ok(graceMember, 201),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add member' }));
+    const dialog = screen.getByRole('dialog', { name: 'Add member' });
+    fireEvent.change(within(dialog).getByLabelText('Email address'), {
+      target: { value: '  Grace@Example.com ' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add member' }));
+
+    expect((await screen.findByRole('status')).textContent).toContain(
+      'grace@example.com was added to the board.',
+    );
+    expect(calls.find((call) => call.method === 'POST')!.body).toEqual({
+      email: 'grace@example.com',
+    });
+    expect(await screen.findByText('Grace Hopper')).toBeTruthy();
+  });
+
+  it.each([
+    [404, 'USER_NOT_FOUND', 'No registered user has this email address.'],
+    [409, 'CONFLICT', 'This person is already a member of this board.'],
+  ])('explains a %s when adding', async (status, code, message) => {
+    openMembers(board, [me], {
+      [`POST ${membersPath(board)}`]: fail(status, code),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add member' }));
+    const dialog = screen.getByRole('dialog');
+    const email = within(dialog).getByLabelText('Email address');
+    fireEvent.change(email, { target: { value: 'someone@example.com' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add member' }));
+
+    expect(await within(dialog).findByText(message)).toBeTruthy();
+    expect(document.activeElement).toBe(email);
+  });
+
+  it('starts every add-member dialog with an empty form', async () => {
+    openMembers(board, [me]);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add member' }));
+    fireEvent.change(screen.getByLabelText('Email address'), {
+      target: { value: 'draft@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add member' }));
+
+    expect(
+      (screen.getByLabelText('Email address') as HTMLInputElement).value,
+    ).toBe('');
+  });
+
+  it('promotes a member to owner', async () => {
+    const { calls } = openMembers(
+      board,
+      changes([me, graceMember], [me, { ...graceMember, role: 'OWNER' }]),
+      {
+        [`PATCH ${membersPath(board)}/${grace.id}`]: ok({
+          ...graceMember,
+          role: 'OWNER',
+        }),
+      },
+    );
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Actions for Grace Hopper' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Make owner' }));
+
+    expect((await screen.findByRole('status')).textContent).toContain(
+      'Grace Hopper is now an owner.',
+    );
+    expect(calls.find((call) => call.method === 'PATCH')!.body).toEqual({
+      role: 'OWNER',
+    });
+  });
+
+  it('shows the server message when a role change is refused', async () => {
+    const coOwner = makeMember({ user: alan, role: 'OWNER' });
+    openMembers(board, [me, coOwner], {
+      [`PATCH ${membersPath(board)}/${alan.id}`]: fail(
+        409,
+        'LAST_OWNER',
+        'A board must keep at least one owner.',
+      ),
+    });
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Actions for Alan Turing' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Make member' }));
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'A board must keep at least one owner.',
+    );
+  });
+
+  it('blocks removing or demoting the board creator, with a reason', async () => {
+    openMembers(board, [me, makeMember({ user: alan, role: 'OWNER' })]);
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: `Actions for ${testUser.displayName}`,
+      }),
+    );
+    const leave = screen.getByRole('button', { name: /Leave board/ });
+    expect(leave.getAttribute('aria-disabled')).toBe('true');
+    expect(leave.textContent).toContain('The board creator can’t be removed.');
+    fireEvent.click(leave);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(
+      screen
+        .getByRole('button', { name: /Make member/ })
+        .getAttribute('aria-disabled'),
+    ).toBe('true');
+  });
+
+  it('removes a member after confirmation', async () => {
+    const { calls } = openMembers(board, changes([me, graceMember], [me]), {
+      [`DELETE ${membersPath(board)}/${grace.id}`]: { status: 204 },
+    });
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Actions for Grace Hopper' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from board' }));
+    const dialog = screen.getByRole('dialog', { name: 'Remove Grace Hopper?' });
+    expect(dialog.textContent).toContain('card assignments');
+
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Remove member' }),
+    );
+
+    expect((await screen.findByRole('status')).textContent).toContain(
+      'Grace Hopper was removed from the board.',
+    );
+    expect(calls.some((call) => call.method === 'DELETE')).toBe(true);
+    await waitFor(() => expect(screen.queryByText('Grace Hopper')).toBeNull());
+  });
+
+  it('returns to the boards list after leaving a board', async () => {
+    const shared = makeBoard({
+      name: 'Shared',
+      currentUserRole: 'OWNER',
+      createdById: alan.id,
+    });
+    const { router } = openMembers(
+      shared,
+      [makeMember({ user: alan, role: 'OWNER' }), me],
+      {
+        [`DELETE ${membersPath(shared)}/${testUser.id}`]: { status: 204 },
+        'GET /boards?page=1&limit=24': okPage([]),
+      },
+    );
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: `Actions for ${testUser.displayName}`,
+      }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Leave board' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Leave board',
+      }),
+    );
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/boards'));
+    expect((await screen.findByRole('status')).textContent).toContain(
+      'You left “Shared”.',
+    );
+  });
+
+  it('filters members by name or email', async () => {
+    openMembers(board, [me, graceMember]);
+    const search = await screen.findByRole('searchbox', {
+      name: 'Search members',
+    });
+
+    fireEvent.change(search, { target: { value: 'GRACE@' } });
+
+    const table = screen.getByRole('table');
+    expect(within(table).getByText('Grace Hopper')).toBeTruthy();
+    expect(within(table).queryByText(testUser.displayName)).toBeNull();
+  });
+});
+
+describe('BoardMembersPage (as MEMBER)', () => {
+  it('shows the list without any management controls', async () => {
+    const board = makeBoard({
+      currentUserRole: 'MEMBER',
+      createdById: alan.id,
+    });
+    openMembers(board, [
+      makeMember({ user: alan, role: 'OWNER' }),
+      makeMember({ role: 'MEMBER' }),
+    ]);
+
+    expect(await screen.findByRole('table')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Add member' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Actions for/ })).toBeNull();
+    expect(screen.queryByRole('columnheader', { name: 'Actions' })).toBeNull();
+  });
+});
+
+describe('BoardMembersPage errors', () => {
+  it('shows "Board not found" when access is denied', async () => {
+    const board = makeBoard();
+    openMembers(board, fail(403, 'FORBIDDEN'), {
+      [`GET /boards/${board.id}`]: fail(403, 'FORBIDDEN'),
+    });
+
+    expect(
+      await screen.findByRole('heading', { name: 'Board not found' }),
+    ).toBeTruthy();
+  });
+});

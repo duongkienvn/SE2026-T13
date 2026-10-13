@@ -19,3 +19,14 @@ export function formatRelativeTime(iso: string, now = Date.now()): string {
   }
   return 'just now';
 }
+
+const dateFormat = new Intl.DateTimeFormat('en', {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+});
+
+/** "Oct 12, 2026" — from an ISO timestamp. */
+export function formatDate(iso: string): string {
+  return dateFormat.format(new Date(iso));
+}
