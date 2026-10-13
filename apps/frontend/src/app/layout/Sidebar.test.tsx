@@ -1,11 +1,23 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { FolderIcon, SettingsIcon } from '../../components/icons';
 import { Sidebar } from './Sidebar';
 
-afterEach(cleanup);
-
 describe('Sidebar', () => {
+  it('never marks the current page as coming soon', () => {
+    render(
+      <Sidebar
+        primaryItems={[{ id: 'boards', label: 'Boards', icon: FolderIcon }]}
+        secondaryItems={[]}
+        activeItemId="boards"
+      />,
+    );
+
+    const boards = screen.getByRole('button', { name: 'Boards' });
+    expect(boards.getAttribute('aria-current')).toBe('page');
+    expect(boards.getAttribute('aria-disabled')).toBeNull();
+  });
+
   it('enables items with a handler and highlights the active item', () => {
     const onSelect = vi.fn();
     render(
