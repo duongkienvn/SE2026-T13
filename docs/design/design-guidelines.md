@@ -9,13 +9,13 @@
 
 Use the five unmodified images in `docs/design/screens/` as visual acceptance baselines:
 
-| File | Target screen | Source image dimensions |
-| --- | --- | --- |
-| `screens/login.png` | Login | 1672 × 941 |
-| `screens/boards.png` | Boards list | 1672 × 941 |
-| `screens/kanban-board.png` | Kanban board / columns / cards | 2048 × 1283 |
-| `screens/card-detail.png` | Card detail modal | 1672 × 941 |
-| `screens/team-members.png` | Member-management page | 1672 × 941 |
+| File                       | Target screen                  | Source image dimensions |
+| -------------------------- | ------------------------------ | ----------------------- |
+| `screens/login.png`        | Login                          | 1672 × 941              |
+| `screens/boards.png`       | Boards list                    | 1672 × 941              |
+| `screens/kanban-board.png` | Kanban board / columns / cards | 2048 × 1283             |
+| `screens/card-detail.png`  | Card detail modal              | 1672 × 941              |
+| `screens/team-members.png` | Member-management page         | 1672 × 941              |
 
 Each screenshot is an **approved UI target**, not a substitute for actual React components or working business behavior. Do not independently redesign, replace with generic admin dashboards, or use the screenshots as flat background images in the app.
 
@@ -48,16 +48,16 @@ The images consistently establish:
 
 These are a **starting point for visual matching**, not an exact comprehensive design-token extraction:
 
-| Token | Initial value | Role |
-| --- | --- | --- |
-| `--color-primary` | `#615CF7` | Major button / active icon |
-| `--color-primary-strong` | `#6058F9` | Primary emphasis |
-| `--color-bg-app` | `#F7F7F9` | Main app background |
-| `--color-surface` | `#FFFFFF` | Panels/cards |
-| `--color-outer-frame` | `#E5E8F9` | Lavender surrounding surface |
-| `--color-text-primary` | `#172038` | Heading (approx.) |
-| `--color-text-muted` | `#6E7891` | Secondary text (approx.) |
-| `--color-border` | `#E4E8F1` | Soft borders (approx.) |
+| Token                    | Initial value | Role                         |
+| ------------------------ | ------------- | ---------------------------- |
+| `--color-primary`        | `#615CF7`     | Major button / active icon   |
+| `--color-primary-strong` | `#6058F9`     | Primary emphasis             |
+| `--color-bg-app`         | `#F7F7F9`     | Main app background          |
+| `--color-surface`        | `#FFFFFF`     | Panels/cards                 |
+| `--color-outer-frame`    | `#E5E8F9`     | Lavender surrounding surface |
+| `--color-text-primary`   | `#172038`     | Heading (approx.)            |
+| `--color-text-muted`     | `#6E7891`     | Secondary text (approx.)     |
+| `--color-border`         | `#E4E8F1`     | Soft borders (approx.)       |
 
 Refine tokens through side-by-side comparison with the source images. Avoid inventing a conflicting color system. The font family cannot be verified from screenshots alone; choose one consistent, similar sans-serif family rather than asserting an exact original font.
 
@@ -95,7 +95,7 @@ These are measured design guides, not hard-coded fixed dimensions. Use CSS grid/
 - Match top toolbar, narrow rail, four-column desktop layout, soft gray column backgrounds, compact white cards, inline add controls and avatar alignment.
 - The **number of columns is data-driven**, not hard-coded to the four headings in the screenshot.
 - Card positions and column positions come from backend-persisted ordering once the relevant features exist.
-- Screenshot shows **priority badges** and some attachment icons. Priority/attachments are *not* current MVP domains; do not implement those business features without scope approval.
+- Screenshot shows **priority badges** and some attachment icons. Priority/attachments are _not_ current MVP domains; do not implement those business features without scope approval.
 
 ### D. `card-detail.png`
 
