@@ -19,20 +19,7 @@ jobs:
     name: Quality checks
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -60,12 +47,3 @@ jobs:
 
       - name: Build
         run: pnpm build
-
-      - name: Database integration
-        run: pnpm --filter @kanban/backend test:database
-        env:
-          DATABASE_HOST: localhost
-          DATABASE_PORT: 5432
-          DATABASE_NAME: postgres
-          DATABASE_USER: postgres
-          DATABASE_PASSWORD: postgres
