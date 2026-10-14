@@ -12,6 +12,7 @@ import { Logger } from 'nestjs-pino';
 import request from 'supertest';
 import { BoardsController } from '../src/api/boards/boards.controller';
 import { BoardsService } from '../src/api/boards/boards.service';
+import { BoardAuthorizationService } from '../src/api/board-members/board-authorization.service';
 import { Board } from '../src/api/boards/entities/board.entity';
 import { AuthService } from '../src/api/auth/auth.service';
 import { JwtAuthGuard } from '../src/api/auth/guards/jwt-auth.guard';
@@ -83,6 +84,7 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
       controllers: [BoardsController],
       providers: [
         BoardsService,
+        BoardAuthorizationService,
         AuthService,
         JwtAuthGuard,
         { provide: 'BoardRepository', useValue: boards },

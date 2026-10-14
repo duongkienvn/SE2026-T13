@@ -25,6 +25,9 @@ const { AuthService } = require('../src/api/auth/auth.service.ts');
 const { JwtAuthGuard } = require('../src/api/auth/guards/jwt-auth.guard.ts');
 const { BoardsService } = require('../src/api/boards/boards.service.ts');
 const { BoardsController } = require('../src/api/boards/boards.controller.ts');
+const {
+  BoardMembersController,
+} = require('../src/api/board-members/board-members.controller.ts');
 const { AppModule } = require('../src/app.module.ts');
 const { configureHttpApplication } = require('../src/http-application.ts');
 const request = require('supertest');
@@ -48,12 +51,23 @@ try {
   assert.ok(app.get(JwtAuthGuard) instanceof JwtAuthGuard);
   assert.ok(app.get(BoardsService) instanceof BoardsService);
   assert.ok(app.get(BoardsController) instanceof BoardsController);
+  assert.ok(app.get(BoardMembersController) instanceof BoardMembersController);
   for (const [method, path] of [
     ['post', '/api/boards'],
     ['get', '/api/boards'],
     ['get', '/api/boards/c6ba7134-97ef-4c1b-a342-001a982a7721'],
     ['patch', '/api/boards/c6ba7134-97ef-4c1b-a342-001a982a7721'],
     ['post', '/api/boards/c6ba7134-97ef-4c1b-a342-001a982a7721/archive'],
+    ['get', '/api/boards/c6ba7134-97ef-4c1b-a342-001a982a7721/members'],
+    ['post', '/api/boards/c6ba7134-97ef-4c1b-a342-001a982a7721/members'],
+    [
+      'patch',
+      '/api/boards/c6ba7134-97ef-4c1b-a342-001a982a7721/members/c6ba7134-97ef-4c1b-a342-001a982a7721',
+    ],
+    [
+      'delete',
+      '/api/boards/c6ba7134-97ef-4c1b-a342-001a982a7721/members/c6ba7134-97ef-4c1b-a342-001a982a7721',
+    ],
   ]) {
     await request(app.getHttpServer())[method](path).expect(401);
   }
