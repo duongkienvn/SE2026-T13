@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { BoardMember } from '../board-members/entities/board-member.entity';
 import { Board } from './entities/board.entity';
 import { BoardMemberRole } from '../../common/enums/database-enums';
@@ -16,6 +16,7 @@ import { paginateQueryBuilder } from '../../utils/offset-pagination';
 import { ApplicationException } from '../../exceptions/application.exception';
 import { ErrorCode } from '../../common/dto/api-error';
 import { UpdateBoardDto } from './dto/update-board.dto';
+import { BoardAuthorizationService } from '../board-members/board-authorization.service';
 
 @Injectable()
 export class BoardsService {
@@ -23,14 +24,15 @@ export class BoardsService {
     @InjectRepository(Board) private readonly boards: Repository<Board>,
     @InjectRepository(BoardMember)
     private readonly members: Repository<BoardMember>,
+    private readonly authorization: BoardAuthorizationService,
   ) {}
 
   async archive(userId: string, boardId: string): Promise<BoardResponseDto> {
     return this.boards.manager.transaction(async (manager) => {
-      const { board, member } = await this.findMutableBoard(
-        manager,
+      const { board, member } = await this.authorization.requireMutableOwner(
         userId,
         boardId,
+        manager,
       );
       board.isArchived = true;
       board.archivedAt = new Date();
@@ -55,10 +57,10 @@ export class BoardsService {
       );
     }
     return this.boards.manager.transaction(async (manager) => {
-      const { board, member } = await this.findMutableBoard(
-        manager,
+      const { board, member } = await this.authorization.requireMutableOwner(
         userId,
         boardId,
+        manager,
       );
       if (input.name !== undefined) board.name = input.name;
       if (input.description !== undefined)
@@ -70,45 +72,12 @@ export class BoardsService {
     });
   }
 
-  private async findMutableBoard(
-    manager: EntityManager,
-    userId: string,
-    boardId: string,
-  ): Promise<{ board: Board; member: BoardMember }> {
-    // Serialize writes with archive so a waiting update sees the committed archived state.
-    const board = await manager.getRepository(Board).findOne({
-      where: { id: boardId },
-      lock: { mode: 'pessimistic_write' },
-    });
-    if (!board) throw this.notFound();
-    const member = await manager
-      .getRepository(BoardMember)
-      .findOne({ where: { boardId, userId } });
-    if (!member) throw this.notFound();
-    if (member.role !== BoardMemberRole.OWNER) {
-      throw new ApplicationException(
-        HttpStatus.FORBIDDEN,
-        ErrorCode.FORBIDDEN,
-        'Only the board OWNER can perform this operation',
-      );
-    }
-    if (board.isArchived) {
-      throw new ApplicationException(
-        HttpStatus.CONFLICT,
-        'BOARD_ARCHIVED',
-        'Archived boards cannot be modified',
-      );
-    }
-    return { board, member };
-  }
-
   async getDetail(userId: string, boardId: string): Promise<BoardResponseDto> {
-    const member = await this.members.findOne({
-      where: { boardId, userId },
-      relations: { board: true },
-    });
-    if (!member) throw this.notFound();
-    return toBoardResponseDto(member.board, member.role);
+    const { board, member } = await this.authorization.requireMember(
+      userId,
+      boardId,
+    );
+    return toBoardResponseDto(board, member.role);
   }
 
   private notFound(): ApplicationException {
