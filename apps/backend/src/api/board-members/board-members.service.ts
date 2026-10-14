@@ -112,6 +112,13 @@ export class BoardMembersService {
       });
       if (!member) throw this.memberNotFound();
       if (
+        member.userId === actorId &&
+        member.role === BoardMemberRole.OWNER &&
+        input.role !== BoardMemberRole.OWNER
+      ) {
+        throw this.selfDemotionConflict();
+      }
+      if (
         member.userId === board.createdById &&
         input.role !== BoardMemberRole.OWNER
       ) {
@@ -223,6 +230,14 @@ export class BoardMembersService {
       HttpStatus.CONFLICT,
       ErrorCode.CONFLICT,
       'Owners cannot remove themselves through this endpoint',
+    );
+  }
+
+  private selfDemotionConflict(): ApplicationException {
+    return new ApplicationException(
+      HttpStatus.CONFLICT,
+      ErrorCode.CONFLICT,
+      'Owners cannot demote themselves through this endpoint',
     );
   }
 }

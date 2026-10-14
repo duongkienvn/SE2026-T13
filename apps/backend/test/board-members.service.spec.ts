@@ -139,6 +139,34 @@ describe('BoardMembersService', () => {
     expect(txMembers.save).not.toHaveBeenCalled();
   });
 
+  it('rejects an OWNER demoting themself when they are not the creator', async () => {
+    const nonCreatorBoard = Object.assign(new Board(), board, {
+      createdById: TARGET_ID,
+    });
+    const owner = Object.assign(new BoardMember(), {
+      userId: ACTOR_ID,
+      role: BoardMemberRole.OWNER,
+      user: target,
+    });
+    authorization.requireMutableOwner.mockResolvedValueOnce({
+      board: nonCreatorBoard,
+      member: { role: BoardMemberRole.OWNER },
+    });
+    txMembers.findOne.mockResolvedValue(owner);
+    txMembers.count.mockResolvedValue(2);
+
+    await expect(
+      service.updateRole(ACTOR_ID, BOARD_ID, ACTOR_ID, {
+        role: BoardMemberRole.MEMBER,
+      }),
+    ).rejects.toMatchObject({
+      status: 409,
+      message: 'Owners cannot demote themselves through this endpoint',
+    });
+    expect(txMembers.count).not.toHaveBeenCalled();
+    expect(txMembers.save).not.toHaveBeenCalled();
+  });
+
   it('promotes a member and allows demotion while another OWNER remains', async () => {
     const member = Object.assign(new BoardMember(), {
       id: 'member-row',
