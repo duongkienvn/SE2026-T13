@@ -8,6 +8,10 @@ import { resolve } from 'node:path';
 import { HealthController } from './api/health/health.controller';
 import { HealthService } from './api/health/health.service';
 import { ReadinessService } from './api/health/readiness.service';
+import { AuthModule } from './api/auth/auth.module';
+import { UsersModule } from './api/users/users.module';
+import { BoardsModule } from './api/boards/boards.module';
+import { BoardMembersModule } from './api/board-members/board-members.module';
 import { databaseOptions } from './database/database-options';
 import { EnvironmentConfig, validateEnvironment } from './config/environment';
 import { loggerOptions } from './logging/logger-options';
@@ -20,6 +24,10 @@ import { HttpThrottlerGuard } from './guards/http-throttler.guard';
       envFilePath: resolve(process.cwd(), '../../.env'),
       validate: validateEnvironment,
     }),
+    AuthModule,
+    UsersModule,
+    BoardsModule,
+    BoardMembersModule,
     LoggerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService<EnvironmentConfig, true>) =>
