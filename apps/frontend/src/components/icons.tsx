@@ -110,6 +110,22 @@ export function ChevronDownIcon(props: IconProps) {
   );
 }
 
+export function ChevronLeftIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="m15 18-6-6 6-6" />
+    </StrokeSvg>
+  );
+}
+
+export function ChevronRightIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="m9 18 6-6-6-6" />
+    </StrokeSvg>
+  );
+}
+
 export function CheckCircleIcon(props: IconProps) {
   return (
     <Svg {...props}>
@@ -189,6 +205,83 @@ export function SpinnerIcon(props: IconProps) {
         stroke="currentColor"
         strokeWidth="2.5"
         strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+export function SearchIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="m20 20-4.2-4.2" />
+    </StrokeSvg>
+  );
+}
+
+export function PlusIcon(props: IconProps) {
+  return (
+    <StrokeSvg strokeWidth="2.2" {...props}>
+      <path d="M12 5v14M5 12h14" />
+    </StrokeSvg>
+  );
+}
+
+export function ClockIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </StrokeSvg>
+  );
+}
+
+export function MoreVerticalIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="5.5" r="1.8" />
+      <circle cx="12" cy="12" r="1.8" />
+      <circle cx="12" cy="18.5" r="1.8" />
+    </Svg>
+  );
+}
+
+export function MonitorIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path
+        fillRule="evenodd"
+        d="M4.5 4h15A2.5 2.5 0 0 1 22 6.5v9a2.5 2.5 0 0 1-2.5 2.5h-6v1.5H16a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h2.5V18h-6A2.5 2.5 0 0 1 2 15.5v-9A2.5 2.5 0 0 1 4.5 4zm0 2a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5z"
+      />
+    </Svg>
+  );
+}
+
+export function MegaphoneIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M19 4.2v15.6a1 1 0 0 1-1.5.87L12.4 17H8.5l.9 3.6a1 1 0 0 1-1 1.4h-1a1 1 0 0 1-.97-.76L5.3 17H5a3 3 0 0 1-3-3v-4a3 3 0 0 1 3-3h7.4l5.1-3.67A1 1 0 0 1 19 4.2z" />
+      <path d="M21 9.5a1 1 0 0 1 1 1v3a1 1 0 1 1-2 0v-3a1 1 0 0 1 1-1z" />
+    </Svg>
+  );
+}
+
+export function BarChartIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="4" y="12" width="4" height="8" rx="1.2" />
+      <rect x="10" y="8" width="4" height="12" rx="1.2" />
+      <rect x="16" y="4" width="4" height="16" rx="1.2" />
+    </Svg>
+  );
+}
+
+export function BriefcaseIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path
+        fillRule="evenodd"
+        d="M9 3h6a2 2 0 0 1 2 2v1h2.5A2.5 2.5 0 0 1 22 8.5v10a2.5 2.5 0 0 1-2.5 2.5h-15A2.5 2.5 0 0 1 2 18.5v-10A2.5 2.5 0 0 1 4.5 6H7V5a2 2 0 0 1 2-2zm0 3h6V5H9zM4 12.2v6.3a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-6.3A20 20 0 0 1 13 13.4V14a1 1 0 0 1-2 0v-.6a20 20 0 0 1-7-1.2zm0-2.15a18 18 0 0 0 16 0V8.5a.5.5 0 0 0-.5-.5h-15a.5.5 0 0 0-.5.5z"
       />
     </Svg>
   );

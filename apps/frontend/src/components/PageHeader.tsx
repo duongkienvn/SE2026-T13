@@ -14,7 +14,13 @@ export function PageHeader({ title, description, actions }: PageHeaderProps) {
           {title}
         </h1>
         {description && (
-          <p className="mt-1 text-sm text-muted md:text-[15px]">
+          // Clamped so a long board description can't push the page into
+          // scrolling; the full text stays available as a tooltip and to
+          // screen readers.
+          <p
+            title={description}
+            className="mt-1 line-clamp-2 text-sm text-muted md:text-[15px]"
+          >
             {description}
           </p>
         )}

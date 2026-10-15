@@ -2,7 +2,9 @@ import type { RouteObject } from 'react-router';
 import { LoginPage } from '../features/auth/pages/LoginPage';
 import { ProfilePage } from '../features/auth/pages/ProfilePage';
 import { RegisterPage } from '../features/auth/pages/RegisterPage';
-import { BoardsPage } from '../pages/BoardsPage';
+import { BoardMembersPage } from '../features/board-members/pages/BoardMembersPage';
+import { BoardDetailPage } from '../features/boards/pages/BoardDetailPage';
+import { BoardsPage } from '../features/boards/pages/BoardsPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { RouteErrorPage } from '../pages/RouteErrorPage';
 import { PublicOnly, RequireAuth, RootRedirect } from './guards';
@@ -28,6 +30,11 @@ export const routes: RouteObject[] = [
             element: <AuthenticatedLayout />,
             children: [
               { path: 'boards', element: <BoardsPage /> },
+              { path: 'boards/:boardId', element: <BoardDetailPage /> },
+              {
+                path: 'boards/:boardId/members',
+                element: <BoardMembersPage />,
+              },
               { path: 'profile', element: <ProfilePage /> },
             ],
           },

@@ -105,6 +105,8 @@ The reference images were drawn at about 1672 px wide, so copying their pixel si
 - Login and register share one frame that follows the viewport height (at most 600 px); the register password fields sit side by side from the `sm` breakpoint. The form column omits the duplicate brand on large screens because the side panel already shows it.
 - `short:` is a custom Tailwind variant (`max-height: 640px`, defined in `apps/frontend/src/style.css`) that tightens vertical spacing on short viewports.
 - When data does not fit (for example many boards or members), use numbered pagination sized to the available space instead of scrolling or "Load more".
+- Board cards use a compact row layout (icon beside the title, role chip and update time under it, then a two-line description) at a fixed 136 px height, instead of the taller icon-on-top card in `boards.png`, so two rows fit on a 1366×657 laptop. Long board descriptions in page headers are clamped to two lines.
+- Row action menus ("⋮") open upwards when there is no room below, so they never make the content area scroll.
 - Verify new screens at 1280×600, 1366×657, 1536×730, 1920×945 and 390×844, including error states.
 
 ## 3. Screen-by-screen contract

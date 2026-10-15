@@ -10,7 +10,7 @@ import { TextField } from '../../../components/TextField';
 import { login } from '../api';
 import { AuthLayout } from '../components/AuthLayout';
 import { AuthSwitch } from '../components/AuthSwitch';
-import { toFormErrors } from '../errors';
+import { toFormErrors } from '../../../lib/form-errors';
 import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
 import { usePageTitle } from '../../../hooks/usePageTitle';
 import { useAuth } from '../useAuth';
@@ -38,8 +38,9 @@ export function LoginPage() {
   useEffect(() => {
     if (!state?.registeredEmail) return;
     const remaining: RedirectState = state.from ? { from: state.from } : {};
-    navigate(location.pathname, { replace: true, state: remaining });
-  }, [state, location.pathname, navigate]);
+    const { pathname, search, hash } = location;
+    navigate({ pathname, search, hash }, { replace: true, state: remaining });
+  }, [state, location, navigate]);
 
   const mutation = useMutation({
     mutationFn: login,

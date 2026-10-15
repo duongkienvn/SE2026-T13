@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { mockApi, ok, storeSession, testUser } from '../test/mock-api';
 import { renderApp } from '../test/render';
 
-vi.mock('./BoardsPage', () => ({
+vi.mock('../features/boards/pages/BoardsPage', () => ({
   BoardsPage: () => {
     throw new Error('secret internal failure at BoardsPage.tsx:12');
   },
