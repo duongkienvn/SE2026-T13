@@ -15,6 +15,7 @@ describe('BoardRoomService', () => {
   const isActive = jest.fn();
   let service: BoardRoomService;
   let socket: RealtimeSocket;
+  let coordinator: BoardRoomCoordinator;
   beforeEach(() => {
     jest.resetAllMocks();
     requireMember.mockResolvedValue({ board: { isArchived: true } });
@@ -24,10 +25,11 @@ describe('BoardRoomService', () => {
       join: jest.fn(),
       leave: jest.fn(),
     } as unknown as RealtimeSocket;
+    coordinator = new BoardRoomCoordinator();
     service = new BoardRoomService(
       { requireMember } as unknown as BoardAuthorizationService,
       { isActive } as unknown as RealtimeAuthService,
-      new BoardRoomCoordinator(),
+      coordinator,
     );
   });
 
@@ -82,6 +84,39 @@ describe('BoardRoomService', () => {
       service.join(socket, { boardId: BOARD }),
     ).resolves.toMatchObject({ code: 'UNAUTHORIZED' });
     expect(socket.join).not.toHaveBeenCalled();
+  });
+
+  it('orders removal after a join whose authorization is already in flight', async () => {
+    const order: string[] = [];
+    let release!: () => void;
+    let checked!: () => void;
+    const reading = new Promise<void>((resolve) => (checked = resolve));
+    const barrier = new Promise<void>((resolve) => (release = resolve));
+    requireMember.mockImplementationOnce(async () => {
+      checked();
+      await barrier;
+    });
+    (socket.join as jest.Mock).mockImplementation(() => order.push('join'));
+    const joining = service.join(socket, { boardId: BOARD });
+    await reading;
+    const removal = coordinator.run(BOARD, () =>
+      order.push('commit and evict'),
+    );
+    const broadcast = coordinator.run(BOARD, () => order.push('broadcast'));
+    expect(order).toEqual([]);
+    release();
+    await Promise.all([joining, removal, broadcast]);
+    expect(order).toEqual(['join', 'commit and evict', 'broadcast']);
+  });
+
+  it('removes a late room join when the socket disconnects during adapter work', async () => {
+    (socket.join as jest.Mock).mockImplementation(() =>
+      isActive.mockReturnValue(false),
+    );
+    await expect(
+      service.join(socket, { boardId: BOARD }),
+    ).resolves.toMatchObject({ code: 'UNAUTHORIZED' });
+    expect(socket.leave).toHaveBeenCalledWith(`board:${BOARD}`);
   });
 
   it('leaves exactly the requested board and tolerates repeated leave', async () => {

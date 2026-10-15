@@ -24,6 +24,12 @@ const { DataSource } = require('typeorm');
 const argon2 = require('argon2');
 const { AppModule } = require('../src/app.module.ts');
 const { configureHttpApplication } = require('../src/http-application.ts');
+const {
+  RealtimeAuthService,
+} = require('../src/realtime/realtime-auth.service.ts');
+const {
+  BoardRoomCoordinator,
+} = require('../src/realtime/board-room-coordinator.service.ts');
 const passwordHash = await argon2.hash('realtime-test-password');
 const users = new Map(
   ['owner', 'member', 'other'].map((name) => [
@@ -146,6 +152,8 @@ const module = await Test.createTestingModule({ imports: [AppModule] })
   .useValue(source)
   .compile();
 const app = module.createNestApplication();
+const socketAuth = app.get(RealtimeAuthService);
+const coordinator = app.get(BoardRoomCoordinator);
 try {
   configureHttpApplication(app);
   await app.listen(0, '127.0.0.1');
@@ -156,4 +164,6 @@ try {
   );
 } finally {
   await app.close();
+  assert.equal(socketAuth.timers.size, 0);
+  assert.equal(coordinator.server, undefined);
 }
