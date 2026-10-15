@@ -27,6 +27,7 @@ import { useAuth } from '../../auth/useAuth';
 import { RoleChip } from '../../boards/components/RoleChip';
 import { useBoard } from '../../boards/hooks';
 import {
+  ArchivedBoardNotice,
   BoardUnavailable,
   isBoardUnavailable,
 } from '../../boards/pages/BoardDetailPage';
@@ -183,10 +184,15 @@ export function BoardMembersPage() {
         }
       />
 
-      {(notice || actionError) && (
+      {(notice || actionError || boardData.isArchived) && (
         <div className="mt-4 space-y-3">
           {notice && <Alert variant="success">{notice}</Alert>}
-          {actionError && <Alert variant="error">{actionError}</Alert>}
+          {/* Once the board shows as archived, its notice explains any refusal. */}
+          {boardData.isArchived ? (
+            <ArchivedBoardNotice />
+          ) : (
+            actionError && <Alert variant="error">{actionError}</Alert>
+          )}
         </div>
       )}
 

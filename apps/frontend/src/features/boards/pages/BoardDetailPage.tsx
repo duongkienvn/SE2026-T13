@@ -26,6 +26,14 @@ export function isBoardUnavailable(error: unknown): boolean {
   return isApiError(error) && (error.status === 403 || error.status === 404);
 }
 
+export function ArchivedBoardNotice() {
+  return (
+    <Alert variant="error">
+      This board is archived. It can be viewed but no longer changed.
+    </Alert>
+  );
+}
+
 export function BoardUnavailable() {
   return (
     <EmptyState
@@ -117,11 +125,7 @@ export function BoardDetailPage() {
 
       <div className="mt-4 space-y-3">
         {notice && <Alert variant="success">{notice}</Alert>}
-        {data.isArchived && (
-          <Alert variant="error">
-            This board is archived. It can be viewed but no longer changed.
-          </Alert>
-        )}
+        {data.isArchived && <ArchivedBoardNotice />}
       </div>
 
       <div className="mt-5">

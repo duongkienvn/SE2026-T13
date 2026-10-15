@@ -396,6 +396,21 @@ describe('BoardMembersPage (as MEMBER)', () => {
   });
 });
 
+describe('BoardMembersPage (archived board)', () => {
+  it('says the board is read-only and hides management controls', async () => {
+    const board = makeBoard({ currentUserRole: 'OWNER', isArchived: true });
+    openMembers(board, [me, graceMember]);
+
+    expect(
+      await screen.findByText(
+        'This board is archived. It can be viewed but no longer changed.',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Add member' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Actions for/ })).toBeNull();
+  });
+});
+
 describe('BoardMembersPage errors', () => {
   it.each(['/boards/abc', '/boards/abc/members'])(
     'sends anonymous visitors from %s to login without requesting board data',
@@ -479,9 +494,13 @@ describe('BoardMembersPage edge cases', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Make owner' }));
 
-    expect((await screen.findByRole('alert')).textContent).toContain(
-      'This board has been archived, so it can no longer be changed.',
-    );
+    // The refusal refreshes the board, whose archived notice replaces the error.
+    expect(
+      await screen.findByText(
+        'This board is archived. It can be viewed but no longer changed.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: 'Add member' })).toBeNull(),
     );
