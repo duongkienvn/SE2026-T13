@@ -19,6 +19,9 @@ describe('formatRelativeTime', () => {
 
 describe('formatDate', () => {
   it('formats an ISO timestamp as a short date', () => {
-    expect(formatDate('2026-10-12T12:00:00.000Z')).toBe('Oct 12, 2026');
+    // Local noon, so the calendar date is the same in every time zone.
+    expect(formatDate(new Date(2026, 9, 12, 12).toISOString())).toBe(
+      'Oct 12, 2026',
+    );
   });
 });

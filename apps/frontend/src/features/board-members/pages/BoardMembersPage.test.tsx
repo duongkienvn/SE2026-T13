@@ -29,7 +29,11 @@ const alan = {
 };
 
 /** The signed-in test user created the board and is its only owner. */
-const me = makeMember({ role: 'OWNER', joinedAt: '2026-10-01T12:00:00.000Z' });
+// Joined at local noon, so the shown date doesn't depend on the time zone.
+const me = makeMember({
+  role: 'OWNER',
+  joinedAt: new Date(2026, 9, 1, 12).toISOString(),
+});
 const graceMember = makeMember({ user: grace, role: 'MEMBER' });
 
 function membersPath(board: Board) {
@@ -173,6 +177,28 @@ describe('BoardMembersPage (as OWNER)', () => {
 
     expect(await within(dialog).findByText(message)).toBeTruthy();
     expect(document.activeElement).toBe(email);
+  });
+
+  it('clears an add-member error once the email is edited', async () => {
+    openMembers(board, [me], {
+      [`POST ${membersPath(board)}`]: fail(404, 'NOT_FOUND'),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add member' }));
+    const dialog = screen.getByRole('dialog');
+    const email = within(dialog).getByLabelText('Email address');
+    fireEvent.change(email, { target: { value: 'nobody@example.com' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add member' }));
+    await within(dialog).findByText(
+      'No registered user has this email address.',
+    );
+
+    fireEvent.change(email, { target: { value: 'grace@example.com' } });
+
+    expect(
+      within(dialog).queryByText('No registered user has this email address.'),
+    ).toBeNull();
+    expect(email.getAttribute('aria-invalid')).not.toBe('true');
   });
 
   it('does not call an archived board a duplicate member', async () => {

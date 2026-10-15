@@ -94,7 +94,12 @@ export function AddMemberDialog({
           placeholder="teammate@company.com"
           icon={<MailIcon />}
           value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          onChange={(event) => {
+            setEmail(event.target.value);
+            // An error about the old address no longer applies.
+            setEmailError(undefined);
+            setFormError(undefined);
+          }}
           error={emailError}
           data-autofocus
         />

@@ -95,7 +95,8 @@ export function BoardsPage() {
         description="Organize your work with Kanban boards for different projects and teams."
         actions={
           <>
-            {loaded.length > 0 && (
+            {/* Keep the box while a query is active, so it can always be cleared. */}
+            {(loaded.length > 0 || search) && (
               <SearchField
                 label="Search boards"
                 placeholder="Search boards..."

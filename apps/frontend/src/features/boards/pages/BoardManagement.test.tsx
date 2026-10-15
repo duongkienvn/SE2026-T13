@@ -209,6 +209,34 @@ describe('edit and archive board', () => {
     );
   });
 
+  it('keeps an active search clearable after the last board is archived', async () => {
+    const board = makeBoard({ name: 'Old project' });
+    openBoards({
+      [LIST]: listThatChanges([board], []),
+      [`POST /boards/${board.id}/archive`]: ok({ ...board, isArchived: true }),
+    });
+
+    fireEvent.change(
+      await screen.findByRole('searchbox', { name: 'Search boards' }),
+      { target: { value: 'old' } },
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Old project' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Archive board' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Archive board',
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('link', { name: 'Old project' })).toBeNull(),
+    );
+
+    const search = screen.getByRole('searchbox', { name: 'Search boards' });
+    expect((search as HTMLInputElement).value).toBe('old');
+  });
+
   it('shows a permission error when the server refuses to archive', async () => {
     const board = makeBoard({ name: 'Shared' });
     openBoards({

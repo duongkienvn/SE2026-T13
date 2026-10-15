@@ -1,4 +1,10 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  type ReactNode,
+} from 'react';
 import { createPortal } from 'react-dom';
 
 interface DialogProps {
@@ -30,9 +36,12 @@ export function Dialog({
   const titleId = useId();
   const descriptionId = useId();
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
   const dismissibleRef = useRef(dismissible);
-  dismissibleRef.current = dismissible;
+  // Keep the latest props for the keydown listener, updated after commit.
+  useLayoutEffect(() => {
+    onCloseRef.current = onClose;
+    dismissibleRef.current = dismissible;
+  });
 
   useEffect(() => {
     if (!open) return;
