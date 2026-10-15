@@ -109,7 +109,7 @@ try {
   configureHttpApplication(app);
   await app.listen(0, '127.0.0.1');
   const count = await runRealtimeChecks(app, source);
-  assert.equal(count, 14);
+  assert.equal(count, 15);
   assert.equal(
     await members.countBy({ boardId: ids.a, userId: ids.member }),
     0,

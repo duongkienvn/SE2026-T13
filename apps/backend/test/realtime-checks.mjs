@@ -405,6 +405,38 @@ export async function runRealtimeChecks(app, source) {
     await flush([owner, member]);
     assert.deepEqual(received.get(owner), beforeOwner);
     check('client cannot invoke generic server-side broadcast');
+
+    // Exhaust the user's window using both event types and different boards.
+    for (let index = 0; index < 60; index++) {
+      const boardId = `${index.toString(16).padStart(8, '0')}${ids.empty.slice(8)}`;
+      const result = await ack(
+        index % 2 ? other : unauthorized,
+        index % 2 ? 'board:join' : 'board:leave',
+        { boardId },
+      );
+      assert.ok(
+        result.success ||
+          ['NOT_FOUND', 'TOO_MANY_REQUESTS'].includes(result.code),
+      );
+    }
+    const burst = await Promise.all(
+      Array.from({ length: 100 }, (_, index) =>
+        ack(
+          index % 2 ? other : unauthorized,
+          index % 2 ? 'board:join' : 'board:leave',
+          { boardId: ids.b },
+        ),
+      ),
+    );
+    assert.ok(burst.every((result) => result.code === 'TOO_MANY_REQUESTS'));
+    const reconnectedLimited = await connect(tokens.other);
+    assert.equal(
+      (await ack(reconnectedLimited, 'board:join', { boardId: ids.b })).code,
+      'TOO_MANY_REQUESTS',
+    );
+    check(
+      'join/leave flood acknowledged safely; board changes, tabs and reconnect cannot bypass quota',
+    );
     return passed.length;
   } finally {
     for (const socket of clients) socket.close();

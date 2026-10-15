@@ -3,6 +3,7 @@ import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { isUUID } from 'class-validator';
 import { BoardAuthorizationService } from '../api/board-members/board-authorization.service';
 import { BoardRoomCoordinator } from './board-room-coordinator.service';
+import { BoardRoomRateLimiter } from './board-room-rate-limiter.service';
 import { RealtimeAuthService } from './realtime-auth.service';
 import { boardRoom, type RealtimeSocket } from './realtime.types';
 
@@ -26,6 +27,7 @@ export class BoardRoomService {
     private readonly authorization: BoardAuthorizationService,
     private readonly auth: RealtimeAuthService,
     private readonly coordinator: BoardRoomCoordinator,
+    private readonly limiter: BoardRoomRateLimiter,
   ) {}
 
   join(socket: RealtimeSocket, request: unknown): Promise<BoardRoomAck> {
@@ -42,15 +44,23 @@ export class BoardRoomService {
     join: boolean,
   ): Promise<BoardRoomAck> {
     if (!this.auth.isActive(socket)) return this.unauthorized();
-    if (!isRoomRequest(request)) {
+    const release = this.limiter.acquire(socket.data.identity!.userId);
+    if (!release) {
       return {
         success: false,
-        code: 'VALIDATION_FAILED',
-        message: 'A boardId UUID is required',
+        code: 'TOO_MANY_REQUESTS',
+        message: 'Too many board room requests',
       };
     }
-    const boardId = request.boardId.toLowerCase();
     try {
+      if (!isRoomRequest(request)) {
+        return {
+          success: false,
+          code: 'VALIDATION_FAILED',
+          message: 'A boardId UUID is required',
+        };
+      }
+      const boardId = request.boardId.toLowerCase();
       return await this.coordinator.run(boardId, async () => {
         if (!this.auth.isActive(socket)) return this.unauthorized();
         if (join) {
@@ -83,6 +93,8 @@ export class BoardRoomService {
         code: 'INTERNAL_ERROR',
         message: 'Unable to update board room',
       };
+    } finally {
+      release();
     }
   }
 

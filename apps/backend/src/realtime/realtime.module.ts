@@ -6,6 +6,7 @@ import { RealtimeAccessModule } from './realtime-access.module';
 import { RealtimeAuthService } from './realtime-auth.service';
 import { RealtimeGateway } from './realtime.gateway';
 import { RealtimeBroadcastService } from './realtime-broadcast.service';
+import { BoardRoomRateLimiter } from './board-room-rate-limiter.service';
 
 @Module({
   imports: [AuthModule, BoardMembersModule, RealtimeAccessModule],
@@ -13,6 +14,7 @@ import { RealtimeBroadcastService } from './realtime-broadcast.service';
     RealtimeAuthService,
     RealtimeGateway,
     BoardRoomService,
+    BoardRoomRateLimiter,
     RealtimeBroadcastService,
   ],
   exports: [RealtimeBroadcastService],

@@ -44,10 +44,25 @@ socket.on('connect', async () => {
 
 Successful join/leave acknowledgements are `{ success: true, boardId }`.
 Failures are `{ success: false, code, message }`; codes are `UNAUTHORIZED`,
-`NOT_FOUND`, `VALIDATION_FAILED`, or `INTERNAL_ERROR`. Non-members and absent
+`NOT_FOUND`, `VALIDATION_FAILED`, `TOO_MANY_REQUESTS`, or `INTERNAL_ERROR`. Non-members and absent
 boards receive the same `NOT_FOUND` / `Board not found` response. Unexpected
 errors return a generic failure and log only a fixed operational message.
 Acknowledgements do not use the REST response envelope.
+
+## Board room request limits
+
+`HttpThrottlerGuard` intentionally skips WebSocket contexts. Join/leave instead
+share `BoardRoomRateLimiter`: a fixed window admits up to 60 requests per 10
+seconds per authenticated user, across all board IDs, events, tabs and reconnects.
+At most four requests per user may be executing or queued, even across window
+resets. Admission happens synchronously before payload validation, authorization
+queries or the board queue. Rejected requests return `TOO_MANY_REQUESTS` without
+adding work to that queue. Invalid payloads consume the same rate budget.
+
+Permits are released in `finally`; window counters reset on the first request at
+or after expiration. An unref'ed cleanup interval removes expired idle entries,
+retains outstanding reservations and is cleared on application shutdown. This
+single-process policy does not affect handshake authentication or REST limits.
 
 ## Authentication and expiration
 
@@ -157,11 +172,13 @@ CREATEDB permission. The configured development database is never migrated or
 used for test fixtures. The existing frontend Socket.IO client is reused from the
 workspace without adding a backend dependency.
 
-Both Socket.IO runs cover 14 scenario groups: REST login, invalid JWT variants,
+Both Socket.IO runs cover 15 scenario groups: REST login, invalid JWT variants,
 origins on both transports, OWNER/MEMBER/archived access, malformed/spoofed room
 requests, isolation, multiple rooms, transport reconnect, expiration, delayed
 timer protection, failed removal, concurrent removal/broadcast/join, post-removal
-reconnect, and rejection of client-driven generic broadcasts. The concurrency test
+reconnect, rejection of client-driven generic broadcasts, and shared join/leave
+flood limits across board IDs, tabs and reconnects. Unit tests also check window
+reset boundaries, bounded pending requests across resets, and limiter cleanup. The concurrency test
 pauses after the real transaction commits but before the remove service resumes,
 proving broadcasts/joins wait through the eviction gap. Ordered acknowledgement
 barriers check non-delivery without arbitrary sleeps. PostgreSQL additionally
