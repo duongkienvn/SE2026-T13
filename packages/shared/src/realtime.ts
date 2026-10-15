@@ -8,10 +8,7 @@ export interface BoardRoomRequest {
 }
 
 export type RealtimeErrorCode =
-  | 'UNAUTHORIZED'
-  | 'NOT_FOUND'
-  | 'VALIDATION_FAILED'
-  | 'INTERNAL_ERROR';
+  'UNAUTHORIZED' | 'NOT_FOUND' | 'VALIDATION_FAILED' | 'INTERNAL_ERROR';
 
 export type BoardRoomAck =
   | { success: true; boardId: string }
