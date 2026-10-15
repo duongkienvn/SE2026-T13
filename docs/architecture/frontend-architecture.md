@@ -41,7 +41,7 @@ apps/frontend/src/
 - Auth, Board và BoardMember types hiện định nghĩa trong `features/<feature>/types.ts` cho đến khi backend bổ sung shared contracts vào `packages/shared`.
 - TanStack Query keys của board nằm dưới `['boards']` (`features/boards/query-keys.ts`) để mutation có thể invalidate list, detail và members cùng lúc.
 - Màn hình không được scroll (xem "Fit-to-viewport rule" trong `docs/design/design-guidelines.md`). Danh sách dài (boards, members) dùng phân trang đánh số: `useFitGrid` đo số hàng vừa với vùng còn trống, `lib/pagination.ts` cắt trang, số trang lưu ở `?page=` (`usePageParam`).
-- `GET /boards` (#20) chưa có search phía server, nên `useBoards` tải tất cả các trang (`limit=100`, mức tối đa của `PageQueryDto`) rồi search và phân trang ở client. Nếu số board mỗi user tăng lớn, cần bổ sung search/paging phía server.
+- `GET /boards` (#20) và `GET /boards/:boardId/members` (#21) chưa có search phía server, nên `useBoards` và `useBoardMembers` tải tất cả các trang (`fetchAllPages`, `limit=100` = `MAX_PAGE_LIMIT`, mức tối đa của `PageQueryDto`) rồi search và phân trang ở client. Nếu số board/member tăng lớn, cần bổ sung search/paging phía server.
 
 Hiện chưa có:
 
