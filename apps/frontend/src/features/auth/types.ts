@@ -1,6 +1,7 @@
 /*
- * Frontend copies of the Backend Authentication contract (issue #16/#17).
- * Replace with `@kanban/shared` exports once the backend publishes them.
+ * Frontend copies of the Backend Authentication contract (issue #16/#17),
+ * checked against the real backend in #25. Replace with `@kanban/shared`
+ * exports once the backend publishes them.
  */
 
 export interface User {
