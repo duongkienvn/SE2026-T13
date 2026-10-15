@@ -12,4 +12,6 @@ export interface JwtClaims {
 
 export interface AuthenticatedUser {
   readonly userId: string;
+  /** Verified JWT expiration, in Unix milliseconds; never taken from client data. */
+  readonly expiresAt: number;
 }
