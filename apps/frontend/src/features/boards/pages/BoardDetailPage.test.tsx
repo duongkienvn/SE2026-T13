@@ -1,5 +1,12 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { focusManager } from '@tanstack/react-query';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 import type { Board } from '../types';
 import { makeBoard, okPage } from '../../../test/board-fixtures';
 import {
@@ -12,7 +19,10 @@ import {
 } from '../../../test/mock-api';
 import { renderApp } from '../../../test/render';
 
-function openBoard(board: Board, extra: Record<string, MockResponse> = {}) {
+function openBoard(
+  board: Board,
+  extra: Record<string, MockResponse | (() => MockResponse)> = {},
+) {
   storeSession();
   const calls = mockApi({
     'GET /users/me': ok(testUser),
@@ -22,6 +32,22 @@ function openBoard(board: Board, extra: Record<string, MockResponse> = {}) {
   const view = renderApp(`/boards/${board.id}`);
   return { calls, ...view };
 }
+
+/** Returns `first` once, then `after` for every refetch. */
+function then(first: MockResponse, after: MockResponse) {
+  let calls = 0;
+  return () => (calls++ === 0 ? first : after);
+}
+
+/** Simulates returning to the tab, which refetches stale queries. */
+function refocusWindow() {
+  act(() => {
+    focusManager.setFocused(false);
+    focusManager.setFocused(true);
+  });
+}
+
+afterEach(() => focusManager.setFocused(undefined));
 
 describe('BoardDetailPage', () => {
   it('shows the board with role, members link and tab title', async () => {
@@ -146,6 +172,41 @@ describe('BoardDetailPage', () => {
       'Board “Old project” archived.',
     );
     await waitFor(() => expect(router.state.location.state).toBeNull());
+  });
+
+  it('stops showing the cached board once access is lost', async () => {
+    const board = makeBoard({ name: 'Secret plans', currentUserRole: 'OWNER' });
+    openBoard(board, {
+      [`GET /boards/${board.id}`]: then(ok(board), fail(404, 'NOT_FOUND')),
+    });
+    await screen.findByRole('heading', { name: 'Secret plans' });
+
+    refocusWindow();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Board not found' }),
+    ).toBeTruthy();
+    expect(screen.queryByText('Secret plans')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Actions for/ })).toBeNull();
+  });
+
+  it('keeps the board on screen when a refresh fails for other reasons', async () => {
+    const board = makeBoard({ name: 'Flaky network' });
+    openBoard(board, {
+      [`GET /boards/${board.id}`]: then(ok(board), fail(500, 'INTERNAL_ERROR')),
+    });
+    await screen.findByRole('heading', { name: 'Flaky network' });
+
+    refocusWindow();
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: 'Flaky network' }),
+      ).toBeTruthy(),
+    );
+    expect(
+      screen.queryByRole('heading', { name: 'Board not found' }),
+    ).toBeNull();
   });
 
   it('shows archived boards read-only', async () => {

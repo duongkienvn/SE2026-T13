@@ -1,5 +1,12 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { focusManager } from '@tanstack/react-query';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 import type { Board } from '../../boards/types';
 import { makeBoard, makeMember, okPage } from '../../../test/board-fixtures';
 import {
@@ -412,6 +419,31 @@ describe('BoardMembersPage (archived board)', () => {
 });
 
 describe('BoardMembersPage errors', () => {
+  afterEach(() => focusManager.setFocused(undefined));
+
+  it('stops showing cached members once access is lost', async () => {
+    const board = makeBoard({ name: 'Secret plans', currentUserRole: 'OWNER' });
+    let boardCalls = 0;
+    openMembers(board, [me, graceMember], {
+      [`GET /boards/${board.id}`]: () =>
+        boardCalls++ === 0 ? ok(board) : fail(404, 'NOT_FOUND'),
+    });
+    await screen.findByRole('table');
+
+    // Returning to the tab refetches; the board is no longer accessible.
+    act(() => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+
+    expect(
+      await screen.findByRole('heading', { name: 'Board not found' }),
+    ).toBeTruthy();
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add member' })).toBeNull();
+    expect(screen.queryByText('Secret plans')).toBeNull();
+  });
+
   it.each(['/boards/abc', '/boards/abc/members'])(
     'sends anonymous visitors from %s to login without requesting board data',
     async (path) => {

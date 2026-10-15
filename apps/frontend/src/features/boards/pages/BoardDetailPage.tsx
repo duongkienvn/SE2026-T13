@@ -64,19 +64,24 @@ export function BoardDetailPage() {
       </PageContainer>
     );
   }
-  // A failed background refresh keeps the board on screen (and open dialogs intact).
+  // Lost access (or the board is gone): never keep showing the cached board.
+  if (board.isError && isBoardUnavailable(board.error)) {
+    return (
+      <PageContainer>
+        <BoardUnavailable />
+      </PageContainer>
+    );
+  }
+  // Any other failed background refresh keeps the board on screen (and open
+  // dialogs intact).
   if (board.isError && !board.data) {
     return (
       <PageContainer>
-        {isBoardUnavailable(board.error) ? (
-          <BoardUnavailable />
-        ) : (
-          <ErrorState
-            title="We couldn't load this board"
-            description="Check your connection and try again."
-            onRetry={() => void board.refetch()}
-          />
-        )}
+        <ErrorState
+          title="We couldn't load this board"
+          description="Check your connection and try again."
+          onRetry={() => void board.refetch()}
+        />
       </PageContainer>
     );
   }

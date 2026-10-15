@@ -87,24 +87,31 @@ export function BoardMembersPage() {
       </PageContainer>
     );
   }
-  // A failed background refresh keeps the data on screen; only a failed first load
-  // replaces the page.
-  if ((board.isError && !board.data) || (members.isError && !members.data)) {
-    const error = board.error ?? members.error;
+  // Lost access (or the board is gone): never keep showing cached members or
+  // management controls.
+  if (
+    (board.isError && isBoardUnavailable(board.error)) ||
+    (members.isError && isBoardUnavailable(members.error))
+  ) {
     return (
       <PageContainer>
-        {isBoardUnavailable(error) ? (
-          <BoardUnavailable />
-        ) : (
-          <ErrorState
-            title="We couldn't load the members"
-            description="Check your connection and try again."
-            onRetry={() => {
-              void board.refetch();
-              void members.refetch();
-            }}
-          />
-        )}
+        <BoardUnavailable />
+      </PageContainer>
+    );
+  }
+  // Any other failed background refresh keeps the data on screen; only a
+  // failed first load replaces the page.
+  if ((board.isError && !board.data) || (members.isError && !members.data)) {
+    return (
+      <PageContainer>
+        <ErrorState
+          title="We couldn't load the members"
+          description="Check your connection and try again."
+          onRetry={() => {
+            void board.refetch();
+            void members.refetch();
+          }}
+        />
       </PageContainer>
     );
   }

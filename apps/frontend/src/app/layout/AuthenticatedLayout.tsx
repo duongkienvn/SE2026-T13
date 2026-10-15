@@ -7,6 +7,7 @@ import {
 } from 'react-router';
 import { UserMenu } from '../../features/auth/components/UserMenu';
 import { useBoard } from '../../features/boards/hooks';
+import { isBoardUnavailable } from '../../features/boards/pages/BoardDetailPage';
 import { AppShell } from './AppShell';
 import { primaryNavItems, secondaryNavItems, type NavItem } from './navigation';
 
@@ -21,7 +22,12 @@ export function AuthenticatedLayout() {
   // The deepest match carries every route param, e.g. `boardId` on board pages.
   const boardId = useMatches().at(-1)?.params.boardId;
   // Shares the board page's cached query; nothing is shown until it loads.
-  const boardName = useBoard(boardId ?? '', { enabled: !!boardId }).data?.name;
+  const board = useBoard(boardId ?? '', { enabled: !!boardId });
+  // Hide a cached name once access to the board is lost.
+  const boardName =
+    board.isError && isBoardUnavailable(board.error)
+      ? undefined
+      : board.data?.name;
 
   const resolve = (item: NavItem): NavItem => {
     // Board-scoped items (e.g. members) only work inside a board.
