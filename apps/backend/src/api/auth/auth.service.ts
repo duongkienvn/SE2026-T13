@@ -88,10 +88,17 @@ export class AuthService {
       if (error instanceof Error) throw this.unauthorized();
       throw error;
     }
-    if (!UUID_PATTERN.test(claims.sub)) throw this.unauthorized();
+    if (
+      !UUID_PATTERN.test(claims.sub) ||
+      !Number.isSafeInteger(claims.exp) ||
+      claims.exp * 1000 <= Date.now() ||
+      !Number.isSafeInteger(claims.exp * 1000)
+    ) {
+      throw this.unauthorized();
+    }
     const user = await this.users.findOne({ where: { id: claims.sub } });
     if (!user) throw this.unauthorized();
-    return { userId: user.id };
+    return { userId: user.id, expiresAt: claims.exp * 1000 };
   }
 
   private emailAlreadyExists(): ApplicationException {

@@ -257,6 +257,16 @@ hoặc cách tương đương. Cách quan trọng là permission check phải t�
 
 ## 6. Realtime responsibilities
 
+F1 is implemented in `src/realtime/`: Nest-managed gateway, JWT handshake and
+expiration, authorized join/leave, post-commit membership revocation and an
+injectable board broadcast service. Join, removal and broadcast share a per-board
+queue in the business-independent `RealtimeAccessModule`, closing the gap between
+removal commit and eviction without a circular module dependency. The transport
+path is `/socket.io`; CORS and WebSocket admission reuse `CORS_ORIGINS`. See the
+[F1 implementation guide](../tasks/realtime-foundation.md) for the exact contracts,
+single-instance security boundary and tests. Presence and business events below
+remain planned for G1/G2 and F2.
+
 Realtime layer phải phục vụ các concern sau:
 
 - Socket.IO connection management;

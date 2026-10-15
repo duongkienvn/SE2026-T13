@@ -194,6 +194,22 @@ describe('AuthService', () => {
     expect((claims.exp ?? 0) - (claims.iat ?? 0)).toBe(3600);
   });
 
+  it('rejects a signed access token without a finite expiration', async () => {
+    const signer = new JwtService({ secret: JWT_SECRET });
+    const token = await signer.signAsync(
+      { sub: userFixture().id },
+      {
+        algorithm: 'HS256',
+        issuer: JWT_ISSUER,
+        audience: JWT_AUDIENCE,
+      },
+    );
+    await expect(service.authenticateAccessToken(token)).rejects.toMatchObject({
+      status: 401,
+    });
+    expect(repository.findOne).not.toHaveBeenCalled();
+  });
+
   it('verifies JWT claims and loads the authenticated user from the database', async () => {
     const user = userFixture();
     repository.findOne.mockResolvedValue(user);
@@ -201,6 +217,7 @@ describe('AuthService', () => {
 
     await expect(service.authenticateAccessToken(token)).resolves.toEqual({
       userId: user.id,
+      expiresAt: jwt.decode<{ exp: number }>(token).exp * 1000,
     });
     await expect(
       service.authenticateAccessToken(`${token}tampered`),

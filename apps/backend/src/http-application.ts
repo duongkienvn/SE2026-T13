@@ -12,6 +12,7 @@ import { EnvironmentConfig } from './config/environment';
 import { createValidationPipe } from './config/validation';
 import { GlobalExceptionFilter } from './filters/global-exception.filter';
 import { ApiResponseInterceptor } from './interceptors/api-response.interceptor';
+import { RealtimeIoAdapter } from './realtime/realtime-io.adapter';
 
 export function configureHttpApplication(app: INestApplication): void {
   const config = app.get<ConfigService<EnvironmentConfig, true>>(ConfigService);
@@ -30,6 +31,7 @@ export function configureHttpApplication(app: INestApplication): void {
     }),
   );
   const allowedOrigins = config.get('CORS_ORIGINS', { infer: true });
+  app.useWebSocketAdapter(new RealtimeIoAdapter(app, allowedOrigins));
   app.enableCors({
     origin: (
       origin: string | undefined,

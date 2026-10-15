@@ -22,6 +22,7 @@ import {
 import { UpdateBoardMemberRoleDto } from './dto/update-board-member-role.dto';
 import { BoardAuthorizationService } from './board-authorization.service';
 import { BoardMember } from './entities/board-member.entity';
+import { BoardRoomCoordinator } from '../../realtime/board-room-coordinator.service';
 
 @Injectable()
 export class BoardMembersService {
@@ -30,6 +31,7 @@ export class BoardMembersService {
     private readonly members: Repository<BoardMember>,
     @InjectRepository(Board) private readonly boards: Repository<Board>,
     private readonly authorization: BoardAuthorizationService,
+    private readonly realtimeAccess: BoardRoomCoordinator,
   ) {}
 
   async list(
@@ -143,27 +145,30 @@ export class BoardMembersService {
     boardId: string,
     targetUserId: string,
   ): Promise<void> {
-    return this.boards.manager.transaction(async (manager) => {
-      const { board } = await this.authorization.requireMutableOwner(
-        actorId,
-        boardId,
-        manager,
-      );
-      const members = manager.getRepository(BoardMember);
-      const member = await members.findOne({
-        where: { boardId, userId: targetUserId },
-      });
-      if (!member) throw this.memberNotFound();
-      if (targetUserId === actorId) throw this.selfRemovalConflict();
-      if (targetUserId === board.createdById) throw this.creatorConflict();
-      if (member.role === BoardMemberRole.OWNER) {
-        const ownerCount = await members.count({
-          where: { boardId, role: BoardMemberRole.OWNER },
+    return this.realtimeAccess.run(boardId, async () => {
+      await this.boards.manager.transaction(async (manager) => {
+        const { board } = await this.authorization.requireMutableOwner(
+          actorId,
+          boardId,
+          manager,
+        );
+        const members = manager.getRepository(BoardMember);
+        const member = await members.findOne({
+          where: { boardId, userId: targetUserId },
         });
-        if (ownerCount <= 1) throw this.lastOwnerConflict();
-      }
-      await this.deleteAssignments(manager, boardId, targetUserId);
-      await members.delete({ id: member.id });
+        if (!member) throw this.memberNotFound();
+        if (targetUserId === actorId) throw this.selfRemovalConflict();
+        if (targetUserId === board.createdById) throw this.creatorConflict();
+        if (member.role === BoardMemberRole.OWNER) {
+          const ownerCount = await members.count({
+            where: { boardId, role: BoardMemberRole.OWNER },
+          });
+          if (ownerCount <= 1) throw this.lastOwnerConflict();
+        }
+        await this.deleteAssignments(manager, boardId, targetUserId);
+        await members.delete({ id: member.id });
+      });
+      await this.realtimeAccess.evictUser(boardId, targetUserId);
     });
   }
 

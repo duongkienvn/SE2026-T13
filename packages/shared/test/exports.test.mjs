@@ -6,9 +6,18 @@ import {
   ActivityEntityType,
   APP_NAME,
   BoardRole,
+  RealtimeEvent,
 } from '@kanban/shared';
 
 const require = createRequire(import.meta.url);
+
+test('exports the same realtime event names for both module formats', () => {
+  assert.deepEqual(RealtimeEvent, {
+    BOARD_JOIN: 'board:join',
+    BOARD_LEAVE: 'board:leave',
+  });
+  assert.deepEqual(require('@kanban/shared').RealtimeEvent, RealtimeEvent);
+});
 
 test('provides the same named export to ESM and CommonJS consumers', () => {
   assert.equal(APP_NAME, 'Realtime Collaborative Kanban');

@@ -79,3 +79,15 @@ TypeORM CLI commands use the same `databaseOptions()` as Nest runtime. Run `migr
 `BoardAuthorizationService` is the reusable board-level authorization seam. It loads the board and `BoardMember` from PostgreSQL, returns `404 Board not found` for both absent boards and non-members, enforces `OWNER` where required, and rejects mutations on archived boards. Controllers and services for boards, columns, cards, comments, and realtime room access should consume this seam instead of trusting JWT roles or client input.
 
 `BoardMembersService` performs membership mutations in TypeORM transactions. Removing a member deletes every matching `card_assignees` row through the board's cards before deleting the membership row; archived cards are included. The board creator cannot be demoted or removed, and role changes cannot leave a board without an `OWNER`. The member response DTO nests only the public `UserResponseDto` fields.
+
+## Realtime foundation (F1)
+
+The Nest-managed Socket.IO gateway uses `/socket.io`, separate from the REST
+prefix, with JWT handshake auth and the same origin allow-list as HTTP. Import
+`RealtimeModule` and inject `RealtimeBroadcastService` for future post-commit
+business broadcasts. All board emissions must go through that service so they
+share ordering with authorized joins and membership revocation. Member removal
+holds a per-board queue through transaction commit and eviction of all affected
+sockets. Do not call broadcast inside a queued operation or a still-open
+transaction. Expired sockets are disconnected and must authenticate and join
+again. See [F1 contracts, security invariants and testing](../tasks/realtime-foundation.md).

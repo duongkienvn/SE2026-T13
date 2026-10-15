@@ -23,6 +23,9 @@ const {
 } = require('../dist/api/board-members/board-authorization.service.js');
 const { Board } = require('../dist/api/boards/entities/board.entity.js');
 const {
+  BoardRoomCoordinator,
+} = require('../dist/realtime/board-room-coordinator.service.js');
+const {
   BoardMember,
 } = require('../dist/api/board-members/entities/board-member.entity.js');
 
@@ -48,7 +51,12 @@ try {
   const members = source.getRepository(BoardMember);
   const users = source.getRepository('User');
   const authorization = new BoardAuthorizationService(members);
-  const service = new BoardMembersService(members, boards, authorization);
+  const service = new BoardMembersService(
+    members,
+    boards,
+    authorization,
+    new BoardRoomCoordinator(),
+  );
   const user = (name) =>
     users.save(
       users.create({

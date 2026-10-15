@@ -15,7 +15,9 @@
     "migration:show": "typeorm-ts-node-commonjs migration:show -d src/database/data-source.ts",
     "test:database": "pnpm build && node test/database-foundation.integration.mjs",
     "test:boards:database": "pnpm build && node test/boards.integration.mjs",
-    "test:board-members:database": "pnpm build && node test/board-members.integration.mjs"
+    "test:board-members:database": "pnpm build && node test/board-members.integration.mjs",
+    "test:realtime": "jest --runInBand --runTestsByPath test/realtime.e2e-spec.ts",
+    "test:realtime:database": "node -r ts-node/register test/realtime.integration.mjs"
   },
   "dependencies": {
     "@kanban/shared": "workspace:*",

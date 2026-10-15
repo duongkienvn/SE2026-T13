@@ -16,6 +16,7 @@ import { databaseOptions } from './database/database-options';
 import { EnvironmentConfig, validateEnvironment } from './config/environment';
 import { loggerOptions } from './logging/logger-options';
 import { HttpThrottlerGuard } from './guards/http-throttler.guard';
+import { RealtimeModule } from './realtime/realtime.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { HttpThrottlerGuard } from './guards/http-throttler.guard';
     UsersModule,
     BoardsModule,
     BoardMembersModule,
+    RealtimeModule,
     LoggerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService<EnvironmentConfig, true>) =>
