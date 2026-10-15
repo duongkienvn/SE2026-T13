@@ -7,6 +7,8 @@ import type { AuthenticatedUser } from '../api/auth/constants/auth.constants';
 
 export interface RealtimeSocketData {
   identity?: AuthenticatedUser;
+  /** Application-owned receive grants; adapter room state alone is not authority. */
+  authorizedBoardIds?: Set<string>;
 }
 
 export type RealtimeServer = Server<

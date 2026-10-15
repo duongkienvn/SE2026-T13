@@ -158,7 +158,7 @@ try {
   configureHttpApplication(app);
   await app.listen(0, '127.0.0.1');
   const count = await runRealtimeChecks(app, source);
-  assert.equal(count, 15);
+  assert.equal(count, 16);
   console.log(
     `Realtime Socket.IO E2E: ${count} scenarios PASS (isolated repository doubles)`,
   );

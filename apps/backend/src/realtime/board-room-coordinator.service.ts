@@ -12,15 +12,28 @@ export class BoardRoomCoordinator implements OnApplicationShutdown {
   async evictUser(boardId: string, userId: string): Promise<void> {
     const server = this.server;
     if (!server) return;
-    const room = boardRoom(boardId);
-    for (const socket of server.sockets.sockets.values()) {
-      if (socket.data.identity?.userId !== userId || !socket.rooms.has(room))
-        continue;
+    const canonicalId = boardId.toLowerCase();
+    const room = boardRoom(canonicalId);
+    const sockets = [...server.sockets.sockets.values()].filter(
+      (socket) => socket.data.identity?.userId === userId,
+    );
+    // Revoke all receive grants before the first asynchronous adapter operation.
+    for (const socket of sockets)
+      socket.data.authorizedBoardIds?.delete(canonicalId);
+    for (const socket of sockets) {
       try {
         await socket.leave(room);
       } catch {
         this.logger.error('Board room eviction failed; disconnecting socket');
-        socket.disconnect(true);
+        try {
+          socket.disconnect(true);
+        } catch {
+          // The connection may remain open, but our broadcast boundary no longer
+          // selects it for this board. Do not turn a committed removal into 500.
+          this.logger.error(
+            'Socket disconnect failed; board receive access remains revoked',
+          );
+        }
       }
     }
   }

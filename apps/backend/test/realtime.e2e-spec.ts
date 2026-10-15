@@ -12,6 +12,6 @@ describe('Socket.IO through real AppModule, JWT and REST', () => {
       ],
       { cwd: resolve(__dirname, '..'), encoding: 'utf8', timeout: 60_000 },
     );
-    expect(output).toContain('15 scenarios PASS');
+    expect(output).toContain('16 scenarios PASS');
   }, 65_000);
 });

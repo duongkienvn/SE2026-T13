@@ -5,7 +5,7 @@ describe('BoardRoomCoordinator', () => {
   it('evicts every socket of a revoked user only from the target board', async () => {
     const coordinator = new BoardRoomCoordinator();
     const makeSocket = (userId: string) => ({
-      data: { identity: { userId } },
+      data: { identity: { userId }, authorizedBoardIds: new Set(['a', 'b']) },
       rooms: new Set(['board:a', 'board:b']),
       leave: jest.fn(),
       disconnect: jest.fn(),
@@ -26,6 +26,9 @@ describe('BoardRoomCoordinator', () => {
     expect(first.leave).toHaveBeenCalledWith('board:a');
     expect(second.leave).toHaveBeenCalledWith('board:a');
     expect(other.leave).not.toHaveBeenCalled();
+    expect([...first.data.authorizedBoardIds]).toEqual(['b']);
+    expect([...second.data.authorizedBoardIds]).toEqual(['b']);
+    expect([...other.data.authorizedBoardIds]).toEqual(['a', 'b']);
     first.leave.mockRejectedValue(new Error('transport failure'));
     const log = jest.spyOn(coordinator['logger'], 'error').mockImplementation();
     try {
@@ -35,6 +38,49 @@ describe('BoardRoomCoordinator', () => {
       expect(first.disconnect).toHaveBeenCalledWith(true);
       expect(log).toHaveBeenCalledWith(
         'Board room eviction failed; disconnecting socket',
+      );
+    } finally {
+      log.mockRestore();
+    }
+  });
+  it('revokes all receive grants and continues eviction when leave and disconnect both fail', async () => {
+    const coordinator = new BoardRoomCoordinator();
+    const makeSocket = () => ({
+      data: {
+        identity: { userId: 'revoked' },
+        authorizedBoardIds: new Set(['a', 'b']),
+      },
+      leave: jest.fn(),
+      disconnect: jest.fn(),
+    });
+    const broken = makeSocket();
+    const healthy = makeSocket();
+    broken.leave.mockImplementation(async () => {
+      expect(broken.data.authorizedBoardIds.has('a')).toBe(false);
+      expect(healthy.data.authorizedBoardIds.has('a')).toBe(false);
+      throw new Error('sensitive adapter failure');
+    });
+    broken.disconnect.mockImplementation(() => {
+      throw new Error('sensitive transport failure');
+    });
+    coordinator.server = {
+      sockets: {
+        sockets: new Map([
+          ['broken', broken],
+          ['healthy', healthy],
+        ]),
+      },
+    } as unknown as RealtimeServer;
+    const log = jest.spyOn(coordinator['logger'], 'error').mockImplementation();
+    try {
+      await expect(
+        coordinator.evictUser('A', 'revoked'),
+      ).resolves.toBeUndefined();
+      expect(broken.disconnect).toHaveBeenCalledWith(true);
+      expect(healthy.leave).toHaveBeenCalledWith('board:a');
+      expect(broken.data.authorizedBoardIds.has('b')).toBe(true);
+      expect(log).toHaveBeenCalledWith(
+        'Socket disconnect failed; board receive access remains revoked',
       );
     } finally {
       log.mockRestore();

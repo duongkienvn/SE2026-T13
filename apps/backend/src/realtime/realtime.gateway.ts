@@ -38,6 +38,7 @@ export class RealtimeGateway
   }
 
   handleDisconnect(socket: RealtimeSocket): void {
+    socket.data.authorizedBoardIds?.clear();
     this.auth.cleanup(socket);
   }
 

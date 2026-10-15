@@ -145,6 +145,7 @@ describe('BoardRoomService', () => {
     ).resolves.toEqual({ success: true, boardId: BOARD });
     expect(requireMember).toHaveBeenCalledWith('verified', BOARD);
     expect(socket.join).toHaveBeenCalledWith(`board:${BOARD}`);
+    expect(socket.data.authorizedBoardIds?.has(BOARD)).toBe(true);
     expect(requireMember.mock.invocationCallOrder[0]).toBeLessThan(
       (socket.join as jest.Mock).mock.invocationCallOrder[0],
     );
@@ -166,6 +167,7 @@ describe('BoardRoomService', () => {
       code: 'VALIDATION_FAILED',
     });
     expect(socket.join).not.toHaveBeenCalled();
+    expect(socket.data.authorizedBoardIds?.has(BOARD)).not.toBe(true);
     expect(requireMember).not.toHaveBeenCalled();
   });
 
@@ -226,11 +228,27 @@ describe('BoardRoomService', () => {
   });
 
   it('leaves exactly the requested board and tolerates repeated leave', async () => {
+    socket.data.authorizedBoardIds = new Set([BOARD, 'another-board']);
     await service.leave(socket, { boardId: BOARD });
     await service.leave(socket, { boardId: BOARD });
     expect(socket.leave).toHaveBeenCalledTimes(2);
     expect(socket.leave).toHaveBeenLastCalledWith(`board:${BOARD}`);
     expect(requireMember).not.toHaveBeenCalled();
+    expect([...socket.data.authorizedBoardIds]).toEqual(['another-board']);
+  });
+
+  it('revokes receive access when leaving a room fails', async () => {
+    socket.data.authorizedBoardIds = new Set([BOARD]);
+    (socket.leave as jest.Mock).mockRejectedValue(new Error('adapter failed'));
+    const log = jest.spyOn(service['logger'], 'error').mockImplementation();
+    try {
+      await expect(
+        service.leave(socket, { boardId: BOARD }),
+      ).resolves.toMatchObject({ code: 'INTERNAL_ERROR' });
+      expect(socket.data.authorizedBoardIds.has(BOARD)).toBe(false);
+    } finally {
+      log.mockRestore();
+    }
   });
 
   it('returns sanitized failure and keeps serving when authorization storage fails', async () => {

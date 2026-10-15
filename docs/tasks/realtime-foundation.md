@@ -106,14 +106,28 @@ operations all use the same queue:
 
 Removal retains its existing permission rules, board row lock, assignment cleanup
 and database transaction. Only after TypeORM's transaction promise resolves does
-it evict every socket of the removed user from that board. It releases the board
-queue after eviction completes. A failed transaction does not evict sockets. If
-room eviction fails, the socket is disconnected to fail closed; transport
-failures do not undo committed database changes.
+it revoke every socket's receive access and attempt to leave that board's room. It releases the board
+queue after eviction attempts complete. A failed transaction does not revoke
+access. If room eviction fails, disconnect is attempted. If disconnect also
+throws, the connection may remain open in a stale adapter room. Both failures are
+logged using fixed messages and do not turn the committed removal into a failed
+HTTP response.
+
+Receive authorization is held separately in `socket.data.authorizedBoardIds`.
+A successful, authorized join adds a grant; leave removes it before adapter work;
+disconnect clears it. Removal revokes grants on every affected connection before
+the first adapter operation, without depending on the adapter's room maps.
+`RealtimeBroadcastService` selects sockets by these grants and current token
+validity and emits directly to eligible connections. With recovery disabled,
+direct emission does not use adapter rooms for recipient selection. Consequently,
+even a socket whose leave and disconnect both fail cannot receive another event
+for its revoked board through the broadcast service. Other live, authorized
+connections keep receiving events. Physical cleanup failure remains visible in logs;
+logical revocation does not depend on cleanup succeeding.
 
 This closes both relevant races: a join already checking membership finishes
-before removal and is then evicted; a join or broadcast queued during removal
-cannot run between commit and eviction. Operations on other boards continue.
+before removal and then loses receive access; a join or broadcast queued during
+removal cannot run between commit and revocation. Operations on other boards continue.
 Queue entries are removed when their last operation finishes, including failures.
 There is no presence registry or online-user aggregation.
 
@@ -127,7 +141,7 @@ The guarantee is for this single backend process and membership removals through
 does not trigger eviction. Future membership-removal paths must use the same
 boundary. Broadcasts emitted before removal commits may already be in transit;
 those bytes cannot be retracted. No broadcast submitted through this service
-after commit can overtake eviction. Do not bypass the service with raw room emits,
+after commit can overtake revocation. Do not bypass the service with raw room emits,
 enable recovery, or add a distributed adapter without reviewing this invariant.
 
 ## Broadcasting from future business services
@@ -145,7 +159,7 @@ map. Tests extend it with `test:board` in `test/realtime.fixture.ts`; the backen
 build excludes tests and contains no fake business event contract. Executable
 usage is in `test/realtime-broadcast.spec.ts` and `test/realtime-checks.mjs`.
 
-Emission targets exactly the selected board room. No subscribers is a successful
+Emission targets only authorized connections for the selected Board. No subscribers is a successful
 no-op. An unavailable server or failed emission returns `false`; emission errors
 log a fixed message without event payload, token or exception object. Persistence
 is never rolled back by this helper. Delivery remains best effort, with no replay,
@@ -172,13 +186,15 @@ CREATEDB permission. The configured development database is never migrated or
 used for test fixtures. The existing frontend Socket.IO client is reused from the
 workspace without adding a backend dependency.
 
-Both Socket.IO runs cover 15 scenario groups: REST login, invalid JWT variants,
+Both Socket.IO runs cover 16 scenario groups: REST login, invalid JWT variants,
 origins on both transports, OWNER/MEMBER/archived access, malformed/spoofed room
 requests, isolation, multiple rooms, transport reconnect, expiration, delayed
 timer protection, failed removal, concurrent removal/broadcast/join, post-removal
 reconnect, rejection of client-driven generic broadcasts, and shared join/leave
-flood limits across board IDs, tabs and reconnects. Unit tests also check window
-reset boundaries, bounded pending requests across resets, and limiter cleanup. The concurrency test
+flood limits across board IDs, tabs and reconnects, plus post-commit leave and
+disconnect double failure with HTTP 204 and no subsequent delivery. Unit tests
+also check window reset boundaries, bounded pending requests across resets, and
+limiter cleanup. The concurrency test
 pauses after the real transaction commits but before the remove service resumes,
 proving broadcasts/joins wait through the eviction gap. Ordered acknowledgement
 barriers check non-delivery without arbitrary sleeps. PostgreSQL additionally
@@ -188,12 +204,37 @@ Unit tests cover timer cleanup/overflow, authorization ordering and sanitized
 errors, FIFO ordering, rollback, all-tab eviction, disconnect fallback and failed
 emissions. AppModule bootstrap tests exercise the real module import graph.
 
-Verified on 2026-10-15: lint, full tests (shared 3, backend 150, frontend 175),
+Review fixes verified on 2026-10-15: lint, full tests (shared 3, backend 157, frontend 175),
 workspace build and both Socket.IO E2E/database runs pass. The frontend build
-retains its existing large-chunk warning. Existing BoardMembers PostgreSQL
-integration also passes after the revocation hook change. All 36 changed/added F1
-files pass Prettier. Root `format:check` fails on 221 files outside F1: two have
+retains its existing large-chunk warning. All 17 files changed by the review fixes
+pass Prettier. Root `format:check` fails on 221 files outside F1: two have
 formatting violations in the original `main` content, and 219 have checkout CRLF
 line endings from `core.autocrlf=true` while Prettier expects LF. This was checked
 against `git show main:<path>` and by checking CRLF-normalized content in memory;
 unrelated files and Git configuration were left untouched.
+
+The first review-fix database run overlapped the root test's shared-package
+rebuild and failed to resolve its temporarily missing declarations. Rerunning
+after that build completed passed all 16 scenarios against a temporary database.
+
+## Technical review fix file inventory
+
+Only the two security findings are addressed by these changes:
+
+- `apps/backend/src/realtime/board-room-rate-limiter.service.ts` (new)
+- `apps/backend/src/realtime/board-room.service.ts`
+- `apps/backend/src/realtime/board-room-coordinator.service.ts`
+- `apps/backend/src/realtime/realtime-broadcast.service.ts`
+- `apps/backend/src/realtime/realtime.gateway.ts`
+- `apps/backend/src/realtime/realtime.module.ts`
+- `apps/backend/src/realtime/realtime.types.ts`
+- `packages/shared/src/realtime.ts`
+- `apps/backend/test/board-room-rate-limiter.spec.ts` (new)
+- `apps/backend/test/board-room.spec.ts`
+- `apps/backend/test/board-room-coordinator.spec.ts`
+- `apps/backend/test/realtime-broadcast.spec.ts`
+- `apps/backend/test/realtime-checks.mjs`
+- `apps/backend/test/realtime.bootstrap.mjs`
+- `apps/backend/test/realtime.e2e-spec.ts`
+- `apps/backend/test/realtime.integration.mjs`
+- `docs/tasks/realtime-foundation.md`

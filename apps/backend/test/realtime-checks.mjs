@@ -323,6 +323,17 @@ export async function runRealtimeChecks(app, source) {
     const committed = deferred();
     const release = deferred();
     const transaction = source.manager.transaction;
+    const brokenSocket = coordinator.server.sockets.sockets.get(member.id);
+    const originalLeave = brokenSocket.leave;
+    const originalDisconnect = brokenSocket.disconnect;
+    brokenSocket.leave = function (target) {
+      if (target === room(ids.a))
+        throw new Error('simulated adapter leave failure');
+      return originalLeave.call(this, target);
+    };
+    brokenSocket.disconnect = () => {
+      throw new Error('simulated disconnect failure');
+    };
     source.manager.transaction = async function (...args) {
       const result = await transaction.apply(this, args);
       committed.resolve();
@@ -362,8 +373,9 @@ export async function runRealtimeChecks(app, source) {
         coordinator.server.sockets.sockets
           .get(member.id)
           .rooms.has(room(ids.a)),
-        false,
+        true,
       );
+      assert.equal(brokenSocket.data.authorizedBoardIds.has(ids.a), false);
       assert.equal(
         coordinator.server.sockets.sockets
           .get(memberTab.id)
@@ -378,11 +390,16 @@ export async function runRealtimeChecks(app, source) {
       );
     } finally {
       source.manager.transaction = transaction;
+      brokenSocket.leave = originalLeave;
+      brokenSocket.disconnect = originalDisconnect;
       release.resolve();
       await removal;
     }
     check(
-      'REST commit -> all user sockets evicted -> concurrent broadcast/join; other boards continue',
+      'REST commit -> all user receive grants revoked -> concurrent broadcast/join; other boards continue',
+    );
+    check(
+      'leave and disconnect both fail after commit: REST still returns 204 and stale room gets no board data',
     );
 
     const afterRemoval = await connect(tokens.member);

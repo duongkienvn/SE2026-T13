@@ -74,7 +74,10 @@ export class BoardRoomService {
             await socket.leave(boardRoom(boardId));
             return this.unauthorized();
           }
+          (socket.data.authorizedBoardIds ??= new Set()).add(boardId);
         } else {
+          // Stop delivery even if the adapter fails to remove physical membership.
+          socket.data.authorizedBoardIds?.delete(boardId);
           await socket.leave(boardRoom(boardId));
         }
         return { success: true, boardId };
