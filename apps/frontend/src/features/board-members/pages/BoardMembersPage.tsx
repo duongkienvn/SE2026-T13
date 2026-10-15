@@ -1,6 +1,6 @@
 import { BoardRole } from '@kanban/shared';
 import { useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useParams } from 'react-router';
 import { ActionMenu } from '../../../components/ActionMenu';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
@@ -18,7 +18,7 @@ import {
 import { useFitGrid } from '../../../hooks/useFitGrid';
 import { usePageParam } from '../../../hooks/usePageParam';
 import { usePageTitle } from '../../../hooks/usePageTitle';
-import { isApiError } from '../../../lib/api-client';
+import { BOARD_ARCHIVED, isApiError } from '../../../lib/api-client';
 import { formatDate } from '../../../lib/format';
 import { paginate } from '../../../lib/pagination';
 import { toFormErrors } from '../../../lib/form-errors';
@@ -30,7 +30,6 @@ import {
   BoardUnavailable,
   isBoardUnavailable,
 } from '../../boards/pages/BoardDetailPage';
-import type { BoardsLocationState } from '../../boards/pages/BoardsPage';
 import { AddMemberDialog } from '../components/AddMemberDialog';
 import {
   useBoardMembers,
@@ -45,7 +44,8 @@ function actionErrorMessage(error: unknown): string | undefined {
   if (
     isApiError(error) &&
     (error.status === 400 || error.status === 409 || error.status === 422) &&
-    error.code !== 'VALIDATION_FAILED'
+    error.code !== 'VALIDATION_FAILED' &&
+    error.code !== BOARD_ARCHIVED
   ) {
     return error.message;
   }
@@ -54,7 +54,6 @@ function actionErrorMessage(error: unknown): string | undefined {
 
 export function BoardMembersPage() {
   const { boardId = '' } = useParams();
-  const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const board = useBoard(boardId);
   const members = useBoardMembers(boardId);
@@ -147,14 +146,6 @@ export function BoardMembersPage() {
     remove.mutate(member.user.id, {
       onSuccess: () => {
         setRemoving(null);
-        if (member.user.id === currentUser?.id) {
-          // Leaving the board removes access to it.
-          const state: BoardsLocationState = {
-            notice: `You left “${boardData.name}”.`,
-          };
-          navigate('/boards', { replace: true, state });
-          return;
-        }
         showNotice(`${member.user.displayName} was removed from the board.`);
       },
     });
@@ -244,7 +235,12 @@ export function BoardMembersPage() {
               <tbody className="divide-y divide-line">
                 {shown.items.map((member) => {
                   const isSelf = member.user.id === currentUser?.id;
-                  const blocks = memberActionBlocks(member, all, boardData);
+                  const blocks = memberActionBlocks(
+                    member,
+                    all,
+                    boardData,
+                    currentUser?.id,
+                  );
                   const isOwner = member.role === BoardRole.OWNER;
                   return (
                     <tr key={member.user.id} data-fit-row>
@@ -301,9 +297,7 @@ export function BoardMembersPage() {
                                       changeRole(member, BoardRole.OWNER),
                                   },
                               {
-                                label: isSelf
-                                  ? 'Leave board'
-                                  : 'Remove from board',
+                                label: 'Remove from board',
                                 onSelect: () => {
                                   remove.reset();
                                   setRemoving(member);
@@ -348,21 +342,9 @@ export function BoardMembersPage() {
       {removing && (
         <ConfirmDialog
           open
-          title={
-            removing.user.id === currentUser?.id
-              ? `Leave “${boardData.name}”?`
-              : `Remove ${removing.user.displayName}?`
-          }
-          description={
-            removing.user.id === currentUser?.id
-              ? 'You will lose access to this board and its cards.'
-              : 'They will lose access to this board, and their card assignments on it will be removed.'
-          }
-          confirmLabel={
-            removing.user.id === currentUser?.id
-              ? 'Leave board'
-              : 'Remove member'
-          }
+          title={`Remove ${removing.user.displayName}?`}
+          description="They will lose access to this board, and their card assignments on it will be removed."
+          confirmLabel="Remove member"
           pendingLabel="Removing…"
           pending={remove.isPending}
           error={remove.isError ? actionErrorMessage(remove.error) : undefined}

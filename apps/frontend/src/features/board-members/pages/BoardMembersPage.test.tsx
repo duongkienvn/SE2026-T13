@@ -36,6 +36,11 @@ function membersPath(board: Board) {
   return `/boards/${board.id}/members`;
 }
 
+/** The list request: the page asks for the largest page size, page by page. */
+function membersListKey(board: Board, page = 1) {
+  return `GET ${membersPath(board)}?page=${page}&limit=100`;
+}
+
 function openMembers(
   board: Board,
   members: BoardMember[] | Handler,
@@ -45,9 +50,7 @@ function openMembers(
   const calls = mockApi({
     'GET /users/me': ok(testUser),
     [`GET /boards/${board.id}`]: ok(board),
-    [`GET ${membersPath(board)}`]: Array.isArray(members)
-      ? ok(members)
-      : members,
+    [membersListKey(board)]: Array.isArray(members) ? okPage(members) : members,
     ...extra,
   });
   const view = renderApp(membersPath(board));
@@ -59,7 +62,7 @@ function changes(before: BoardMember[], after: BoardMember[]): Handler {
   let calls = 0;
   return () => {
     calls += 1;
-    return ok(calls === 1 ? before : after);
+    return okPage(calls === 1 ? before : after);
   };
 }
 
@@ -155,7 +158,7 @@ describe('BoardMembersPage (as OWNER)', () => {
   });
 
   it.each([
-    [404, 'USER_NOT_FOUND', 'No registered user has this email address.'],
+    [404, 'NOT_FOUND', 'No registered user has this email address.'],
     [409, 'CONFLICT', 'This person is already a member of this board.'],
   ])('explains a %s when adding', async (status, code, message) => {
     openMembers(board, [me], {
@@ -170,6 +173,24 @@ describe('BoardMembersPage (as OWNER)', () => {
 
     expect(await within(dialog).findByText(message)).toBeTruthy();
     expect(document.activeElement).toBe(email);
+  });
+
+  it('does not call an archived board a duplicate member', async () => {
+    openMembers(board, [me], {
+      [`POST ${membersPath(board)}`]: fail(409, 'BOARD_ARCHIVED'),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add member' }));
+    const dialog = screen.getByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText('Email address'), {
+      target: { value: 'someone@example.com' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add member' }));
+
+    expect((await within(dialog).findByRole('alert')).textContent).toContain(
+      'This board has been archived, so it can no longer be changed.',
+    );
+    expect(within(dialog).queryByText(/already a member/)).toBeNull();
   });
 
   it('starts every add-member dialog with an empty form', async () => {
@@ -240,10 +261,10 @@ describe('BoardMembersPage (as OWNER)', () => {
         name: `Actions for ${testUser.displayName}`,
       }),
     );
-    const leave = screen.getByRole('button', { name: /Leave board/ });
-    expect(leave.getAttribute('aria-disabled')).toBe('true');
-    expect(leave.textContent).toContain('The board creator can’t be removed.');
-    fireEvent.click(leave);
+    const remove = screen.getByRole('button', { name: /Remove from board/ });
+    expect(remove.getAttribute('aria-disabled')).toBe('true');
+    expect(remove.textContent).toContain('The board creator can’t be removed.');
+    fireEvent.click(remove);
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(
       screen
@@ -275,37 +296,46 @@ describe('BoardMembersPage (as OWNER)', () => {
     await waitFor(() => expect(screen.queryByText('Grace Hopper')).toBeNull());
   });
 
-  it('returns to the boards list after leaving a board', async () => {
+  it('stops an owner removing or demoting themself, with a reason', async () => {
     const shared = makeBoard({
       name: 'Shared',
       currentUserRole: 'OWNER',
       createdById: alan.id,
     });
-    const { router } = openMembers(
-      shared,
-      [makeMember({ user: alan, role: 'OWNER' }), me],
-      {
-        [`DELETE ${membersPath(shared)}/${testUser.id}`]: { status: 204 },
-        'GET /boards?page=1&limit=100': okPage([]),
-      },
-    );
+    openMembers(shared, [makeMember({ user: alan, role: 'OWNER' }), me]);
 
     fireEvent.click(
       await screen.findByRole('button', {
         name: `Actions for ${testUser.displayName}`,
       }),
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Leave board' }));
-    fireEvent.click(
-      within(screen.getByRole('dialog')).getByRole('button', {
-        name: 'Leave board',
-      }),
+    expect(screen.queryByRole('button', { name: /Leave board/ })).toBeNull();
+    const remove = screen.getByRole('button', { name: /Remove from board/ });
+    expect(remove.getAttribute('aria-disabled')).toBe('true');
+    expect(remove.textContent).toContain(
+      'You can’t remove yourself from the board.',
     );
+    fireEvent.click(remove);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    const demote = screen.getByRole('button', { name: /Make member/ });
+    expect(demote.getAttribute('aria-disabled')).toBe('true');
+    expect(demote.textContent).toContain('You can’t change your own role.');
+  });
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/boards'));
-    expect((await screen.findByRole('status')).textContent).toContain(
-      'You left “Shared”.',
-    );
+  it('loads every page of a long member list', async () => {
+    // 101 members at 100 per page: the second page holds the last one.
+    const { calls } = openMembers(board, okPage([me], { total: 101 }), {
+      [membersListKey(board, 2)]: okPage([graceMember], {
+        page: 2,
+        total: 101,
+      }),
+    });
+
+    const table = await screen.findByRole('table');
+    expect(within(table).getAllByRole('row')).toHaveLength(1 + 2);
+    expect(
+      calls.filter((call) => call.path.startsWith(membersPath(board))),
+    ).toHaveLength(2);
   });
 
   it('filters members by name or email', async () => {
@@ -404,42 +434,32 @@ describe('BoardMembersPage edge cases', () => {
     expect(await screen.findByText(testUser.displayName)).toBeTruthy();
   });
 
-  it('does not refetch a board the user just left', async () => {
-    const shared = makeBoard({
-      name: 'Left',
-      currentUserRole: 'OWNER',
-      createdById: alan.id,
-    });
-    const { calls, router } = openMembers(
-      shared,
-      [makeMember({ user: alan, role: 'OWNER' }), me],
-      {
-        [`DELETE ${membersPath(shared)}/${testUser.id}`]: { status: 204 },
-        'GET /boards?page=1&limit=100': okPage([]),
+  it('switches to read-only when the board was archived meanwhile', async () => {
+    let boardRequests = 0;
+    openMembers(board, [me, graceMember], {
+      [`GET /boards/${board.id}`]: () => {
+        boardRequests += 1;
+        return ok(boardRequests === 1 ? board : { ...board, isArchived: true });
       },
-    );
+      [`PATCH ${membersPath(board)}/${grace.id}`]: fail(
+        409,
+        'BOARD_ARCHIVED',
+        'Archived boards cannot be modified',
+      ),
+    });
 
     fireEvent.click(
-      await screen.findByRole('button', {
-        name: `Actions for ${testUser.displayName}`,
-      }),
+      await screen.findByRole('button', { name: 'Actions for Grace Hopper' }),
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Leave board' }));
-    fireEvent.click(
-      within(screen.getByRole('dialog')).getByRole('button', {
-        name: 'Leave board',
-      }),
-    );
-    await waitFor(() => expect(router.state.location.pathname).toBe('/boards'));
+    fireEvent.click(screen.getByRole('button', { name: 'Make owner' }));
 
-    const deleteAt = calls.findIndex((call) => call.method === 'DELETE');
-    const after = calls.slice(deleteAt + 1).map((call) => call.path);
-    expect(after.some((path) => path.startsWith(`/boards/${shared.id}`))).toBe(
-      false,
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'This board has been archived, so it can no longer be changed.',
     );
-    expect(
-      screen.queryByRole('heading', { name: 'Board not found' }),
-    ).toBeNull();
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Add member' })).toBeNull(),
+    );
+    expect(screen.queryByRole('button', { name: /^Actions for/ })).toBeNull();
   });
 
   it('sends one role change at a time', async () => {

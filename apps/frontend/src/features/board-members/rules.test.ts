@@ -16,17 +16,38 @@ describe('memberActionBlocks', () => {
   const member = makeMember({ user: user('member'), role: 'MEMBER' });
 
   it('protects the board creator', () => {
-    const blocks = memberActionBlocks(creator, [creator, coOwner], {
-      createdById: creatorId,
+    const blocks = memberActionBlocks(
+      creator,
+      [creator, coOwner],
+      { createdById: creatorId },
+      'co-owner',
+    );
+    expect(blocks).toEqual({
+      remove: 'The board creator can’t be removed.',
+      demote: 'The board creator always stays an owner.',
     });
-    expect(blocks.remove).toBeTruthy();
-    expect(blocks.demote).toBeTruthy();
+  });
+
+  it('stops owners removing or demoting themselves', () => {
+    const blocks = memberActionBlocks(
+      coOwner,
+      [creator, coOwner],
+      { createdById: creatorId },
+      'co-owner',
+    );
+    expect(blocks).toEqual({
+      remove: 'You can’t remove yourself from the board.',
+      demote: 'You can’t change your own role.',
+    });
   });
 
   it('protects the last remaining owner', () => {
-    const blocks = memberActionBlocks(coOwner, [coOwner, member], {
-      createdById: 'someone-else',
-    });
+    const blocks = memberActionBlocks(
+      coOwner,
+      [coOwner, member],
+      { createdById: 'someone-else' },
+      undefined,
+    );
     expect(blocks).toEqual({
       remove: 'A board needs at least one owner.',
       demote: 'A board needs at least one owner.',
@@ -35,8 +56,12 @@ describe('memberActionBlocks', () => {
 
   it('allows actions on co-owners and members', () => {
     const board = { createdById: creatorId };
-    expect(memberActionBlocks(coOwner, [creator, coOwner], board)).toEqual({});
-    expect(memberActionBlocks(member, [creator, member], board)).toEqual({});
+    expect(
+      memberActionBlocks(coOwner, [creator, coOwner], board, creatorId),
+    ).toEqual({});
+    expect(
+      memberActionBlocks(member, [creator, member], board, creatorId),
+    ).toEqual({});
   });
 });
 

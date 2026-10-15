@@ -5,7 +5,7 @@ import { Dialog } from '../../../components/Dialog';
 import { MailIcon } from '../../../components/icons';
 import { TextField } from '../../../components/TextField';
 import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
-import { isApiError } from '../../../lib/api-client';
+import { BOARD_ARCHIVED, isApiError } from '../../../lib/api-client';
 import { toFormErrors } from '../../../lib/form-errors';
 import { normalizeEmail, validateEmail } from '../../auth/validation';
 import { useAddMember } from '../hooks';
@@ -54,7 +54,11 @@ export function AddMemberDialog({
           // 409 "email already registered", which is wrong here.
           if (isApiError(failure) && failure.status === 404) {
             setEmailError('No registered user has this email address.');
-          } else if (isApiError(failure) && failure.status === 409) {
+          } else if (
+            isApiError(failure) &&
+            failure.status === 409 &&
+            failure.code !== BOARD_ARCHIVED
+          ) {
             setEmailError('This person is already a member of this board.');
           } else {
             const result = toFormErrors(failure, { email: 'Email' });

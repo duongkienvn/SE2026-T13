@@ -17,11 +17,19 @@ export function memberActionBlocks(
   member: BoardMember,
   members: BoardMember[],
   board: Pick<Board, 'createdById'>,
+  currentUserId: string | undefined,
 ): MemberActionBlocks {
   if (member.user.id === board.createdById) {
     return {
       remove: 'The board creator can’t be removed.',
       demote: 'The board creator always stays an owner.',
+    };
+  }
+  // The member routes refuse owners removing or demoting themselves.
+  if (member.user.id === currentUserId) {
+    return {
+      remove: 'You can’t remove yourself from the board.',
+      demote: 'You can’t change your own role.',
     };
   }
   const owners = members.filter((m) => m.role === BoardRole.OWNER).length;

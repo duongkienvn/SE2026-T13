@@ -108,9 +108,9 @@ describe('board hooks', () => {
         boardCalls += 1;
         return ok(board);
       },
-      [`GET /boards/${board.id}/members`]: () => {
+      [`GET /boards/${board.id}/members?page=1&limit=100`]: () => {
         memberCalls += 1;
-        return ok([]);
+        return okPage([]);
       },
       [`POST /boards/${board.id}/members`]: ok({}, 201),
     });

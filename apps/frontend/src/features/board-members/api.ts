@@ -1,4 +1,10 @@
-import { apiRequest } from '../../lib/api-client';
+import {
+  apiRequest,
+  apiRequestPage,
+  fetchAllPages,
+  MAX_PAGE_LIMIT,
+  type Page,
+} from '../../lib/api-client';
 import type {
   AddMemberRequest,
   BoardMember,
@@ -13,12 +19,28 @@ function membersPath(boardId: string, userId?: string): string {
 export function listMembers(
   accessToken: string,
   boardId: string,
+  page: number,
   signal?: AbortSignal,
-): Promise<BoardMember[]> {
-  return apiRequest<BoardMember[]>(membersPath(boardId), {
+): Promise<Page<BoardMember>> {
+  const query = new URLSearchParams({
+    page: String(page),
+    limit: String(MAX_PAGE_LIMIT),
+  });
+  return apiRequestPage<BoardMember>(`${membersPath(boardId)}?${query}`, {
     accessToken,
     signal,
   });
+}
+
+/** Every member of the board; the page searches and paginates them on screen. */
+export function listAllMembers(
+  accessToken: string,
+  boardId: string,
+  signal?: AbortSignal,
+): Promise<BoardMember[]> {
+  return fetchAllPages((page) =>
+    listMembers(accessToken, boardId, page, signal),
+  );
 }
 
 export function addMember(

@@ -1,8 +1,11 @@
-import { apiRequest, apiRequestPage, type Page } from '../../lib/api-client';
+import {
+  apiRequest,
+  apiRequestPage,
+  fetchAllPages,
+  MAX_PAGE_LIMIT,
+  type Page,
+} from '../../lib/api-client';
 import type { Board, CreateBoardRequest, UpdateBoardRequest } from './types';
-
-/** The backend's maximum page size (`PageQueryDto`). */
-export const BOARDS_FETCH_LIMIT = 100;
 
 export function listBoards(
   accessToken: string,
@@ -11,7 +14,7 @@ export function listBoards(
 ): Promise<Page<Board>> {
   const query = new URLSearchParams({
     page: String(page),
-    limit: String(BOARDS_FETCH_LIMIT),
+    limit: String(MAX_PAGE_LIMIT),
   });
   return apiRequestPage<Board>(`/boards?${query}`, { accessToken, signal });
 }
@@ -20,16 +23,11 @@ export function listBoards(
  * Every board the user belongs to. #20 has no server-side search, so the list
  * page loads all boards to search and paginate them on screen.
  */
-export async function listAllBoards(
+export function listAllBoards(
   accessToken: string,
   signal?: AbortSignal,
 ): Promise<Board[]> {
-  const first = await listBoards(accessToken, 1, signal);
-  const boards = [...first.items];
-  for (let page = 2; page <= first.meta.totalPages; page += 1) {
-    boards.push(...(await listBoards(accessToken, page, signal)).items);
-  }
-  return boards;
+  return fetchAllPages((page) => listBoards(accessToken, page, signal));
 }
 
 export function getBoard(

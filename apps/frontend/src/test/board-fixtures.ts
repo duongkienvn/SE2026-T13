@@ -24,6 +24,7 @@ export function makeBoard(overrides: Partial<Board> = {}): Board {
 
 export function makeMember(overrides: Partial<BoardMember> = {}): BoardMember {
   return {
+    id: `membership-${overrides.user?.id ?? testUser.id}`,
     user: {
       id: testUser.id,
       email: testUser.email,

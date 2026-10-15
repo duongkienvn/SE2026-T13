@@ -1,4 +1,4 @@
-import { ClientErrorCode, isApiError } from './api-client';
+import { BOARD_ARCHIVED, ClientErrorCode, isApiError } from './api-client';
 
 export interface FormErrorState<Field extends string> {
   formError?: string;
@@ -60,6 +60,13 @@ export function toFormErrors<Field extends string>(
     };
   }
 
+  if (error.code === BOARD_ARCHIVED) {
+    return {
+      formError:
+        'This board has been archived, so it can no longer be changed.',
+      fieldErrors: {},
+    };
+  }
   // Match the documented codes and their generic HTTP equivalents
   // (e.g. a unique-index CONFLICT on registration).
   if (

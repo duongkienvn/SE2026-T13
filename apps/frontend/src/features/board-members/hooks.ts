@@ -1,8 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../auth/useAuth';
 import { retryUnlessClientError } from '../../lib/query-client';
+import { useRefreshIfArchived } from '../boards/hooks';
 import { boardKeys } from '../boards/query-keys';
-import { addMember, listMembers, removeMember, updateMemberRole } from './api';
+import {
+  addMember,
+  listAllMembers,
+  removeMember,
+  updateMemberRole,
+} from './api';
 import type { AddMemberRequest, UpdateMemberRoleRequest } from './types';
 
 export function useBoardMembers(boardId: string) {
@@ -10,7 +16,7 @@ export function useBoardMembers(boardId: string) {
   return useQuery({
     queryKey: boardKeys.members(boardId),
     queryFn: ({ signal }) =>
-      runAuthorized((token) => listMembers(token, boardId, signal)),
+      runAuthorized((token) => listAllMembers(token, boardId, signal)),
     retry: retryUnlessClientError,
   });
 }
@@ -31,16 +37,19 @@ function useInvalidateBoard(boardId: string) {
 export function useAddMember(boardId: string) {
   const { runAuthorized } = useAuth();
   const invalidate = useInvalidateBoard(boardId);
+  const refreshIfArchived = useRefreshIfArchived(boardId);
   return useMutation({
     mutationFn: (input: AddMemberRequest) =>
       runAuthorized((token) => addMember(token, boardId, input)),
     onSuccess: invalidate,
+    onError: refreshIfArchived,
   });
 }
 
 export function useUpdateMemberRole(boardId: string) {
   const { runAuthorized } = useAuth();
   const invalidate = useInvalidateBoard(boardId);
+  const refreshIfArchived = useRefreshIfArchived(boardId);
   return useMutation({
     mutationFn: ({
       userId,
@@ -48,25 +57,18 @@ export function useUpdateMemberRole(boardId: string) {
     }: UpdateMemberRoleRequest & { userId: string }) =>
       runAuthorized((token) => updateMemberRole(token, boardId, userId, input)),
     onSuccess: invalidate,
+    onError: refreshIfArchived,
   });
 }
 
 export function useRemoveMember(boardId: string) {
-  const { runAuthorized, user } = useAuth();
-  const queryClient = useQueryClient();
+  const { runAuthorized } = useAuth();
   const invalidate = useInvalidateBoard(boardId);
+  const refreshIfArchived = useRefreshIfArchived(boardId);
   return useMutation({
     mutationFn: (userId: string) =>
       runAuthorized((token) => removeMember(token, boardId, userId)),
-    onSuccess: (_result, userId) => {
-      if (userId !== user?.id) return invalidate();
-      // The user just left: refetching this board would only return 403/404
-      // and flash "Board not found". Mark it stale and refresh the list.
-      void queryClient.invalidateQueries({
-        queryKey: boardKeys.detail(boardId),
-        refetchType: 'none',
-      });
-      return queryClient.invalidateQueries({ queryKey: boardKeys.lists() });
-    },
+    onSuccess: invalidate,
+    onError: refreshIfArchived,
   });
 }

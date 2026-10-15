@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { BOARD_ARCHIVED, isApiError } from '../../lib/api-client';
 import { retryUnlessClientError } from '../../lib/query-client';
 import { useAuth } from '../auth/useAuth';
 import {
@@ -33,6 +34,19 @@ export function useBoard(boardId: string, { enabled = true } = {}) {
   });
 }
 
+/**
+ * A change refused with BOARD_ARCHIVED means someone archived the board since
+ * it was loaded: refresh it so the page switches to its read-only state.
+ */
+export function useRefreshIfArchived(boardId: string) {
+  const queryClient = useQueryClient();
+  return (error: unknown) => {
+    if (!isApiError(error) || error.code !== BOARD_ARCHIVED) return;
+    void queryClient.invalidateQueries({ queryKey: boardKeys.detail(boardId) });
+    void queryClient.invalidateQueries({ queryKey: boardKeys.lists() });
+  };
+}
+
 export function useCreateBoard() {
   const { runAuthorized } = useAuth();
   const queryClient = useQueryClient();
@@ -49,6 +63,7 @@ export function useCreateBoard() {
 export function useUpdateBoard(boardId: string) {
   const { runAuthorized } = useAuth();
   const queryClient = useQueryClient();
+  const refreshIfArchived = useRefreshIfArchived(boardId);
   return useMutation({
     mutationFn: (input: UpdateBoardRequest) =>
       runAuthorized((token) => updateBoard(token, boardId, input)),
@@ -56,17 +71,20 @@ export function useUpdateBoard(boardId: string) {
       queryClient.setQueryData(boardKeys.detail(board.id), board);
       return queryClient.invalidateQueries({ queryKey: boardKeys.lists() });
     },
+    onError: refreshIfArchived,
   });
 }
 
 export function useArchiveBoard(boardId: string) {
   const { runAuthorized } = useAuth();
   const queryClient = useQueryClient();
+  const refreshIfArchived = useRefreshIfArchived(boardId);
   return useMutation({
     mutationFn: () => runAuthorized((token) => archiveBoard(token, boardId)),
     onSuccess: (board: Board) => {
       queryClient.setQueryData(boardKeys.detail(board.id), board);
       return queryClient.invalidateQueries({ queryKey: boardKeys.lists() });
     },
+    onError: refreshIfArchived,
   });
 }

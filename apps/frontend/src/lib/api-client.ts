@@ -11,6 +11,9 @@ export const ClientErrorCode = {
   INVALID_RESPONSE: 'INVALID_RESPONSE',
 } as const;
 
+/** Server code for changes to an archived board (409). */
+export const BOARD_ARCHIVED = 'BOARD_ARCHIVED';
+
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
@@ -142,6 +145,9 @@ export async function apiRequest<T>(
   return envelope?.data as T;
 }
 
+/** The backend's maximum page size (`PageQueryDto`). */
+export const MAX_PAGE_LIMIT = 100;
+
 export interface Page<T> {
   items: T[];
   meta: PaginationMeta;
@@ -166,4 +172,16 @@ export async function apiRequestPage<T>(
     throw invalidResponse(200);
   }
   return { items: envelope.data as T[], meta };
+}
+
+/** Requests page 1, then every remaining page, and joins their items in order. */
+export async function fetchAllPages<T>(
+  fetchPage: (page: number) => Promise<Page<T>>,
+): Promise<T[]> {
+  const first = await fetchPage(1);
+  const items = [...first.items];
+  for (let page = 2; page <= first.meta.totalPages; page += 1) {
+    items.push(...(await fetchPage(page)).items);
+  }
+  return items;
 }
