@@ -25,6 +25,7 @@ import { ApiResponseInterceptor } from '../src/interceptors/api-response.interce
 import { GlobalExceptionFilter } from '../src/filters/global-exception.filter';
 import { BoardMemberRole } from '../src/common/enums/database-enums';
 import { User } from '../src/api/users/entities/user.entity';
+import { RealtimeAccessModule } from '../src/realtime/realtime-access.module';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: (entity: { name: string }) =>
@@ -76,6 +77,7 @@ describe('board-members HTTP contract', () => {
   beforeAll(async () => {
     const module = await Test.createTestingModule({
       imports: [
+        RealtimeAccessModule,
         JwtModule.register({
           secret: randomBytes(32).toString('hex'),
           signOptions: {

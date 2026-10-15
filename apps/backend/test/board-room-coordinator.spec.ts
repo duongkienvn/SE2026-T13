@@ -1,6 +1,45 @@
 import { BoardRoomCoordinator } from '../src/realtime/board-room-coordinator.service';
+import type { RealtimeServer } from '../src/realtime/realtime.types';
 
 describe('BoardRoomCoordinator', () => {
+  it('evicts every socket of a revoked user only from the target board', async () => {
+    const coordinator = new BoardRoomCoordinator();
+    const makeSocket = (userId: string) => ({
+      data: { identity: { userId } },
+      rooms: new Set(['board:a', 'board:b']),
+      leave: jest.fn(),
+      disconnect: jest.fn(),
+    });
+    const first = makeSocket('revoked');
+    const second = makeSocket('revoked');
+    const other = makeSocket('owner');
+    coordinator.server = {
+      sockets: {
+        sockets: new Map([
+          ['one', first],
+          ['two', second],
+          ['other', other],
+        ]),
+      },
+    } as unknown as RealtimeServer;
+    await coordinator.evictUser('a', 'revoked');
+    expect(first.leave).toHaveBeenCalledWith('board:a');
+    expect(second.leave).toHaveBeenCalledWith('board:a');
+    expect(other.leave).not.toHaveBeenCalled();
+    first.leave.mockRejectedValue(new Error('transport failure'));
+    const log = jest.spyOn(coordinator['logger'], 'error').mockImplementation();
+    try {
+      await expect(
+        coordinator.evictUser('a', 'revoked'),
+      ).resolves.toBeUndefined();
+      expect(first.disconnect).toHaveBeenCalledWith(true);
+      expect(log).toHaveBeenCalledWith(
+        'Board room eviction failed; disconnecting socket',
+      );
+    } finally {
+      log.mockRestore();
+    }
+  });
   it('orders operations on a board, allows other boards and releases failures', async () => {
     const coordinator = new BoardRoomCoordinator();
     const order: string[] = [];

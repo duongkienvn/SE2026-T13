@@ -8,6 +8,8 @@ import { Board } from '../src/api/boards/entities/board.entity';
 import { CardAssignee } from '../src/api/cards/entities/card-assignee.entity';
 import { User } from '../src/api/users/entities/user.entity';
 import { BoardMemberRole } from '../src/common/enums/database-enums';
+import { RealtimeAccessModule } from '../src/realtime/realtime-access.module';
+import { BoardRoomCoordinator } from '../src/realtime/board-room-coordinator.service';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: (entity: { name: string }) =>
@@ -79,6 +81,7 @@ describe('BoardMembersService', () => {
       member: { role: BoardMemberRole.OWNER },
     });
     const module = await Test.createTestingModule({
+      imports: [RealtimeAccessModule],
       providers: [
         BoardMembersService,
         { provide: getRepositoryToken(BoardMember), useValue: members },
@@ -89,9 +92,55 @@ describe('BoardMembersService', () => {
       ],
     }).compile();
     service = module.get(BoardMembersService);
+    coordinator = module.get(BoardRoomCoordinator);
   });
 
   let service: BoardMembersService;
+  let coordinator: BoardRoomCoordinator;
+
+  it('holds broadcasts and joins until removal commits and eviction finishes', async () => {
+    const order: string[] = [];
+    txMembers.findOne.mockResolvedValue({
+      id: 'member-row',
+      role: BoardMemberRole.MEMBER,
+    });
+    let commit!: () => void;
+    let started!: () => void;
+    const inTransaction = new Promise<void>((resolve) => (started = resolve));
+    const commitBarrier = new Promise<void>((resolve) => (commit = resolve));
+    transaction.mockImplementation(async (callback) => {
+      await callback(manager);
+      started();
+      await commitBarrier;
+      order.push('commit');
+    });
+    const evict = jest
+      .spyOn(coordinator, 'evictUser')
+      .mockImplementation(async () => {
+        order.push('evict');
+      });
+    const removal = service.remove(ACTOR_ID, BOARD_ID, TARGET_ID);
+    await inTransaction;
+    const broadcast = coordinator.run(BOARD_ID, () => order.push('broadcast'));
+    const join = coordinator.run(BOARD_ID, () => order.push('join'));
+    expect(evict).not.toHaveBeenCalled();
+    commit();
+    await Promise.all([removal, broadcast, join]);
+    expect(order).toEqual(['commit', 'evict', 'broadcast', 'join']);
+    expect(evict).toHaveBeenCalledWith(BOARD_ID, TARGET_ID);
+  });
+
+  it('does not evict on rollback, and releases queued operations', async () => {
+    const evict = jest.spyOn(coordinator, 'evictUser');
+    transaction.mockRejectedValue(new Error('commit failed'));
+    await expect(service.remove(ACTOR_ID, BOARD_ID, TARGET_ID)).rejects.toThrow(
+      'commit failed',
+    );
+    expect(evict).not.toHaveBeenCalled();
+    await expect(coordinator.run(BOARD_ID, () => 'available')).resolves.toBe(
+      'available',
+    );
+  });
 
   it('adds a registered user as MEMBER using normalized email', async () => {
     const member = Object.assign(new BoardMember(), {

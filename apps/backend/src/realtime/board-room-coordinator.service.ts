@@ -1,11 +1,29 @@
-import { Injectable, OnApplicationShutdown } from '@nestjs/common';
-import type { RealtimeServer } from './realtime.types';
+import { Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
+import { boardRoom, type RealtimeServer } from './realtime.types';
 
 /** Single-process ordering boundary for room access, removal and broadcast. */
 @Injectable()
 export class BoardRoomCoordinator implements OnApplicationShutdown {
+  private readonly logger = new Logger(BoardRoomCoordinator.name);
   private readonly pending = new Map<string, Promise<void>>();
   server?: RealtimeServer;
+
+  /** Called after removal commits, while still holding this board's queue. */
+  async evictUser(boardId: string, userId: string): Promise<void> {
+    const server = this.server;
+    if (!server) return;
+    const room = boardRoom(boardId);
+    for (const socket of server.sockets.sockets.values()) {
+      if (socket.data.identity?.userId !== userId || !socket.rooms.has(room))
+        continue;
+      try {
+        await socket.leave(room);
+      } catch {
+        this.logger.error('Board room eviction failed; disconnecting socket');
+        socket.disconnect(true);
+      }
+    }
+  }
 
   async run<T>(boardId: string, operation: () => Promise<T> | T): Promise<T> {
     const key = boardId.toLowerCase();
