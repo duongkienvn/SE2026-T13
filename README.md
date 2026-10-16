@@ -1,6 +1,6 @@
 # Realtime Collaborative Kanban
 
-Ứng dụng Kanban cộng tác nhiều người theo thời gian thực. Thành viên có thể cùng quản lý board, column và card, trao đổi qua comment và thấy thay đổi mà không cần tải lại trang. Project hiện ở giai đoạn chuẩn bị nền tảng và kiến trúc; các business feature chưa được implement.
+Ứng dụng Kanban cộng tác nhiều người theo thời gian thực. Thành viên có thể cùng quản lý board, column và card, trao đổi qua comment và thấy thay đổi mà không cần tải lại trang. Project đã có Authentication/User, Board, Board Membership, realtime foundation và Column Management REST API; các feature Card, realtime business events, comment và activity tiếp tục được triển khai theo từng phase.
 
 ## Tech Stack
 

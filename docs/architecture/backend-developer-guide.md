@@ -80,6 +80,18 @@ TypeORM CLI commands use the same `databaseOptions()` as Nest runtime. Run `migr
 
 `BoardMembersService` performs membership mutations in TypeORM transactions. Removing a member deletes every matching `card_assignees` row through the board's cards before deleting the membership row; archived cards are included. The board creator cannot be demoted or removed, and role changes cannot leave a board without an `OWNER`. The member response DTO nests only the public `UserResponseDto` fields.
 
+Column Management uses `BoardAuthorizationService.requireMember()` with
+`{ mutable: true }` for create, rename, reorder and delete. This keeps the MVP
+policy that both `OWNER` and `MEMBER` can collaborate on board structure while
+still rejecting archived-board mutations with `409 BOARD_ARCHIVED`. Read-only
+Column listing uses `requireMember()` without the mutable option.
+
+Column create, reorder and delete operations run inside a transaction after
+locking the Board row. The lock serializes concurrent structural changes for a
+single Board; Column positions are calculated as exact `numeric(20,10)` values
+and are returned as strings. Rebalance updates the full ordered set only when
+no representable fractional gap remains.
+
 ## Realtime foundation (F1)
 
 The Nest-managed Socket.IO gateway uses `/socket.io`, separate from the REST
