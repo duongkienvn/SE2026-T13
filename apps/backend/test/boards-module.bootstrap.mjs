@@ -76,6 +76,15 @@ try {
   assert.equal(rooms.coordinator, coordinator);
   assert.equal(broadcaster.coordinator, coordinator);
   assert.equal(app.get(BoardMembersService).realtimeAccess, coordinator);
+  const {
+    BoardEventPublisher,
+  } = require('../src/realtime/board-event-publisher.service.ts');
+  const { ColumnsService } = require('../src/api/columns/columns.service.ts');
+  const publisher = app.get(BoardEventPublisher);
+  assert.equal(publisher.broadcast, broadcaster);
+  for (const Service of [ColumnsService, CardsService, BoardMembersService]) {
+    assert.equal(app.get(Service).events, publisher);
+  }
   assert.equal(gateway.auth, app.get(RealtimeAuthService));
   assert.equal(rooms.auth, gateway.auth);
   assert.equal(broadcaster.auth, gateway.auth);

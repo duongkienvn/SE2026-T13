@@ -101,6 +101,85 @@ describe('BoardMembersService', () => {
   let service: BoardMembersService;
   let coordinator: BoardRoomCoordinator;
 
+  it.each(['add', 'updateRole', 'remove'] as const)(
+    'publishes %s only after transaction resolution',
+    async (operation) => {
+      const member = Object.assign(new BoardMember(), {
+        id: 'member',
+        boardId: BOARD_ID,
+        userId: TARGET_ID,
+        user: target,
+        role: BoardMemberRole.MEMBER,
+        joinedAt: new Date(),
+      });
+      txUsers.findOne.mockResolvedValue(target);
+      txMembers.findOne.mockResolvedValue(operation === 'add' ? null : member);
+      txMembers.create.mockReturnValue(member);
+      txMembers.save.mockImplementation(async (value) => value);
+      let commit!: () => void;
+      let callbackFinished!: () => void;
+      const finished = new Promise<void>((resolve) => {
+        callbackFinished = resolve;
+      });
+      const gate = new Promise<void>((resolve) => {
+        commit = resolve;
+      });
+      transaction.mockImplementation(async (callback) => {
+        const result = await callback(manager);
+        callbackFinished();
+        await gate;
+        return result;
+      });
+      const mutation =
+        operation === 'add'
+          ? service.add(ACTOR_ID, BOARD_ID, { email: target.email })
+          : operation === 'updateRole'
+            ? service.updateRole(ACTOR_ID, BOARD_ID, TARGET_ID, {
+                role: BoardMemberRole.OWNER,
+              })
+            : service.remove(ACTOR_ID, BOARD_ID, TARGET_ID);
+      await finished;
+      expect(events.publish).not.toHaveBeenCalled();
+      commit();
+      await mutation;
+      expect(events.publish.mock.calls).toEqual([
+        [
+          `member:${{ add: 'added', updateRole: 'role-changed', remove: 'removed' }[operation]}`,
+          { boardId: BOARD_ID, userId: TARGET_ID },
+        ],
+      ]);
+    },
+  );
+
+  it.each(['add', 'updateRole'] as const)(
+    'does not publish %s on commit rejection',
+    async (operation) => {
+      const member = Object.assign(new BoardMember(), {
+        boardId: BOARD_ID,
+        userId: TARGET_ID,
+        user: target,
+        role: BoardMemberRole.MEMBER,
+        joinedAt: new Date(),
+      });
+      txUsers.findOne.mockResolvedValue(target);
+      txMembers.findOne.mockResolvedValue(operation === 'add' ? null : member);
+      txMembers.create.mockReturnValue(member);
+      txMembers.save.mockImplementation(async (value) => value);
+      transaction.mockImplementation(async (callback) => {
+        await callback(manager);
+        throw new Error('commit failed');
+      });
+      await expect(
+        operation === 'add'
+          ? service.add(ACTOR_ID, BOARD_ID, { email: target.email })
+          : service.updateRole(ACTOR_ID, BOARD_ID, TARGET_ID, {
+              role: BoardMemberRole.OWNER,
+            }),
+      ).rejects.toThrow('commit failed');
+      expect(events.publish).not.toHaveBeenCalled();
+    },
+  );
+
   it('holds broadcasts and joins until removal commits and eviction finishes', async () => {
     const order: string[] = [];
     txMembers.findOne.mockResolvedValue({

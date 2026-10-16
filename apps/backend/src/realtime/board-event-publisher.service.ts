@@ -17,6 +17,7 @@ export class BoardEventPublisher {
     ...args: Parameters<RealtimeServerEvents[Event]>
   ): Promise<void> {
     try {
+      args[0].boardId = args[0].boardId.toLowerCase();
       const delivered = await this.broadcast.emitToBoard(
         args[0].boardId,
         event,

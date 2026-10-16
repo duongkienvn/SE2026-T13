@@ -7,7 +7,7 @@ jest.mock('@nestjs/typeorm', () => ({
 }));
 
 describe('BoardEventPublisher', () => {
-  const payload = { boardId: 'board', columnId: 'column' };
+  const payload = { boardId: 'BOARD', columnId: 'column' };
   it.each([true, false, 'throw'] as const)(
     'preserves caller success when transport returns %s',
     async (outcome) => {

@@ -5,6 +5,44 @@ jest.mock('@nestjs/typeorm', () => ({
 }));
 
 describe('Card post-commit events', () => {
+  it.each([
+    'create',
+    'update',
+    'move',
+    'archive',
+    'assign',
+    'unassign',
+  ] as const)(
+    'never publishes %s if commit rejects after callback writes',
+    async (operation) => {
+      const h = cardsHarness();
+      h.transaction.mockImplementation(async (callback) => {
+        await callback(h.manager);
+        throw new Error('commit failed');
+      });
+      const args = [ID.user, ID.board, ID.card] as const;
+      const mutation =
+        operation === 'create'
+          ? h.service.create(ID.user, ID.board, {
+              columnId: ID.column,
+              title: 'New',
+            })
+          : operation === 'update'
+            ? h.service.update(...args, { title: 'New' })
+            : operation === 'move'
+              ? h.service.move(...args, {
+                  toColumnId: ID.column,
+                  beforeCardId: null,
+                })
+              : operation === 'archive'
+                ? h.service.archive(...args)
+                : operation === 'assign'
+                  ? h.service.assign(...args, { userId: ID.target })
+                  : h.service.unassign(...args, ID.target);
+      await expect(mutation).rejects.toThrow('commit failed');
+      expect(h.events.publish).not.toHaveBeenCalled();
+    },
+  );
   it.each(['assign', 'unassign'] as const)(
     'publishes authoritative card IDs after %s commits without changing REST result',
     async (operation) => {
