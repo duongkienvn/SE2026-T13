@@ -92,6 +92,18 @@ single Board; Column positions are calculated as exact `numeric(20,10)` values
 and are returned as strings. Rebalance updates the full ordered set only when
 no representable fractional gap remains.
 
+## Card Management (E2)
+
+`CardsModule` exposes eight board-scoped endpoints for Card queries, creation,
+partial updates, archive, move and multi-assignee management. Reuse the existing
+DTO/serialization/pagination/error conventions. All mutations acquire the Board
+row lock via `requireMember(..., { mutable: true }, manager)` before reading
+related state, matching E1 and membership removal. This closes assign-vs-remove
+races without changing BoardMembersService or F1. Card positions reuse E1's exact
+BigInt arithmetic and rebalance active destination Cards atomically. Archived
+Cards retain their references and continue blocking Column deletion. See
+[E2 requests, responses and PostgreSQL concurrency tests](../tasks/card-management-api.md).
+
 ## Realtime foundation (F1)
 
 The Nest-managed Socket.IO gateway uses `/socket.io`, separate from the REST

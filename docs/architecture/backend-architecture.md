@@ -4,7 +4,7 @@
 
 Backend của project là một NestJS modular monolith theo hướng MVP. Mục tiêu của layer này là làm nơi duy nhất xử lý business logic, xác thực quyền, giao tiếp với database và phát sự kiện realtime sau khi thay đổi đã được persist thành công.
 
-Project hiện tại đã có Application Foundation, Authentication/User Profile MVP, Board/Board Member API, Column Management API và realtime foundation F1. Tám TypeORM entities của MVP được đặt theo feature trong `apps/backend/src/api/`; các feature nghiệp vụ còn lại sẽ được bổ sung theo từng issue sau.
+Project hiện tại đã có Application Foundation, Authentication/User Profile MVP, Board/Board Member API, Column/Card Management APIs và realtime foundation F1. Tám TypeORM entities của MVP được đặt theo feature trong `apps/backend/src/api/`; các feature nghiệp vụ còn lại sẽ được bổ sung theo từng issue sau.
 
 Backend không phải là nơi lưu trữ UI state; backend là source of truth cho dữ liệu nghiệp vụ và các thay đổi trạng thái board.
 
@@ -76,6 +76,13 @@ Trong đó:
 Request log có `reqId`, method, path, response status và thời gian. `X-Request-Id` hợp lệ từ client được giữ lại; nếu không hợp lệ server tạo UUID và trả cùng header. Logger không ghi raw headers, query, cookies hay request body; các trường nhạy cảm còn được redact. Exception filter log loại lỗi và request ID cho lỗi 5xx, không log SQL hoặc message nội bộ.
 
 Reference implementation: [vndevteam/nestjs-boilerplate](https://github.com/vndevteam/nestjs-boilerplate). Bootstrap, config, filter, logging, Swagger và pagination được điều chỉnh cho NestJS 11 và Kanban; không đưa auth, Redis, cloud logging, Active Record hoặc các dependency nghiệp vụ từ boilerplate vào foundation.
+
+Card Management E2 implements REST create/list/detail/update/archive/move and
+multi-assignee operations in `api/cards/`. It reuses E1's exact ordering helpers
+and the same Board row lock for every mutation, preserving Card–Column and
+assignee–membership invariants under concurrent requests. No new schema,
+transport or realtime business events were introduced. See the
+[E2 contract and verification](../tasks/card-management-api.md).
 
 ### Planned state for MVP
 

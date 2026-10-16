@@ -1,0 +1,361 @@
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { EntityManager, Repository } from 'typeorm';
+import { ApplicationException } from '../../exceptions/application.exception';
+import {
+  paginate,
+  pageOffset,
+  PaginatedResponse,
+} from '../../common/dto/paginated-response';
+import { BoardAuthorizationService } from '../board-members/board-authorization.service';
+import { Board } from '../boards/entities/board.entity';
+import { BoardColumn } from '../columns/entities/board-column.entity';
+import { Card } from './entities/card.entity';
+import { ListCardsDto } from './dto/list-cards.dto';
+import { CardResponseDto, toCardResponseDto } from './dto/card-response.dto';
+import { CreateCardDto } from './dto/create-card.dto';
+import { UpdateCardDto } from './dto/update-card.dto';
+import { MoveCardDto } from './dto/move-card.dto';
+import { AssignCardDto } from './dto/assign-card.dto';
+import { CardAssignee } from './entities/card-assignee.entity';
+import { BoardMember } from '../board-members/entities/board-member.entity';
+import {
+  CardAssigneeResponseDto,
+  toCardAssigneeResponseDto,
+} from './dto/card-assignee-response.dto';
+import { cardInsertionPosition } from './cards-ordering';
+import { rebalancePositions } from '../columns/columns-ordering';
+
+@Injectable()
+export class CardsService {
+  constructor(
+    @InjectRepository(Card) private readonly cards: Repository<Card>,
+    @InjectRepository(Board) private readonly boards: Repository<Board>,
+    @InjectRepository(BoardColumn)
+    private readonly columns: Repository<BoardColumn>,
+    private readonly authorization: BoardAuthorizationService,
+  ) {}
+
+  async create(
+    userId: string,
+    boardId: string,
+    input: CreateCardDto,
+  ): Promise<CardResponseDto> {
+    return this.mutate(userId, boardId, async (manager) => {
+      const column = await this.requireColumn(
+        manager.getRepository(BoardColumn),
+        boardId,
+        input.columnId,
+      );
+      const cards = manager.getRepository(Card);
+      const last = await cards.findOne({
+        where: { boardId, columnId: column.id, isArchived: false },
+        order: { position: 'DESC', id: 'DESC' },
+      });
+      const position = cardInsertionPosition(last?.position);
+      const card = cards.create({
+        boardId,
+        columnId: column.id,
+        createdById: userId,
+        title: input.title,
+        description: input.description ?? null,
+        dueDate: input.dueDate ? new Date(input.dueDate) : null,
+        isArchived: false,
+        archivedAt: null,
+        position: position ?? '0.0000000000',
+      });
+      if (position) return toCardResponseDto(await cards.save(card));
+      const ordered = await cards.find({
+        where: { boardId, columnId: column.id, isArchived: false },
+        order: { position: 'ASC', id: 'ASC' },
+      });
+      const all = [...ordered, card];
+      const positions = rebalancePositions(all.length);
+      all.forEach((row, index) => {
+        row.position = positions[index];
+      });
+      const saved = await cards.save(all);
+      return toCardResponseDto(saved[saved.length - 1]);
+    });
+  }
+
+  async update(
+    userId: string,
+    boardId: string,
+    cardId: string,
+    input: UpdateCardDto,
+  ): Promise<CardResponseDto> {
+    if (
+      input.title === undefined &&
+      input.description === undefined &&
+      input.dueDate === undefined
+    ) {
+      throw new ApplicationException(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_FAILED',
+        'At least one card field must be provided',
+      );
+    }
+    return this.mutate(userId, boardId, async (manager) => {
+      const cards = manager.getRepository(Card);
+      const card = await this.requireCard(cards, boardId, cardId, true);
+      if (input.title !== undefined) card.title = input.title;
+      if (input.description !== undefined) card.description = input.description;
+      if (input.dueDate !== undefined)
+        card.dueDate = input.dueDate === null ? null : new Date(input.dueDate);
+      return toCardResponseDto(await cards.save(card));
+    });
+  }
+
+  async archive(
+    userId: string,
+    boardId: string,
+    cardId: string,
+  ): Promise<CardResponseDto> {
+    return this.mutate(userId, boardId, async (manager) => {
+      const cards = manager.getRepository(Card);
+      const card = await this.requireCard(cards, boardId, cardId, true);
+      card.isArchived = true;
+      card.archivedAt = new Date();
+      return toCardResponseDto(await cards.save(card));
+    });
+  }
+
+  async move(
+    userId: string,
+    boardId: string,
+    cardId: string,
+    input: MoveCardDto,
+  ): Promise<CardResponseDto> {
+    return this.mutate(userId, boardId, async (manager) => {
+      const cards = manager.getRepository(Card);
+      const moving = await this.requireCard(cards, boardId, cardId, true);
+      const column = await this.requireColumn(
+        manager.getRepository(BoardColumn),
+        boardId,
+        input.toColumnId,
+      );
+      const anchor = input.beforeCardId?.toLowerCase() ?? null;
+      if (anchor === moving.id)
+        throw new ApplicationException(
+          HttpStatus.BAD_REQUEST,
+          'INVALID_CARD_MOVE',
+          'Card cannot be moved before itself',
+        );
+      const current = await cards.find({
+        where: { boardId, columnId: column.id, isArchived: false },
+        order: { position: 'ASC', id: 'ASC' },
+      });
+      const remaining = current.filter((card) => card.id !== moving.id);
+      const targetIndex =
+        anchor === null
+          ? remaining.length
+          : remaining.findIndex((card) => card.id === anchor);
+      if (targetIndex < 0)
+        throw new ApplicationException(
+          HttpStatus.NOT_FOUND,
+          'CARD_NOT_FOUND',
+          'Card not found',
+        );
+      if (
+        moving.columnId === column.id &&
+        current.findIndex((card) => card.id === moving.id) === targetIndex
+      )
+        return toCardResponseDto(moving);
+      const position = cardInsertionPosition(
+        remaining[targetIndex - 1]?.position,
+        remaining[targetIndex]?.position,
+      );
+      moving.columnId = column.id;
+      if (position) {
+        moving.position = position;
+        return toCardResponseDto(await cards.save(moving));
+      }
+      const ordered = [...remaining];
+      ordered.splice(targetIndex, 0, moving);
+      const positions = rebalancePositions(ordered.length);
+      ordered.forEach((card, index) => {
+        card.position = positions[index];
+      });
+      const saved = await cards.save(ordered);
+      return toCardResponseDto(saved[targetIndex]);
+    });
+  }
+
+  async assign(
+    userId: string,
+    boardId: string,
+    cardId: string,
+    input: AssignCardDto,
+  ): Promise<CardAssigneeResponseDto> {
+    return this.mutate(userId, boardId, async (manager) => {
+      const card = await this.requireCard(
+        manager.getRepository(Card),
+        boardId,
+        cardId,
+        true,
+      );
+      const member = await manager
+        .getRepository(BoardMember)
+        .findOne({ where: { boardId, userId: input.userId } });
+      if (!member)
+        throw new ApplicationException(
+          HttpStatus.NOT_FOUND,
+          'BOARD_MEMBER_NOT_FOUND',
+          'Board member not found',
+        );
+      const assignees = manager.getRepository(CardAssignee);
+      const existing = await assignees.findOne({
+        where: { cardId: card.id, userId: member.userId },
+      });
+      if (existing)
+        throw new ApplicationException(
+          HttpStatus.CONFLICT,
+          'CARD_ASSIGNEE_EXISTS',
+          'User is already assigned to this card',
+        );
+      const assignment = await assignees.save(
+        assignees.create({
+          cardId: card.id,
+          userId: member.userId,
+          assignedById: userId,
+        }),
+      );
+      return toCardAssigneeResponseDto(assignment);
+    });
+  }
+
+  async unassign(
+    userId: string,
+    boardId: string,
+    cardId: string,
+    targetUserId: string,
+  ): Promise<void> {
+    return this.mutate(userId, boardId, async (manager) => {
+      const card = await this.requireCard(
+        manager.getRepository(Card),
+        boardId,
+        cardId,
+        true,
+      );
+      const result = await manager
+        .getRepository(CardAssignee)
+        .delete({ cardId: card.id, userId: targetUserId });
+      if (!result.affected)
+        throw new ApplicationException(
+          HttpStatus.NOT_FOUND,
+          'CARD_ASSIGNEE_NOT_FOUND',
+          'Card assignee not found',
+        );
+    });
+  }
+
+  private mutate<T>(
+    userId: string,
+    boardId: string,
+    operation: (manager: EntityManager) => Promise<T>,
+  ): Promise<T> {
+    return this.boards.manager.transaction(async (manager) => {
+      // Same first lock as E1 and member removal; no realtime queue is needed here.
+      await this.authorization.requireMember(
+        userId,
+        boardId,
+        { mutable: true },
+        manager,
+      );
+      return operation(manager);
+    });
+  }
+
+  async list(
+    userId: string,
+    boardId: string,
+    query: ListCardsDto,
+  ): Promise<PaginatedResponse<CardResponseDto>> {
+    await this.authorization.requireMember(userId, boardId);
+    let offset: number;
+    try {
+      offset = pageOffset(query);
+      if (query.limit > 100) throw new RangeError();
+    } catch {
+      throw new ApplicationException(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_FAILED',
+        'Invalid pagination',
+      );
+    }
+    if (query.columnId)
+      await this.requireColumn(this.columns, boardId, query.columnId);
+    const builder = this.cards
+      .createQueryBuilder('card')
+      .leftJoinAndSelect('card.assignees', 'assignee')
+      .where('card.boardId = :boardId', { boardId })
+      .andWhere('card.isArchived = :isArchived', { isArchived: false });
+    if (query.columnId) {
+      builder
+        .andWhere('card.columnId = :columnId', { columnId: query.columnId })
+        .orderBy('card.position', 'ASC');
+    } else {
+      builder
+        .orderBy('card.columnId', 'ASC')
+        .addOrderBy('card.position', 'ASC');
+    }
+    const [cards, total] = await builder
+      .addOrderBy('card.id', 'ASC')
+      .skip(offset)
+      .take(query.limit)
+      .getManyAndCount();
+    return paginate(cards.map(toCardResponseDto), total, query);
+  }
+
+  async get(
+    userId: string,
+    boardId: string,
+    cardId: string,
+  ): Promise<CardResponseDto> {
+    await this.authorization.requireMember(userId, boardId);
+    return toCardResponseDto(
+      await this.requireCard(this.cards, boardId, cardId),
+    );
+  }
+
+  private async requireColumn(
+    columns: Repository<BoardColumn>,
+    boardId: string,
+    columnId: string,
+  ): Promise<BoardColumn> {
+    const column = await columns.findOne({ where: { id: columnId, boardId } });
+    if (!column)
+      throw new ApplicationException(
+        HttpStatus.NOT_FOUND,
+        'COLUMN_NOT_FOUND',
+        'Column not found',
+      );
+    return column;
+  }
+
+  private async requireCard(
+    cards: Repository<Card>,
+    boardId: string,
+    cardId: string,
+    mutable = false,
+  ): Promise<Card> {
+    const card = await cards.findOne({
+      where: { id: cardId, boardId },
+      relations: { assignees: true },
+    });
+    if (!card)
+      throw new ApplicationException(
+        HttpStatus.NOT_FOUND,
+        'CARD_NOT_FOUND',
+        'Card not found',
+      );
+    if (mutable && card.isArchived)
+      throw new ApplicationException(
+        HttpStatus.CONFLICT,
+        'CARD_ARCHIVED',
+        'Archived cards cannot be modified',
+      );
+    return card;
+  }
+}
