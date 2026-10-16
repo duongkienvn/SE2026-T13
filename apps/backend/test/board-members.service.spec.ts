@@ -10,6 +10,7 @@ import { User } from '../src/api/users/entities/user.entity';
 import { BoardMemberRole } from '../src/common/enums/database-enums';
 import { RealtimeAccessModule } from '../src/realtime/realtime-access.module';
 import { BoardRoomCoordinator } from '../src/realtime/board-room-coordinator.service';
+import { BoardEventPublisher } from '../src/realtime/board-event-publisher.service';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: (entity: { name: string }) =>
@@ -61,6 +62,7 @@ describe('BoardMembersService', () => {
     requireMember: jest.fn(),
     requireMutableOwner: jest.fn(),
   };
+  const events = { publish: jest.fn() };
 
   beforeEach(async () => {
     jest.resetAllMocks();
@@ -83,6 +85,7 @@ describe('BoardMembersService', () => {
     const module = await Test.createTestingModule({
       imports: [RealtimeAccessModule],
       providers: [
+        { provide: BoardEventPublisher, useValue: events },
         BoardMembersService,
         { provide: getRepositoryToken(BoardMember), useValue: members },
         { provide: getRepositoryToken(User), useValue: users },
@@ -102,6 +105,7 @@ describe('BoardMembersService', () => {
     const order: string[] = [];
     txMembers.findOne.mockResolvedValue({
       id: 'member-row',
+      userId: TARGET_ID,
       role: BoardMemberRole.MEMBER,
     });
     let commit!: () => void;
@@ -109,10 +113,11 @@ describe('BoardMembersService', () => {
     const inTransaction = new Promise<void>((resolve) => (started = resolve));
     const commitBarrier = new Promise<void>((resolve) => (commit = resolve));
     transaction.mockImplementation(async (callback) => {
-      await callback(manager);
+      const result = await callback(manager);
       started();
       await commitBarrier;
       order.push('commit');
+      return result;
     });
     const evict = jest
       .spyOn(coordinator, 'evictUser')
@@ -120,13 +125,25 @@ describe('BoardMembersService', () => {
         order.push('evict');
       });
     const removal = service.remove(ACTOR_ID, BOARD_ID, TARGET_ID);
+    events.publish.mockImplementation(async () => {
+      await coordinator.run(BOARD_ID, () => order.push('member:removed'));
+    });
     await inTransaction;
     const broadcast = coordinator.run(BOARD_ID, () => order.push('broadcast'));
     const join = coordinator.run(BOARD_ID, () => order.push('join'));
     expect(evict).not.toHaveBeenCalled();
     commit();
     await Promise.all([removal, broadcast, join]);
-    expect(order).toEqual(['commit', 'evict', 'broadcast', 'join']);
+    expect(order).toEqual([
+      'commit',
+      'evict',
+      'broadcast',
+      'join',
+      'member:removed',
+    ]);
+    expect(events.publish.mock.calls).toEqual([
+      ['member:removed', { boardId: BOARD_ID, userId: TARGET_ID }],
+    ]);
     expect(evict).toHaveBeenCalledWith(BOARD_ID, TARGET_ID);
   });
 
@@ -137,6 +154,7 @@ describe('BoardMembersService', () => {
       'commit failed',
     );
     expect(evict).not.toHaveBeenCalled();
+    expect(events.publish).not.toHaveBeenCalled();
     await expect(coordinator.run(BOARD_ID, () => 'available')).resolves.toBe(
       'available',
     );
@@ -170,6 +188,9 @@ describe('BoardMembersService', () => {
       user: target,
     });
     expect(result.role).toBe(BoardMemberRole.MEMBER);
+    expect(events.publish.mock.calls).toEqual([
+      ['member:added', { boardId: BOARD_ID, userId: TARGET_ID }],
+    ]);
   });
 
   it('rejects demoting the creator and preserves the transaction write set', async () => {
@@ -186,6 +207,7 @@ describe('BoardMembersService', () => {
       }),
     ).rejects.toMatchObject({ status: 409 });
     expect(txMembers.save).not.toHaveBeenCalled();
+    expect(events.publish).not.toHaveBeenCalled();
   });
 
   it('rejects an OWNER demoting themself when they are not the creator', async () => {
@@ -239,6 +261,26 @@ describe('BoardMembersService', () => {
         role: BoardMemberRole.MEMBER,
       }),
     ).resolves.toMatchObject({ role: BoardMemberRole.MEMBER });
+    expect(events.publish.mock.calls).toEqual([
+      ['member:role-changed', { boardId: BOARD_ID, userId: TARGET_ID }],
+      ['member:role-changed', { boardId: BOARD_ID, userId: TARGET_ID }],
+    ]);
+  });
+
+  it('does not save or publish an unchanged role', async () => {
+    txMembers.findOne.mockResolvedValue(
+      Object.assign(new BoardMember(), {
+        userId: TARGET_ID,
+        user: target,
+        role: BoardMemberRole.MEMBER,
+        joinedAt: new Date(),
+      }),
+    );
+    await service.updateRole(ACTOR_ID, BOARD_ID, TARGET_ID, {
+      role: BoardMemberRole.MEMBER,
+    });
+    expect(txMembers.save).not.toHaveBeenCalled();
+    expect(events.publish).not.toHaveBeenCalled();
   });
 
   it('rejects demoting the last OWNER', async () => {

@@ -56,6 +56,7 @@ try {
     boards,
     authorization,
     new BoardRoomCoordinator(),
+    { publish: async () => undefined },
   );
   const user = (name) =>
     users.save(

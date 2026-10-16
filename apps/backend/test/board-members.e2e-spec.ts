@@ -26,6 +26,7 @@ import { GlobalExceptionFilter } from '../src/filters/global-exception.filter';
 import { BoardMemberRole } from '../src/common/enums/database-enums';
 import { User } from '../src/api/users/entities/user.entity';
 import { RealtimeAccessModule } from '../src/realtime/realtime-access.module';
+import { BoardEventPublisher } from '../src/realtime/board-event-publisher.service';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: (entity: { name: string }) =>
@@ -95,6 +96,7 @@ describe('board-members HTTP contract', () => {
       ],
       controllers: [BoardMembersController],
       providers: [
+        { provide: BoardEventPublisher, useValue: { publish: jest.fn() } },
         BoardMembersService,
         BoardAuthorizationService,
         AuthService,

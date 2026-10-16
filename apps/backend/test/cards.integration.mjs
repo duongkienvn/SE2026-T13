@@ -100,6 +100,7 @@ try {
     boards,
     authorization,
     new BoardRoomCoordinator(),
+    { publish: async () => undefined },
   );
   const passwordHash = await argon2.hash('cards-integration-password');
   const user = async (name) =>

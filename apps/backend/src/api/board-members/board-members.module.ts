@@ -7,11 +7,13 @@ import { BoardMembersService } from './board-members.service';
 import { BoardAuthorizationService } from './board-authorization.service';
 import { BoardMember } from './entities/board-member.entity';
 import { RealtimeAccessModule } from '../../realtime/realtime-access.module';
+import { RealtimeDeliveryModule } from '../../realtime/realtime-delivery.module';
 
 @Module({
   imports: [
     AuthModule,
     RealtimeAccessModule,
+    RealtimeDeliveryModule,
     TypeOrmModule.forFeature([Board, BoardMember]),
   ],
   controllers: [BoardMembersController],
