@@ -61,7 +61,7 @@ export function UserMenu() {
           className="absolute top-full right-0 z-20 mt-2 w-64 rounded-xl border border-line bg-surface p-2 shadow-frame"
         >
           <div className="flex items-center gap-3 px-3 py-2.5">
-            <UserAvatar user={user} className="size-10" />
+            <UserAvatar user={user} className="size-10 text-[15px]" />
             <div className="min-w-0">
               <p className="truncate text-[15px] font-semibold text-ink">
                 {user.displayName}
