@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { RealtimeDeliveryModule } from '../../realtime/realtime-delivery.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { BoardMembersModule } from '../board-members/board-members.module';
@@ -12,6 +13,7 @@ import { CardsService } from './cards.service';
 
 @Module({
   imports: [
+    RealtimeDeliveryModule,
     AuthModule,
     BoardMembersModule,
     TypeOrmModule.forFeature([

@@ -115,7 +115,7 @@ pnpm lint
 pnpm test
 pnpm build
 pnpm format:check
-pnpm --filter @kanban/backend test --runTestsByPath test/cards.dto.spec.ts test/cards-ordering.spec.ts test/cards.service.spec.ts test/cards.e2e-spec.ts
+pnpm --filter @kanban/backend test --runTestsByPath test/cards/cards.dto.spec.ts test/cards/cards-ordering.spec.ts test/cards/cards.service.spec.ts test/cards/cards.e2e-spec.ts
 pnpm --filter @kanban/backend test:cards:database
 pnpm --filter @kanban/backend test:columns:database
 ```

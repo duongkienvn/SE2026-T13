@@ -48,9 +48,9 @@ envelope hiện tại với mặc định `page=1`, `limit=20`, tối đa `100`.
 - `apps/backend/src/api/columns/columns.service.ts`
 - `apps/backend/src/api/columns/columns-ordering.ts`
 - `apps/backend/src/api/columns/dto/`
-- `apps/backend/test/columns-ordering.spec.ts`
-- `apps/backend/test/columns.e2e-spec.ts`
-- `apps/backend/test/columns.integration.mjs`
+- `apps/backend/test/columns/columns-ordering.spec.ts`
+- `apps/backend/test/columns/columns.e2e-spec.ts`
+- `apps/backend/test/columns/columns.integration.mjs`
 
 ## Kiểm thử
 

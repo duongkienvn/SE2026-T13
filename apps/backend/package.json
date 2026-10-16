@@ -13,13 +13,14 @@
     "migration:run": "typeorm-ts-node-commonjs migration:run -d src/database/data-source.ts",
     "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/database/data-source.ts",
     "migration:show": "typeorm-ts-node-commonjs migration:show -d src/database/data-source.ts",
-    "test:database": "pnpm build && node test/database-foundation.integration.mjs",
-    "test:boards:database": "pnpm build && node test/boards.integration.mjs",
-    "test:board-members:database": "pnpm build && node test/board-members.integration.mjs",
-    "test:columns:database": "pnpm build && node test/columns.integration.mjs",
-    "test:cards:database": "pnpm build && node test/cards.integration.mjs",
-    "test:realtime": "jest --runInBand --runTestsByPath test/realtime.e2e-spec.ts",
-    "test:realtime:database": "node -r ts-node/register test/realtime.integration.mjs"
+    "test:database": "pnpm build && node test/database/database-foundation.integration.mjs",
+    "test:boards:database": "pnpm build && node test/boards/boards.integration.mjs",
+    "test:board-members:database": "pnpm build && node test/board-members/board-members.integration.mjs",
+    "test:columns:database": "pnpm build && node test/columns/columns.integration.mjs",
+    "test:cards:database": "pnpm build && node test/cards/cards.integration.mjs",
+    "test:realtime": "jest --runInBand --runTestsByPath test/realtime/realtime.e2e-spec.ts",
+    "test:realtime:database": "node -r ts-node/register test/realtime/realtime.integration.mjs",
+    "test:board-events:database": "node -r ts-node/register test/realtime/board-events/board-events.integration.mjs"
   },
   "dependencies": {
     "@kanban/shared": "workspace:*",
