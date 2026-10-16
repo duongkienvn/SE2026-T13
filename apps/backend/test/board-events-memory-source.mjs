@@ -5,7 +5,13 @@ export function boardEventsMemorySource() {
   const tables = new Map();
   const repositories = new Map();
   const matches = (row, where = {}) =>
-    Object.entries(where).every(([key, value]) => row[key] === value);
+    Object.entries(where).every(([key, value]) =>
+      (key === 'id' || key.endsWith('Id')) &&
+      typeof value === 'string' &&
+      typeof row[key] === 'string'
+        ? row[key].toLowerCase() === value.toLowerCase()
+        : row[key] === value,
+    );
   const source = {
     options: { type: 'postgres' },
     entityMetadatas: [],
@@ -30,13 +36,13 @@ export function boardEventsMemorySource() {
             ...input,
             id: input.id ?? randomUUID(),
           };
-          rows.set(value.id, structuredClone(value));
+          rows.set(value.id, globalThis.structuredClone(value));
           return value;
         },
         async find({ where, order } = {}) {
           const result = [...rows.values()]
             .filter((row) => matches(row, where))
-            .map((row) => structuredClone(row));
+            .map((row) => globalThis.structuredClone(row));
           if (order)
             result.sort((a, b) => {
               for (const [key, direction] of Object.entries(order)) {

@@ -68,6 +68,27 @@ function harness() {
 
 describe('Column post-commit events', () => {
   it.each(['create', 'rename', 'move', 'remove'] as const)(
+    'does not publish %s if transaction rejects after writes',
+    async (operation) => {
+      const h = harness();
+      h.transaction.mockImplementation(async (callback) => {
+        await callback(h.manager);
+        throw new Error('commit failed');
+      });
+      const args = ['actor', boardId, columnId] as const;
+      const mutation =
+        operation === 'create'
+          ? h.service.create('actor', boardId, { name: 'New' })
+          : operation === 'rename'
+            ? h.service.rename(...args, { name: 'New' })
+            : operation === 'move'
+              ? h.service.move(...args, { beforeColumnId: null })
+              : h.service.remove(...args);
+      await expect(mutation).rejects.toThrow('commit failed');
+      expect(h.publish).not.toHaveBeenCalled();
+    },
+  );
+  it.each(['create', 'rename', 'move', 'remove'] as const)(
     'emits once after %s commits with only authoritative IDs',
     async (operation) => {
       const h = harness();

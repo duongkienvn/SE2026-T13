@@ -101,6 +101,30 @@ describe('BoardMembersService', () => {
   let service: BoardMembersService;
   let coordinator: BoardRoomCoordinator;
 
+  it.each(['self', 'creator'] as const)(
+    'keeps %s removal protection with uppercase target UUID',
+    async (targetKind) => {
+      const targetId = targetKind === 'self' ? ACTOR_ID : TARGET_ID;
+      authorization.requireMutableOwner.mockResolvedValue({
+        board: {
+          ...board,
+          createdById: targetKind === 'creator' ? TARGET_ID : ACTOR_ID,
+        },
+      });
+      txMembers.findOne.mockResolvedValue({
+        id: 'member-row',
+        userId: targetId,
+        role: BoardMemberRole.OWNER,
+      });
+      txMembers.count.mockResolvedValue(2);
+      await expect(
+        service.remove(ACTOR_ID, BOARD_ID, targetId.toUpperCase()),
+      ).rejects.toMatchObject({ status: 409 });
+      expect(txMembers.delete).not.toHaveBeenCalled();
+      expect(events.publish).not.toHaveBeenCalled();
+    },
+  );
+
   it.each(['add', 'updateRole', 'remove'] as const)(
     'publishes %s only after transaction resolution',
     async (operation) => {

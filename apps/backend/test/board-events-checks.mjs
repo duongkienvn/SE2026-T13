@@ -119,9 +119,10 @@ export async function runBoardEventChecks(app, source) {
     return socket;
   };
   const http = (method, path, body, status = 200, token = tokens.owner) => {
-    const req = request(app.getHttpServer())
-      [method](`/api/boards/${path}`)
-      .auth(token, { type: 'bearer' });
+    const agent = request(app.getHttpServer());
+    const req = agent[method](`/api/boards/${path}`).auth(token, {
+      type: 'bearer',
+    });
     return (body === undefined ? req : req.send(body)).expect(status);
   };
   let recipients;
@@ -314,6 +315,30 @@ export async function runBoardEventChecks(app, source) {
     );
     await silent(async () => {
       await http('patch', `${ids.a}/cards/${card.id}`, { title: 'Changed' });
+      await http(
+        'patch',
+        `${ids.a}/cards/${card.id}/move`,
+        { toColumnId: c3.id, beforeCardId: card.id },
+        400,
+      );
+      await http(
+        'patch',
+        `${ids.a}/columns/${c1.id}/move`,
+        { beforeColumnId: c1.id },
+        400,
+      );
+      await http(
+        'delete',
+        `${ids.a}/cards/${card.id}/assignees/${ids.member}`,
+        undefined,
+        404,
+      );
+      await http(
+        'post',
+        `${ids.a}/members`,
+        { email: 'member@events.test' },
+        409,
+      );
       await http('patch', `${ids.a}/cards/${card.id}/move`, {
         toColumnId: c3.id,
         beforeCardId: null,
@@ -444,7 +469,7 @@ export async function runBoardEventChecks(app, source) {
       await mutation(
         'member:removed',
         'delete',
-        `${ids.a}/members/${ids.member}`,
+        `${ids.a}/members/${ids.member.toUpperCase()}`,
         undefined,
         204,
         { boardId: ids.a, userId: ids.member },

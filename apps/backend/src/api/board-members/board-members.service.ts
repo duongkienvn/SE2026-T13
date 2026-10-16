@@ -174,8 +174,8 @@ export class BoardMembersService {
           where: { boardId, userId: targetUserId },
         });
         if (!member) throw this.memberNotFound();
-        if (targetUserId === actorId) throw this.selfRemovalConflict();
-        if (targetUserId === board.createdById) throw this.creatorConflict();
+        if (member.userId === actorId) throw this.selfRemovalConflict();
+        if (member.userId === board.createdById) throw this.creatorConflict();
         if (member.role === BoardMemberRole.OWNER) {
           const ownerCount = await members.count({
             where: { boardId, role: BoardMemberRole.OWNER },
@@ -186,7 +186,7 @@ export class BoardMembersService {
         await members.delete({ id: member.id });
         return { boardId: board.id, userId: member.userId };
       });
-      await this.realtimeAccess.evictUser(boardId, targetUserId);
+      await this.realtimeAccess.evictUser(removed.boardId, removed.userId);
       return removed;
     });
     // emitToBoard takes the same queue: publish only after run has released it.
