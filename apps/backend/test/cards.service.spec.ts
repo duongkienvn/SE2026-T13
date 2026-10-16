@@ -11,6 +11,85 @@ describe('CardsService', () => {
     h = cardsHarness();
   });
 
+  it('creates at the end with server-controlled identity and nullable defaults', async () => {
+    h.cards.findOne.mockResolvedValue(
+      cardFixture({ position: '200.0000000000' }),
+    );
+    const result = await h.service.create(ID.user, ID.board, {
+      columnId: ID.column,
+      title: 'New',
+    });
+    expect(result).toMatchObject({
+      position: '300.0000000000',
+      createdById: ID.user,
+      boardId: ID.board,
+      dueDate: null,
+      description: null,
+      assignees: [],
+    });
+    expect(h.authorization.requireMember).toHaveBeenCalledWith(
+      ID.user,
+      ID.board,
+      { mutable: true },
+      h.manager,
+    );
+    expect(
+      h.authorization.requireMember.mock.invocationCallOrder[0],
+    ).toBeLessThan(h.cards.save.mock.invocationCallOrder[0]);
+    expect(h.cards.findOne).toHaveBeenCalledWith({
+      where: { boardId: ID.board, columnId: ID.column, isArchived: false },
+      order: { position: 'DESC', id: 'DESC' },
+    });
+  });
+
+  it('creates first card and rebalances an overflowing append atomically', async () => {
+    h.cards.findOne.mockResolvedValueOnce(null);
+    await expect(
+      h.service.create(ID.user, ID.board, {
+        columnId: ID.column,
+        title: 'First',
+      }),
+    ).resolves.toMatchObject({ position: '100.0000000000' });
+    h.cards.findOne.mockResolvedValue(
+      cardFixture({ position: '9999999999.9999999999' }),
+    );
+    h.cards.find.mockResolvedValue([
+      cardFixture({ position: '9999999999.9999999999' }),
+    ]);
+    await expect(
+      h.service.create(ID.user, ID.board, {
+        columnId: ID.column,
+        title: 'Next',
+      }),
+    ).resolves.toMatchObject({ position: '200.0000000000' });
+    expect(h.cards.save).toHaveBeenLastCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ position: '100.0000000000' }),
+        expect.objectContaining({ position: '200.0000000000' }),
+      ]),
+    );
+  });
+
+  it('rejects an inaccessible destination or archived board before writing', async () => {
+    h.columns.findOne.mockResolvedValue(null);
+    await expect(
+      h.service.create(ID.user, ID.board, {
+        columnId: ID.column,
+        title: 'Denied',
+      }),
+    ).rejects.toMatchObject({ status: 404 });
+    h.authorization.requireMember.mockRejectedValueOnce(
+      Object.assign(new Error('Archived'), { status: 409 }),
+    );
+    await expect(
+      h.service.create(ID.user, ID.board, {
+        columnId: ID.column,
+        title: 'Denied',
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(h.cards.save).not.toHaveBeenCalled();
+  });
+
   it('scopes active lists to the board with stable ordering and pagination', async () => {
     const result = await h.service.list(ID.user, ID.board, {
       page: 2,

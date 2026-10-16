@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { ApplicationException } from '../../exceptions/application.exception';
 import {
   paginate,
@@ -13,6 +13,9 @@ import { BoardColumn } from '../columns/entities/board-column.entity';
 import { Card } from './entities/card.entity';
 import { ListCardsDto } from './dto/list-cards.dto';
 import { CardResponseDto, toCardResponseDto } from './dto/card-response.dto';
+import { CreateCardDto } from './dto/create-card.dto';
+import { cardInsertionPosition } from './cards-ordering';
+import { rebalancePositions } from '../columns/columns-ordering';
 
 @Injectable()
 export class CardsService {
@@ -23,6 +26,66 @@ export class CardsService {
     private readonly columns: Repository<BoardColumn>,
     private readonly authorization: BoardAuthorizationService,
   ) {}
+
+  async create(
+    userId: string,
+    boardId: string,
+    input: CreateCardDto,
+  ): Promise<CardResponseDto> {
+    return this.mutate(userId, boardId, async (manager) => {
+      const column = await this.requireColumn(
+        manager.getRepository(BoardColumn),
+        boardId,
+        input.columnId,
+      );
+      const cards = manager.getRepository(Card);
+      const last = await cards.findOne({
+        where: { boardId, columnId: column.id, isArchived: false },
+        order: { position: 'DESC', id: 'DESC' },
+      });
+      const position = cardInsertionPosition(last?.position);
+      const card = cards.create({
+        boardId,
+        columnId: column.id,
+        createdById: userId,
+        title: input.title,
+        description: input.description ?? null,
+        dueDate: input.dueDate ? new Date(input.dueDate) : null,
+        isArchived: false,
+        archivedAt: null,
+        position: position ?? '0.0000000000',
+      });
+      if (position) return toCardResponseDto(await cards.save(card));
+      const ordered = await cards.find({
+        where: { boardId, columnId: column.id, isArchived: false },
+        order: { position: 'ASC', id: 'ASC' },
+      });
+      const all = [...ordered, card];
+      const positions = rebalancePositions(all.length);
+      all.forEach((row, index) => {
+        row.position = positions[index];
+      });
+      const saved = await cards.save(all);
+      return toCardResponseDto(saved[saved.length - 1]);
+    });
+  }
+
+  private mutate<T>(
+    userId: string,
+    boardId: string,
+    operation: (manager: EntityManager) => Promise<T>,
+  ): Promise<T> {
+    return this.boards.manager.transaction(async (manager) => {
+      // Same first lock as E1 and member removal; no realtime queue is needed here.
+      await this.authorization.requireMember(
+        userId,
+        boardId,
+        { mutable: true },
+        manager,
+      );
+      return operation(manager);
+    });
+  }
 
   async list(
     userId: string,
