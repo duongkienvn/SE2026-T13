@@ -10,10 +10,16 @@ import {
   createCard,
   getCard,
   listAllCards,
+  moveCard,
   unassignCard,
   updateCard,
 } from './api';
-import type { Card, CreateCardRequest, UpdateCardRequest } from './types';
+import type {
+  Card,
+  CreateCardRequest,
+  MoveCardRequest,
+  UpdateCardRequest,
+} from './types';
 
 export const CARD_ARCHIVED = 'CARD_ARCHIVED';
 export const CARD_ASSIGNEE_EXISTS = 'CARD_ASSIGNEE_EXISTS';
@@ -121,6 +127,32 @@ export function useArchiveCard(boardId: string, cardId: string) {
       runAuthorized((token) => archiveCard(token, boardId, cardId)),
     onSuccess: save,
     onError,
+  });
+}
+
+/**
+ * Resolves once the active card list is refetched, so a drag preview can be
+ * dropped without flicker. Any failure refetches the server's order (and the
+ * columns, in case the destination was deleted meanwhile).
+ */
+export function useMoveCard(boardId: string) {
+  const { runAuthorized } = useAuth();
+  const queryClient = useQueryClient();
+  const save = useSaveCard(boardId);
+  const refreshIfArchived = useRefreshIfArchived(boardId);
+  return useMutation({
+    mutationFn: ({ cardId, ...input }: MoveCardRequest & { cardId: string }) =>
+      runAuthorized((token) => moveCard(token, boardId, cardId, input)),
+    onSuccess: save,
+    onError: (error) => {
+      refreshIfArchived(error);
+      void queryClient.invalidateQueries({
+        queryKey: boardKeys.cards(boardId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: boardKeys.columns(boardId),
+      });
+    },
   });
 }
 

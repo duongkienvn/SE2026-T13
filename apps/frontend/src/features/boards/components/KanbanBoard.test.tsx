@@ -199,4 +199,45 @@ describe('KanbanBoard', () => {
       expect(screen.getByRole('heading', { name: 'Back again' })).toBeTruthy(),
     );
   });
+
+  it('offers keyboard drag grips only while the board can change', async () => {
+    const column = makeColumn({ name: 'Doing' });
+    openKanban({
+      [listPath('columns')]: okPage([column]),
+      [listPath('cards')]: okPage([
+        makeCard({ columnId: column.id, title: 'Grab me' }),
+      ]),
+    });
+
+    const grip = await screen.findByRole('button', {
+      name: 'Move card Grab me',
+    });
+    expect(grip.getAttribute('aria-roledescription')).toBe('sortable');
+    expect(
+      screen.getByRole('button', { name: 'Move column Doing' }),
+    ).toBeTruthy();
+  });
+});
+
+describe('KanbanBoard on an archived board', () => {
+  it('has no drag grips', async () => {
+    storeSession();
+    const archived = makeBoard({ isArchived: true });
+    const column = makeColumn({ name: 'Frozen' });
+    mockApi({
+      'GET /users/me': ok(testUser),
+      [`GET /boards/${archived.id}`]: ok(archived),
+      [`GET /boards/${archived.id}/columns?page=1&limit=100`]: okPage([column]),
+      [`GET /boards/${archived.id}/cards?page=1&limit=100`]: okPage([
+        makeCard({ columnId: column.id, title: 'Stuck' }),
+      ]),
+      [`GET /boards/${archived.id}/members?page=1&limit=100`]: okPage([]),
+    });
+    renderApp(`/boards/${archived.id}`);
+
+    await screen.findByRole('button', { name: 'Stuck' });
+    expect(
+      screen.queryByRole('button', { name: /^Move (card|column) / }),
+    ).toBeNull();
+  });
 });

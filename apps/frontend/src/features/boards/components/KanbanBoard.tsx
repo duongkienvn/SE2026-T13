@@ -17,12 +17,10 @@ import {
   RenameColumnDialog,
 } from '../../columns/components/ColumnFormDialog';
 import { DeleteColumnDialog } from '../../columns/components/DeleteColumnDialog';
-import {
-  KanbanColumn,
-  type ColumnActions,
-} from '../../columns/components/KanbanColumn';
+import type { ColumnActions } from '../../columns/components/KanbanColumn';
 import { useColumns } from '../../columns/hooks';
 import type { Column } from '../../columns/types';
+import { KanbanDndBoard } from './KanbanDndBoard';
 
 interface KanbanBoardProps {
   boardId: string;
@@ -101,19 +99,14 @@ export function KanbanBoard({ boardId, readOnly }: KanbanBoardProps) {
     );
   } else {
     content = (
-      <div className="relative -mx-4 h-full overflow-x-auto px-4 md:-mx-6 md:px-6 lg:-mx-10 lg:px-10">
-        <div className="flex h-full items-start gap-4 pb-1">
-          {groups.map(({ column, cards: columnCards }) => (
-            <KanbanColumn
-              key={column.id}
-              column={column}
-              cards={columnCards}
-              members={membersById}
-              actions={columnActions}
-              onOpenCard={openCard}
-            />
-          ))}
-          {!readOnly && (
+      <KanbanDndBoard
+        boardId={boardId}
+        groups={groups}
+        members={membersById}
+        actions={columnActions}
+        onOpenCard={openCard}
+        trailing={
+          !readOnly && (
             <button
               type="button"
               onClick={openCreateColumn}
@@ -122,9 +115,9 @@ export function KanbanBoard({ boardId, readOnly }: KanbanBoardProps) {
               <PlusIcon aria-hidden="true" className="size-4.5" />
               Add column
             </button>
-          )}
-        </div>
-      </div>
+          )
+        }
+      />
     );
   }
 

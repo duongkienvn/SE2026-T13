@@ -8,9 +8,14 @@ import {
   createColumn,
   deleteColumn,
   listAllColumns,
+  moveColumn,
   renameColumn,
 } from './api';
-import type { CreateColumnRequest, RenameColumnRequest } from './types';
+import type {
+  CreateColumnRequest,
+  MoveColumnRequest,
+  RenameColumnRequest,
+} from './types';
 
 export const COLUMN_NOT_EMPTY = 'COLUMN_NOT_EMPTY';
 
@@ -65,6 +70,28 @@ export function useRenameColumn(boardId: string) {
       runAuthorized((token) => renameColumn(token, boardId, columnId, input)),
     onSuccess: invalidate,
     onError,
+  });
+}
+
+/**
+ * Resolves once the reordered columns are refetched, so a drag preview can be
+ * dropped without flicker. Any failure refetches the server's order.
+ */
+export function useMoveColumn(boardId: string) {
+  const { runAuthorized } = useAuth();
+  const invalidate = useInvalidateColumns(boardId);
+  const refreshIfArchived = useRefreshIfArchived(boardId);
+  return useMutation({
+    mutationFn: ({
+      columnId,
+      ...input
+    }: MoveColumnRequest & { columnId: string }) =>
+      runAuthorized((token) => moveColumn(token, boardId, columnId, input)),
+    onSuccess: invalidate,
+    onError: (error) => {
+      refreshIfArchived(error);
+      void invalidate();
+    },
   });
 }
 

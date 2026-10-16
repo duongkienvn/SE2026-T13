@@ -9,6 +9,7 @@ import {
   useColumns,
   useCreateColumn,
   useDeleteColumn,
+  useMoveColumn,
   useRenameColumn,
 } from './hooks';
 
@@ -128,5 +129,45 @@ describe('column hooks', () => {
     await waitFor(() =>
       expect(result.current.board.data?.isArchived).toBe(true),
     );
+  });
+
+  it('moves a column and refetches the order, also after a refusal', async () => {
+    storeSession();
+    const column = makeColumn();
+    let listCalls = 0;
+    let moveCalls = 0;
+    const calls = mockApi({
+      'GET /users/me': ok(testUser),
+      [page(COLUMNS, 1)]: () => {
+        listCalls += 1;
+        return okPage([column]);
+      },
+      [`PATCH ${COLUMNS}/${column.id}/move`]: () =>
+        ++moveCalls === 1 ? ok(column) : fail(400, 'INVALID_COLUMN_MOVE'),
+    });
+
+    const { result } = renderHook(
+      () => ({ columns: useColumns(BOARD), move: useMoveColumn(BOARD) }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.columns.isSuccess).toBe(true));
+
+    await act(() =>
+      result.current.move.mutateAsync({
+        columnId: column.id,
+        beforeColumnId: null,
+      }),
+    );
+    expect(listCalls).toBe(2);
+    expect(calls.find((c) => c.method === 'PATCH')!.body).toEqual({
+      beforeColumnId: null,
+    });
+
+    await act(() =>
+      result.current.move
+        .mutateAsync({ columnId: column.id, beforeColumnId: column.id })
+        .catch(() => undefined),
+    );
+    await waitFor(() => expect(listCalls).toBe(3));
   });
 });

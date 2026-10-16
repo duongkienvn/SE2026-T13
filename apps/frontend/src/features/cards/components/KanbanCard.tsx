@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { ClockIcon } from '../../../components/icons';
 import { formatDate } from '../../../lib/format';
 import { UserAvatar } from '../../auth/components/UserAvatar';
@@ -13,6 +14,8 @@ interface KanbanCardProps {
   members: ReadonlyMap<string, MemberUser>;
   /** Opens the card detail. */
   onOpen?: (card: Card) => void;
+  /** Keyboard drag grip, shown at the top left. */
+  dragHandle?: ReactNode;
   now?: number;
 }
 
@@ -20,6 +23,7 @@ export function KanbanCard({
   card,
   members,
   onOpen,
+  dragHandle,
   now = Date.now(),
 }: KanbanCardProps) {
   const assignees = card.assignees
@@ -31,21 +35,26 @@ export function KanbanCard({
 
   return (
     <article
-      className={`relative rounded-lg border border-line bg-surface p-4 shadow-card ${
+      className={`group relative rounded-lg border border-line bg-surface p-4 shadow-card ${
         onOpen ? 'transition-colors hover:border-primary/40' : ''
       }`}
     >
-      {card.dueDate && (
-        <p
-          className={`mb-2 flex items-center justify-end gap-1 text-xs ${
-            overdue ? 'font-medium text-danger' : 'text-muted'
-          }`}
-        >
-          <ClockIcon aria-hidden="true" className="size-3.5" />
-          <span className="sr-only">Due </span>
-          <time dateTime={card.dueDate}>{formatDate(card.dueDate)}</time>
-          {overdue && <span>· Overdue</span>}
-        </p>
+      {(dragHandle || card.dueDate) && (
+        <div className="mb-2 flex min-h-5 items-center gap-2">
+          {dragHandle}
+          {card.dueDate && (
+            <p
+              className={`ml-auto flex items-center gap-1 text-xs ${
+                overdue ? 'font-medium text-danger' : 'text-muted'
+              }`}
+            >
+              <ClockIcon aria-hidden="true" className="size-3.5" />
+              <span className="sr-only">Due </span>
+              <time dateTime={card.dueDate}>{formatDate(card.dueDate)}</time>
+              {overdue && <span>· Overdue</span>}
+            </p>
+          )}
+        </div>
       )}
       <h3 className="text-[15px] font-semibold break-words text-ink">
         {onOpen ? (
