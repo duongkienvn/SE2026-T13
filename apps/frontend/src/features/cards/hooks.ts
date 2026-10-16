@@ -16,6 +16,8 @@ import {
 import type { Card, CreateCardRequest, UpdateCardRequest } from './types';
 
 export const CARD_ARCHIVED = 'CARD_ARCHIVED';
+export const CARD_ASSIGNEE_EXISTS = 'CARD_ASSIGNEE_EXISTS';
+export const BOARD_MEMBER_NOT_FOUND = 'BOARD_MEMBER_NOT_FOUND';
 
 /** Every active card of the board; group them with `groupCardsByColumn`. */
 export function useCards(boardId: string, { enabled = true } = {}) {
@@ -29,14 +31,18 @@ export function useCards(boardId: string, { enabled = true } = {}) {
   });
 }
 
-/** One card, archived or not. */
-export function useCard(boardId: string, cardId: string) {
+/**
+ * One card, archived or not. `placeholder` (the board's copy) is shown while
+ * the latest version loads.
+ */
+export function useCard(boardId: string, cardId: string, placeholder?: Card) {
   const { runAuthorized } = useAuth();
   return useQuery({
     queryKey: boardKeys.card(boardId, cardId),
     queryFn: ({ signal }) =>
       runAuthorized((token) => getCard(token, boardId, cardId, signal)),
     retry: retryUnlessClientError,
+    placeholderData: placeholder,
   });
 }
 
@@ -64,9 +70,16 @@ function useRefreshAfterCardError(boardId: string) {
   const refreshIfArchived = useRefreshIfArchived(boardId);
   return (error: unknown) => {
     refreshIfArchived(error);
-    if (
-      isApiError(error) &&
-      (error.code === CARD_ARCHIVED || error.status === 404)
+    if (!isApiError(error)) return;
+    if (error.code === BOARD_MEMBER_NOT_FOUND) {
+      // The picked person left the board: refresh who can be assigned.
+      void queryClient.invalidateQueries({
+        queryKey: boardKeys.members(boardId),
+      });
+    } else if (
+      error.code === CARD_ARCHIVED ||
+      error.code === CARD_ASSIGNEE_EXISTS ||
+      error.status === 404
     ) {
       void queryClient.invalidateQueries({
         queryKey: boardKeys.cards(boardId),

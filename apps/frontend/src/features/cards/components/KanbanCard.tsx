@@ -11,12 +11,15 @@ interface KanbanCardProps {
   card: Card;
   /** Board members by user id, to show assignees' names and avatars. */
   members: ReadonlyMap<string, MemberUser>;
+  /** Opens the card detail. */
+  onOpen?: (card: Card) => void;
   now?: number;
 }
 
 export function KanbanCard({
   card,
   members,
+  onOpen,
   now = Date.now(),
 }: KanbanCardProps) {
   const assignees = card.assignees
@@ -27,7 +30,11 @@ export function KanbanCard({
   const overdue = !!card.dueDate && new Date(card.dueDate).getTime() < now;
 
   return (
-    <article className="relative rounded-lg border border-line bg-surface p-4 shadow-card">
+    <article
+      className={`relative rounded-lg border border-line bg-surface p-4 shadow-card ${
+        onOpen ? 'transition-colors hover:border-primary/40' : ''
+      }`}
+    >
       {card.dueDate && (
         <p
           className={`mb-2 flex items-center justify-end gap-1 text-xs ${
@@ -41,7 +48,18 @@ export function KanbanCard({
         </p>
       )}
       <h3 className="text-[15px] font-semibold break-words text-ink">
-        {card.title}
+        {onOpen ? (
+          // The ::after overlay makes the whole card the click target.
+          <button
+            type="button"
+            onClick={() => onOpen(card)}
+            className="text-left after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-primary"
+          >
+            {card.title}
+          </button>
+        ) : (
+          card.title
+        )}
       </h3>
       {card.description && (
         <p className="mt-1.5 line-clamp-2 text-sm break-words text-muted">

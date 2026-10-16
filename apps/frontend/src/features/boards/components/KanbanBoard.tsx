@@ -8,7 +8,9 @@ import {
 } from '../../../components/states';
 import { useBoardMembers } from '../../board-members/hooks';
 import type { MemberUser } from '../../board-members/types';
+import { CardDetailDialog } from '../../cards/components/CardDetailDialog';
 import { useCards } from '../../cards/hooks';
+import type { Card } from '../../cards/types';
 import { groupCardsByColumn } from '../../cards/ordering';
 import {
   CreateColumnDialog,
@@ -31,7 +33,8 @@ interface KanbanBoardProps {
 type OpenDialog =
   | { kind: 'create-column' }
   | { kind: 'rename-column'; column: Column }
-  | { kind: 'delete-column'; column: Column };
+  | { kind: 'delete-column'; column: Column }
+  | { kind: 'card'; cardId: string };
 
 /** The board's columns and active cards, side by side. */
 export function KanbanBoard({ boardId, readOnly }: KanbanBoardProps) {
@@ -60,6 +63,11 @@ export function KanbanBoard({ boardId, readOnly }: KanbanBoardProps) {
         onDelete: (column) => setDialog({ kind: 'delete-column', column }),
       };
   const openCreateColumn = () => setDialog({ kind: 'create-column' });
+  const openCard = (card: Card) => setDialog({ kind: 'card', cardId: card.id });
+  const openedCard =
+    dialog?.kind === 'card'
+      ? cards.data?.find((card) => card.id === dialog.cardId)
+      : undefined;
 
   let content;
   if (columns.isPending || cards.isPending) {
@@ -102,6 +110,7 @@ export function KanbanBoard({ boardId, readOnly }: KanbanBoardProps) {
               cards={columnCards}
               members={membersById}
               actions={columnActions}
+              onOpenCard={openCard}
             />
           ))}
           {!readOnly && (
@@ -130,6 +139,20 @@ export function KanbanBoard({ boardId, readOnly }: KanbanBoardProps) {
       )}
       {dialog?.kind === 'delete-column' && (
         <DeleteColumnDialog column={dialog.column} open onClose={closeDialog} />
+      )}
+      {dialog?.kind === 'card' && (
+        <CardDetailDialog
+          boardId={boardId}
+          cardId={dialog.cardId}
+          initialCard={openedCard}
+          columnName={
+            columns.data?.find((column) => column.id === openedCard?.columnId)
+              ?.name
+          }
+          members={members.data ?? []}
+          boardReadOnly={readOnly}
+          onClose={closeDialog}
+        />
       )}
     </>
   );
