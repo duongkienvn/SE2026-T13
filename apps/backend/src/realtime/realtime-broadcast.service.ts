@@ -1,14 +1,12 @@
 import type { RealtimeServerEvents } from '@kanban/shared';
 import { Injectable, Logger } from '@nestjs/common';
 import { isUUID } from 'class-validator';
-import type { Socket } from 'socket.io';
 import { BoardRoomCoordinator } from './board-room-coordinator.service';
 import { RealtimeAuthService } from './realtime-auth.service';
 
-type EventArguments<Event extends keyof RealtimeServerEvents> =
-  RealtimeServerEvents[Event] extends (...args: infer Args) => void
-    ? Args
-    : never;
+type EventArguments<Event extends keyof RealtimeServerEvents> = Parameters<
+  RealtimeServerEvents[Event]
+>;
 
 @Injectable()
 export class RealtimeBroadcastService {
@@ -39,7 +37,7 @@ export class RealtimeBroadcastService {
             // Select recipients from application grants, independently of stale
             // adapter rooms after leave/disconnect failures. Recovery is disabled,
             // so this direct emit does not ask the adapter to choose recipients.
-            (socket as Socket).emit(event, ...args);
+            socket.emit(event, ...args);
           }
         }
         return true;

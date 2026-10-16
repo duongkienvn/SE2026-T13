@@ -1,4 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { RealtimeServerEvent } from '@kanban/shared';
+import { BoardEventPublisher } from '../../realtime/board-event-publisher.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { CardAssignee } from '../cards/entities/card-assignee.entity';
@@ -32,6 +34,7 @@ export class BoardMembersService {
     @InjectRepository(Board) private readonly boards: Repository<Board>,
     private readonly authorization: BoardAuthorizationService,
     private readonly realtimeAccess: BoardRoomCoordinator,
+    private readonly events: BoardEventPublisher,
   ) {}
 
   async list(
@@ -71,7 +74,7 @@ export class BoardMembersService {
     boardId: string,
     input: AddBoardMemberDto,
   ): Promise<BoardMemberResponseDto> {
-    return this.boards.manager.transaction(async (manager) => {
+    const result = await this.boards.manager.transaction(async (manager) => {
       await this.authorization.requireMutableOwner(userId, boardId, manager);
       const email = input.email.trim().toLowerCase();
       const users = manager.getRepository(User);
@@ -93,6 +96,11 @@ export class BoardMembersService {
       );
       return toBoardMemberResponseDto(member);
     });
+    await this.events.publish(RealtimeServerEvent.MEMBER_ADDED, {
+      boardId: boardId.toLowerCase(),
+      userId: result.user.id,
+    });
+    return result;
   }
 
   async updateRole(
@@ -101,7 +109,8 @@ export class BoardMembersService {
     targetUserId: string,
     input: UpdateBoardMemberRoleDto,
   ): Promise<BoardMemberResponseDto> {
-    return this.boards.manager.transaction(async (manager) => {
+    let changed = false;
+    const result = await this.boards.manager.transaction(async (manager) => {
       const { board } = await this.authorization.requireMutableOwner(
         actorId,
         boardId,
@@ -135,9 +144,17 @@ export class BoardMembersService {
       ) {
         throw this.lastOwnerConflict();
       }
+      if (member.role === input.role) return toBoardMemberResponseDto(member);
+      changed = true;
       member.role = input.role;
       return toBoardMemberResponseDto(await members.save(member));
     });
+    if (changed)
+      await this.events.publish(RealtimeServerEvent.MEMBER_ROLE_CHANGED, {
+        boardId: boardId.toLowerCase(),
+        userId: result.user.id,
+      });
+    return result;
   }
 
   async remove(
@@ -145,8 +162,8 @@ export class BoardMembersService {
     boardId: string,
     targetUserId: string,
   ): Promise<void> {
-    return this.realtimeAccess.run(boardId, async () => {
-      await this.boards.manager.transaction(async (manager) => {
+    const payload = await this.realtimeAccess.run(boardId, async () => {
+      const removed = await this.boards.manager.transaction(async (manager) => {
         const { board } = await this.authorization.requireMutableOwner(
           actorId,
           boardId,
@@ -157,8 +174,8 @@ export class BoardMembersService {
           where: { boardId, userId: targetUserId },
         });
         if (!member) throw this.memberNotFound();
-        if (targetUserId === actorId) throw this.selfRemovalConflict();
-        if (targetUserId === board.createdById) throw this.creatorConflict();
+        if (member.userId === actorId) throw this.selfRemovalConflict();
+        if (member.userId === board.createdById) throw this.creatorConflict();
         if (member.role === BoardMemberRole.OWNER) {
           const ownerCount = await members.count({
             where: { boardId, role: BoardMemberRole.OWNER },
@@ -167,9 +184,13 @@ export class BoardMembersService {
         }
         await this.deleteAssignments(manager, boardId, targetUserId);
         await members.delete({ id: member.id });
+        return { boardId: board.id, userId: member.userId };
       });
-      await this.realtimeAccess.evictUser(boardId, targetUserId);
+      await this.realtimeAccess.evictUser(removed.boardId, removed.userId);
+      return removed;
     });
+    // emitToBoard takes the same queue: publish only after run has released it.
+    await this.events.publish(RealtimeServerEvent.MEMBER_REMOVED, payload);
   }
 
   private async deleteAssignments(

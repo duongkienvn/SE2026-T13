@@ -1,4 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { RealtimeServerEvent } from '@kanban/shared';
+import { BoardEventPublisher } from '../../realtime/board-event-publisher.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { ErrorCode } from '../../common/dto/api-error';
@@ -48,6 +50,7 @@ export class ColumnsService {
     @InjectRepository(Board) private readonly boards: Repository<Board>,
     @InjectRepository(Card) private readonly cards: Repository<Card>,
     private readonly authorization: BoardAuthorizationService,
+    private readonly events: BoardEventPublisher,
   ) {}
 
   async list(
@@ -82,7 +85,7 @@ export class ColumnsService {
     boardId: string,
     input: CreateColumnDto,
   ): Promise<ColumnResponseDto> {
-    return this.boards.manager.transaction(async (manager) => {
+    const result = await this.boards.manager.transaction(async (manager) => {
       await this.authorization.requireMember(
         userId,
         boardId,
@@ -101,6 +104,11 @@ export class ColumnsService {
       });
       return toColumnResponseDto(await columns.save(column));
     });
+    await this.events.publish(RealtimeServerEvent.COLUMN_CREATED, {
+      boardId: result.boardId,
+      columnId: result.id,
+    });
+    return result;
   }
 
   async rename(
@@ -109,7 +117,8 @@ export class ColumnsService {
     columnId: string,
     input: UpdateColumnDto,
   ): Promise<ColumnResponseDto> {
-    return this.boards.manager.transaction(async (manager) => {
+    let changed = false;
+    const result = await this.boards.manager.transaction(async (manager) => {
       await this.authorization.requireMember(
         userId,
         boardId,
@@ -121,9 +130,17 @@ export class ColumnsService {
         where: { id: columnId, boardId },
       });
       if (!column) throw this.columnNotFound();
+      if (column.name === input.name) return toColumnResponseDto(column);
+      changed = true;
       column.name = input.name;
       return toColumnResponseDto(await columns.save(column));
     });
+    if (changed)
+      await this.events.publish(RealtimeServerEvent.COLUMN_UPDATED, {
+        boardId: result.boardId,
+        columnId: result.id,
+      });
+    return result;
   }
 
   async move(
@@ -132,7 +149,8 @@ export class ColumnsService {
     columnId: string,
     input: MoveColumnDto,
   ): Promise<ColumnResponseDto> {
-    return this.boards.manager.transaction(async (manager) => {
+    let changed = false;
+    const result = await this.boards.manager.transaction(async (manager) => {
       await this.authorization.requireMember(
         userId,
         boardId,
@@ -165,6 +183,7 @@ export class ColumnsService {
         (column) => column.id === columnId,
       );
       if (currentIndex === targetIndex) return toColumnResponseDto(moving);
+      changed = true;
 
       const ordered = [...withoutMoving];
       ordered.splice(targetIndex, 0, moving);
@@ -189,6 +208,12 @@ export class ColumnsService {
       await columns.save(ordered);
       return toColumnResponseDto(moving);
     });
+    if (changed)
+      await this.events.publish(RealtimeServerEvent.COLUMN_MOVED, {
+        boardId: result.boardId,
+        columnId: result.id,
+      });
+    return result;
   }
 
   async remove(
@@ -196,7 +221,7 @@ export class ColumnsService {
     boardId: string,
     columnId: string,
   ): Promise<void> {
-    return this.boards.manager.transaction(async (manager) => {
+    const payload = await this.boards.manager.transaction(async (manager) => {
       await this.authorization.requireMember(
         userId,
         boardId,
@@ -212,13 +237,17 @@ export class ColumnsService {
       if ((await cards.count({ where: { columnId: column.id } })) > 0) {
         throw this.columnNotEmpty();
       }
+      // TypeORM remove clears the entity primary key; snapshot before deletion.
+      const payload = { boardId: column.boardId, columnId: column.id };
       try {
         await columns.remove(column);
       } catch (error) {
         if (isForeignKeyViolation(error)) throw this.columnNotEmpty();
         throw error;
       }
+      return payload;
     });
+    await this.events.publish(RealtimeServerEvent.COLUMN_DELETED, payload);
   }
 
   private columnNotFound(): ApplicationException {
