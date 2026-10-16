@@ -15,6 +15,7 @@ import { ListCardsDto } from './dto/list-cards.dto';
 import { CardResponseDto, toCardResponseDto } from './dto/card-response.dto';
 import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
+import { MoveCardDto } from './dto/move-card.dto';
 import { cardInsertionPosition } from './cards-ordering';
 import { rebalancePositions } from '../columns/columns-ordering';
 
@@ -110,6 +111,67 @@ export class CardsService {
       card.isArchived = true;
       card.archivedAt = new Date();
       return toCardResponseDto(await cards.save(card));
+    });
+  }
+
+  async move(
+    userId: string,
+    boardId: string,
+    cardId: string,
+    input: MoveCardDto,
+  ): Promise<CardResponseDto> {
+    return this.mutate(userId, boardId, async (manager) => {
+      const cards = manager.getRepository(Card);
+      const moving = await this.requireCard(cards, boardId, cardId, true);
+      const column = await this.requireColumn(
+        manager.getRepository(BoardColumn),
+        boardId,
+        input.toColumnId,
+      );
+      const anchor = input.beforeCardId?.toLowerCase() ?? null;
+      if (anchor === moving.id)
+        throw new ApplicationException(
+          HttpStatus.BAD_REQUEST,
+          'INVALID_CARD_MOVE',
+          'Card cannot be moved before itself',
+        );
+      const current = await cards.find({
+        where: { boardId, columnId: column.id, isArchived: false },
+        order: { position: 'ASC', id: 'ASC' },
+      });
+      const remaining = current.filter((card) => card.id !== moving.id);
+      const targetIndex =
+        anchor === null
+          ? remaining.length
+          : remaining.findIndex((card) => card.id === anchor);
+      if (targetIndex < 0)
+        throw new ApplicationException(
+          HttpStatus.NOT_FOUND,
+          'CARD_NOT_FOUND',
+          'Card not found',
+        );
+      if (
+        moving.columnId === column.id &&
+        current.findIndex((card) => card.id === moving.id) === targetIndex
+      )
+        return toCardResponseDto(moving);
+      const position = cardInsertionPosition(
+        remaining[targetIndex - 1]?.position,
+        remaining[targetIndex]?.position,
+      );
+      moving.columnId = column.id;
+      if (position) {
+        moving.position = position;
+        return toCardResponseDto(await cards.save(moving));
+      }
+      const ordered = [...remaining];
+      ordered.splice(targetIndex, 0, moving);
+      const positions = rebalancePositions(ordered.length);
+      ordered.forEach((card, index) => {
+        card.position = positions[index];
+      });
+      const saved = await cards.save(ordered);
+      return toCardResponseDto(saved[targetIndex]);
     });
   }
 

@@ -141,6 +141,135 @@ describe('CardsService', () => {
     ).rejects.toMatchObject({ status: 409 });
   });
 
+  it.each([
+    [[], null, '100.0000000000'],
+    [[['a', '100.0000000000']], 'a', '50.0000000000'],
+    [
+      [
+        ['a', '100.0000000000'],
+        ['b', '200.0000000000'],
+      ],
+      'b',
+      '150.0000000000',
+    ],
+    [
+      [
+        ['a', '100.0000000000'],
+        ['b', '200.0000000000'],
+      ],
+      null,
+      '300.0000000000',
+    ],
+  ])(
+    'moves into destination at the requested position: %j',
+    async (rows, anchor, expected) => {
+      h.columns.findOne.mockResolvedValue({
+        id: ID.secondColumn,
+        boardId: ID.board,
+      });
+      h.cards.find.mockResolvedValue(
+        (rows as string[][]).map(([id, position]) =>
+          cardFixture({ id, position, columnId: ID.secondColumn }),
+        ),
+      );
+      await expect(
+        h.service.move(ID.user, ID.board, ID.card, {
+          toColumnId: ID.secondColumn,
+          beforeCardId: anchor as string | null,
+        }),
+      ).resolves.toMatchObject({
+        position: expected,
+        columnId: ID.secondColumn,
+        boardId: ID.board,
+      });
+      expect(h.cards.find).toHaveBeenCalledWith({
+        where: {
+          boardId: ID.board,
+          columnId: ID.secondColumn,
+          isArchived: false,
+        },
+        order: { position: 'ASC', id: 'ASC' },
+      });
+    },
+  );
+
+  it('handles no-op moves, self anchors and inaccessible targets without writes', async () => {
+    h.cards.find.mockResolvedValue([
+      cardFixture(),
+      cardFixture({ id: 'anchor', position: '200.0000000000' }),
+    ]);
+    await expect(
+      h.service.move(ID.user, ID.board, ID.card, {
+        toColumnId: ID.column,
+        beforeCardId: 'anchor',
+      }),
+    ).resolves.toMatchObject({ position: '100.0000000000' });
+    await expect(
+      h.service.move(ID.user, ID.board, ID.card, {
+        toColumnId: ID.column,
+        beforeCardId: ID.card.toUpperCase(),
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(
+      h.service.move(ID.user, ID.board, ID.card, {
+        toColumnId: ID.column,
+        beforeCardId: 'foreign-or-archived',
+      }),
+    ).rejects.toMatchObject({ status: 404 });
+    h.columns.findOne.mockResolvedValue(null);
+    await expect(
+      h.service.move(ID.user, ID.board, ID.card, {
+        toColumnId: ID.secondColumn,
+        beforeCardId: null,
+      }),
+    ).rejects.toMatchObject({ status: 404 });
+    expect(h.cards.save).not.toHaveBeenCalled();
+  });
+
+  it('rebalances only the destination active order on gap exhaustion and propagates failed persistence', async () => {
+    const destination = [
+      cardFixture({
+        id: 'a',
+        position: '100.0000000000',
+        columnId: ID.secondColumn,
+      }),
+      cardFixture({
+        id: 'b',
+        position: '100.0000000001',
+        columnId: ID.secondColumn,
+      }),
+    ];
+    h.columns.findOne.mockResolvedValue({
+      id: ID.secondColumn,
+      boardId: ID.board,
+    });
+    h.cards.find.mockResolvedValue(destination);
+    const result = await h.service.move(ID.user, ID.board, ID.card, {
+      toColumnId: ID.secondColumn,
+      beforeCardId: 'b',
+    });
+    expect(result.position).toBe('200.0000000000');
+    expect(h.cards.save).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'a', position: '100.0000000000' }),
+      expect.objectContaining({ id: ID.card, position: '200.0000000000' }),
+      expect.objectContaining({ id: 'b', position: '300.0000000000' }),
+    ]);
+    h.cards.save.mockRejectedValueOnce(new Error('write failed'));
+    await expect(
+      h.service.move(ID.user, ID.board, ID.card, {
+        toColumnId: ID.secondColumn,
+        beforeCardId: null,
+      }),
+    ).rejects.toThrow('write failed');
+    h.cards.findOne.mockResolvedValue(cardFixture({ isArchived: true }));
+    await expect(
+      h.service.move(ID.user, ID.board, ID.card, {
+        toColumnId: ID.secondColumn,
+        beforeCardId: null,
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+  });
+
   it('scopes active lists to the board with stable ordering and pagination', async () => {
     const result = await h.service.list(ID.user, ID.board, {
       page: 2,
