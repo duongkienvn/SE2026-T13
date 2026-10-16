@@ -91,6 +91,7 @@ try {
     boards,
     cards,
     authorization,
+    { publish: async () => undefined },
   );
   const memberService = new BoardMembersService(
     members,
