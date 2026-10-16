@@ -78,7 +78,7 @@ export function KanbanColumn({
       }`}
     >
       <header
-        className={`group flex touch-manipulation items-center gap-2 px-4 pt-4 pb-3 ${
+        className={`group relative flex touch-manipulation items-center gap-2 pt-4 pr-4 pb-3 pl-6 ${
           dragDisabled ? '' : 'cursor-grab'
         }`}
         {...pointerListeners}
@@ -89,7 +89,7 @@ export function KanbanColumn({
             {...attributes}
             onKeyDown={onKeyDown}
             aria-label={`Move column ${column.name}`}
-            className={`-ml-2 grid size-6 shrink-0 place-items-center rounded text-muted/70 hover:bg-app hover:text-ink focus-visible:outline-2 focus-visible:outline-primary ${GRIP_REVEAL}`}
+            className={`absolute top-5 left-0.5 grid size-5 place-items-center rounded text-muted/70 hover:bg-app hover:text-ink focus-visible:outline-2 focus-visible:outline-primary ${GRIP_REVEAL}`}
           >
             <GripIcon />
           </button>

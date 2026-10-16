@@ -33,7 +33,7 @@ export function TextAreaField({
         rows={rows}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
-        className={`mt-1.5 block w-full resize-y rounded-lg border bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-muted/80 focus:ring-3 focus:ring-primary/15 focus:outline-none ${
+        className={`mt-1.5 block w-full resize-y rounded-lg border bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-muted/80 focus:ring-3 focus:ring-primary/15 focus:outline-none disabled:resize-none disabled:bg-app disabled:text-muted ${
           error
             ? 'border-danger focus:border-danger'
             : 'border-line focus:border-primary'

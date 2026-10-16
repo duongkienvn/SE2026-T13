@@ -39,7 +39,7 @@ import {
 import { toFormErrors } from '../../../lib/form-errors';
 import type { MemberUser } from '../../board-members/types';
 import { KanbanCard } from '../../cards/components/KanbanCard';
-import { useMoveCard } from '../../cards/hooks';
+import { CARD_ARCHIVED, useMoveCard } from '../../cards/hooks';
 import type { Card } from '../../cards/types';
 import {
   KanbanColumn,
@@ -118,7 +118,12 @@ function findTarget(
 
 function moveErrorMessage(error: unknown): string {
   // A card or column (or the anchor) moved or vanished meanwhile.
-  if (isApiError(error) && (error.status === 404 || error.status === 400)) {
+  if (
+    isApiError(error) &&
+    (error.status === 404 ||
+      error.status === 400 ||
+      error.code === CARD_ARCHIVED)
+  ) {
     return 'The board changed while you were moving that. It now shows the latest order.';
   }
   if (isApiError(error) && error.code === BOARD_ARCHIVED) {

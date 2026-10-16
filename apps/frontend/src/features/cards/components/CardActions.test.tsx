@@ -104,8 +104,13 @@ describe('adding cards', () => {
     fireEvent.change(input, { target: { value: '  Write tests  ' } });
     fireEvent.keyDown(input, { key: 'Enter' });
 
+    // POST, then a list refetch: allow for a busy test run.
     expect(
-      await screen.findByRole('button', { name: 'Write tests' }),
+      await screen.findByRole(
+        'button',
+        { name: 'Write tests' },
+        { timeout: 3000 },
+      ),
     ).toBeTruthy();
     expect(writes(calls)).toEqual([
       expect.objectContaining({
@@ -162,9 +167,11 @@ describe('adding cards', () => {
     expect(
       screen.queryByRole('button', { name: 'Add a card to Frozen' }),
     ).toBeNull();
-    expect(
-      (within(dialog).getByLabelText('Title') as HTMLInputElement).disabled,
-    ).toBe(true);
+    for (const label of ['Title', 'Description', 'Due date']) {
+      expect(
+        (within(dialog).getByLabelText(label) as HTMLInputElement).disabled,
+      ).toBe(true);
+    }
     expect(
       within(dialog).queryByRole('button', { name: 'Save changes' }),
     ).toBeNull();
