@@ -233,7 +233,12 @@ Các rule trên là hướng cho trường hợp hard delete hiếm gặp; archi
 
 ## Position Strategy
 
-`board_columns.position` và `cards.position` dùng `NUMERIC(20,10)` để hỗ trợ fractional ordering. Ví dụ các position `100`, `200`, `300`: chèn giữa `100` và `200` dùng `150` thay vì cập nhật toàn bộ record phía sau. Khi khoảng cách giữa các position quá nhỏ, có thể cần rebalance; task này chưa triển khai thuật toán đó.
+`board_columns.position` và `cards.position` dùng `NUMERIC(20,10)` để hỗ trợ fractional ordering. Ví dụ các position `100`, `200`, `300`: chèn giữa `100` và `200` dùng `150` thay vì cập nhật toàn bộ record phía sau. Column Management E1 dùng arithmetic chính xác theo fixed scale, không dùng JavaScript floating-point; khi khoảng cách không còn biểu diễn được trong 10 chữ số thập phân, service rebalance toàn bộ thứ tự trong cùng transaction.
+
+Các operation create/reorder/delete Column khóa dòng `Board` trong transaction
+trước khi đọc và tính position. Vì vậy các create/reorder đồng thời trên cùng
+Board được serialize mà không cần Redis hoặc distributed lock. API trả
+`position` dạng string để giữ nguyên độ chính xác của PostgreSQL `numeric`.
 
 ## Source of Truth và Realtime Consistency
 

@@ -4,7 +4,7 @@
 
 Backend của project là một NestJS modular monolith theo hướng MVP. Mục tiêu của layer này là làm nơi duy nhất xử lý business logic, xác thực quyền, giao tiếp với database và phát sự kiện realtime sau khi thay đổi đã được persist thành công.
 
-Project hiện tại đã có Application Foundation và Authentication/User Profile MVP. Tám TypeORM entities của MVP được đặt theo feature trong `apps/backend/src/api/`; các feature nghiệp vụ còn lại sẽ được bổ sung theo từng issue sau.
+Project hiện tại đã có Application Foundation, Authentication/User Profile MVP, Board/Board Member API, Column Management API và realtime foundation F1. Tám TypeORM entities của MVP được đặt theo feature trong `apps/backend/src/api/`; các feature nghiệp vụ còn lại sẽ được bổ sung theo từng issue sau.
 
 Backend không phải là nơi lưu trữ UI state; backend là source of truth cho dữ liệu nghiệp vụ và các thay đổi trạng thái board.
 
@@ -25,7 +25,8 @@ apps/backend/src/
 │   ├── cards/entities/
 │   │   ├── card.entity.ts
 │   │   └── card-assignee.entity.ts
-│   ├── columns/entities/board-column.entity.ts
+│   ├── columns/                 # Column Management REST API (E1)
+│   │   └── entities/board-column.entity.ts
 │   ├── comments/entities/comment.entity.ts
 │   ├── auth/                 # register, login, logout, JWT guard
 │   ├── users/                # User entity và profile API
@@ -78,7 +79,7 @@ Reference implementation: [vndevteam/nestjs-boilerplate](https://github.com/vnde
 
 ### Planned state for MVP
 
-Theo hướng architecture đã thống nhất, từng feature sẽ bổ sung controller, service, module definition, DTO, repository/query code và các thành phần liên quan khi có feature issue. Database Foundation chưa tạo các thành phần đó. Các feature dự kiến gồm:
+Theo hướng architecture đã thống nhất, từng feature sẽ bổ sung controller, service, module definition, DTO, repository/query code và các thành phần liên quan khi có feature issue. Column Management E1 đã có các thành phần này; các feature còn lại sẽ được bổ sung theo từng issue. Các feature dự kiến gồm:
 
 ```text
 apps/backend/src/

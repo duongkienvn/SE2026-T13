@@ -117,8 +117,9 @@ Issue → tạo branch từ `main` → implement hoặc viết tài liệu → c
 
 ## Trạng thái hiện tại
 
-Project đang ở giai đoạn **Foundation và Authentication/User MVP**.
+Project đã hoàn thành Foundation, Authentication/User MVP, Board/Board Member API, realtime foundation và Column Management REST API (E1).
 
-- **Đã có:** pnpm monorepo, frontend và backend foundation, PostgreSQL schema/migration, Authentication/User Profile API, shared package, GitHub Actions CI. Theo quy trình nhóm, CodeRabbit review và bảo vệ `main` được cấu hình ở GitHub.
-- **Chưa có:** board/card features và realtime business logic.
-- **Hướng tiếp theo:** board/member → columns/cards → realtime/presence → comments/activity. Đây là roadmap tổng quan.
+- **Đã có:** pnpm monorepo, frontend và backend foundation, PostgreSQL schema/migration, Authentication/User Profile API, Board Management API, Board Membership & Authorization API, Column Management API, shared package, GitHub Actions CI và realtime foundation F1.
+- **Column API E1:** tạo, liệt kê phân trang, đổi tên, reorder trong cùng Board và xóa Column rỗng; OWNER và MEMBER được phép cộng tác chỉnh sửa cấu trúc Column; Board archived chỉ cho đọc.
+- **Chưa có:** Card CRUD/move/assignment, realtime business events cho Column/Card, presence đầy đủ, comments và activities persistence.
+- **Hướng tiếp theo:** Card Management API → Kanban Board UI → realtime business events → comments/activity.
