@@ -29,6 +29,7 @@ const {
   BoardMembersController,
 } = require('../src/api/board-members/board-members.controller.ts');
 const { AppModule } = require('../src/app.module.ts');
+const { CardsService } = require('../src/api/cards/cards.service.ts');
 const { configureHttpApplication } = require('../src/http-application.ts');
 const request = require('supertest');
 
@@ -52,6 +53,7 @@ try {
   assert.ok(app.get(BoardsService) instanceof BoardsService);
   assert.ok(app.get(BoardsController) instanceof BoardsController);
   assert.ok(app.get(BoardMembersController) instanceof BoardMembersController);
+  assert.ok(app.get(CardsService) instanceof CardsService);
   for (const [method, path] of [
     ['post', '/api/boards'],
     ['get', '/api/boards'],
@@ -68,6 +70,20 @@ try {
       'delete',
       '/api/boards/c6ba7134-97ef-4c1b-a342-001a982a7721/members/c6ba7134-97ef-4c1b-a342-001a982a7721',
     ],
+  ]) {
+    await request(app.getHttpServer())[method](path).expect(401);
+  }
+  const cardsPath = '/api/boards/c6ba7134-97ef-4c1b-a342-001a982a7721/cards';
+  const cardPath = `${cardsPath}/a6ba7134-97ef-4c1b-a342-001a982a7721`;
+  for (const [method, path] of [
+    ['get', cardsPath],
+    ['post', cardsPath],
+    ['get', cardPath],
+    ['patch', cardPath],
+    ['post', `${cardPath}/archive`],
+    ['patch', `${cardPath}/move`],
+    ['post', `${cardPath}/assignees`],
+    ['delete', `${cardPath}/assignees/1c5e2d5b-1e13-4b31-9cc4-8e4f849d75e5`],
   ]) {
     await request(app.getHttpServer())[method](path).expect(401);
   }
