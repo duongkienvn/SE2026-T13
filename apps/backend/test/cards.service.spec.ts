@@ -270,6 +270,65 @@ describe('CardsService', () => {
     ).rejects.toMatchObject({ status: 409 });
   });
 
+  it('assigns only current board members using the actor identity under the board lock', async () => {
+    const result = await h.service.assign(ID.user, ID.board, ID.card, {
+      userId: ID.target,
+    });
+    expect(result).toEqual({
+      userId: ID.target,
+      assignedById: ID.user,
+      createdAt: '2026-10-16T00:00:00.000Z',
+    });
+    expect(h.members.findOne).toHaveBeenCalledWith({
+      where: { boardId: ID.board, userId: ID.target },
+    });
+    expect(h.authorization.requireMember).toHaveBeenCalledWith(
+      ID.user,
+      ID.board,
+      { mutable: true },
+      h.manager,
+    );
+    expect(h.assignees.create).toHaveBeenCalledWith({
+      cardId: ID.card,
+      userId: ID.target,
+      assignedById: ID.user,
+    });
+  });
+
+  it('rejects duplicate assignments, nonmembers and archived card assignment changes', async () => {
+    h.assignees.findOne.mockResolvedValue({ userId: ID.target });
+    await expect(
+      h.service.assign(ID.user, ID.board, ID.card, { userId: ID.target }),
+    ).rejects.toMatchObject({ status: 409 });
+    h.members.findOne.mockResolvedValue(null);
+    await expect(
+      h.service.assign(ID.user, ID.board, ID.card, { userId: ID.target }),
+    ).rejects.toMatchObject({ status: 404 });
+    h.cards.findOne.mockResolvedValue(cardFixture({ isArchived: true }));
+    await expect(
+      h.service.assign(ID.user, ID.board, ID.card, { userId: ID.target }),
+    ).rejects.toMatchObject({ status: 409 });
+    await expect(
+      h.service.unassign(ID.user, ID.board, ID.card, ID.target),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(h.assignees.save).not.toHaveBeenCalled();
+    expect(h.assignees.delete).not.toHaveBeenCalled();
+  });
+
+  it('unassigns exactly one card/user pair and reports a missing assignment', async () => {
+    await expect(
+      h.service.unassign(ID.user, ID.board, ID.card, ID.target),
+    ).resolves.toBeUndefined();
+    expect(h.assignees.delete).toHaveBeenCalledWith({
+      cardId: ID.card,
+      userId: ID.target,
+    });
+    h.assignees.delete.mockResolvedValue({ affected: 0 });
+    await expect(
+      h.service.unassign(ID.user, ID.board, ID.card, ID.target),
+    ).rejects.toMatchObject({ status: 404 });
+  });
+
   it('scopes active lists to the board with stable ordering and pagination', async () => {
     const result = await h.service.list(ID.user, ID.board, {
       page: 2,

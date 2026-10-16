@@ -16,6 +16,13 @@ import { CardResponseDto, toCardResponseDto } from './dto/card-response.dto';
 import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
 import { MoveCardDto } from './dto/move-card.dto';
+import { AssignCardDto } from './dto/assign-card.dto';
+import { CardAssignee } from './entities/card-assignee.entity';
+import { BoardMember } from '../board-members/entities/board-member.entity';
+import {
+  CardAssigneeResponseDto,
+  toCardAssigneeResponseDto,
+} from './dto/card-assignee-response.dto';
 import { cardInsertionPosition } from './cards-ordering';
 import { rebalancePositions } from '../columns/columns-ordering';
 
@@ -172,6 +179,74 @@ export class CardsService {
       });
       const saved = await cards.save(ordered);
       return toCardResponseDto(saved[targetIndex]);
+    });
+  }
+
+  async assign(
+    userId: string,
+    boardId: string,
+    cardId: string,
+    input: AssignCardDto,
+  ): Promise<CardAssigneeResponseDto> {
+    return this.mutate(userId, boardId, async (manager) => {
+      const card = await this.requireCard(
+        manager.getRepository(Card),
+        boardId,
+        cardId,
+        true,
+      );
+      const member = await manager
+        .getRepository(BoardMember)
+        .findOne({ where: { boardId, userId: input.userId } });
+      if (!member)
+        throw new ApplicationException(
+          HttpStatus.NOT_FOUND,
+          'BOARD_MEMBER_NOT_FOUND',
+          'Board member not found',
+        );
+      const assignees = manager.getRepository(CardAssignee);
+      const existing = await assignees.findOne({
+        where: { cardId: card.id, userId: member.userId },
+      });
+      if (existing)
+        throw new ApplicationException(
+          HttpStatus.CONFLICT,
+          'CARD_ASSIGNEE_EXISTS',
+          'User is already assigned to this card',
+        );
+      const assignment = await assignees.save(
+        assignees.create({
+          cardId: card.id,
+          userId: member.userId,
+          assignedById: userId,
+        }),
+      );
+      return toCardAssigneeResponseDto(assignment);
+    });
+  }
+
+  async unassign(
+    userId: string,
+    boardId: string,
+    cardId: string,
+    targetUserId: string,
+  ): Promise<void> {
+    return this.mutate(userId, boardId, async (manager) => {
+      const card = await this.requireCard(
+        manager.getRepository(Card),
+        boardId,
+        cardId,
+        true,
+      );
+      const result = await manager
+        .getRepository(CardAssignee)
+        .delete({ cardId: card.id, userId: targetUserId });
+      if (!result.affected)
+        throw new ApplicationException(
+          HttpStatus.NOT_FOUND,
+          'CARD_ASSIGNEE_NOT_FOUND',
+          'Card assignee not found',
+        );
     });
   }
 
