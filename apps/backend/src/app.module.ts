@@ -14,6 +14,7 @@ import { BoardsModule } from './api/boards/boards.module';
 import { BoardMembersModule } from './api/board-members/board-members.module';
 import { ColumnsModule } from './api/columns/columns.module';
 import { CardsModule } from './api/cards/cards.module';
+import { CommentsModule } from './api/comments/comments.module';
 import { databaseOptions } from './database/database-options';
 import { EnvironmentConfig, validateEnvironment } from './config/environment';
 import { loggerOptions } from './logging/logger-options';
@@ -33,6 +34,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     BoardMembersModule,
     ColumnsModule,
     CardsModule,
+    CommentsModule,
     RealtimeModule,
     LoggerModule.forRootAsync({
       inject: [ConfigService],
