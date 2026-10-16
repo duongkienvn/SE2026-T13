@@ -155,9 +155,9 @@ while still holding the board queue.
 
 The production `RealtimeServerEvents` interface is empty until F2/G1 add reviewed
 event names and signatures. The API enforces event names and arguments from that
-map. Tests extend it with `test:board` in `test/realtime.fixture.ts`; the backend
+map. Tests extend it with `test:board` in `test/realtime/realtime.fixture.ts`; the backend
 build excludes tests and contains no fake business event contract. Executable
-usage is in `test/realtime-broadcast.spec.ts` and `test/realtime-checks.mjs`.
+usage is in `test/realtime/realtime-broadcast.spec.ts` and `test/realtime/realtime-checks.mjs`.
 
 Emission targets only authorized connections for the selected Board. No subscribers is a successful
 no-op. An unavailable server or failed emission returns `false`; emission errors
@@ -229,12 +229,12 @@ Only the two security findings are addressed by these changes:
 - `apps/backend/src/realtime/realtime.module.ts`
 - `apps/backend/src/realtime/realtime.types.ts`
 - `packages/shared/src/realtime.ts`
-- `apps/backend/test/board-room-rate-limiter.spec.ts` (new)
-- `apps/backend/test/board-room.spec.ts`
-- `apps/backend/test/board-room-coordinator.spec.ts`
-- `apps/backend/test/realtime-broadcast.spec.ts`
-- `apps/backend/test/realtime-checks.mjs`
-- `apps/backend/test/realtime.bootstrap.mjs`
-- `apps/backend/test/realtime.e2e-spec.ts`
-- `apps/backend/test/realtime.integration.mjs`
+- `apps/backend/test/realtime/board-room-rate-limiter.spec.ts` (new)
+- `apps/backend/test/realtime/board-room.spec.ts`
+- `apps/backend/test/realtime/board-room-coordinator.spec.ts`
+- `apps/backend/test/realtime/realtime-broadcast.spec.ts`
+- `apps/backend/test/realtime/realtime-checks.mjs`
+- `apps/backend/test/realtime/realtime.bootstrap.mjs`
+- `apps/backend/test/realtime/realtime.e2e-spec.ts`
+- `apps/backend/test/realtime/realtime.integration.mjs`
 - `docs/tasks/realtime-foundation.md`

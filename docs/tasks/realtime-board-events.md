@@ -232,7 +232,7 @@ pnpm lint
 pnpm test
 pnpm build
 pnpm format:check
-pnpm --filter @kanban/backend test --runTestsByPath test/board-event-publisher.spec.ts test/columns-events.spec.ts test/cards-events.spec.ts test/board-members.service.spec.ts test/boards-module.spec.ts test/board-events.e2e-spec.ts test/realtime.e2e-spec.ts
+pnpm --filter @kanban/backend test --runTestsByPath test/realtime/board-events/board-event-publisher.spec.ts test/realtime/board-events/columns-events.spec.ts test/realtime/board-events/cards-events.spec.ts test/board-members/board-members.service.spec.ts test/boards/boards-module.spec.ts test/realtime/board-events/board-events.e2e-spec.ts test/realtime/realtime.e2e-spec.ts
 pnpm --filter @kanban/backend test:board-events:database
 pnpm --filter @kanban/backend test:realtime:database
 pnpm --filter @kanban/backend test:columns:database
