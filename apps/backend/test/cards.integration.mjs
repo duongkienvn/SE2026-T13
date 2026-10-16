@@ -85,7 +85,9 @@ try {
     cards = source.getRepository(Card),
     assignees = source.getRepository(CardAssignee);
   const authorization = new BoardAuthorizationService(members);
-  const service = new CardsService(cards, boards, columns, authorization);
+  const service = new CardsService(cards, boards, columns, authorization, {
+    publish: async () => undefined,
+  });
   const columnService = new ColumnsService(
     columns,
     boards,

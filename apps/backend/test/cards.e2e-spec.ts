@@ -25,6 +25,7 @@ import { Card } from '../src/api/cards/entities/card.entity';
 import { CardAssignee } from '../src/api/cards/entities/card-assignee.entity';
 import { CardsController } from '../src/api/cards/cards.controller';
 import { CardsService } from '../src/api/cards/cards.service';
+import { BoardEventPublisher } from '../src/realtime/board-event-publisher.service';
 import { createValidationPipe } from '../src/config/validation';
 import { GlobalExceptionFilter } from '../src/filters/global-exception.filter';
 import { ApiResponseInterceptor } from '../src/interceptors/api-response.interceptor';
@@ -230,6 +231,7 @@ describe('Card HTTP API with real JWT, authorization, services and envelopes', (
       ],
       controllers: [CardsController],
       providers: [
+        { provide: BoardEventPublisher, useValue: h.events },
         CardsService,
         AuthService,
         JwtAuthGuard,

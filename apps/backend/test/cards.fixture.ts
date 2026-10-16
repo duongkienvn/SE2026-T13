@@ -6,6 +6,7 @@ import { CardAssignee } from '../src/api/cards/entities/card-assignee.entity';
 import { BoardMember } from '../src/api/board-members/entities/board-member.entity';
 import { CardsService } from '../src/api/cards/cards.service';
 import { BoardAuthorizationService } from '../src/api/board-members/board-authorization.service';
+import { BoardEventPublisher } from '../src/realtime/board-event-publisher.service';
 
 export const CARD_IDS = {
   user: '1c5e2d5b-1e13-4b31-9cc4-8e4f849d75e5',
@@ -94,14 +95,17 @@ export function cardsHarness() {
     getManyAndCount: jest.fn().mockResolvedValue([[cardFixture()], 1]),
   };
   cards.createQueryBuilder.mockReturnValue(builder);
+  const events = { publish: jest.fn().mockResolvedValue(undefined) };
   const service = new CardsService(
     cards as unknown as Repository<Card>,
     boards as unknown as Repository<Board>,
     columns as unknown as Repository<BoardColumn>,
     authorization as unknown as BoardAuthorizationService,
+    events as unknown as BoardEventPublisher,
   );
   return {
     service,
+    events,
     boards,
     cards,
     columns,

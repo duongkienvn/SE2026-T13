@@ -1,4 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { RealtimeServerEvent } from '@kanban/shared';
+import { BoardEventPublisher } from '../../realtime/board-event-publisher.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { ApplicationException } from '../../exceptions/application.exception';
@@ -34,6 +36,7 @@ export class CardsService {
     @InjectRepository(BoardColumn)
     private readonly columns: Repository<BoardColumn>,
     private readonly authorization: BoardAuthorizationService,
+    private readonly events: BoardEventPublisher,
   ) {}
 
   async create(
@@ -41,7 +44,7 @@ export class CardsService {
     boardId: string,
     input: CreateCardDto,
   ): Promise<CardResponseDto> {
-    return this.mutate(userId, boardId, async (manager) => {
+    const result = await this.mutate(userId, boardId, async (manager) => {
       const column = await this.requireColumn(
         manager.getRepository(BoardColumn),
         boardId,
@@ -77,6 +80,12 @@ export class CardsService {
       const saved = await cards.save(all);
       return toCardResponseDto(saved[saved.length - 1]);
     });
+    await this.events.publish(RealtimeServerEvent.CARD_CREATED, {
+      boardId: result.boardId,
+      cardId: result.id,
+      columnId: result.columnId,
+    });
+    return result;
   }
 
   async update(
@@ -96,15 +105,35 @@ export class CardsService {
         'At least one card field must be provided',
       );
     }
-    return this.mutate(userId, boardId, async (manager) => {
+    let changed = false;
+    const result = await this.mutate(userId, boardId, async (manager) => {
       const cards = manager.getRepository(Card);
       const card = await this.requireCard(cards, boardId, cardId, true);
+      const dueDate =
+        input.dueDate === undefined
+          ? card.dueDate
+          : input.dueDate === null
+            ? null
+            : new Date(input.dueDate);
+      changed =
+        (input.title !== undefined && input.title !== card.title) ||
+        (input.description !== undefined &&
+          input.description !== card.description) ||
+        dueDate?.getTime() !== card.dueDate?.getTime();
+      if (!changed) return toCardResponseDto(card);
       if (input.title !== undefined) card.title = input.title;
       if (input.description !== undefined) card.description = input.description;
       if (input.dueDate !== undefined)
         card.dueDate = input.dueDate === null ? null : new Date(input.dueDate);
       return toCardResponseDto(await cards.save(card));
     });
+    if (changed)
+      await this.events.publish(RealtimeServerEvent.CARD_UPDATED, {
+        boardId: result.boardId,
+        cardId: result.id,
+        columnId: result.columnId,
+      });
+    return result;
   }
 
   async archive(
@@ -112,13 +141,19 @@ export class CardsService {
     boardId: string,
     cardId: string,
   ): Promise<CardResponseDto> {
-    return this.mutate(userId, boardId, async (manager) => {
+    const result = await this.mutate(userId, boardId, async (manager) => {
       const cards = manager.getRepository(Card);
       const card = await this.requireCard(cards, boardId, cardId, true);
       card.isArchived = true;
       card.archivedAt = new Date();
       return toCardResponseDto(await cards.save(card));
     });
+    await this.events.publish(RealtimeServerEvent.CARD_ARCHIVED, {
+      boardId: result.boardId,
+      cardId: result.id,
+      columnId: result.columnId,
+    });
+    return result;
   }
 
   async move(
@@ -127,9 +162,12 @@ export class CardsService {
     cardId: string,
     input: MoveCardDto,
   ): Promise<CardResponseDto> {
-    return this.mutate(userId, boardId, async (manager) => {
+    let fromColumnId = '';
+    let changed = false;
+    const result = await this.mutate(userId, boardId, async (manager) => {
       const cards = manager.getRepository(Card);
       const moving = await this.requireCard(cards, boardId, cardId, true);
+      fromColumnId = moving.columnId;
       const column = await this.requireColumn(
         manager.getRepository(BoardColumn),
         boardId,
@@ -162,6 +200,7 @@ export class CardsService {
         current.findIndex((card) => card.id === moving.id) === targetIndex
       )
         return toCardResponseDto(moving);
+      changed = true;
       const position = cardInsertionPosition(
         remaining[targetIndex - 1]?.position,
         remaining[targetIndex]?.position,
@@ -180,6 +219,14 @@ export class CardsService {
       const saved = await cards.save(ordered);
       return toCardResponseDto(saved[targetIndex]);
     });
+    if (changed)
+      await this.events.publish(RealtimeServerEvent.CARD_MOVED, {
+        boardId: result.boardId,
+        cardId: result.id,
+        fromColumnId,
+        toColumnId: result.columnId,
+      });
+    return result;
   }
 
   async assign(
