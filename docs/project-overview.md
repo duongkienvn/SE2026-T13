@@ -117,9 +117,10 @@ Issue → tạo branch từ `main` → implement hoặc viết tài liệu → c
 
 ## Trạng thái hiện tại
 
-Project đã hoàn thành Foundation, Authentication/User MVP, Board/Board Member API, realtime foundation và Column Management REST API (E1).
+Project đã hoàn thành Foundation, Authentication/User MVP, Board/Board Member API, realtime foundation và Column/Card Management REST APIs (E1/E2).
 
 - **Đã có:** pnpm monorepo, frontend và backend foundation, PostgreSQL schema/migration, Authentication/User Profile API, Board Management API, Board Membership & Authorization API, Column Management API, shared package, GitHub Actions CI và realtime foundation F1.
 - **Column API E1:** tạo, liệt kê phân trang, đổi tên, reorder trong cùng Board và xóa Column rỗng; OWNER và MEMBER được phép cộng tác chỉnh sửa cấu trúc Column; Board archived chỉ cho đọc.
-- **Chưa có:** Card CRUD/move/assignment, realtime business events cho Column/Card, presence đầy đủ, comments và activities persistence.
-- **Hướng tiếp theo:** Card Management API → Kanban Board UI → realtime business events → comments/activity.
+- **Card API E2:** create/list/detail/update/archive, exact fractional move/reorder và multi-assignee; OWNER/MEMBER được cộng tác, Board/Card archived chỉ đọc. Xem [contract và locking protocol](tasks/card-management-api.md).
+- **Chưa có:** realtime business events cho Column/Card, presence đầy đủ, comments và activities persistence.
+- **Hướng tiếp theo:** Kanban Board UI → realtime business events → comments/activity.

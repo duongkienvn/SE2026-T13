@@ -17,6 +17,7 @@
     "test:boards:database": "pnpm build && node test/boards.integration.mjs",
     "test:board-members:database": "pnpm build && node test/board-members.integration.mjs",
     "test:columns:database": "pnpm build && node test/columns.integration.mjs",
+    "test:cards:database": "pnpm build && node test/cards.integration.mjs",
     "test:realtime": "jest --runInBand --runTestsByPath test/realtime.e2e-spec.ts",
     "test:realtime:database": "node -r ts-node/register test/realtime.integration.mjs"
   },
