@@ -102,6 +102,7 @@ export function cardsHarness() {
   );
   return {
     service,
+    boards,
     cards,
     columns,
     members,
