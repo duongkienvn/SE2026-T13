@@ -235,7 +235,7 @@ export class CardsService {
     cardId: string,
     input: AssignCardDto,
   ): Promise<CardAssigneeResponseDto> {
-    return this.mutate(userId, boardId, async (manager) => {
+    const result = await this.mutate(userId, boardId, async (manager) => {
       const card = await this.requireCard(
         manager.getRepository(Card),
         boardId,
@@ -268,8 +268,20 @@ export class CardsService {
           assignedById: userId,
         }),
       );
-      return toCardAssigneeResponseDto(assignment);
+      return {
+        assignment: toCardAssigneeResponseDto(assignment),
+        payload: {
+          boardId: card.boardId,
+          cardId: card.id,
+          columnId: card.columnId,
+        },
+      };
     });
+    await this.events.publish(
+      RealtimeServerEvent.CARD_ASSIGNEES_CHANGED,
+      result.payload,
+    );
+    return result.assignment;
   }
 
   async unassign(
@@ -278,7 +290,7 @@ export class CardsService {
     cardId: string,
     targetUserId: string,
   ): Promise<void> {
-    return this.mutate(userId, boardId, async (manager) => {
+    const payload = await this.mutate(userId, boardId, async (manager) => {
       const card = await this.requireCard(
         manager.getRepository(Card),
         boardId,
@@ -294,7 +306,16 @@ export class CardsService {
           'CARD_ASSIGNEE_NOT_FOUND',
           'Card assignee not found',
         );
+      return {
+        boardId: card.boardId,
+        cardId: card.id,
+        columnId: card.columnId,
+      };
     });
+    await this.events.publish(
+      RealtimeServerEvent.CARD_ASSIGNEES_CHANGED,
+      payload,
+    );
   }
 
   private mutate<T>(

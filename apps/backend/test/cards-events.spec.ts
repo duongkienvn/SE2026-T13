@@ -5,6 +5,63 @@ jest.mock('@nestjs/typeorm', () => ({
 }));
 
 describe('Card post-commit events', () => {
+  it.each(['assign', 'unassign'] as const)(
+    'publishes authoritative card IDs after %s commits without changing REST result',
+    async (operation) => {
+      const h = cardsHarness();
+      h.cards.findOne.mockResolvedValue(
+        cardFixture({ columnId: ID.secondColumn }),
+      );
+      h.transaction.mockImplementation(async (callback) => {
+        const result = await callback(h.manager);
+        expect(h.events.publish).not.toHaveBeenCalled();
+        return result;
+      });
+      const result =
+        operation === 'assign'
+          ? await h.service.assign(ID.user, ID.board, ID.card, {
+              userId: ID.target,
+            })
+          : await h.service.unassign(ID.user, ID.board, ID.card, ID.target);
+      if (operation === 'assign')
+        expect(result).toEqual({
+          userId: ID.target,
+          assignedById: ID.user,
+          createdAt: '2026-10-16T00:00:00.000Z',
+        });
+      else expect(result).toBeUndefined();
+      expect(h.events.publish.mock.calls).toEqual([
+        [
+          'card:assignees-changed',
+          { boardId: ID.board, cardId: ID.card, columnId: ID.secondColumn },
+        ],
+      ]);
+    },
+  );
+
+  it.each([
+    'missing member',
+    'duplicate',
+    'missing assignment',
+    'rollback',
+  ] as const)('suppresses assignee event on %s', async (failure) => {
+    const h = cardsHarness();
+    if (failure === 'missing member') h.members.findOne.mockResolvedValue(null);
+    if (failure === 'duplicate') h.assignees.findOne.mockResolvedValue({});
+    if (failure === 'missing assignment')
+      h.assignees.delete.mockResolvedValue({ affected: 0 });
+    if (failure === 'rollback')
+      h.transaction.mockImplementation(async (callback) => {
+        await callback(h.manager);
+        throw new Error('commit failed');
+      });
+    await expect(
+      failure === 'missing assignment'
+        ? h.service.unassign(ID.user, ID.board, ID.card, ID.target)
+        : h.service.assign(ID.user, ID.board, ID.card, { userId: ID.target }),
+    ).rejects.toThrow();
+    expect(h.events.publish).not.toHaveBeenCalled();
+  });
   it.each(['create', 'update', 'archive', 'move'] as const)(
     'publishes exactly once after %s commits',
     async (operation) => {
