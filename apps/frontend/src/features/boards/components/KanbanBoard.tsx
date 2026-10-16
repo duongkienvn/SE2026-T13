@@ -1,4 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { Button } from '../../../components/Button';
+import { PlusIcon } from '../../../components/icons';
 import {
   EmptyState,
   ErrorState,
@@ -8,19 +10,37 @@ import { useBoardMembers } from '../../board-members/hooks';
 import type { MemberUser } from '../../board-members/types';
 import { useCards } from '../../cards/hooks';
 import { groupCardsByColumn } from '../../cards/ordering';
-import { KanbanColumn } from '../../columns/components/KanbanColumn';
+import {
+  CreateColumnDialog,
+  RenameColumnDialog,
+} from '../../columns/components/ColumnFormDialog';
+import { DeleteColumnDialog } from '../../columns/components/DeleteColumnDialog';
+import {
+  KanbanColumn,
+  type ColumnActions,
+} from '../../columns/components/KanbanColumn';
 import { useColumns } from '../../columns/hooks';
+import type { Column } from '../../columns/types';
 
 interface KanbanBoardProps {
   boardId: string;
+  /** Archived boards can be viewed but not changed. */
+  readOnly: boolean;
 }
 
+type OpenDialog =
+  | { kind: 'create-column' }
+  | { kind: 'rename-column'; column: Column }
+  | { kind: 'delete-column'; column: Column };
+
 /** The board's columns and active cards, side by side. */
-export function KanbanBoard({ boardId }: KanbanBoardProps) {
+export function KanbanBoard({ boardId, readOnly }: KanbanBoardProps) {
   const columns = useColumns(boardId);
   const cards = useCards(boardId);
   // Only for assignee names and avatars: the board still shows without them.
   const members = useBoardMembers(boardId);
+  const [dialog, setDialog] = useState<OpenDialog>();
+  const closeDialog = () => setDialog(undefined);
 
   const membersById = useMemo(
     () =>
@@ -33,13 +53,20 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
     () => groupCardsByColumn(columns.data ?? [], cards.data ?? []),
     [columns.data, cards.data],
   );
+  const columnActions: ColumnActions | undefined = readOnly
+    ? undefined
+    : {
+        onRename: (column) => setDialog({ kind: 'rename-column', column }),
+        onDelete: (column) => setDialog({ kind: 'delete-column', column }),
+      };
+  const openCreateColumn = () => setDialog({ kind: 'create-column' });
 
+  let content;
   if (columns.isPending || cards.isPending) {
-    return <LoadingState label="Loading columns and cards…" />;
-  }
-  // A failed background refresh keeps the loaded board on screen.
-  if (!columns.data || !cards.data) {
-    return (
+    content = <LoadingState label="Loading columns and cards…" />;
+  } else if (!columns.data || !cards.data) {
+    // A failed background refresh keeps the loaded board on screen.
+    content = (
       <ErrorState
         title="We couldn't load this board's cards"
         description="Check your connection and try again."
@@ -49,28 +76,61 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
         }}
       />
     );
-  }
-  if (groups.length === 0) {
-    return (
+  } else if (groups.length === 0) {
+    content = (
       <EmptyState
         title="No columns yet"
         description="Columns hold this board's cards, such as To Do, In Progress and Done."
+        action={
+          !readOnly && (
+            <Button onClick={openCreateColumn}>
+              <PlusIcon aria-hidden="true" className="size-4.5" />
+              Add column
+            </Button>
+          )
+        }
       />
+    );
+  } else {
+    content = (
+      <div className="relative -mx-4 h-full overflow-x-auto px-4 md:-mx-6 md:px-6 lg:-mx-10 lg:px-10">
+        <div className="flex h-full items-start gap-4 pb-1">
+          {groups.map(({ column, cards: columnCards }) => (
+            <KanbanColumn
+              key={column.id}
+              column={column}
+              cards={columnCards}
+              members={membersById}
+              actions={columnActions}
+            />
+          ))}
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={openCreateColumn}
+              className="flex w-70 shrink-0 items-center gap-2 rounded-xl border border-dashed border-line px-4 py-4 text-[15px] font-medium text-muted hover:border-primary hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              <PlusIcon aria-hidden="true" className="size-4.5" />
+              Add column
+            </button>
+          )}
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="relative -mx-4 h-full overflow-x-auto px-4 md:-mx-6 md:px-6 lg:-mx-10 lg:px-10">
-      <div className="flex h-full items-start gap-4 pb-1">
-        {groups.map(({ column, cards: columnCards }) => (
-          <KanbanColumn
-            key={column.id}
-            column={column}
-            cards={columnCards}
-            members={membersById}
-          />
-        ))}
-      </div>
-    </div>
+    <>
+      {content}
+      {dialog?.kind === 'create-column' && (
+        <CreateColumnDialog boardId={boardId} open onClose={closeDialog} />
+      )}
+      {dialog?.kind === 'rename-column' && (
+        <RenameColumnDialog column={dialog.column} open onClose={closeDialog} />
+      )}
+      {dialog?.kind === 'delete-column' && (
+        <DeleteColumnDialog column={dialog.column} open onClose={closeDialog} />
+      )}
+    </>
   );
 }

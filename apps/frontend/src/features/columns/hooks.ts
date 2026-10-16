@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { isApiError } from '../../lib/api-client';
 import { retryUnlessClientError } from '../../lib/query-client';
 import { useAuth } from '../auth/useAuth';
 import { useRefreshIfArchived } from '../boards/hooks';
@@ -30,6 +31,16 @@ function useInvalidateColumns(boardId: string) {
     queryClient.invalidateQueries({ queryKey: boardKeys.columns(boardId) });
 }
 
+/** Also refetches the columns when the column was deleted meanwhile (404). */
+function useRefreshAfterColumnError(boardId: string) {
+  const invalidate = useInvalidateColumns(boardId);
+  const refreshIfArchived = useRefreshIfArchived(boardId);
+  return (error: unknown) => {
+    refreshIfArchived(error);
+    if (isApiError(error) && error.status === 404) void invalidate();
+  };
+}
+
 export function useCreateColumn(boardId: string) {
   const { runAuthorized } = useAuth();
   const invalidate = useInvalidateColumns(boardId);
@@ -45,7 +56,7 @@ export function useCreateColumn(boardId: string) {
 export function useRenameColumn(boardId: string) {
   const { runAuthorized } = useAuth();
   const invalidate = useInvalidateColumns(boardId);
-  const refreshIfArchived = useRefreshIfArchived(boardId);
+  const onError = useRefreshAfterColumnError(boardId);
   return useMutation({
     mutationFn: ({
       columnId,
@@ -53,18 +64,18 @@ export function useRenameColumn(boardId: string) {
     }: RenameColumnRequest & { columnId: string }) =>
       runAuthorized((token) => renameColumn(token, boardId, columnId, input)),
     onSuccess: invalidate,
-    onError: refreshIfArchived,
+    onError,
   });
 }
 
 export function useDeleteColumn(boardId: string) {
   const { runAuthorized } = useAuth();
   const invalidate = useInvalidateColumns(boardId);
-  const refreshIfArchived = useRefreshIfArchived(boardId);
+  const onError = useRefreshAfterColumnError(boardId);
   return useMutation({
     mutationFn: (columnId: string) =>
       runAuthorized((token) => deleteColumn(token, boardId, columnId)),
     onSuccess: invalidate,
-    onError: refreshIfArchived,
+    onError,
   });
 }

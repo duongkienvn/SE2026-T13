@@ -135,7 +135,7 @@ export function BoardDetailPage() {
       </div>
 
       <div className="mt-5 min-h-0 flex-1 short:mt-3">
-        <KanbanBoard boardId={data.id} />
+        <KanbanBoard boardId={data.id} readOnly={data.isArchived} />
       </div>
 
       {editing && (
