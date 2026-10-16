@@ -14,6 +14,7 @@ import { Card } from './entities/card.entity';
 import { ListCardsDto } from './dto/list-cards.dto';
 import { CardResponseDto, toCardResponseDto } from './dto/card-response.dto';
 import { CreateCardDto } from './dto/create-card.dto';
+import { UpdateCardDto } from './dto/update-card.dto';
 import { cardInsertionPosition } from './cards-ordering';
 import { rebalancePositions } from '../columns/columns-ordering';
 
@@ -67,6 +68,48 @@ export class CardsService {
       });
       const saved = await cards.save(all);
       return toCardResponseDto(saved[saved.length - 1]);
+    });
+  }
+
+  async update(
+    userId: string,
+    boardId: string,
+    cardId: string,
+    input: UpdateCardDto,
+  ): Promise<CardResponseDto> {
+    if (
+      input.title === undefined &&
+      input.description === undefined &&
+      input.dueDate === undefined
+    ) {
+      throw new ApplicationException(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_FAILED',
+        'At least one card field must be provided',
+      );
+    }
+    return this.mutate(userId, boardId, async (manager) => {
+      const cards = manager.getRepository(Card);
+      const card = await this.requireCard(cards, boardId, cardId, true);
+      if (input.title !== undefined) card.title = input.title;
+      if (input.description !== undefined) card.description = input.description;
+      if (input.dueDate !== undefined)
+        card.dueDate = input.dueDate === null ? null : new Date(input.dueDate);
+      return toCardResponseDto(await cards.save(card));
+    });
+  }
+
+  async archive(
+    userId: string,
+    boardId: string,
+    cardId: string,
+  ): Promise<CardResponseDto> {
+    return this.mutate(userId, boardId, async (manager) => {
+      const cards = manager.getRepository(Card);
+      const card = await this.requireCard(cards, boardId, cardId, true);
+      card.isArchived = true;
+      card.archivedAt = new Date();
+      return toCardResponseDto(await cards.save(card));
     });
   }
 

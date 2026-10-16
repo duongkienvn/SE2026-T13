@@ -90,6 +90,57 @@ describe('CardsService', () => {
     expect(h.cards.save).not.toHaveBeenCalled();
   });
 
+  it('updates only supplied fields, clears nullables and rejects an empty patch', async () => {
+    h.cards.findOne.mockResolvedValue(
+      cardFixture({
+        description: 'keep',
+        dueDate: new Date('2020-01-01T00:00:00Z'),
+      }),
+    );
+    await expect(
+      h.service.update(ID.user, ID.board, ID.card, { title: 'Changed' }),
+    ).resolves.toMatchObject({
+      title: 'Changed',
+      description: 'keep',
+      dueDate: '2020-01-01T00:00:00.000Z',
+    });
+    await expect(
+      h.service.update(ID.user, ID.board, ID.card, {
+        description: null,
+        dueDate: null,
+      }),
+    ).resolves.toMatchObject({ description: null, dueDate: null });
+    await expect(
+      h.service.update(ID.user, ID.board, ID.card, {}),
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(
+      h.service.update(ID.user, ID.board, ID.card, {
+        dueDate: '2000-01-01T07:00:00+07:00',
+      }),
+    ).resolves.toMatchObject({ dueDate: '2000-01-01T00:00:00.000Z' });
+  });
+
+  it('archives without deleting relations or changing position, and rejects further mutation', async () => {
+    const card = cardFixture();
+    h.cards.findOne.mockResolvedValue(card);
+    const result = await h.service.archive(ID.user, ID.board, ID.card);
+    expect(result).toMatchObject({
+      isArchived: true,
+      columnId: ID.column,
+      position: card.position,
+    });
+    expect(Date.parse(result.archivedAt!)).not.toBeNaN();
+    await expect(
+      h.service.archive(ID.user, ID.board, ID.card),
+    ).rejects.toMatchObject({
+      status: 409,
+      response: { code: 'CARD_ARCHIVED' },
+    });
+    await expect(
+      h.service.update(ID.user, ID.board, ID.card, { title: 'No' }),
+    ).rejects.toMatchObject({ status: 409 });
+  });
+
   it('scopes active lists to the board with stable ordering and pagination', async () => {
     const result = await h.service.list(ID.user, ID.board, {
       page: 2,
