@@ -6,6 +6,7 @@ import { Board } from '../../src/api/boards/entities/board.entity';
 import { BoardMember } from '../../src/api/board-members/entities/board-member.entity';
 import { BoardMemberRole } from '../../src/common/enums/database-enums';
 import { BoardAuthorizationService } from '../../src/api/board-members/board-authorization.service';
+import { ActivityWriterService } from '../../src/api/activities/activity-writer.service';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: (entity: { name: string }) =>
@@ -54,6 +55,7 @@ describe('BoardsService', () => {
       providers: [
         BoardsService,
         BoardAuthorizationService,
+        { provide: ActivityWriterService, useValue: { record: jest.fn() } },
         { provide: getRepositoryToken(Board), useValue: boards },
         { provide: getRepositoryToken(BoardMember), useValue: members },
       ],

@@ -12,6 +12,7 @@ import { Logger } from 'nestjs-pino';
 import { QueryFailedError } from 'typeorm';
 import request from 'supertest';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { ActivityWriterService } from '../../src/api/activities/activity-writer.service';
 import { JwtAuthGuard } from '../../src/api/auth/guards/jwt-auth.guard';
 import {
   JWT_ISSUER,
@@ -233,6 +234,7 @@ describe('Card HTTP API with real JWT, authorization, services and envelopes', (
       providers: [
         { provide: BoardEventPublisher, useValue: h.events },
         CardsService,
+        { provide: ActivityWriterService, useValue: { record: jest.fn() } },
         AuthService,
         JwtAuthGuard,
         BoardAuthorizationService,

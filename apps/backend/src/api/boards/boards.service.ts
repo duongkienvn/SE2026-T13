@@ -3,7 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BoardMember } from '../board-members/entities/board-member.entity';
 import { Board } from './entities/board.entity';
-import { BoardMemberRole } from '../../common/enums/database-enums';
+import {
+  ActivityActionType,
+  ActivityEntityType,
+  BoardMemberRole,
+} from '../../common/enums/database-enums';
+import { ActivityWriterService } from '../activities/activity-writer.service';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { BoardResponseDto, toBoardResponseDto } from './dto/board-response.dto';
 import { PageQueryDto } from '../../common/dto/page-query.dto';
@@ -25,6 +30,7 @@ export class BoardsService {
     @InjectRepository(BoardMember)
     private readonly members: Repository<BoardMember>,
     private readonly authorization: BoardAuthorizationService,
+    private readonly activities: ActivityWriterService,
   ) {}
 
   async archive(userId: string, boardId: string): Promise<BoardResponseDto> {
@@ -62,13 +68,24 @@ export class BoardsService {
         boardId,
         manager,
       );
+      const changed =
+        (input.name !== undefined && input.name !== board.name) ||
+        (input.description !== undefined &&
+          input.description !== board.description);
+      if (!changed) return toBoardResponseDto(board, member.role);
       if (input.name !== undefined) board.name = input.name;
       if (input.description !== undefined)
         board.description = input.description;
-      return toBoardResponseDto(
-        await manager.getRepository(Board).save(board),
-        member.role,
-      );
+      const saved = await manager.getRepository(Board).save(board);
+      await this.activities.record(manager, {
+        boardId: saved.id,
+        actorId: userId,
+        actionType: ActivityActionType.BOARD_UPDATED,
+        entityType: ActivityEntityType.BOARD,
+        entityId: saved.id,
+        metadata: null,
+      });
+      return toBoardResponseDto(saved, member.role);
     });
   }
 

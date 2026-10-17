@@ -10,12 +10,14 @@ import { Card } from './entities/card.entity';
 import { CardAssignee } from './entities/card-assignee.entity';
 import { CardsController } from './cards.controller';
 import { CardsService } from './cards.service';
+import { ActivityWriterModule } from '../activities/activity-writer.module';
 
 @Module({
   imports: [
     RealtimeDeliveryModule,
     AuthModule,
     BoardMembersModule,
+    ActivityWriterModule,
     TypeOrmModule.forFeature([
       Card,
       CardAssignee,

@@ -12,6 +12,7 @@ import request from 'supertest';
 import { BoardAuthorizationService } from '../../src/api/board-members/board-authorization.service';
 import { BoardMembersController } from '../../src/api/board-members/board-members.controller';
 import { BoardMembersService } from '../../src/api/board-members/board-members.service';
+import { ActivityWriterService } from '../../src/api/activities/activity-writer.service';
 import { BoardMember } from '../../src/api/board-members/entities/board-member.entity';
 import { Board } from '../../src/api/boards/entities/board.entity';
 import { AuthService } from '../../src/api/auth/auth.service';
@@ -98,6 +99,7 @@ describe('board-members HTTP contract', () => {
       providers: [
         { provide: BoardEventPublisher, useValue: { publish: jest.fn() } },
         BoardMembersService,
+        { provide: ActivityWriterService, useValue: { record: jest.fn() } },
         BoardAuthorizationService,
         AuthService,
         JwtAuthGuard,

@@ -91,6 +91,26 @@ try {
   for (const Service of [ColumnsService, CardsService, BoardMembersService]) {
     assert.equal(app.get(Service).events, publisher);
   }
+  const {
+    ActivityWriterService,
+  } = require('../../src/api/activities/activity-writer.service.ts');
+  const {
+    ActivitiesService,
+  } = require('../../src/api/activities/activities.service.ts');
+  const {
+    CommentsService,
+  } = require('../../src/api/comments/comments.service.ts');
+  const writer = app.get(ActivityWriterService);
+  for (const Service of [
+    BoardsService,
+    BoardMembersService,
+    ColumnsService,
+    CardsService,
+    CommentsService,
+  ]) {
+    assert.equal(app.get(Service).activities, writer);
+  }
+  assert.equal(app.get(ActivitiesService).writer, writer);
   assert.equal(gateway.auth, app.get(RealtimeAuthService));
   assert.equal(rooms.auth, gateway.auth);
   assert.equal(broadcaster.auth, gateway.auth);

@@ -5,6 +5,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { ErrorCode } from '../../common/dto/api-error';
 import {
+  ActivityActionType,
+  ActivityEntityType,
+} from '../../common/enums/database-enums';
+import { ActivityWriterService } from '../activities/activity-writer.service';
+import {
   PaginatedResponse,
   paginate,
   pageOffset,
@@ -51,6 +56,7 @@ export class ColumnsService {
     @InjectRepository(Card) private readonly cards: Repository<Card>,
     private readonly authorization: BoardAuthorizationService,
     private readonly events: BoardEventPublisher,
+    private readonly activities: ActivityWriterService,
   ) {}
 
   async list(
@@ -102,7 +108,16 @@ export class ColumnsService {
         name: input.name,
         position: appendPosition(last?.position),
       });
-      return toColumnResponseDto(await columns.save(column));
+      const saved = await columns.save(column);
+      await this.activities.record(manager, {
+        boardId: saved.boardId,
+        actorId: userId,
+        actionType: ActivityActionType.COLUMN_CREATED,
+        entityType: ActivityEntityType.COLUMN,
+        entityId: saved.id,
+        metadata: null,
+      });
+      return toColumnResponseDto(saved);
     });
     await this.events.publish(RealtimeServerEvent.COLUMN_CREATED, {
       boardId: result.boardId,
@@ -133,7 +148,16 @@ export class ColumnsService {
       if (column.name === input.name) return toColumnResponseDto(column);
       changed = true;
       column.name = input.name;
-      return toColumnResponseDto(await columns.save(column));
+      const saved = await columns.save(column);
+      await this.activities.record(manager, {
+        boardId: saved.boardId,
+        actorId: userId,
+        actionType: ActivityActionType.COLUMN_UPDATED,
+        entityType: ActivityEntityType.COLUMN,
+        entityId: saved.id,
+        metadata: null,
+      });
+      return toColumnResponseDto(saved);
     });
     if (changed)
       await this.events.publish(RealtimeServerEvent.COLUMN_UPDATED, {
@@ -184,6 +208,15 @@ export class ColumnsService {
       );
       if (currentIndex === targetIndex) return toColumnResponseDto(moving);
       changed = true;
+      const recordMove = async () =>
+        this.activities.record(manager, {
+          boardId: moving.boardId,
+          actorId: userId,
+          actionType: ActivityActionType.COLUMN_MOVED,
+          entityType: ActivityEntityType.COLUMN,
+          entityId: moving.id,
+          metadata: { beforeColumnId: input.beforeColumnId },
+        });
 
       const ordered = [...withoutMoving];
       ordered.splice(targetIndex, 0, moving);
@@ -198,7 +231,9 @@ export class ColumnsService {
           : moving.position;
       if (nextPosition) {
         moving.position = nextPosition;
-        return toColumnResponseDto(await columns.save(moving));
+        const saved = await columns.save(moving);
+        await recordMove();
+        return toColumnResponseDto(saved);
       }
 
       const positions = rebalancePositions(ordered.length);
@@ -206,6 +241,7 @@ export class ColumnsService {
         column.position = positions[index];
       });
       await columns.save(ordered);
+      await recordMove();
       return toColumnResponseDto(moving);
     });
     if (changed)
@@ -245,6 +281,14 @@ export class ColumnsService {
         if (isForeignKeyViolation(error)) throw this.columnNotEmpty();
         throw error;
       }
+      await this.activities.record(manager, {
+        boardId: payload.boardId,
+        actorId: userId,
+        actionType: ActivityActionType.COLUMN_DELETED,
+        entityType: ActivityEntityType.COLUMN,
+        entityId: payload.columnId,
+        metadata: null,
+      });
       return payload;
     });
     await this.events.publish(RealtimeServerEvent.COLUMN_DELETED, payload);

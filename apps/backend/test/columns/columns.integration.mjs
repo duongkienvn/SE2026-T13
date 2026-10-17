@@ -62,9 +62,19 @@ try {
   const cards = source.getRepository(Card);
   const users = source.getRepository('User');
   const authorization = new BoardAuthorizationService(members);
-  const service = new ColumnsService(columns, boards, cards, authorization, {
-    publish: async () => undefined,
-  });
+  const {
+    ActivityWriterService,
+  } = require('../../dist/api/activities/activity-writer.service.js');
+  const service = new ColumnsService(
+    columns,
+    boards,
+    cards,
+    authorization,
+    {
+      publish: async () => undefined,
+    },
+    new ActivityWriterService(),
+  );
   const user = (name) =>
     users.save(
       users.create({
