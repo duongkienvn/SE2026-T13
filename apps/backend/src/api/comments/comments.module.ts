@@ -7,11 +7,13 @@ import { Card } from '../cards/entities/card.entity';
 import { CommentsController } from './comments.controller';
 import { CommentsService } from './comments.service';
 import { Comment } from './entities/comment.entity';
+import { ActivityWriterModule } from '../activities/activity-writer.module';
 
 @Module({
   imports: [
     AuthModule,
     BoardMembersModule,
+    ActivityWriterModule,
     TypeOrmModule.forFeature([Comment, Card, Board]),
   ],
   controllers: [CommentsController],

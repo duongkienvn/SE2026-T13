@@ -102,7 +102,16 @@ try {
   );
   const comments = source.getRepository(Comment);
   const authorization = new BoardAuthorizationService(members);
-  const service = new CommentsService(comments, cards, boards, authorization);
+  const {
+    ActivityWriterService,
+  } = require('../dist/api/activities/activity-writer.service.js');
+  const service = new CommentsService(
+    comments,
+    cards,
+    boards,
+    authorization,
+    new ActivityWriterService(),
+  );
 
   const createdComment = await service.create(member.id, board.id, card.id, {
     content: 'Created',

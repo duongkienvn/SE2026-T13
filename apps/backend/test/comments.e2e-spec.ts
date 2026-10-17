@@ -10,6 +10,7 @@ import { randomBytes } from 'node:crypto';
 import request from 'supertest';
 import { Logger } from 'nestjs-pino';
 import { AuthService } from '../src/api/auth/auth.service';
+import { ActivityWriterService } from '../src/api/activities/activity-writer.service';
 import {
   JWT_AUDIENCE,
   JWT_ISSUER,
@@ -170,6 +171,7 @@ describe('Comments HTTP API with real JWT, validation and envelopes', () => {
       controllers: [CommentsController],
       providers: [
         CommentsService,
+        { provide: ActivityWriterService, useValue: { record: jest.fn() } },
         BoardAuthorizationService,
         AuthService,
         JwtAuthGuard,

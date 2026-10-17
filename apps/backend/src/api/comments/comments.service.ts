@@ -3,6 +3,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { ApplicationException } from '../../exceptions/application.exception';
 import {
+  ActivityActionType,
+  ActivityEntityType,
+} from '../../common/enums/database-enums';
+import { ActivityWriterService } from '../activities/activity-writer.service';
+import {
   paginate,
   pageOffset,
   PaginatedResponse,
@@ -27,6 +32,7 @@ export class CommentsService {
     @InjectRepository(Card) private readonly cards: Repository<Card>,
     @InjectRepository(Board) private readonly boards: Repository<Board>,
     private readonly authorization: BoardAuthorizationService,
+    private readonly activities: ActivityWriterService,
   ) {}
 
   async list(
@@ -79,7 +85,16 @@ export class CommentsService {
         authorId: userId,
         content: input.content,
       });
-      return toCommentResponseDto(await comments.save(comment));
+      const saved = await comments.save(comment);
+      await this.activities.record(manager, {
+        boardId,
+        actorId: userId,
+        actionType: ActivityActionType.COMMENT_CREATED,
+        entityType: ActivityEntityType.COMMENT,
+        entityId: saved.id,
+        metadata: { cardId: saved.cardId },
+      });
+      return toCommentResponseDto(saved);
     });
   }
 
@@ -100,8 +115,19 @@ export class CommentsService {
       const comments = manager.getRepository(Comment);
       const comment = await this.requireComment(comments, cardId, commentId);
       this.requireAuthor(comment, userId);
+      if (comment.content === input.content)
+        return toCommentResponseDto(comment);
       comment.content = input.content;
-      return toCommentResponseDto(await comments.save(comment));
+      const saved = await comments.save(comment);
+      await this.activities.record(manager, {
+        boardId,
+        actorId: userId,
+        actionType: ActivityActionType.COMMENT_UPDATED,
+        entityType: ActivityEntityType.COMMENT,
+        entityId: saved.id,
+        metadata: null,
+      });
+      return toCommentResponseDto(saved);
     });
   }
 
@@ -122,6 +148,14 @@ export class CommentsService {
       const comment = await this.requireComment(comments, cardId, commentId);
       this.requireAuthor(comment, userId);
       await comments.softRemove(comment);
+      await this.activities.record(manager, {
+        boardId,
+        actorId: userId,
+        actionType: ActivityActionType.COMMENT_DELETED,
+        entityType: ActivityEntityType.COMMENT,
+        entityId: commentId.toLowerCase(),
+        metadata: null,
+      });
     });
   }
 

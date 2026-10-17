@@ -81,6 +81,9 @@ function harness() {
     cards as unknown as Repository<Card>,
     boards as unknown as Repository<Board>,
     authorization as unknown as BoardAuthorizationService,
+    {
+      record: jest.fn(),
+    } as unknown as import('../src/api/activities/activity-writer.service').ActivityWriterService,
   );
   return {
     service,
