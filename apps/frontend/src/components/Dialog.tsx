@@ -15,6 +15,8 @@ interface DialogProps {
   children: ReactNode;
   /** Prevents closing (Escape, backdrop) while a request is running. */
   dismissible?: boolean;
+  /** `wide` fits a two-column layout such as the card detail. */
+  size?: 'default' | 'wide';
 }
 
 const FOCUSABLE =
@@ -31,6 +33,7 @@ export function Dialog({
   description,
   children,
   dismissible = true,
+  size = 'default',
 }: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -105,9 +108,16 @@ export function Dialog({
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
-        className="relative max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-surface p-5 shadow-frame focus:outline-none sm:p-6"
+        className={`relative max-h-[calc(100dvh-2rem)] w-full ${
+          size === 'wide' ? 'max-w-4xl' : 'max-w-lg'
+        } overflow-y-auto rounded-2xl bg-surface p-5 shadow-frame focus:outline-none sm:p-6`}
       >
-        <h2 id={titleId} className="text-lg font-semibold text-ink">
+        <h2
+          id={titleId}
+          className={`font-semibold break-words text-ink ${
+            size === 'wide' ? 'text-xl sm:text-2xl' : 'text-lg'
+          }`}
+        >
           {title}
         </h2>
         {description && (

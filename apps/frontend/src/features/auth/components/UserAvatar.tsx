@@ -15,8 +15,14 @@ function initials(name: string): string {
   return letters.toUpperCase();
 }
 
-/** Profile image when available, otherwise initials. Purely presentational. */
-export function UserAvatar({ user, className = 'size-11' }: UserAvatarProps) {
+/**
+ * Profile image when available, otherwise initials. Purely presentational.
+ * `className` sets the size and the initials' font size.
+ */
+export function UserAvatar({
+  user,
+  className = 'size-11 text-[15px]',
+}: UserAvatarProps) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const showImage = user.avatarUrl && user.avatarUrl !== failedUrl;
 
@@ -34,7 +40,7 @@ export function UserAvatar({ user, className = 'size-11' }: UserAvatarProps) {
   return (
     <span
       aria-hidden="true"
-      className={`grid shrink-0 place-items-center rounded-full bg-primary-soft text-[15px] font-semibold text-primary ${className}`}
+      className={`grid shrink-0 place-items-center rounded-full bg-primary-soft font-semibold text-primary ${className}`}
     >
       {initials(user.displayName)}
     </span>

@@ -27,6 +27,9 @@ function openBoard(
   const calls = mockApi({
     'GET /users/me': ok(testUser),
     [`GET /boards/${board.id}`]: ok(board),
+    [`GET /boards/${board.id}/columns?page=1&limit=100`]: okPage([]),
+    [`GET /boards/${board.id}/cards?page=1&limit=100`]: okPage([]),
+    [`GET /boards/${board.id}/members?page=1&limit=100`]: okPage([]),
     ...extra,
   });
   const view = renderApp(`/boards/${board.id}`);
@@ -68,7 +71,7 @@ describe('BoardDetailPage', () => {
       main.getByRole('link', { name: 'Members' }).getAttribute('href'),
     ).toBe(`/boards/${board.id}/members`);
     expect(
-      main.getByRole('heading', { name: 'Columns and cards are coming soon' }),
+      await main.findByRole('heading', { name: 'No columns yet' }),
     ).toBeTruthy();
     expect(document.title).toBe('Product Development · Kanban');
   });

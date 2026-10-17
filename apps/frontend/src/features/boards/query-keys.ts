@@ -8,4 +8,11 @@ export const boardKeys = {
   detail: (boardId: string) => [...boardKeys.all, 'detail', boardId] as const,
   members: (boardId: string) =>
     [...boardKeys.all, 'detail', boardId, 'members'] as const,
+  columns: (boardId: string) =>
+    [...boardKeys.all, 'detail', boardId, 'columns'] as const,
+  /** Active cards of the board; also the prefix of every card detail key. */
+  cards: (boardId: string) =>
+    [...boardKeys.all, 'detail', boardId, 'cards'] as const,
+  card: (boardId: string, cardId: string) =>
+    [...boardKeys.all, 'detail', boardId, 'cards', cardId] as const,
 };

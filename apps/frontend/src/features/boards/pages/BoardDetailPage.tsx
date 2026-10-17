@@ -15,6 +15,7 @@ import {
 import { usePageTitle } from '../../../hooks/usePageTitle';
 import { isApiError } from '../../../lib/api-client';
 import { ArchiveBoardDialog } from '../components/ArchiveBoardDialog';
+import { KanbanBoard } from '../components/KanbanBoard';
 import { BoardIcon } from '../components/BoardIcon';
 import { EditBoardDialog } from '../components/BoardFormDialog';
 import { RoleChip } from '../components/RoleChip';
@@ -92,7 +93,7 @@ export function BoardDetailPage() {
     data.currentUserRole === BoardRole.OWNER && !data.isArchived;
 
   return (
-    <PageContainer>
+    <PageContainer fill>
       <div className="flex flex-col gap-5 md:flex-row md:items-start">
         <BoardIcon boardId={data.id} className="size-12 rounded-xl text-2xl" />
         <div className="min-w-0 flex-1">
@@ -133,11 +134,8 @@ export function BoardDetailPage() {
         {data.isArchived && <ArchivedBoardNotice />}
       </div>
 
-      <div className="mt-5">
-        <EmptyState
-          title="Columns and cards are coming soon"
-          description="This board's Kanban workspace will be available in an upcoming release."
-        />
+      <div className="mt-5 min-h-0 flex-1 short:mt-3">
+        <KanbanBoard boardId={data.id} readOnly={data.isArchived} />
       </div>
 
       {editing && (
