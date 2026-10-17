@@ -10,6 +10,7 @@ import { isApiError } from '../../../lib/api-client';
 import { toFormErrors } from '../../../lib/form-errors';
 import { formatRelativeTime } from '../../../lib/format';
 import type { BoardMember } from '../../board-members/types';
+import { CommentsSection } from '../../comments/CommentsSection';
 import { useArchiveCard, useCard, useUpdateCard } from '../hooks';
 import type { Card, UpdateCardRequest } from '../types';
 import {
@@ -133,6 +134,13 @@ export function CardDetailDialog({
             )}
           </>
         }
+      />
+      <CommentsSection
+        key={`${boardId}:${cardId}`}
+        boardId={boardId}
+        cardId={cardId}
+        members={members}
+        readOnly={readOnly}
       />
     </Dialog>
   );
