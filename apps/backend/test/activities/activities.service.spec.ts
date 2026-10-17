@@ -10,6 +10,7 @@ import {
   RecordActivityInput,
 } from '../../src/api/activities/activity-recorder';
 import { ActivitiesService } from '../../src/api/activities/activities.service';
+import { ActivityWriterService } from '../../src/api/activities/activity-writer.service';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: () => () => undefined,
@@ -77,6 +78,7 @@ function harness() {
   const service = new ActivitiesService(
     activityRepository as unknown as Repository<Activity>,
     authorization as unknown as BoardAuthorizationService,
+    new ActivityWriterService(),
   );
   return { service, activityRepository, authorization, manager, builder };
 }

@@ -5,11 +5,13 @@ import { BoardMembersModule } from '../board-members/board-members.module';
 import { Activity } from './entities/activity.entity';
 import { ActivitiesController } from './activities.controller';
 import { ActivitiesService } from './activities.service';
+import { ActivityWriterModule } from './activity-writer.module';
 
 @Module({
   imports: [
     AuthModule,
     BoardMembersModule,
+    ActivityWriterModule,
     TypeOrmModule.forFeature([Activity]),
   ],
   controllers: [ActivitiesController],
