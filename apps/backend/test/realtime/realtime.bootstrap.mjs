@@ -23,6 +23,9 @@ const { Test } = require('@nestjs/testing');
 const { DataSource } = require('typeorm');
 const argon2 = require('argon2');
 const { AppModule } = require('../../src/app.module.ts');
+const {
+  ActivityWriterService,
+} = require('../../src/api/activities/activity-writer.service.ts');
 const { configureHttpApplication } = require('../../src/http-application.ts');
 const {
   RealtimeAuthService,
@@ -150,6 +153,10 @@ for (const repository of Object.values(repositories))
 const module = await Test.createTestingModule({ imports: [AppModule] })
   .overrideProvider(DataSource)
   .useValue(source)
+  // F1's in-memory DataSource has no Activity table; H2b persistence is covered
+  // by the isolated PostgreSQL integration suite instead.
+  .overrideProvider(ActivityWriterService)
+  .useValue({ record: async () => undefined })
   .compile();
 const app = module.createNestApplication();
 const socketAuth = app.get(RealtimeAuthService);
