@@ -53,6 +53,9 @@ function harness() {
     cards as unknown as Repository<Card>,
     authorization as unknown as BoardAuthorizationService,
     { publish } as unknown as BoardEventPublisher,
+    {
+      record: jest.fn(),
+    } as unknown as import('../../../src/api/activities/activity-writer.service').ActivityWriterService,
   );
   return {
     service,
