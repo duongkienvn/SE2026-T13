@@ -138,6 +138,57 @@ describe('card hooks', () => {
     await waitFor(() => expect(result.current.cards.data).toEqual([]));
   });
 
+  it('patches the list at once, even if its refetch fails', async () => {
+    storeSession();
+    const kept = makeCard({ title: 'Kept' });
+    const archived = makeCard({ title: 'Archived' });
+    let listCalls = 0;
+    mockApi({
+      'GET /users/me': ok(testUser),
+      [page(CARDS, 1)]: () => {
+        listCalls += 1;
+        return listCalls === 1
+          ? okPage([kept, archived])
+          : fail(429, 'TOO_MANY_REQUESTS'); // not retried, unlike a 500
+      },
+      [`PATCH ${CARDS}/${kept.id}`]: ok({ ...kept, title: 'Renamed' }),
+      [`POST ${CARDS}/${archived.id}/archive`]: ok({
+        ...archived,
+        isArchived: true,
+        archivedAt: '2026-10-17T00:00:00.000Z',
+      }),
+    });
+
+    const { result } = renderHook(
+      () => ({
+        cards: useCards(BOARD),
+        update: useUpdateCard(BOARD, kept.id),
+        archive: useArchiveCard(BOARD, archived.id),
+      }),
+      { wrapper },
+    );
+    await waitFor(() =>
+      expect(result.current.cards.data).toEqual([kept, archived]),
+    );
+
+    await act(() => result.current.update.mutateAsync({ title: 'Renamed' }));
+    // Replaced where it was, not moved to the end.
+    await waitFor(() =>
+      expect(result.current.cards.data).toEqual([
+        { ...kept, title: 'Renamed' },
+        archived,
+      ]),
+    );
+    await act(() => result.current.archive.mutateAsync());
+
+    expect(listCalls).toBeGreaterThan(1);
+    await waitFor(() =>
+      expect(result.current.cards.data).toEqual([
+        { ...kept, title: 'Renamed' },
+      ]),
+    );
+  });
+
   it('refetches the card after assigning and unassigning', async () => {
     storeSession();
     const card = makeCard();

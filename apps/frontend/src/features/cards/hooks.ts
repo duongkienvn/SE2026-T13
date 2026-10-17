@@ -53,13 +53,20 @@ export function useCard(boardId: string, cardId: string, placeholder?: Card) {
 }
 
 /**
- * Stores the card the server returned, then refetches the active card list
- * (an archived card drops out of it).
+ * Stores the card the server returned, in its own cache and in the active card
+ * list (an archived card drops out of it), then refetches that list.
  */
 function useSaveCard(boardId: string) {
   const queryClient = useQueryClient();
   return (card: Card) => {
     queryClient.setQueryData(boardKeys.card(boardId, card.id), card);
+    queryClient.setQueryData<Card[]>(boardKeys.cards(boardId), (list) => {
+      if (!list) return list;
+      if (card.isArchived) return list.filter((item) => item.id !== card.id);
+      return list.some((item) => item.id === card.id)
+        ? list.map((item) => (item.id === card.id ? card : item))
+        : [...list, card];
+    });
     return queryClient.invalidateQueries({
       queryKey: boardKeys.cards(boardId),
       exact: true,

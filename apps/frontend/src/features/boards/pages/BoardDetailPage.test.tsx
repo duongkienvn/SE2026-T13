@@ -193,6 +193,29 @@ describe('BoardDetailPage', () => {
     expect(screen.queryByRole('button', { name: /^Actions for/ })).toBeNull();
   });
 
+  it('stops showing the board once its cards are no longer available', async () => {
+    const board = makeBoard({ name: 'Secret plans', currentUserRole: 'OWNER' });
+    let boardCalls = 0;
+    openBoard(board, {
+      // Loads, survives the refocus refresh, then is gone when asked again.
+      [`GET /boards/${board.id}`]: () =>
+        ++boardCalls <= 2 ? ok(board) : fail(404, 'NOT_FOUND'),
+      [`GET /boards/${board.id}/cards?page=1&limit=100`]: then(
+        okPage([]),
+        fail(403, 'FORBIDDEN'),
+      ),
+    });
+    await screen.findByRole('heading', { name: 'Secret plans' });
+
+    refocusWindow();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Board not found' }),
+    ).toBeTruthy();
+    expect(boardCalls).toBe(3);
+    expect(screen.queryByText('Secret plans')).toBeNull();
+  });
+
   it('keeps the board on screen when a refresh fails for other reasons', async () => {
     const board = makeBoard({ name: 'Flaky network' });
     openBoard(board, {
