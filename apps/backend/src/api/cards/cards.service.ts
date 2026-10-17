@@ -5,6 +5,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { ApplicationException } from '../../exceptions/application.exception';
 import {
+  ActivityActionType,
+  ActivityEntityType,
+} from '../../common/enums/database-enums';
+import { ActivityWriterService } from '../activities/activity-writer.service';
+import {
   paginate,
   pageOffset,
   PaginatedResponse,
@@ -37,6 +42,7 @@ export class CardsService {
     private readonly columns: Repository<BoardColumn>,
     private readonly authorization: BoardAuthorizationService,
     private readonly events: BoardEventPublisher,
+    private readonly activities: ActivityWriterService,
   ) {}
 
   async create(
@@ -67,7 +73,18 @@ export class CardsService {
         archivedAt: null,
         position: position ?? '0.0000000000',
       });
-      if (position) return toCardResponseDto(await cards.save(card));
+      if (position) {
+        const saved = await cards.save(card);
+        await this.activities.record(manager, {
+          boardId: saved.boardId,
+          actorId: userId,
+          actionType: ActivityActionType.CARD_CREATED,
+          entityType: ActivityEntityType.CARD,
+          entityId: saved.id,
+          metadata: null,
+        });
+        return toCardResponseDto(saved);
+      }
       const ordered = await cards.find({
         where: { boardId, columnId: column.id, isArchived: false },
         order: { position: 'ASC', id: 'ASC' },
@@ -78,6 +95,14 @@ export class CardsService {
         row.position = positions[index];
       });
       const saved = await cards.save(all);
+      await this.activities.record(manager, {
+        boardId: saved[saved.length - 1].boardId,
+        actorId: userId,
+        actionType: ActivityActionType.CARD_CREATED,
+        entityType: ActivityEntityType.CARD,
+        entityId: saved[saved.length - 1].id,
+        metadata: null,
+      });
       return toCardResponseDto(saved[saved.length - 1]);
     });
     await this.events.publish(RealtimeServerEvent.CARD_CREATED, {
@@ -125,7 +150,16 @@ export class CardsService {
       if (input.description !== undefined) card.description = input.description;
       if (input.dueDate !== undefined)
         card.dueDate = input.dueDate === null ? null : new Date(input.dueDate);
-      return toCardResponseDto(await cards.save(card));
+      const saved = await cards.save(card);
+      await this.activities.record(manager, {
+        boardId: saved.boardId,
+        actorId: userId,
+        actionType: ActivityActionType.CARD_UPDATED,
+        entityType: ActivityEntityType.CARD,
+        entityId: saved.id,
+        metadata: null,
+      });
+      return toCardResponseDto(saved);
     });
     if (changed)
       await this.events.publish(RealtimeServerEvent.CARD_UPDATED, {
@@ -146,7 +180,16 @@ export class CardsService {
       const card = await this.requireCard(cards, boardId, cardId, true);
       card.isArchived = true;
       card.archivedAt = new Date();
-      return toCardResponseDto(await cards.save(card));
+      const saved = await cards.save(card);
+      await this.activities.record(manager, {
+        boardId: saved.boardId,
+        actorId: userId,
+        actionType: ActivityActionType.CARD_ARCHIVED,
+        entityType: ActivityEntityType.CARD,
+        entityId: saved.id,
+        metadata: null,
+      });
+      return toCardResponseDto(saved);
     });
     await this.events.publish(RealtimeServerEvent.CARD_ARCHIVED, {
       boardId: result.boardId,
@@ -201,6 +244,15 @@ export class CardsService {
       )
         return toCardResponseDto(moving);
       changed = true;
+      const recordMove = async (moved: Card) =>
+        this.activities.record(manager, {
+          boardId: moved.boardId,
+          actorId: userId,
+          actionType: ActivityActionType.CARD_MOVED,
+          entityType: ActivityEntityType.CARD,
+          entityId: moved.id,
+          metadata: { fromColumnId, toColumnId: moved.columnId },
+        });
       const position = cardInsertionPosition(
         remaining[targetIndex - 1]?.position,
         remaining[targetIndex]?.position,
@@ -208,7 +260,9 @@ export class CardsService {
       moving.columnId = column.id;
       if (position) {
         moving.position = position;
-        return toCardResponseDto(await cards.save(moving));
+        const saved = await cards.save(moving);
+        await recordMove(saved);
+        return toCardResponseDto(saved);
       }
       const ordered = [...remaining];
       ordered.splice(targetIndex, 0, moving);
@@ -217,6 +271,7 @@ export class CardsService {
         card.position = positions[index];
       });
       const saved = await cards.save(ordered);
+      await recordMove(saved[targetIndex]);
       return toCardResponseDto(saved[targetIndex]);
     });
     if (changed)

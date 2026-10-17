@@ -88,15 +88,27 @@ try {
     cards = source.getRepository(Card),
     assignees = source.getRepository(CardAssignee);
   const authorization = new BoardAuthorizationService(members);
-  const service = new CardsService(cards, boards, columns, authorization, {
-    publish: async () => undefined,
-  });
+  const {
+    ActivityWriterService,
+  } = require('../../dist/api/activities/activity-writer.service.js');
+  const activityWriter = new ActivityWriterService();
+  const service = new CardsService(
+    cards,
+    boards,
+    columns,
+    authorization,
+    {
+      publish: async () => undefined,
+    },
+    activityWriter,
+  );
   const columnService = new ColumnsService(
     columns,
     boards,
     cards,
     authorization,
     { publish: async () => undefined },
+    activityWriter,
   );
   const memberService = new BoardMembersService(
     members,
@@ -104,6 +116,7 @@ try {
     authorization,
     new BoardRoomCoordinator(),
     { publish: async () => undefined },
+    activityWriter,
   );
   const passwordHash = await argon2.hash('cards-integration-password');
   const user = async (name) =>

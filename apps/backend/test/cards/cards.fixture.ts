@@ -102,6 +102,9 @@ export function cardsHarness() {
     columns as unknown as Repository<BoardColumn>,
     authorization as unknown as BoardAuthorizationService,
     events as unknown as BoardEventPublisher,
+    {
+      record: jest.fn(),
+    } as unknown as import('../../src/api/activities/activity-writer.service').ActivityWriterService,
   );
   return {
     service,
