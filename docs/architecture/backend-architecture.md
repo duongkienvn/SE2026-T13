@@ -82,7 +82,7 @@ multi-assignee operations in `api/cards/`. It reuses E1's exact ordering helpers
 and the same Board row lock for every mutation, preserving Card–Column and
 assignee–membership invariants under concurrent requests. No new schema,
 transport or realtime business events were introduced. See the
-[E2 contract and verification](../tasks/card-management-api.md).
+[E2 contract and verification](../tasks/backend/card-management-api.md).
 
 ### Planned state for MVP
 
@@ -271,7 +271,7 @@ injectable board broadcast service. Join, removal and broadcast share a per-boar
 queue in the business-independent `RealtimeAccessModule`, closing the gap between
 removal commit and eviction without a circular module dependency. The transport
 path is `/socket.io`; CORS and WebSocket admission reuse `CORS_ORIGINS`. See the
-[F1 implementation guide](../tasks/realtime-foundation.md) for the exact contracts,
+[F1 implementation guide](../tasks/backend/realtime-foundation.md) for the exact contracts,
 single-instance security boundary and tests. Presence and business events below
 remain planned for G1/G2 and F2.
 

@@ -1,6 +1,6 @@
 # Realtime Collaborative Kanban
 
-Ứng dụng Kanban cộng tác nhiều người theo thời gian thực. Thành viên có thể cùng quản lý board, column và card, trao đổi qua comment và thấy thay đổi mà không cần tải lại trang. Project đã có Authentication/User, Board, Board Membership, realtime foundation và Column/Card Management REST APIs; realtime business events, comment và activity tiếp tục được triển khai theo từng phase. Xem [Card Management API E2](docs/tasks/card-management-api.md) cho contract phục vụ Kanban UI.
+Ứng dụng Kanban cộng tác nhiều người theo thời gian thực. Thành viên có thể cùng quản lý board, column và card, trao đổi qua comment và thấy thay đổi mà không cần tải lại trang. Project đã có Authentication/User, Board, Board Membership, realtime foundation và Column/Card Management REST APIs; realtime business events, comment và activity tiếp tục được triển khai theo từng phase. Xem [Card Management API E2](docs/tasks/backend/card-management-api.md) cho contract phục vụ Kanban UI.
 
 ## Tech Stack
 
@@ -14,7 +14,7 @@
 apps/frontend/   React application
 apps/backend/    NestJS application
 packages/shared/ Contracts, types và enums dùng chung
-docs/            Project, architecture và task documentation
+docs/            Project, architecture, design và task documentation
 .github/         CI/workflow configuration
 ```
 
@@ -46,7 +46,8 @@ Initial database migration đã có; TypeORM schema synchronization và tự đ�
 
 - [Project overview](docs/project-overview.md): mục tiêu, phạm vi MVP, thuật ngữ, kiến trúc tổng quan và trạng thái hiện tại.
 - [Architecture](docs/architecture/): tài liệu kiến trúc chi tiết khi được bổ sung.
-- [Tasks](docs/tasks/): tài liệu task.
+- [Tasks](docs/tasks/): tài liệu task được phân loại theo backend/frontend.
+- [Design](docs/design/): visual reference và ảnh kiểm chứng giao diện thực tế.
 
 ## Development Workflow
 

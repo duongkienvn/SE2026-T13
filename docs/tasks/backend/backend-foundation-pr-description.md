@@ -2,10 +2,10 @@
 
 ## Summary
 
-- Audit the full NestJS boilerplate source, tests, configuration, tooling, CI and deployment setup against Kanban in [the gap matrix](../architecture/backend-foundation-gap-analysis.md).
+- Audit the full NestJS boilerplate source, tests, configuration, tooling, CI and deployment setup against Kanban in [the gap matrix](../../architecture/backend-foundation-gap-analysis.md).
 - Add shared success/error response contracts, HTTP response wrapping with explicit opt-out, safe response DTO serialization, reusable field/transform/Swagger decorators, and typed application exceptions.
 - Add bounded TypeORM offset/cursor pagination, PostgreSQL readiness, configurable in-memory HTTP rate limiting, and consistent runtime/CLI connection options.
-- Document feature module conventions in the [Backend Developer Guide](../architecture/backend-developer-guide.md), without adding business endpoints or changing the database schema.
+- Document feature module conventions in the [Backend Developer Guide](../../architecture/backend-developer-guide.md), without adding business endpoints or changing the database schema.
 
 ## Verification
 

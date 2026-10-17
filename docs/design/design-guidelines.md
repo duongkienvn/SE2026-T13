@@ -7,15 +7,15 @@
 
 ## 1. Visual source of truth
 
-Use the five unmodified images in `docs/design/screens/` as visual acceptance baselines:
+Use the five unmodified images in `docs/design/screens/reference/` as visual acceptance baselines. Screenshots of the running application belong in `docs/design/screens/implementation/<task-slug>/` and are evidence, not design sources:
 
-| File                       | Target screen                  | Source image dimensions |
-| -------------------------- | ------------------------------ | ----------------------- |
-| `screens/login.png`        | Login                          | 1672 × 941              |
-| `screens/boards.png`       | Boards list                    | 1672 × 941              |
-| `screens/kanban-board.png` | Kanban board / columns / cards | 2048 × 1283             |
-| `screens/card-detail.png`  | Card detail modal              | 1672 × 941              |
-| `screens/team-members.png` | Member-management page         | 1672 × 941              |
+| File                                 | Target screen                  | Source image dimensions |
+| ------------------------------------ | ------------------------------ | ----------------------- |
+| `screens/reference/login.png`        | Login                          | 1672 × 941              |
+| `screens/reference/boards.png`       | Boards list                    | 1672 × 941              |
+| `screens/reference/kanban-board.png` | Kanban board / columns / cards | 2048 × 1283             |
+| `screens/reference/card-detail.png`  | Card detail modal              | 1672 × 941              |
+| `screens/reference/team-members.png` | Member-management page         | 1672 × 941              |
 
 Each screenshot is an **approved UI target**, not a substitute for actual React components or working business behavior. Do not independently redesign, replace with generic admin dashboards, or use the screenshots as flat background images in the app.
 
@@ -190,7 +190,7 @@ Each screen PR should explicitly compare implementation screenshots against the 
 For each completed screen:
 
 1. Capture a desktop screenshot at the target's approximate viewport size.
-2. Compare side by side with the approved screen in `docs/design/screens/`.
+2. Compare side by side with the approved screen in `docs/design/screens/reference/`.
 3. Fix structural mismatches first, then typography, spacing, color, border/shadow and icons.
 4. Verify keyboard navigation, focus/hover and small-screen usability.
 5. Verify business behavior and authorization independently from pixel-level visual accuracy.
