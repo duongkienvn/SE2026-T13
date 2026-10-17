@@ -167,13 +167,26 @@ describe('card hooks', () => {
       }),
       { wrapper },
     );
-    await waitFor(() => expect(result.current.cards.isSuccess).toBe(true));
+    await waitFor(() =>
+      expect(result.current.cards.data).toEqual([kept, archived]),
+    );
 
     await act(() => result.current.update.mutateAsync({ title: 'Renamed' }));
+    // Replaced where it was, not moved to the end.
+    await waitFor(() =>
+      expect(result.current.cards.data).toEqual([
+        { ...kept, title: 'Renamed' },
+        archived,
+      ]),
+    );
     await act(() => result.current.archive.mutateAsync());
 
     expect(listCalls).toBeGreaterThan(1);
-    expect(result.current.cards.data).toEqual([{ ...kept, title: 'Renamed' }]);
+    await waitFor(() =>
+      expect(result.current.cards.data).toEqual([
+        { ...kept, title: 'Renamed' },
+      ]),
+    );
   });
 
   it('refetches the card after assigning and unassigning', async () => {

@@ -62,8 +62,10 @@ function useSaveCard(boardId: string) {
     queryClient.setQueryData(boardKeys.card(boardId, card.id), card);
     queryClient.setQueryData<Card[]>(boardKeys.cards(boardId), (list) => {
       if (!list) return list;
-      const others = list.filter((item) => item.id !== card.id);
-      return card.isArchived ? others : [...others, card];
+      if (card.isArchived) return list.filter((item) => item.id !== card.id);
+      return list.some((item) => item.id === card.id)
+        ? list.map((item) => (item.id === card.id ? card : item))
+        : [...list, card];
     });
     return queryClient.invalidateQueries({
       queryKey: boardKeys.cards(boardId),
