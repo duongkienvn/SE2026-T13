@@ -8,6 +8,8 @@ import { MailIcon } from '../../../components/icons';
 import { PasswordField } from '../../../components/PasswordField';
 import { TextField } from '../../../components/TextField';
 import { login } from '../api';
+import { useAuthSession, type AuthSessionScope } from '../auth-session-context';
+import type { LoginRequest } from '../types';
 import { AuthLayout } from '../components/AuthLayout';
 import { AuthSwitch } from '../components/AuthSwitch';
 import { toFormErrors } from '../../../lib/form-errors';
@@ -23,6 +25,7 @@ export function LoginPage() {
   usePageTitle('Log in');
   const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
   const { signIn } = useAuth();
+  const scope = useAuthSession();
   const location = useLocation();
   const navigate = useNavigate();
   const state = location.state as RedirectState | null;
@@ -43,10 +46,23 @@ export function LoginPage() {
   }, [state, location, navigate]);
 
   const mutation = useMutation({
-    mutationFn: login,
+    mutationFn: ({
+      input,
+      scope,
+    }: {
+      input: LoginRequest;
+      scope: AuthSessionScope;
+    }) => {
+      if (!scope.isCurrent())
+        throw new Error('Session changed before request.');
+      return login(input);
+    },
     // The public-only route guard then redirects to the intended page.
-    onSuccess: signIn,
-    onError: (error) => {
+    onSuccess: (response, { scope }) => {
+      if (scope.isCurrent()) signIn(response);
+    },
+    onError: (error, { scope }) => {
+      if (!scope.isCurrent()) return;
       const result = toFormErrors(error, FIELD_LABELS);
       setFieldErrors(result.fieldErrors);
       setFormError(result.formError);
@@ -69,7 +85,10 @@ export function LoginPage() {
       return;
     }
 
-    mutation.mutate({ email: normalizeEmail(email), password });
+    mutation.mutate({
+      input: { email: normalizeEmail(email), password },
+      scope,
+    });
   };
 
   return (

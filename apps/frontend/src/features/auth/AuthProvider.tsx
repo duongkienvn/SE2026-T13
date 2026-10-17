@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -13,6 +14,7 @@ import {
   type AuthContextValue,
   type AuthStatus,
 } from './auth-context';
+import { AuthSessionContext } from './auth-session-context';
 import { clearSession, readSession, saveSession } from './session';
 import type { LoginResponse } from './types';
 
@@ -27,84 +29,104 @@ function isUnauthorized(error: unknown): boolean {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
-  const [session, setSession] = useState(readSession);
+  const [scope, setScope] = useState(() => ({
+    session: readSession(),
+    generation: 0,
+  }));
+  // Updated synchronously at session boundaries, before React can render again.
+  const scopeRef = useRef(scope);
+  const { session, generation } = scope;
   const accessToken = session?.accessToken ?? null;
 
   const endSession = useCallback(() => {
+    const next = { session: null, generation: scopeRef.current.generation + 1 };
+    scopeRef.current = next;
     clearSession();
-    setSession(null);
+    setScope(next);
     // Drop every cached query so no private data outlives the session.
     queryClient.clear();
   }, [queryClient]);
 
+  const isCurrent = useCallback(
+    () =>
+      scopeRef.current === scope &&
+      (!session || Date.now() < session.expiresAt),
+    [scope, session],
+  );
+
+  const runAuthorized = useCallback(
+    async <T,>(request: (token: string) => Promise<T>): Promise<T> => {
+      // A retained callback must never use credentials from a different session.
+      if (!accessToken || !isCurrent()) {
+        throw new ApiError(401, 'UNAUTHORIZED', 'Your session has ended.');
+      }
+      try {
+        const result = await request(accessToken);
+        if (!isCurrent()) throw new Error('Session changed during request.');
+        return result;
+      } catch (error) {
+        if (isUnauthorized(error) && isCurrent()) endSession();
+        throw error;
+      }
+    },
+    [accessToken, isCurrent, endSession],
+  );
+
   const currentUser = useQuery({
     queryKey: currentUserQueryKey,
-    queryFn: ({ signal }) => getCurrentUser(accessToken!, signal),
+    queryFn: ({ signal }) =>
+      runAuthorized((token) => getCurrentUser(token, signal)),
     enabled: accessToken !== null,
     // Failures are surfaced with an explicit "Try again" instead of silent retries.
     retry: false,
     staleTime: 5 * 60 * 1000,
   });
 
-  useEffect(() => {
-    if (isUnauthorized(currentUser.error)) endSession();
-  }, [currentUser.error, endSession]);
-
   // The token has a fixed lifetime and no refresh flow: end the session when it expires.
   useEffect(() => {
     if (!session) return;
-    const remaining = session.expiresAt - Date.now();
-    const timeout = setTimeout(
-      () => {
-        if (Date.now() >= session.expiresAt) endSession();
-        // Lifetime exceeded one timer: re-arm with the same session values.
-        else setSession({ ...session });
-      },
-      Math.min(Math.max(0, remaining), MAX_TIMEOUT_MS),
-    );
+    let timeout: ReturnType<typeof setTimeout>;
+    const checkExpiry = () => {
+      if (scopeRef.current !== scope) return;
+      const remaining = session.expiresAt - Date.now();
+      if (remaining <= 0) endSession();
+      else
+        timeout = setTimeout(checkExpiry, Math.min(remaining, MAX_TIMEOUT_MS));
+    };
+    checkExpiry();
     return () => clearTimeout(timeout);
-  }, [session, endSession]);
+  }, [scope, session, endSession]);
 
   const signIn = useCallback(
     (response: LoginResponse) => {
       const stored = saveSession(response.accessToken, response.expiresIn);
+      const next = {
+        session: stored,
+        generation: scopeRef.current.generation + 1,
+      };
+      scopeRef.current = next;
       // Never let a previous (possibly unverified) session's cache reach the new user.
       queryClient.clear();
       queryClient.setQueryData(currentUserQueryKey, response.user);
-      setSession(stored);
+      setScope(next);
     },
     [queryClient],
   );
 
   const signOut = useCallback(() => {
+    if (scopeRef.current !== scope) return;
     if (accessToken) {
       // Best effort: the token stays valid server-side until it expires either way.
       logout(accessToken).catch(() => undefined);
     }
     endSession();
-  }, [accessToken, endSession]);
-
-  const runAuthorized = useCallback(
-    async <T,>(request: (token: string) => Promise<T>): Promise<T> => {
-      // Already signed out: fail without ending the session again, which would
-      // clear the cache and make the calling query refetch in a loop.
-      if (!accessToken) {
-        throw new ApiError(401, 'UNAUTHORIZED', 'Your session has ended.');
-      }
-      try {
-        return await request(accessToken);
-      } catch (error) {
-        if (isUnauthorized(error)) endSession();
-        throw error;
-      }
-    },
-    [accessToken, endSession],
-  );
+  }, [scope, accessToken, endSession]);
 
   const { refetch } = currentUser;
   const retry = useCallback(() => {
+    if (!isCurrent()) return;
     void refetch();
-  }, [refetch]);
+  }, [refetch, isCurrent]);
 
   let status: AuthStatus;
   if (!accessToken) status = 'anonymous';
@@ -120,5 +142,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [status, user, signIn, signOut, retry, runAuthorized],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const sessionScope = useMemo(
+    () => ({ generation, isCurrent }),
+    [generation, isCurrent],
+  );
+
+  return (
+    <AuthSessionContext.Provider value={sessionScope}>
+      <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+    </AuthSessionContext.Provider>
+  );
 }
