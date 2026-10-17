@@ -354,7 +354,7 @@ try {
   const comment = await commentService.create(
     owner.id,
     auditBoard.id,
-    card.id,
+    card.id.toUpperCase(),
     { content: 'private text' },
   );
   await commentService.update(owner.id, auditBoard.id, card.id, comment.id, {
@@ -393,6 +393,7 @@ try {
   assert.equal(counts.COLUMN_CREATED.length, 3);
   assert.equal(counts.CARD_CREATED.length, 2);
   assert.equal(counts.CARD_MOVED.length, 2);
+  assert.deepEqual(counts.COMMENT_CREATED[0].metadata, { cardId: card.id });
   assert.deepEqual(counts.MEMBER_REMOVED[0].metadata, {
     targetUserId: member.id,
   });

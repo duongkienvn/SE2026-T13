@@ -73,7 +73,7 @@ export class CommentsService {
     input: CreateCommentDto,
   ): Promise<CommentResponseDto> {
     return this.mutate(userId, boardId, async (manager) => {
-      await this.requireCard(
+      const card = await this.requireCard(
         manager.getRepository(Card),
         boardId,
         cardId,
@@ -92,7 +92,7 @@ export class CommentsService {
         actionType: ActivityActionType.COMMENT_CREATED,
         entityType: ActivityEntityType.COMMENT,
         entityId: saved.id,
-        metadata: { cardId: saved.cardId },
+        metadata: { cardId: card.id },
       });
       return toCommentResponseDto(saved);
     });
