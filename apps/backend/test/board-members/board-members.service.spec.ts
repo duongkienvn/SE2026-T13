@@ -11,6 +11,7 @@ import { BoardMemberRole } from '../../src/common/enums/database-enums';
 import { RealtimeAccessModule } from '../../src/realtime/realtime-access.module';
 import { BoardRoomCoordinator } from '../../src/realtime/board-room-coordinator.service';
 import { BoardEventPublisher } from '../../src/realtime/board-event-publisher.service';
+import { ActivityWriterService } from '../../src/api/activities/activity-writer.service';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: (entity: { name: string }) =>
@@ -87,6 +88,7 @@ describe('BoardMembersService', () => {
       providers: [
         { provide: BoardEventPublisher, useValue: events },
         BoardMembersService,
+        { provide: ActivityWriterService, useValue: { record: jest.fn() } },
         { provide: getRepositoryToken(BoardMember), useValue: members },
         { provide: getRepositoryToken(User), useValue: users },
         { provide: getRepositoryToken(Board), useValue: boards },

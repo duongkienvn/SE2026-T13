@@ -54,12 +54,16 @@ try {
   const members = source.getRepository(BoardMember);
   const users = source.getRepository('User');
   const authorization = new BoardAuthorizationService(members);
+  const {
+    ActivityWriterService,
+  } = require('../../dist/api/activities/activity-writer.service.js');
   const service = new BoardMembersService(
     members,
     boards,
     authorization,
     new BoardRoomCoordinator(),
     { publish: async () => undefined },
+    new ActivityWriterService(),
   );
   const user = (name) =>
     users.save(

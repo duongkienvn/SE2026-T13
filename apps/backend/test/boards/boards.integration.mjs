@@ -57,7 +57,18 @@ try {
   const boards = source.getRepository(Board);
   const members = source.getRepository(BoardMember);
   const users = source.getRepository('User');
-  const service = new BoardsService(boards, members);
+  const {
+    BoardAuthorizationService,
+  } = require('../../dist/api/board-members/board-authorization.service.js');
+  const {
+    ActivityWriterService,
+  } = require('../../dist/api/activities/activity-writer.service.js');
+  const service = new BoardsService(
+    boards,
+    members,
+    new BoardAuthorizationService(members),
+    new ActivityWriterService(),
+  );
   const user = (name) =>
     users.save(
       users.create({

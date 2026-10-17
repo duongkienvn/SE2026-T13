@@ -12,7 +12,12 @@ import {
   pageOffset,
 } from '../../common/dto/paginated-response';
 import { PageQueryDto } from '../../common/dto/page-query.dto';
-import { BoardMemberRole } from '../../common/enums/database-enums';
+import {
+  ActivityActionType,
+  ActivityEntityType,
+  BoardMemberRole,
+} from '../../common/enums/database-enums';
+import { ActivityWriterService } from '../activities/activity-writer.service';
 import { ApplicationException } from '../../exceptions/application.exception';
 import { paginateQueryBuilder } from '../../utils/offset-pagination';
 import { User } from '../users/entities/user.entity';
@@ -35,6 +40,7 @@ export class BoardMembersService {
     private readonly authorization: BoardAuthorizationService,
     private readonly realtimeAccess: BoardRoomCoordinator,
     private readonly events: BoardEventPublisher,
+    private readonly activities: ActivityWriterService,
   ) {}
 
   async list(
@@ -94,6 +100,14 @@ export class BoardMembersService {
           user,
         }),
       );
+      await this.activities.record(manager, {
+        boardId: member.boardId,
+        actorId: userId,
+        actionType: ActivityActionType.MEMBER_ADDED,
+        entityType: ActivityEntityType.MEMBER,
+        entityId: member.id,
+        metadata: null,
+      });
       return toBoardMemberResponseDto(member);
     });
     await this.events.publish(RealtimeServerEvent.MEMBER_ADDED, {
@@ -145,9 +159,19 @@ export class BoardMembersService {
         throw this.lastOwnerConflict();
       }
       if (member.role === input.role) return toBoardMemberResponseDto(member);
+      const fromRole = member.role;
       changed = true;
       member.role = input.role;
-      return toBoardMemberResponseDto(await members.save(member));
+      const saved = await members.save(member);
+      await this.activities.record(manager, {
+        boardId: saved.boardId,
+        actorId,
+        actionType: ActivityActionType.ROLE_CHANGED,
+        entityType: ActivityEntityType.MEMBER,
+        entityId: saved.id,
+        metadata: { fromRole, toRole: saved.role },
+      });
+      return toBoardMemberResponseDto(saved);
     });
     if (changed)
       await this.events.publish(RealtimeServerEvent.MEMBER_ROLE_CHANGED, {
@@ -182,8 +206,16 @@ export class BoardMembersService {
           });
           if (ownerCount <= 1) throw this.lastOwnerConflict();
         }
-        await this.deleteAssignments(manager, boardId, targetUserId);
+        await this.deleteAssignments(manager, boardId, member.userId);
         await members.delete({ id: member.id });
+        await this.activities.record(manager, {
+          boardId: board.id,
+          actorId,
+          actionType: ActivityActionType.MEMBER_REMOVED,
+          entityType: ActivityEntityType.MEMBER,
+          entityId: member.id,
+          metadata: { targetUserId: member.userId },
+        });
         return { boardId: board.id, userId: member.userId };
       });
       await this.realtimeAccess.evictUser(removed.boardId, removed.userId);
