@@ -26,6 +26,8 @@ import { UserAvatar } from '../../auth/components/UserAvatar';
 import { useAuth } from '../../auth/useAuth';
 import { RoleChip } from '../../boards/components/RoleChip';
 import { useBoard } from '../../boards/hooks';
+import { RealtimeStatus } from '../../realtime/components/RealtimeStatus';
+import { useBoardRealtime } from '../../realtime/useBoardRealtime';
 import {
   ArchivedBoardNotice,
   BoardUnavailable,
@@ -58,6 +60,12 @@ export function BoardMembersPage() {
   const { user: currentUser } = useAuth();
   const board = useBoard(boardId);
   const members = useBoardMembers(boardId);
+  const unavailable =
+    (board.isError && isBoardUnavailable(board.error)) ||
+    (members.isError && isBoardUnavailable(members.error));
+  const realtime = useBoardRealtime(boardId, {
+    enabled: board.data !== undefined && !unavailable,
+  });
   const updateRole = useUpdateMemberRole(boardId);
   const remove = useRemoveMember(boardId);
 
@@ -89,10 +97,7 @@ export function BoardMembersPage() {
   }
   // Lost access (or the board is gone): never keep showing cached members or
   // management controls.
-  if (
-    (board.isError && isBoardUnavailable(board.error)) ||
-    (members.isError && isBoardUnavailable(members.error))
-  ) {
+  if (unavailable) {
     return (
       <PageContainer>
         <BoardUnavailable />
@@ -166,6 +171,7 @@ export function BoardMembersPage() {
         description={`People who can access “${boardData.name}”.`}
         actions={
           <>
+            <RealtimeStatus {...realtime} />
             {/* Keep the box while a query is active, so it can always be cleared. */}
             {(all.length > 1 || search) && (
               <SearchField
