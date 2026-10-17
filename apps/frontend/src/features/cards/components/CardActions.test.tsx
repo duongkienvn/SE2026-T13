@@ -51,6 +51,13 @@ function openBoard({
       ? okPage(cards)
       : cards,
     [`GET /boards/${board.id}/members?page=1&limit=100`]: okPage(members),
+    // Card Detail now fetches comments independently of card edits/assignees.
+    ...Object.fromEntries(
+      (Array.isArray(cards) ? cards : []).map((card) => [
+        `GET /boards/${board.id}/cards/${card.id}/comments?page=1&limit=20`,
+        okPage([], { limit: 20 }),
+      ]),
+    ),
     ...extra,
   });
   renderApp(`/boards/${board.id}`);
@@ -313,6 +320,7 @@ describe('card detail', () => {
     const { calls } = setupCard({}, (card, path) => ({
       [`GET ${path}`]: () =>
         ok(detail++ === 1 ? { ...card, assignees: [assigned] } : card),
+      [`GET ${path}/comments?page=1&limit=20`]: okPage([], { limit: 20 }),
       [`POST ${path}/assignees`]: ok(assigned, 201),
       [`DELETE ${path}/assignees/ada`]: { status: 204 },
     }));
@@ -331,7 +339,7 @@ describe('card detail', () => {
       within(picker).getByRole('button', { name: 'Assign Ada Lovelace' }),
     );
 
-    const remove = await within(dialog).findByRole('button', {
+    await within(dialog).findByRole('button', {
       name: 'Remove Ada Lovelace',
     });
     expect(writes(calls)[0]).toMatchObject({
@@ -345,7 +353,9 @@ describe('card detail', () => {
     expect(within(dialog).getAllByRole('button', { name: /^Assign / })).toEqual(
       [within(dialog).getByRole('button', { name: 'Assign Grace Hopper' })],
     );
-    fireEvent.click(remove);
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Remove Ada Lovelace' }),
+    );
 
     await waitFor(() =>
       expect(writes(calls).map((c) => c.method)).toEqual(['POST', 'DELETE']),
