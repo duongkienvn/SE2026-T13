@@ -277,6 +277,38 @@ describe('card comments', () => {
         .value,
     ).toBe('draft');
     expect(calls.filter((call) => call.method === 'POST')).toHaveLength(1);
+    fireEvent.change(within(dialog).getByLabelText('Write a comment'), {
+      target: { value: 'corrected draft' },
+    });
+    expect(within(dialog).queryByText(/Comment must be shorter/)).toBeNull();
+  });
+
+  it('clears a failed edit error when the comment draft changes', async () => {
+    const own = comment('card', { content: 'Original' });
+    setup({
+      list: okPage([own], { limit: 20 }),
+      extra: (path) => ({
+        [`PATCH ${path}/${own.id}`]: fail(
+          400,
+          'VALIDATION_FAILED',
+          'Validation failed',
+          ['content: content is invalid'],
+        ),
+      }),
+    });
+    const dialog = await open();
+    await within(dialog).findByText('Original');
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Edit comment' }),
+    );
+    const input = within(dialog).getByLabelText('Edit comment');
+    fireEvent.change(input, { target: { value: 'First edit' } });
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Save comment' }),
+    );
+    expect(await within(dialog).findByText('Comment is invalid')).toBeTruthy();
+    fireEvent.change(input, { target: { value: 'Corrected edit' } });
+    expect(within(dialog).queryByText('Comment is invalid')).toBeNull();
   });
 
   it('creates, edits and soft-deletes with trimmed body and 204, without submitting the card form', async () => {

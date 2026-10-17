@@ -222,9 +222,10 @@ export function CommentsSection({
                           rows={3}
                           value={editContent}
                           maxLength={MAX_LENGTH + 1}
-                          onChange={(event) =>
-                            setEditContent(event.target.value)
-                          }
+                          onChange={(event) => {
+                            setEditContent(event.target.value);
+                            setError(undefined);
+                          }}
                           error={contentError(editContent)}
                         />
                         <div className="flex gap-2">
@@ -341,7 +342,10 @@ export function CommentsSection({
             rows={2}
             value={content}
             maxLength={MAX_LENGTH + 1}
-            onChange={(event) => setContent(event.target.value)}
+            onChange={(event) => {
+              setContent(event.target.value);
+              setError(undefined);
+            }}
             error={
               content && contentError(content)
                 ? contentError(content)
