@@ -116,6 +116,23 @@ export class FakeSocket {
   }
 }
 
+export interface CreatedSocket {
+  socket: FakeSocket;
+  getAccessToken: () => Promise<string>;
+}
+
+/** Every socket the app created in the current test, oldest first. */
+export const createdSockets: CreatedSocket[] = [];
+
+/** Replaces `createRealtimeSocket` in every test (see `setup.ts`). */
+export function fakeRealtimeSocket(
+  getAccessToken: () => Promise<string>,
+): RealtimeSocket {
+  const socket = new FakeSocket();
+  createdSockets.push({ socket, getAccessToken });
+  return asRealtimeSocket(socket);
+}
+
 export function asRealtimeSocket(socket: FakeSocket): RealtimeSocket {
   return socket as unknown as RealtimeSocket;
 }

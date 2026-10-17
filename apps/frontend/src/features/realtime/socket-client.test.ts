@@ -4,6 +4,8 @@ import { createRealtimeSocket, socketOrigin } from './socket-client';
 
 const io = vi.hoisted(() => vi.fn());
 vi.mock('socket.io-client', () => ({ io }));
+// `setup.ts` fakes this module for every other test.
+vi.unmock('./socket-client');
 
 type Options = Partial<ManagerOptions & SocketOptions>;
 type AuthCallback = (send: (data: object) => void) => void;

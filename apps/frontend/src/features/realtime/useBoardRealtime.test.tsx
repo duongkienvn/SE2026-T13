@@ -1,48 +1,30 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { StrictMode, type ReactNode } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { AppProviders } from '../../app/AppProviders';
 import { makeCard, okPage } from '../../test/board-fixtures';
-import { asRealtimeSocket, FakeSocket, joined } from '../../test/fake-socket';
+import { createdSockets, joined } from '../../test/fake-socket';
 import { fail, mockApi, ok, storeSession, testUser } from '../../test/mock-api';
 import { useAuth } from '../auth/useAuth';
 import { useCards } from '../cards/hooks';
-import { RealtimeProvider } from './RealtimeProvider';
 import { useBoardRealtime } from './useBoardRealtime';
-
-const sockets = vi.hoisted(() => ({
-  created: [] as { socket: unknown; getAccessToken: () => Promise<string> }[],
-}));
-vi.mock('./socket-client', () => ({
-  createRealtimeSocket: (getAccessToken: () => Promise<string>) => {
-    const socket = new FakeSocket();
-    sockets.created.push({ socket, getAccessToken });
-    return asRealtimeSocket(socket);
-  },
-}));
 
 const BOARD = '11111111-1111-4111-8111-111111111111';
 const CARDS = `GET /boards/${BOARD}/cards?page=1&limit=100`;
 
 function lastSocket() {
-  const created = sockets.created.at(-1);
+  const created = createdSockets.at(-1);
   if (!created) throw new Error('No socket was created.');
-  return { ...created, socket: created.socket as FakeSocket };
+  return created;
 }
 
 const wrapper = ({ children }: { children: ReactNode }) => (
-  <AppProviders>
-    <RealtimeProvider>{children}</RealtimeProvider>
-  </AppProviders>
+  <AppProviders>{children}</AppProviders>
 );
 
 const strictWrapper = ({ children }: { children: ReactNode }) => (
   <StrictMode>{wrapper({ children })}</StrictMode>
 );
-
-beforeEach(() => {
-  sockets.created.length = 0;
-});
 
 describe('useBoardRealtime', () => {
   it('opens no socket while signed out', async () => {
@@ -51,8 +33,8 @@ describe('useBoardRealtime', () => {
     const { result } = renderHook(() => useBoardRealtime(BOARD), { wrapper });
     await act(() => Promise.resolve());
 
-    expect(result.current).toBe('connecting');
-    expect(sockets.created).toEqual([]);
+    expect(result.current.status).toBe('connecting');
+    expect(createdSockets).toEqual([]);
   });
 
   it('connects with the session token once signed in, and goes live after the ACK', async () => {
@@ -60,7 +42,7 @@ describe('useBoardRealtime', () => {
     mockApi({ 'GET /users/me': ok(testUser) });
 
     const { result } = renderHook(() => useBoardRealtime(BOARD), { wrapper });
-    await waitFor(() => expect(sockets.created).toHaveLength(1));
+    await waitFor(() => expect(createdSockets).toHaveLength(1));
     const { socket, getAccessToken } = lastSocket();
     expect(socket.connect).toHaveBeenCalled();
     await expect(getAccessToken()).resolves.toBe('socket-token');
@@ -69,7 +51,7 @@ describe('useBoardRealtime', () => {
     act(() => socket.lastJoin().reply(joined(BOARD)));
 
     expect(socket.lastJoin().boardId).toBe(BOARD);
-    expect(result.current).toBe('live');
+    expect(result.current.status).toBe('live');
   });
 
   it('refetches the cards from REST when another user changes one', async () => {
@@ -85,11 +67,11 @@ describe('useBoardRealtime', () => {
     });
 
     const { result } = renderHook(
-      () => ({ cards: useCards(BOARD), status: useBoardRealtime(BOARD) }),
+      () => ({ cards: useCards(BOARD), realtime: useBoardRealtime(BOARD) }),
       { wrapper },
     );
     await waitFor(() => expect(result.current.cards.isSuccess).toBe(true));
-    await waitFor(() => expect(sockets.created).toHaveLength(1));
+    await waitFor(() => expect(createdSockets).toHaveLength(1));
     const { socket } = lastSocket();
     act(() => socket.open());
     act(() => socket.lastJoin().reply(joined(BOARD)));
@@ -114,15 +96,46 @@ describe('useBoardRealtime', () => {
     mockApi({ 'GET /users/me': ok(testUser) });
 
     renderHook(() => useBoardRealtime(BOARD), { wrapper: strictWrapper });
-    await waitFor(() => expect(sockets.created.length).toBeGreaterThan(0));
+    await waitFor(() => expect(createdSockets.length).toBeGreaterThan(0));
     const { socket } = lastSocket();
     act(() => socket.open());
 
-    const opened = sockets.created.map((c) => c.socket as FakeSocket);
-    const connected = opened.filter((s) => s.connect.mock.calls.length > 0);
+    const connected = createdSockets
+      .map((created) => created.socket)
+      .filter((s) => s.connect.mock.calls.length > 0);
     expect(connected).toEqual([socket]);
     expect(socket.requests('board:join')).toHaveLength(1);
     expect(socket.listenerCount('card:moved')).toBe(1);
+  });
+
+  it('opens no socket while disabled', async () => {
+    storeSession();
+    mockApi({ 'GET /users/me': ok(testUser) });
+
+    const { rerender } = renderHook(
+      ({ enabled }) => useBoardRealtime(BOARD, { enabled }),
+      { wrapper, initialProps: { enabled: false } },
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(createdSockets).toEqual([]);
+
+    rerender({ enabled: true });
+    await waitFor(() => expect(createdSockets).toHaveLength(1));
+  });
+
+  it('retry reconnects right away instead of waiting for the backoff', async () => {
+    storeSession();
+    mockApi({ 'GET /users/me': ok(testUser) });
+    const { result } = renderHook(() => useBoardRealtime(BOARD), { wrapper });
+    await waitFor(() => expect(createdSockets).toHaveLength(1));
+    const { socket } = lastSocket();
+    act(() => socket.open());
+    act(() => socket.serverDisconnect());
+    expect(result.current.status).toBe('connecting');
+
+    act(() => result.current.retry());
+
+    expect(socket.connect).toHaveBeenCalledTimes(2);
   });
 
   it('closes the socket and refuses its token after sign-out', async () => {
@@ -133,10 +146,10 @@ describe('useBoardRealtime', () => {
     });
 
     const { result } = renderHook(
-      () => ({ auth: useAuth(), status: useBoardRealtime(BOARD) }),
+      () => ({ auth: useAuth(), realtime: useBoardRealtime(BOARD) }),
       { wrapper },
     );
-    await waitFor(() => expect(sockets.created).toHaveLength(1));
+    await waitFor(() => expect(createdSockets).toHaveLength(1));
     const { socket, getAccessToken } = lastSocket();
     act(() => socket.open());
 
@@ -145,7 +158,7 @@ describe('useBoardRealtime', () => {
     expect(socket.disconnect).toHaveBeenCalled();
     expect(socket.listenerCount('connect')).toBe(0);
     await expect(getAccessToken()).rejects.toThrow();
-    expect(sockets.created).toHaveLength(1);
+    expect(createdSockets).toHaveLength(1);
   });
 
   it('re-checks the session when the server closes the socket', async () => {
@@ -159,10 +172,10 @@ describe('useBoardRealtime', () => {
     });
 
     const { result } = renderHook(
-      () => ({ auth: useAuth(), status: useBoardRealtime(BOARD) }),
+      () => ({ auth: useAuth(), realtime: useBoardRealtime(BOARD) }),
       { wrapper },
     );
-    await waitFor(() => expect(sockets.created).toHaveLength(1));
+    await waitFor(() => expect(createdSockets).toHaveLength(1));
     const { socket } = lastSocket();
     act(() => socket.open());
 

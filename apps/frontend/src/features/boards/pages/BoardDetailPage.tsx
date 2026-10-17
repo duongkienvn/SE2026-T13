@@ -14,6 +14,8 @@ import {
 } from '../../../components/states';
 import { usePageTitle } from '../../../hooks/usePageTitle';
 import { isApiError } from '../../../lib/api-client';
+import { RealtimeStatus } from '../../realtime/components/RealtimeStatus';
+import { useBoardRealtime } from '../../realtime/useBoardRealtime';
 import { ArchiveBoardDialog } from '../components/ArchiveBoardDialog';
 import { KanbanBoard } from '../components/KanbanBoard';
 import { BoardIcon } from '../components/BoardIcon';
@@ -53,6 +55,10 @@ export function BoardDetailPage() {
   const { boardId = '' } = useParams();
   const navigate = useNavigate();
   const board = useBoard(boardId);
+  const unavailable = board.isError && isBoardUnavailable(board.error);
+  const realtime = useBoardRealtime(boardId, {
+    enabled: board.data !== undefined && !unavailable,
+  });
   const [editing, setEditing] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [notice, setNotice] = useState<string>();
@@ -66,7 +72,7 @@ export function BoardDetailPage() {
     );
   }
   // Lost access (or the board is gone): never keep showing the cached board.
-  if (board.isError && isBoardUnavailable(board.error)) {
+  if (unavailable) {
     return (
       <PageContainer>
         <BoardUnavailable />
@@ -102,6 +108,7 @@ export function BoardDetailPage() {
             description={data.description ?? undefined}
             actions={
               <>
+                <RealtimeStatus {...realtime} />
                 <RoleChip role={data.currentUserRole} />
                 <Link
                   to={`/boards/${data.id}/members`}
