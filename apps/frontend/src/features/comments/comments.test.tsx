@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { renderApp } from '../../test/render';
 import {
@@ -211,6 +211,46 @@ describe('card comments', () => {
       ).getAttribute('aria-current'),
     ).toBe('page');
   }, 15000);
+
+  it.each([20, 0])(
+    'returns to page 1 when the current page is removed (total %i)',
+    async (total) => {
+      let remaining = 21;
+      const first = Array.from({ length: 20 }, (_, i) =>
+        comment('card', { id: `first-${i}`, content: `First ${i}` }),
+      );
+      const { path, calls } = setup({
+        list: () =>
+          okPage(remaining ? first : [], {
+            limit: 20,
+            total: remaining,
+          }),
+        extra: (commentsPath) => ({
+          [`GET ${commentsPath}?page=2&limit=20`]: () => {
+            remaining = total;
+            return okPage([], { page: 2, limit: 20, total });
+          },
+        }),
+      });
+      const dialog = await open();
+      await within(dialog).findByText('First 0');
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Page 2' }));
+      await waitFor(() =>
+        expect(
+          within(dialog)
+            .getByRole('button', { name: 'Page 1' })
+            .getAttribute('aria-current'),
+        ).toBe('page'),
+      );
+      expect(
+        calls.some((call) => call.path === `${path}?page=2&limit=20`),
+      ).toBe(true);
+      if (total === 0) {
+        expect(await within(dialog).findByText('No comments yet')).toBeTruthy();
+      }
+    },
+    15000,
+  );
 
   it('keeps a failed validation draft and shows the backend field error', async () => {
     const { calls } = setup({

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Alert } from '../../components/Alert';
 import { Button } from '../../components/Button';
 import { Pagination } from '../../components/Pagination';
@@ -67,6 +67,12 @@ export function CommentsSection({
     isApiError(query.error) && [403, 404].includes(query.error.status);
   const pageData = unavailable ? undefined : query.data;
   const byId = new Map(members.map((member) => [member.user.id, member.user]));
+
+  useEffect(() => {
+    if (pageData && page > Math.max(1, pageData.meta.totalPages)) {
+      setPage(Math.max(1, pageData.meta.totalPages));
+    }
+  }, [page, pageData]);
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
