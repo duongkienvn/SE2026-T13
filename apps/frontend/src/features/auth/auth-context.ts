@@ -17,8 +17,8 @@ export interface AuthContextValue {
   /** Re-runs session verification after an `error` status. */
   retry: () => void;
   /**
-   * Runs a protected request with the current access token. A 401 response
-   * ends the session before the error is re-thrown.
+   * Runs a protected request with this session's access token. A 401 response
+   * ends only that session. Rejects responses after the session changes.
    */
   runAuthorized: <T>(
     request: (accessToken: string) => Promise<T>,

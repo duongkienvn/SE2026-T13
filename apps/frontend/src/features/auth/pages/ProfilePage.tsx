@@ -8,6 +8,7 @@ import { PageHeader } from '../../../components/PageHeader';
 import { TextField } from '../../../components/TextField';
 import { updateCurrentUser } from '../api';
 import { currentUserQueryKey } from '../AuthProvider';
+import { useAuthSession, type AuthSessionScope } from '../auth-session-context';
 import { UserAvatar } from '../components/UserAvatar';
 import { toFormErrors } from '../../../lib/form-errors';
 import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
@@ -43,13 +44,15 @@ function buildPatch(
 export function ProfilePage() {
   usePageTitle('Profile');
   const { user } = useAuth();
+  const { generation } = useAuthSession();
   // Protected route: the guard only renders this page with a verified user.
-  return user ? <ProfileForm user={user} /> : null;
+  return user ? <ProfileForm key={generation} user={user} /> : null;
 }
 
 function ProfileForm({ user }: { user: User }) {
   const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
   const { runAuthorized } = useAuth();
+  const scope = useAuthSession();
   const queryClient = useQueryClient();
   const [displayName, setDisplayName] = useState(user.displayName);
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl ?? '');
@@ -60,15 +63,26 @@ function ProfileForm({ user }: { user: User }) {
   const [saved, setSaved] = useState(false);
 
   const mutation = useMutation({
-    mutationFn: (patch: UpdateProfileRequest) =>
-      runAuthorized((token) => updateCurrentUser(token, patch)),
-    onSuccess: (updated) => {
+    mutationFn: ({
+      patch,
+      scope,
+    }: {
+      patch: UpdateProfileRequest;
+      scope: AuthSessionScope;
+    }) => {
+      if (!scope.isCurrent())
+        throw new Error('Session changed before request.');
+      return runAuthorized((token) => updateCurrentUser(token, patch));
+    },
+    onSuccess: (updated, { scope }) => {
+      if (!scope.isCurrent()) return;
       queryClient.setQueryData(currentUserQueryKey, updated);
       setDisplayName(updated.displayName);
       setAvatarUrl(updated.avatarUrl ?? '');
       setSaved(true);
     },
-    onError: (error) => {
+    onError: (error, { scope }) => {
+      if (!scope.isCurrent()) return;
       const result = toFormErrors(error, FIELD_LABELS);
       setFieldErrors(result.fieldErrors);
       setFormError(result.formError);
@@ -98,7 +112,7 @@ function ProfileForm({ user }: { user: User }) {
       return;
     }
 
-    mutation.mutate(patch);
+    mutation.mutate({ patch, scope });
   };
 
   return (

@@ -8,6 +8,8 @@ import { MailIcon, UserIcon } from '../../../components/icons';
 import { PasswordField } from '../../../components/PasswordField';
 import { TextField } from '../../../components/TextField';
 import { register } from '../api';
+import { useAuthSession, type AuthSessionScope } from '../auth-session-context';
+import type { RegisterRequest } from '../types';
 import { AuthLayout } from '../components/AuthLayout';
 import { AuthSwitch } from '../components/AuthSwitch';
 import { toFormErrors } from '../../../lib/form-errors';
@@ -34,6 +36,7 @@ type Field = keyof typeof FIELD_LABELS;
 export function RegisterPage() {
   usePageTitle('Create account');
   const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
+  const scope = useAuthSession();
   const navigate = useNavigate();
   const from = (useLocation().state as RedirectState | null)?.from;
   const [values, setValues] = useState<Record<Field, string>>({
@@ -48,13 +51,25 @@ export function RegisterPage() {
   const [formError, setFormError] = useState<string>();
 
   const mutation = useMutation({
-    mutationFn: register,
+    mutationFn: ({
+      input,
+      scope,
+    }: {
+      input: RegisterRequest;
+      scope: AuthSessionScope;
+    }) => {
+      if (!scope.isCurrent())
+        throw new Error('Session changed before request.');
+      return register(input);
+    },
     // Registration does not sign the user in: continue to the login page.
-    onSuccess: (user) => {
+    onSuccess: (user, { scope }) => {
+      if (!scope.isCurrent()) return;
       const state: RedirectState = { registeredEmail: user.email, from };
       navigate('/login', { replace: true, state });
     },
-    onError: (error) => {
+    onError: (error, { scope }) => {
+      if (!scope.isCurrent()) return;
       const result = toFormErrors(error, FIELD_LABELS);
       setFieldErrors(result.fieldErrors);
       setFormError(result.formError);
@@ -87,9 +102,12 @@ export function RegisterPage() {
 
     // confirmPassword is a client-side check only and is never sent.
     mutation.mutate({
-      displayName: values.displayName.trim(),
-      email: normalizeEmail(values.email),
-      password: values.password,
+      input: {
+        displayName: values.displayName.trim(),
+        email: normalizeEmail(values.email),
+        password: values.password,
+      },
+      scope,
     });
   };
 
