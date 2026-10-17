@@ -19,6 +19,7 @@
     "test:columns:database": "pnpm build && node test/columns/columns.integration.mjs",
     "test:cards:database": "pnpm build && node test/cards/cards.integration.mjs",
     "test:comments:database": "pnpm build && node test/comments.integration.mjs",
+    "test:activities:database": "pnpm build && node test/activities/activities.integration.mjs",
     "test:realtime": "jest --runInBand --runTestsByPath test/realtime/realtime.e2e-spec.ts",
     "test:realtime:database": "node -r ts-node/register test/realtime/realtime.integration.mjs",
     "test:board-events:database": "node -r ts-node/register test/realtime/board-events/board-events.integration.mjs"
