@@ -10,12 +10,12 @@ was created.
 All routes use the existing JWT guard and the authenticated `userId`. MVP roles
 are `OWNER` and `MEMBER`.
 
-| Method | Route                                      | Success | Permission          |
-| ------ | ------------------------------------------ | ------- | ------------------- |
-| GET    | `/api/boards/:boardId/members`             | 200     | OWNER or MEMBER     |
-| POST   | `/api/boards/:boardId/members`             | 201     | OWNER               |
-| PATCH  | `/api/boards/:boardId/members/:userId`     | 200     | OWNER               |
-| DELETE | `/api/boards/:boardId/members/:userId`     | 204     | OWNER               |
+| Method | Route                                  | Success | Permission      |
+| ------ | -------------------------------------- | ------- | --------------- |
+| GET    | `/api/boards/:boardId/members`         | 200     | OWNER or MEMBER |
+| POST   | `/api/boards/:boardId/members`         | 201     | OWNER           |
+| PATCH  | `/api/boards/:boardId/members/:userId` | 200     | OWNER           |
+| DELETE | `/api/boards/:boardId/members/:userId` | 204     | OWNER           |
 
 List responses use the existing paginated response shape with `page`, `limit`,
 `total` and `totalPages`. Member responses expose only the public user fields
@@ -59,15 +59,15 @@ introduced.
 
 ## Automated verification — 2026-10-14
 
-| Check                                                        | Result                                      |
-| ------------------------------------------------------------ | ------------------------------------------- |
-| `pnpm lint`                                                  | PASS                                        |
-| `pnpm test`                                                  | PASS: backend 117, frontend 75, shared 2   |
-| `pnpm --filter @kanban/backend test:board-members:database`  | PASS with real Docker PostgreSQL             |
-| Backend build                                                 | PASS                                        |
-| `git diff --check`                                           | PASS                                        |
-| Docker PostgreSQL healthcheck                               | PASS: healthy on `127.0.0.1:5433`          |
-| `pnpm format:check`                                          | Existing unrelated formatting failures     |
+| Check                                                       | Result                                   |
+| ----------------------------------------------------------- | ---------------------------------------- |
+| `pnpm lint`                                                 | PASS                                     |
+| `pnpm test`                                                 | PASS: backend 117, frontend 75, shared 2 |
+| `pnpm --filter @kanban/backend test:board-members:database` | PASS with real Docker PostgreSQL         |
+| Backend build                                               | PASS                                     |
+| `git diff --check`                                          | PASS                                     |
+| Docker PostgreSQL healthcheck                               | PASS: healthy on `127.0.0.1:5433`        |
+| `pnpm format:check`                                         | Existing unrelated formatting failures   |
 
 The PostgreSQL integration test creates a temporary database, runs migrations,
 and verifies member creation, duplicate conflict handling, role transitions,
