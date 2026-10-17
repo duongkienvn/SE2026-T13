@@ -42,6 +42,6 @@ Các feature về sau sử dụng lại shell và primitive ở đây.
 
 ## Ảnh kiểm chứng
 
-| Desktop                                                                                              | Mobile                                                                                             |
-| ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| ![Application shell desktop](../design/screens/implementation/frontend-foundation/shell-desktop.png) | ![Application shell mobile](../design/screens/implementation/frontend-foundation/shell-mobile.png) |
+| Desktop                                                                                                 | Mobile                                                                                                |
+| ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| ![Application shell desktop](../../design/screens/implementation/frontend-foundation/shell-desktop.png) | ![Application shell mobile](../../design/screens/implementation/frontend-foundation/shell-mobile.png) |

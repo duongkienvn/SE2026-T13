@@ -138,18 +138,18 @@ touch emulation.
 
 ## Screenshots
 
-| Board, 1366×657                                                                    | Board, 1920×945                                                                    | Phone, 390×844                                                                   |
-| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| ![board 1366](../design/screens/implementation/kanban-board-ui/board-1366x657.png) | ![board 1920](../design/screens/implementation/kanban-board-ui/board-1920x945.png) | ![board 390](../design/screens/implementation/kanban-board-ui/board-390x844.png) |
+| Board, 1366×657                                                                       | Board, 1920×945                                                                       | Phone, 390×844                                                                      |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| ![board 1366](../../design/screens/implementation/kanban-board-ui/board-1366x657.png) | ![board 1920](../../design/screens/implementation/kanban-board-ui/board-1920x945.png) | ![board 390](../../design/screens/implementation/kanban-board-ui/board-390x844.png) |
 
-| Card detail                                                                      | Adding a card                                                              | Archive confirmation                                                               |
-| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| ![card detail](../design/screens/implementation/kanban-board-ui/card-detail.png) | ![add card](../design/screens/implementation/kanban-board-ui/add-card.png) | ![archive card](../design/screens/implementation/kanban-board-ui/archive-card.png) |
+| Card detail                                                                         | Adding a card                                                                 | Archive confirmation                                                                  |
+| ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| ![card detail](../../design/screens/implementation/kanban-board-ui/card-detail.png) | ![add card](../../design/screens/implementation/kanban-board-ui/add-card.png) | ![archive card](../../design/screens/implementation/kanban-board-ui/archive-card.png) |
 
-| Dragging across columns                                                    | Move failed (500), rolled back                                                         | Board changed meanwhile                                                               |
-| -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| ![dragging](../design/screens/implementation/kanban-board-ui/dragging.png) | ![rollback](../design/screens/implementation/kanban-board-ui/move-failed-rollback.png) | ![refused](../design/screens/implementation/kanban-board-ui/move-refused-changed.png) |
+| Dragging across columns                                                       | Move failed (500), rolled back                                                            | Board changed meanwhile                                                                  |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| ![dragging](../../design/screens/implementation/kanban-board-ui/dragging.png) | ![rollback](../../design/screens/implementation/kanban-board-ui/move-failed-rollback.png) | ![refused](../../design/screens/implementation/kanban-board-ui/move-refused-changed.png) |
 
-| Column with archived cards                                                                    | Archived board (read-only)                                                             |
-| --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| ![delete blocked](../design/screens/implementation/kanban-board-ui/delete-column-blocked.png) | ![archived board](../design/screens/implementation/kanban-board-ui/archived-board.png) |
+| Column with archived cards                                                                       | Archived board (read-only)                                                                |
+| ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| ![delete blocked](../../design/screens/implementation/kanban-board-ui/delete-column-blocked.png) | ![archived board](../../design/screens/implementation/kanban-board-ui/archived-board.png) |

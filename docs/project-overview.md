@@ -87,7 +87,10 @@ packages/
 └── shared/         Contracts, types và enums thực sự dùng chung giữa frontend/backend
 docs/
 ├── architecture/   Tài liệu kiến trúc chi tiết khi được viết
-└── tasks/          Tài liệu task
+├── design/         Visual reference và ảnh kiểm chứng giao diện
+└── tasks/
+    ├── backend/    Tài liệu task backend
+    └── frontend/   Tài liệu task frontend
 .github/
 └── workflows/      Cấu hình GitHub Actions CI
 ```
@@ -121,6 +124,6 @@ Project đã hoàn thành Foundation, Authentication/User MVP, Board/Board Membe
 
 - **Đã có:** pnpm monorepo, frontend và backend foundation, PostgreSQL schema/migration, Authentication/User Profile API, Board Management API, Board Membership & Authorization API, Column Management API, shared package, GitHub Actions CI và realtime foundation F1.
 - **Column API E1:** tạo, liệt kê phân trang, đổi tên, reorder trong cùng Board và xóa Column rỗng; OWNER và MEMBER được phép cộng tác chỉnh sửa cấu trúc Column; Board archived chỉ cho đọc.
-- **Card API E2:** create/list/detail/update/archive, exact fractional move/reorder và multi-assignee; OWNER/MEMBER được cộng tác, Board/Card archived chỉ đọc. Xem [contract và locking protocol](tasks/card-management-api.md).
+- **Card API E2:** create/list/detail/update/archive, exact fractional move/reorder và multi-assignee; OWNER/MEMBER được cộng tác, Board/Card archived chỉ đọc. Xem [contract và locking protocol](tasks/backend/card-management-api.md).
 - **Chưa có:** realtime business events cho Column/Card, presence đầy đủ, comments và activities persistence.
 - **Hướng tiếp theo:** Kanban Board UI → realtime business events → comments/activity.

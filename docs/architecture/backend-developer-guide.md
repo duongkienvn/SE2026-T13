@@ -102,7 +102,7 @@ related state, matching E1 and membership removal. This closes assign-vs-remove
 races without changing BoardMembersService or F1. Card positions reuse E1's exact
 BigInt arithmetic and rebalance active destination Cards atomically. Archived
 Cards retain their references and continue blocking Column deletion. See
-[E2 requests, responses and PostgreSQL concurrency tests](../tasks/card-management-api.md).
+[E2 requests, responses and PostgreSQL concurrency tests](../tasks/backend/card-management-api.md).
 
 ## Realtime foundation (F1)
 
@@ -114,4 +114,4 @@ share ordering with authorized joins and membership revocation. Member removal
 holds a per-board queue through transaction commit and eviction of all affected
 sockets. Do not call broadcast inside a queued operation or a still-open
 transaction. Expired sockets are disconnected and must authenticate and join
-again. See [F1 contracts, security invariants and testing](../tasks/realtime-foundation.md).
+again. See [F1 contracts, security invariants and testing](../tasks/backend/realtime-foundation.md).

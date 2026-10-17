@@ -26,12 +26,17 @@ packages/
 
 docs/
 ├── architecture/
+├── design/
 └── tasks/
+    ├── backend/
+    └── frontend/
 ```
 
 - `apps/frontend`: React frontend.
 - `apps/backend`: NestJS backend.
 - `packages/shared`: types, contracts, enums, and event names shared between frontend and backend.
+- `docs/design`: approved visual references and implementation screenshots.
+- `docs/tasks/backend`: backend task records; `docs/tasks/frontend`: frontend task records.
 - Do not put backend-only code such as TypeORM entities or services in `packages/shared`.
 
 ## Core Architecture Rules

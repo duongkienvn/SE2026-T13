@@ -27,7 +27,7 @@ affected data through REST, and PostgreSQL stays the source of truth.
   interrupted: "Reconnecting…", or "Live updates paused" with **Retry** once
   retries give up. Hidden while connecting for the first time and while live.
 
-![Reconnecting pill](../design/screens/implementation/realtime-frontend/reconnecting.png)
+![Reconnecting pill](../../design/screens/implementation/realtime-frontend/reconnecting.png)
 
 ## Event → refetch matrix
 
@@ -126,8 +126,8 @@ two users on the same board. Every step passed:
 
 Removed member and the drag race:
 
-![Removed member](../design/screens/implementation/realtime-frontend/removed-member.png)
-![Drag race](../design/screens/implementation/realtime-frontend/dnd-race.png)
+![Removed member](../../design/screens/implementation/realtime-frontend/removed-member.png)
+![Drag race](../../design/screens/implementation/realtime-frontend/dnd-race.png)
 
 ### Reproducing by hand
 

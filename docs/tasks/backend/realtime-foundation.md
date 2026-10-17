@@ -237,4 +237,4 @@ Only the two security findings are addressed by these changes:
 - `apps/backend/test/realtime/realtime.bootstrap.mjs`
 - `apps/backend/test/realtime/realtime.e2e-spec.ts`
 - `apps/backend/test/realtime/realtime.integration.mjs`
-- `docs/tasks/realtime-foundation.md`
+- `docs/tasks/backend/realtime-foundation.md`

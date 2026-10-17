@@ -43,7 +43,7 @@ apps/frontend/src/
 - Màn hình không được scroll (xem "Fit-to-viewport rule" trong `docs/design/design-guidelines.md`). Danh sách dài (boards, members) dùng phân trang đánh số: `useFitGrid` đo số hàng vừa với vùng còn trống, `lib/pagination.ts` cắt trang, số trang lưu ở `?page=` (`usePageParam`).
 - `GET /boards` (#20) và `GET /boards/:boardId/members` (#21) chưa có search phía server, nên `useBoards` và `useBoardMembers` tải tất cả các trang (`fetchAllPages`, `limit=100` = `MAX_PAGE_LIMIT`, mức tối đa của `PageQueryDto`) rồi search và phân trang ở client. Nếu số board/member tăng lớn, cần bổ sung search/paging phía server.
 
-- Realtime nằm ở `features/realtime/` (#43): `RealtimeProvider` (trong `AppProviders`) giữ một Socket.IO connection cho mỗi auth session; board page gọi `useBoardRealtime(boardId)` để join room và invalidate query keys khi có event. Chi tiết: `docs/tasks/realtime-frontend.md`.
+- Realtime nằm ở `features/realtime/` (#43): `RealtimeProvider` (trong `AppProviders`) giữ một Socket.IO connection cho mỗi auth session; board page gọi `useBoardRealtime(boardId)` để join room và invalidate query keys khi có event. Chi tiết: `docs/tasks/frontend/realtime-frontend.md`.
 
 Hiện chưa có:
 
