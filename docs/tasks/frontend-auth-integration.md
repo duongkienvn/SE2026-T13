@@ -73,10 +73,10 @@ backend. No frontend code had to change.
 
 ## Screenshots
 
-| Account created                                                   | Duplicate email                                                   |
-| ----------------------------------------------------------------- | ----------------------------------------------------------------- |
-| ![account created](frontend-auth-integration/account-created.png) | ![duplicate email](frontend-auth-integration/duplicate-email.png) |
+| Account created                                                                                    | Duplicate email                                                                                    |
+| -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| ![account created](../design/screens/implementation/frontend-auth-integration/account-created.png) | ![duplicate email](../design/screens/implementation/frontend-auth-integration/duplicate-email.png) |
 
-| Reload: session check                                         | Rate limited (429)                                          |
-| ------------------------------------------------------------- | ----------------------------------------------------------- |
-| ![session check](frontend-auth-integration/session-check.png) | ![rate limited](frontend-auth-integration/rate-limited.png) |
+| Reload: session check                                                                          | Rate limited (429)                                                                           |
+| ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| ![session check](../design/screens/implementation/frontend-auth-integration/session-check.png) | ![rate limited](../design/screens/implementation/frontend-auth-integration/rate-limited.png) |

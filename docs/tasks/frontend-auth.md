@@ -38,10 +38,10 @@ Task này triển khai luồng authentication phía frontend trên
 
 ## Ảnh kiểm chứng
 
-| Login desktop                                     | Login mobile                                    | Login error                                   |
-| ------------------------------------------------- | ----------------------------------------------- | --------------------------------------------- |
-| ![Login desktop](frontend-auth/login-desktop.png) | ![Login mobile](frontend-auth/login-mobile.png) | ![Login error](frontend-auth/login-error.png) |
+| Login desktop                                                                      | Login mobile                                                                     | Login error                                                                    |
+| ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| ![Login desktop](../design/screens/implementation/frontend-auth/login-desktop.png) | ![Login mobile](../design/screens/implementation/frontend-auth/login-mobile.png) | ![Login error](../design/screens/implementation/frontend-auth/login-error.png) |
 
-| Register                                                | Profile                                               | User menu                                 | Route error                                   |
-| ------------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------- | --------------------------------------------- |
-| ![Register desktop](frontend-auth/register-desktop.png) | ![Profile desktop](frontend-auth/profile-desktop.png) | ![User menu](frontend-auth/user-menu.png) | ![Route error](frontend-auth/route-error.png) |
+| Register                                                                                 | Profile                                                                                | User menu                                                                  | Route error                                                                    |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| ![Register desktop](../design/screens/implementation/frontend-auth/register-desktop.png) | ![Profile desktop](../design/screens/implementation/frontend-auth/profile-desktop.png) | ![User menu](../design/screens/implementation/frontend-auth/user-menu.png) | ![Route error](../design/screens/implementation/frontend-auth/route-error.png) |

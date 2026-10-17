@@ -42,22 +42,22 @@ nguồn dữ liệu.
 
 ## Ảnh kiểm chứng
 
-| Boards desktop                                        | Boards mobile                                       | Boards pagination                                               |
-| ----------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------------- |
-| ![Boards desktop](boards-frontend/boards-desktop.png) | ![Boards mobile](boards-frontend/boards-mobile.png) | ![Boards pagination](boards-frontend/boards-pages-1366x657.png) |
+| Boards desktop                                                                         | Boards mobile                                                                        | Boards pagination                                                                                |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| ![Boards desktop](../design/screens/implementation/boards-frontend/boards-desktop.png) | ![Boards mobile](../design/screens/implementation/boards-frontend/boards-mobile.png) | ![Boards pagination](../design/screens/implementation/boards-frontend/boards-pages-1366x657.png) |
 
-| Create board                                       | Archive board                                        | Owner menu                                    |
-| -------------------------------------------------- | ---------------------------------------------------- | --------------------------------------------- |
-| ![Create board](boards-frontend/create-dialog.png) | ![Archive board](boards-frontend/archive-dialog.png) | ![Owner menu](boards-frontend/owner-menu.png) |
+| Create board                                                                        | Archive board                                                                         | Owner menu                                                                     |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| ![Create board](../design/screens/implementation/boards-frontend/create-dialog.png) | ![Archive board](../design/screens/implementation/boards-frontend/archive-dialog.png) | ![Owner menu](../design/screens/implementation/boards-frontend/owner-menu.png) |
 
-| Board detail                                            | Board not found                                          | Add member error                                          |
-| ------------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------- |
-| ![Board detail owner](boards-frontend/detail-owner.png) | ![Board not found](boards-frontend/detail-not-found.png) | ![Add member error](boards-frontend/add-member-error.png) |
+| Board detail                                                                             | Board not found                                                                           | Add member error                                                                           |
+| ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| ![Board detail owner](../design/screens/implementation/boards-frontend/detail-owner.png) | ![Board not found](../design/screens/implementation/boards-frontend/detail-not-found.png) | ![Add member error](../design/screens/implementation/boards-frontend/add-member-error.png) |
 
-| Members owner                                       | Members as member                                           | Blocked member actions                                                 |
-| --------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------- |
-| ![Members owner](boards-frontend/members-owner.png) | ![Members as member](boards-frontend/members-as-member.png) | ![Blocked member actions](boards-frontend/members-blocked-actions.png) |
+| Members owner                                                                        | Members as member                                                                            | Blocked member actions                                                                                  |
+| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| ![Members owner](../design/screens/implementation/boards-frontend/members-owner.png) | ![Members as member](../design/screens/implementation/boards-frontend/members-as-member.png) | ![Blocked member actions](../design/screens/implementation/boards-frontend/members-blocked-actions.png) |
 
-| Members mobile                                        | Members pagination/menu                                                   | Archived board members                                          |
-| ----------------------------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| ![Members mobile](boards-frontend/members-mobile.png) | ![Members pagination](boards-frontend/members-pages-menu-up-1366x657.png) | ![Archived board members](boards-frontend/members-archived.png) |
+| Members mobile                                                                         | Members pagination/menu                                                                                    | Archived board members                                                                           |
+| -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| ![Members mobile](../design/screens/implementation/boards-frontend/members-mobile.png) | ![Members pagination](../design/screens/implementation/boards-frontend/members-pages-menu-up-1366x657.png) | ![Archived board members](../design/screens/implementation/boards-frontend/members-archived.png) |
