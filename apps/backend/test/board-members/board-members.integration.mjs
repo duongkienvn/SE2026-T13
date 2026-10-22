@@ -29,6 +29,9 @@ const {
   BoardRoomCoordinator,
 } = require('../../dist/realtime/board-room-coordinator.service.js');
 const {
+  BoardPresenceService,
+} = require('../../dist/realtime/board-presence.service.js');
+const {
   BoardMember,
 } = require('../../dist/api/board-members/entities/board-member.entity.js');
 
@@ -61,7 +64,7 @@ try {
     members,
     boards,
     authorization,
-    new BoardRoomCoordinator(),
+    new BoardRoomCoordinator(new BoardPresenceService()),
     { publish: async () => undefined },
     new ActivityWriterService(),
   );

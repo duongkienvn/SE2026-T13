@@ -1,9 +1,10 @@
+import { BoardPresenceService } from '../../src/realtime/board-presence.service';
 import { BoardRoomCoordinator } from '../../src/realtime/board-room-coordinator.service';
 import type { RealtimeServer } from '../../src/realtime/realtime.types';
 
 describe('BoardRoomCoordinator', () => {
   it('evicts every socket of a revoked user only from the target board', async () => {
-    const coordinator = new BoardRoomCoordinator();
+    const coordinator = new BoardRoomCoordinator(new BoardPresenceService());
     const makeSocket = (userId: string) => ({
       data: { identity: { userId }, authorizedBoardIds: new Set(['a', 'b']) },
       rooms: new Set(['board:a', 'board:b']),
@@ -44,7 +45,7 @@ describe('BoardRoomCoordinator', () => {
     }
   });
   it('revokes all receive grants and continues eviction when leave and disconnect both fail', async () => {
-    const coordinator = new BoardRoomCoordinator();
+    const coordinator = new BoardRoomCoordinator(new BoardPresenceService());
     const makeSocket = () => ({
       data: {
         identity: { userId: 'revoked' },
@@ -87,7 +88,7 @@ describe('BoardRoomCoordinator', () => {
     }
   });
   it('orders operations on a board, allows other boards and releases failures', async () => {
-    const coordinator = new BoardRoomCoordinator();
+    const coordinator = new BoardRoomCoordinator(new BoardPresenceService());
     const order: string[] = [];
     let release!: () => void;
     const barrier = new Promise<void>((resolve) => (release = resolve));

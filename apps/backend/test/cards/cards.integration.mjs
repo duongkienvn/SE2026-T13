@@ -30,6 +30,9 @@ const {
 const {
   BoardRoomCoordinator,
 } = require('../../dist/realtime/board-room-coordinator.service.js');
+const {
+  BoardPresenceService,
+} = require('../../dist/realtime/board-presence.service.js');
 const { Board } = require('../../dist/api/boards/entities/board.entity.js');
 const {
   BoardMember,
@@ -114,7 +117,7 @@ try {
     members,
     boards,
     authorization,
-    new BoardRoomCoordinator(),
+    new BoardRoomCoordinator(new BoardPresenceService()),
     { publish: async () => undefined },
     activityWriter,
   );

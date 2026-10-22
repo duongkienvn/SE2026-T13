@@ -50,6 +50,9 @@ const {
 const {
   BoardRoomCoordinator,
 } = require('../../dist/realtime/board-room-coordinator.service.js');
+const {
+  BoardPresenceService,
+} = require('../../dist/realtime/board-presence.service.js');
 const { NestFactory } = require('@nestjs/core');
 const { JwtService } = require('@nestjs/jwt');
 const request = require('supertest');
@@ -283,7 +286,7 @@ try {
     members,
     boards,
     authorization,
-    new BoardRoomCoordinator(),
+    new BoardRoomCoordinator(new BoardPresenceService()),
     events,
     writer,
   );

@@ -1,5 +1,7 @@
 import { AuthService } from '../../src/api/auth/auth.service';
 import { RealtimeAuthService } from '../../src/realtime/realtime-auth.service';
+import { BoardRoomCoordinator } from '../../src/realtime/board-room-coordinator.service';
+import { BoardPresenceService } from '../../src/realtime/board-presence.service';
 import type { RealtimeSocket } from '../../src/realtime/realtime.types';
 
 jest.mock('@nestjs/typeorm', () => ({
@@ -10,12 +12,17 @@ describe('RealtimeAuthService', () => {
   const authenticateAccessToken = jest.fn();
   let service: RealtimeAuthService;
   let socket: RealtimeSocket;
+  let coordinator: BoardRoomCoordinator;
 
   beforeEach(() => {
     jest.useFakeTimers();
-    service = new RealtimeAuthService({
-      authenticateAccessToken,
-    } as unknown as AuthService);
+    coordinator = new BoardRoomCoordinator(new BoardPresenceService());
+    service = new RealtimeAuthService(
+      {
+        authenticateAccessToken,
+      } as unknown as AuthService,
+      coordinator,
+    );
     socket = {
       id: 'socket',
       connected: true,
@@ -90,5 +97,31 @@ describe('RealtimeAuthService', () => {
     service.connected(socket);
     service.onApplicationShutdown();
     expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it('cleans grants and presence at expiration even if transport disconnect throws', async () => {
+    const boardId = 'c6ba7134-97ef-4c1b-a342-001a982a7721';
+    socket.data.identity = { userId: 'verified', expiresAt: Date.now() + 1000 };
+    socket.data.authorizedBoardIds = new Set([boardId]);
+    coordinator.presence.add(boardId, 'verified', socket.id);
+    (socket.disconnect as jest.Mock).mockImplementation(() => {
+      throw new Error('transport');
+    });
+    const log = jest.spyOn(service['logger'], 'error').mockImplementation();
+    try {
+      service.connected(socket);
+      jest.advanceTimersByTime(1000);
+      expect(socket.data.authorizedBoardIds.size).toBe(0);
+      // A following board operation is a deterministic barrier for queued cleanup.
+      await coordinator.run(boardId, () => undefined);
+      expect(coordinator.presence.snapshot(boardId).userIds).toEqual([]);
+      expect(coordinator.presence.boardIds(socket.id)).toEqual([]);
+      expect(jest.getTimerCount()).toBe(0);
+      expect(log).toHaveBeenCalledWith(
+        'Expired socket disconnect failed; receive access revoked',
+      );
+    } finally {
+      log.mockRestore();
+    }
   });
 });

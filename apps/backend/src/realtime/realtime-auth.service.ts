@@ -1,12 +1,17 @@
-import { Injectable, OnApplicationShutdown } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
 import { AuthService } from '../api/auth/auth.service';
 import type { RealtimeSocket } from './realtime.types';
+import { BoardRoomCoordinator } from './board-room-coordinator.service';
 
 @Injectable()
 export class RealtimeAuthService implements OnApplicationShutdown {
+  private readonly logger = new Logger(RealtimeAuthService.name);
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
 
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly coordinator: BoardRoomCoordinator,
+  ) {}
 
   async authenticate(socket: RealtimeSocket): Promise<void> {
     const token: unknown = socket.handshake.auth?.accessToken;
@@ -29,8 +34,7 @@ export class RealtimeAuthService implements OnApplicationShutdown {
     const schedule = () => {
       const remaining = (socket.data.identity?.expiresAt ?? 0) - Date.now();
       if (remaining <= 0) {
-        socket.disconnect(true);
-        this.cleanup(socket);
+        this.deactivate(socket);
         return;
       }
       // Node timers overflow above ~24 days; reschedule rather than expiring early.
@@ -49,8 +53,22 @@ export class RealtimeAuthService implements OnApplicationShutdown {
     ) {
       return true;
     }
-    socket.disconnect(true);
+    this.deactivate(socket);
     return false;
+  }
+
+  private deactivate(socket: RealtimeSocket): void {
+    this.cleanup(socket);
+    // Revoke immediately; queued presence cleanup must not be awaited while a
+    // caller (e.g. join/broadcast) holds the same board's coordinator.
+    void this.coordinator.disconnect(socket);
+    try {
+      socket.disconnect(true);
+    } catch {
+      this.logger.error(
+        'Expired socket disconnect failed; receive access revoked',
+      );
+    }
   }
 
   cleanup(socket: RealtimeSocket): void {
