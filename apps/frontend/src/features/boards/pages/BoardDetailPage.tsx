@@ -16,6 +16,7 @@ import { usePageTitle } from '../../../hooks/usePageTitle';
 import { isApiError } from '../../../lib/api-client';
 import { RealtimeStatus } from '../../realtime/components/RealtimeStatus';
 import { useBoardRealtime } from '../../realtime/useBoardRealtime';
+import { BoardPresence } from '../../presence/components/BoardPresence';
 import { ArchiveBoardDialog } from '../components/ArchiveBoardDialog';
 import { KanbanBoard } from '../components/KanbanBoard';
 import { BoardIcon } from '../components/BoardIcon';
@@ -108,6 +109,7 @@ export function BoardDetailPage() {
             description={data.description ?? undefined}
             actions={
               <>
+                <BoardPresence boardId={data.id} />
                 <RealtimeStatus {...realtime} />
                 <RoleChip role={data.currentUserRole} />
                 <Link

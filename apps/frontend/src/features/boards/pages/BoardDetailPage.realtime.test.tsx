@@ -55,6 +55,46 @@ function sequence(...responses: MockResponse[]) {
 afterEach(() => focusManager.setFocused(undefined));
 
 describe('BoardDetailPage realtime', () => {
+  it('shows initial presence without waiting for a second viewer or creating another connection', async () => {
+    const { main, socket } = await openLiveBoard();
+    act(() =>
+      socket.push('presence:sync', {
+        boardId: board.id,
+        userIds: [testUser.id],
+      }),
+    );
+    expect(
+      main.getByRole('button', { name: '1 person viewing. Show viewers' }),
+    ).toBeTruthy();
+    expect(createdSockets).toHaveLength(1);
+    expect(socket.requests('board:join')).toHaveLength(1);
+    expect(main.getByRole('link', { name: 'Members' })).toBeTruthy();
+    expect(
+      main.getByRole('button', { name: 'Actions for Launch' }),
+    ).toBeTruthy();
+  });
+
+  it('keeps presence on archived boards while all mutation controls remain unavailable', async () => {
+    const { main, socket } = await openLiveBoard({
+      [BOARD]: ok({ ...board, isArchived: true }),
+    });
+    act(() =>
+      socket.push('presence:sync', {
+        boardId: board.id,
+        userIds: [testUser.id],
+      }),
+    );
+    expect(
+      main.getByRole('button', { name: '1 person viewing. Show viewers' }),
+    ).toBeTruthy();
+    expect(main.getByRole('link', { name: 'Members' })).toBeTruthy();
+    expect(
+      main.queryByRole('button', { name: 'Actions for Launch' }),
+    ).toBeNull();
+    expect(main.queryByRole('button', { name: 'Add column' })).toBeNull();
+    expect(main.getByText(/This board is archived/)).toBeTruthy();
+  });
+
   it("shows another user's new card without a reload", async () => {
     const card = makeCard({
       boardId: board.id,
@@ -118,6 +158,15 @@ describe('BoardDetailPage realtime', () => {
     const { main, socket } = await openLiveBoard({
       [BOARD]: sequence(ok(board), ok(board), fail(404, 'BOARD_NOT_FOUND')),
     });
+    act(() =>
+      socket.push('presence:sync', {
+        boardId: board.id,
+        userIds: [testUser.id],
+      }),
+    );
+    expect(
+      main.getByRole('button', { name: '1 person viewing. Show viewers' }),
+    ).toBeTruthy();
 
     act(() => {
       focusManager.setFocused(false);
@@ -126,6 +175,9 @@ describe('BoardDetailPage realtime', () => {
 
     expect(await main.findByText('Board not found')).toBeTruthy();
     expect(main.queryByRole('heading', { name: 'Launch' })).toBeNull();
+    expect(
+      main.queryByRole('button', { name: '1 person viewing. Show viewers' }),
+    ).toBeNull();
     await waitFor(() =>
       expect(socket.requests('board:leave').map((r) => r.boardId)).toEqual([
         board.id,
