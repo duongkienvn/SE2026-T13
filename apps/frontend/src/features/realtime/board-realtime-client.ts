@@ -75,6 +75,8 @@ export class BoardRealtimeClient {
   private idleTimer?: ReturnType<typeof setTimeout>;
   private reconcileQueued = false;
   private disposed = false;
+  private connectionEpoch = 0;
+  private presenceListener?: (payload: unknown) => void;
 
   constructor(private readonly options: BoardRealtimeOptions) {
     this.ackTimeoutMs = options.ackTimeoutMs ?? 10_000;
@@ -85,6 +87,7 @@ export class BoardRealtimeClient {
 
   /** Keeps the board's room joined until the returned function is called. */
   watch(boardId: string): () => void {
+    if (this.disposed) return () => undefined;
     this.watchers.set(boardId, (this.watchers.get(boardId) ?? 0) + 1);
     this.scheduleReconcile();
     let watching = true;
@@ -138,9 +141,12 @@ export class BoardRealtimeClient {
     for (const room of this.rooms.values()) clearTimeout(room.retryTimer);
     this.rooms.clear();
     this.watchers.clear();
+    this.connectionEpoch++;
     this.socket?.removeAllListeners();
     this.socket?.disconnect();
     this.socket = null;
+    this.presenceListener = undefined;
+    this.notify();
     this.listeners.clear();
   }
 
@@ -207,6 +213,13 @@ export class BoardRealtimeClient {
     this.socket = socket;
 
     socket.on('connect', () => {
+      const epoch = ++this.connectionEpoch;
+      if (this.presenceListener)
+        socket.off(RealtimePresenceEvent.SYNC, this.presenceListener);
+      this.presenceListener = (payload: unknown) => {
+        if (epoch === this.connectionEpoch) this.receivePresence(payload);
+      };
+      socket.on(RealtimePresenceEvent.SYNC, this.presenceListener);
       this.reconnectRetries = 0;
       for (const room of this.rooms.values()) {
         room.retries = 0;
@@ -233,9 +246,6 @@ export class BoardRealtimeClient {
     for (const event of BOARD_EVENTS) {
       socket.on(event, (payload: unknown) => this.receive(event, payload));
     }
-    socket.on(RealtimePresenceEvent.SYNC, (payload: unknown) =>
-      this.receivePresence(payload),
-    );
     return socket;
   }
 
@@ -244,6 +254,7 @@ export class BoardRealtimeClient {
     if (!socket?.connected) return;
     clearTimeout(room.retryTimer);
     const attempt = ++room.attempt;
+    const epoch = this.connectionEpoch;
     room.joinSent = true;
     room.joinPending = true;
     room.pendingPresence = undefined;
@@ -257,6 +268,8 @@ export class BoardRealtimeClient {
         (error: Error | null, ack?: BoardRoomAck) => {
           if (this.disposed || this.rooms.get(room.boardId) !== room) return;
           if (
+            !socket.connected ||
+            epoch !== this.connectionEpoch ||
             room.attempt !== attempt ||
             !room.joinPending ||
             !this.watchers.has(room.boardId)
@@ -294,6 +307,7 @@ export class BoardRealtimeClient {
         return;
       }
       if (ack.code === 'UNAUTHORIZED') {
+        this.notify();
         // The server also drops this socket; reconnecting reads a new token.
         this.options.verifySession();
         return;
@@ -317,6 +331,10 @@ export class BoardRealtimeClient {
   }
 
   private connectionLost(): void {
+    this.connectionEpoch++;
+    if (this.presenceListener)
+      this.socket?.off(RealtimePresenceEvent.SYNC, this.presenceListener);
+    this.presenceListener = undefined;
     for (const room of this.rooms.values()) {
       clearTimeout(room.retryTimer);
       room.attempt++;

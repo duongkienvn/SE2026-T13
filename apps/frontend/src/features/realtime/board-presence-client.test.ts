@@ -114,3 +114,91 @@ describe('authoritative presence and join acknowledgment', () => {
     expect(client.presence(B).userIds).toEqual([USER]);
   });
 });
+
+describe('presence connection and observer cleanup', () => {
+  it('rejects queued events and ACKs from the previous connection epoch', async () => {
+    await start();
+    push([USER]);
+    const oldJoin = socket.lastJoin();
+    const [oldEvent] = socket.capture('presence:sync');
+    oldJoin.reply(joined(A));
+    socket.drop();
+    expect(client.presence(A)).toEqual({
+      status: 'reconnecting',
+      userIds: null,
+    });
+    push([USER]);
+    socket.open();
+    oldEvent({ boardId: A, userIds: [USER] });
+    oldJoin.reply(joined(A));
+    socket.lastJoin().reply(joined(A));
+    expect(client.presence(A).userIds).toBeNull();
+    push([B]);
+    oldEvent({ boardId: A, userIds: [USER] });
+    expect(client.presence(A).userIds).toEqual([B]);
+    expect(socket.listenerCount('presence:sync')).toBe(1);
+  });
+  it('keeps one room for multiple watchers, then masks and removes its state after the last unwatch', async () => {
+    const first = client.watch(A),
+      second = client.watch(A);
+    await settle();
+    socket.open();
+    push([USER]);
+    socket.lastJoin().reply(joined(A));
+    first();
+    await settle();
+    expect(client.presence(A).userIds).toEqual([USER]);
+    second();
+    expect(client.presence(A).userIds).toBeNull();
+    await settle();
+    expect(socket.requests('board:leave')).toHaveLength(1);
+    client.watch(A);
+    await settle();
+    socket.lastJoin().reply(joined(A));
+    expect(client.presence(A).userIds).toBeNull();
+  });
+  it('clears buffers when unwatching during join and ignores stale replies after switching back', async () => {
+    const stop = client.watch(A);
+    await settle();
+    socket.open();
+    const old = socket.lastJoin();
+    push([USER]);
+    stop();
+    client.watch(B);
+    await settle();
+    client.watch(A);
+    await settle();
+    old.reply(joined(A));
+    socket.lastJoin().reply(joined(A));
+    expect(client.presence(A).userIds).toBeNull();
+    expect(client.presence(B).userIds).toBeNull();
+  });
+  it('clears private state on dispose and refuses new watches or captured deliveries', async () => {
+    await start();
+    push([USER]);
+    socket.lastJoin().reply(joined(A));
+    const [late] = socket.capture('presence:sync');
+    const listener = vi.fn();
+    client.subscribe(listener);
+    client.dispose();
+    expect(listener).toHaveBeenCalled();
+    late({ boardId: A, userIds: [USER] });
+    client.watch(A);
+    await settle();
+    expect(client.presence(A).userIds).toBeNull();
+    expect(socket.listenerCount('presence:sync')).toBe(0);
+    expect(socket.requests('board:join')).toHaveLength(1);
+  });
+  it('does not restore a timed-out buffer after retries pause or wake', async () => {
+    await start();
+    push([USER]);
+    socket.lastJoin().timeOut();
+    await vi.advanceTimersByTimeAsync(100);
+    push([B]);
+    socket.lastJoin().timeOut();
+    expect(client.presence(A)).toEqual({ status: 'paused', userIds: null });
+    client.wake();
+    socket.lastJoin().reply(joined(A));
+    expect(client.presence(A)).toEqual({ status: 'syncing', userIds: null });
+  });
+});

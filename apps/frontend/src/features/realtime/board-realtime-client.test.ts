@@ -394,6 +394,9 @@ describe('BoardRealtimeClient dispose', () => {
     client.subscribe(listener);
 
     client.dispose();
+    // Subscribers see the cleared private snapshot once; late work stays silent.
+    expect(listener).toHaveBeenCalledTimes(1);
+    listener.mockClear();
     join.reply(joined(A));
     socket.push('column:created', { boardId: A, columnId: 'x' });
     await vi.advanceTimersByTimeAsync(60_000);
