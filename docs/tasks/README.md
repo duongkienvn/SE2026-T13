@@ -30,6 +30,7 @@ Tài liệu task được chia theo phần chịu trách nhiệm để dễ tìm
 - [Boards and board members frontend](frontend/boards-frontend.md)
 - [Kanban board UI](frontend/kanban-board-ui.md)
 - [Realtime frontend synchronization](frontend/realtime-frontend.md)
+- [Board presence frontend](frontend/board-presence.md)
 
 ## Quy ước
 

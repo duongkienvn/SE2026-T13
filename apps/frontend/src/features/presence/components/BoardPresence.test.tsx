@@ -25,7 +25,11 @@ const IDS = Array.from(
   { length: 6 },
   (_, index) => `22222222-2222-4222-8222-${String(index).padStart(12, '0')}`,
 );
-async function openPresence(ids = [testUser.id], membersError?: number) {
+async function openPresence(
+  ids = [testUser.id],
+  membersError?: number,
+  beforeJoin?: () => void,
+) {
   storeSession();
   mockApi({
     'GET /users/me': ok(testUser),
@@ -57,6 +61,7 @@ async function openPresence(ids = [testUser.id], membersError?: number) {
   );
   await waitFor(() => expect(createdSockets).toHaveLength(1));
   const { socket } = createdSockets[0];
+  beforeJoin?.();
   act(() => {
     socket.open();
     socket.push('presence:sync', { boardId: BOARD, userIds: ids });
@@ -81,7 +86,10 @@ describe('BoardPresence', () => {
     expect(screen.queryByRole('list')).toBeNull();
   });
   it('shows the current viewer using UserAvatar and an accessible count/name', async () => {
-    await openPresence();
+    await openPresence([testUser.id], undefined, () => {
+      expect(screen.getByText('Connecting viewers…')).toBeTruthy();
+      expect(screen.queryByRole('img')).toBeNull();
+    });
     expect(
       screen.getByRole('button', { name: '1 person viewing. Show viewers' }),
     ).toBeTruthy();
@@ -92,6 +100,26 @@ describe('BoardPresence', () => {
     expect(await screen.findByText('Ada Lovelace')).toBeTruthy();
     expect(screen.getByText('(You)')).toBeTruthy();
     expect(screen.queryByText(testUser.email)).toBeNull();
+  });
+
+  it('shows a neutral paused indicator after join retries exhaust, without retaining avatars', async () => {
+    const { socket } = await openPresence();
+    vi.useFakeTimers();
+    try {
+      act(() => {
+        socket.drop();
+        socket.open();
+      });
+      for (let attempt = 0; attempt < 6; attempt++) {
+        act(() => socket.lastJoin().timeOut());
+        if (attempt < 5) await act(() => vi.advanceTimersByTimeAsync(30_000));
+      }
+      expect(screen.getByText('Viewers paused')).toBeTruthy();
+      expect(screen.queryByRole('img')).toBeNull();
+      expect(screen.queryByRole('button')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
   it('limits avatars, shows +N and lists all viewers with keyboard dismissal and focus return', async () => {
     await openPresence(IDS);
