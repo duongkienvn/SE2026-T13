@@ -39,9 +39,10 @@ export class BoardRoomCoordinator implements OnApplicationShutdown {
 
   /** Called after removal commits, while still holding this board's queue. */
   async evictUser(boardId: string, userId: string): Promise<void> {
+    const canonicalId = boardId.toLowerCase();
+    this.presence.removeUser(canonicalId, userId);
     const server = this.server;
     if (!server) return;
-    const canonicalId = boardId.toLowerCase();
     const room = boardRoom(canonicalId);
     const sockets = [...server.sockets.sockets.values()].filter(
       (socket) => socket.data.identity?.userId === userId,
@@ -49,6 +50,7 @@ export class BoardRoomCoordinator implements OnApplicationShutdown {
     // Revoke all receive grants before the first asynchronous adapter operation.
     for (const socket of sockets)
       socket.data.authorizedBoardIds?.delete(canonicalId);
+    this.syncPresence(canonicalId);
     for (const socket of sockets) {
       try {
         await socket.leave(room);
