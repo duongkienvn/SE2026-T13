@@ -1,3 +1,4 @@
+import { BoardPresenceService } from '../../src/realtime/board-presence.service';
 import './realtime.fixture';
 import { BoardRoomCoordinator } from '../../src/realtime/board-room-coordinator.service';
 import { RealtimeBroadcastService } from '../../src/realtime/realtime-broadcast.service';
@@ -11,7 +12,7 @@ const BOARD = 'c6ba7134-97ef-4c1b-a342-001a982a7721';
 
 describe('RealtimeBroadcastService', () => {
   it('targets granted board recipients and checks expiration before emitting', async () => {
-    const coordinator = new BoardRoomCoordinator();
+    const coordinator = new BoardRoomCoordinator(new BoardPresenceService());
     const emit = jest.fn();
     const isActive = jest.fn().mockReturnValue(true);
     const socket = {
@@ -54,7 +55,7 @@ describe('RealtimeBroadcastService', () => {
   });
 
   it('excludes revoked sockets despite stale rooms and double transport failure, preserving other boards', async () => {
-    const coordinator = new BoardRoomCoordinator();
+    const coordinator = new BoardRoomCoordinator(new BoardPresenceService());
     const otherBoard = 'd6ba7134-97ef-4c1b-a342-001a982a7721';
     const makeSocket = (id: string, boards: string[]) => ({
       id,

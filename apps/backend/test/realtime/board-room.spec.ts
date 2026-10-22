@@ -1,3 +1,4 @@
+import { BoardPresenceService } from '../../src/realtime/board-presence.service';
 import { NotFoundException } from '@nestjs/common';
 import type { BoardAuthorizationService } from '../../src/api/board-members/board-authorization.service';
 import { BoardRoomCoordinator } from '../../src/realtime/board-room-coordinator.service';
@@ -31,7 +32,7 @@ describe('BoardRoomService', () => {
       join: jest.fn(),
       leave: jest.fn(),
     } as unknown as RealtimeSocket;
-    coordinator = new BoardRoomCoordinator();
+    coordinator = new BoardRoomCoordinator(new BoardPresenceService());
     limiter = new BoardRoomRateLimiter();
     service = new BoardRoomService(
       { requireMember } as unknown as BoardAuthorizationService,

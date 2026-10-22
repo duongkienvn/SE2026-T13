@@ -69,15 +69,34 @@ export class BoardRoomService {
             boardId,
           );
           if (!this.auth.isActive(socket)) return this.unauthorized();
-          await socket.join(boardRoom(boardId));
+          try {
+            await socket.join(boardRoom(boardId));
+          } catch (error) {
+            socket.data.authorizedBoardIds?.delete(boardId);
+            this.coordinator.presence.remove(boardId, socket.id);
+            this.coordinator.syncPresence(boardId);
+            throw error;
+          }
           if (!this.auth.isActive(socket)) {
+            socket.data.authorizedBoardIds?.delete(boardId);
+            this.coordinator.presence.remove(boardId, socket.id);
+            this.coordinator.syncPresence(boardId);
             await socket.leave(boardRoom(boardId));
             return this.unauthorized();
           }
           (socket.data.authorizedBoardIds ??= new Set()).add(boardId);
+          this.coordinator.presence.add(
+            boardId,
+            socket.data.identity!.userId,
+            socket.id,
+          );
+          // Initial snapshot precedes the unchanged join ACK.
+          this.coordinator.syncPresence(boardId);
         } else {
           // Stop delivery even if the adapter fails to remove physical membership.
           socket.data.authorizedBoardIds?.delete(boardId);
+          this.coordinator.presence.remove(boardId, socket.id);
+          this.coordinator.syncPresence(boardId);
           await socket.leave(boardRoom(boardId));
         }
         return { success: true, boardId };
