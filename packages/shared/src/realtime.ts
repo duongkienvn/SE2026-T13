@@ -44,6 +44,16 @@ export const RealtimeServerEvent = {
   MEMBER_REMOVED: 'member:removed',
 } as const;
 
+export const RealtimePresenceEvent = {
+  SYNC: 'presence:sync',
+} as const;
+
+/** Ephemeral full snapshot; IDs are unique and sorted, boardId is lowercase. */
+export interface BoardPresenceSnapshot {
+  boardId: string;
+  userIds: string[];
+}
+
 export interface ColumnChangedEvent {
   boardId: string;
   columnId: string;
@@ -67,8 +77,9 @@ export interface MemberChangedEvent {
   userId: string;
 }
 
-/** Invalidation hints only; refetch authoritative state through REST. */
+/** Business events are invalidation hints; presence is an ephemeral full snapshot. */
 export interface RealtimeServerEvents {
+  'presence:sync': (payload: BoardPresenceSnapshot) => void;
   'column:created': (payload: ColumnChangedEvent) => void;
   'column:updated': (payload: ColumnChangedEvent) => void;
   'column:moved': (payload: ColumnChangedEvent) => void;

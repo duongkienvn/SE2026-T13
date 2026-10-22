@@ -3,9 +3,17 @@ import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import test from 'node:test';
 import process from 'node:process';
-import { RealtimeServerEvent } from '@kanban/shared';
+import { RealtimeServerEvent, RealtimePresenceEvent } from '@kanban/shared';
 
 const require = createRequire(import.meta.url);
+
+test('exports the separate presence contract in ESM and CommonJS', () => {
+  assert.deepEqual(RealtimePresenceEvent, { SYNC: 'presence:sync' });
+  assert.deepEqual(
+    require('@kanban/shared').RealtimePresenceEvent,
+    RealtimePresenceEvent,
+  );
+});
 
 test('exports exactly the twelve reviewed server events in ESM and CommonJS', () => {
   assert.deepEqual(Object.values(RealtimeServerEvent), [

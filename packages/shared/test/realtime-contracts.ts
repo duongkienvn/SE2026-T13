@@ -1,5 +1,6 @@
 import {
   RealtimeServerEvent,
+  RealtimePresenceEvent,
   type RealtimeServerEvents,
   type RealtimeClientEvents,
 } from '../src/index.js';
@@ -10,7 +11,8 @@ type Equal<A, B> =
     : false;
 const exactKeys: Equal<
   keyof RealtimeServerEvents,
-  (typeof RealtimeServerEvent)[keyof typeof RealtimeServerEvent]
+  | (typeof RealtimeServerEvent)[keyof typeof RealtimeServerEvent]
+  | (typeof RealtimePresenceEvent)[keyof typeof RealtimePresenceEvent]
 > = true;
 void exactKeys;
 
@@ -36,6 +38,13 @@ server['card:moved']({
 server['member:added'](member);
 server['member:role-changed'](member);
 server['member:removed'](member);
+server[RealtimePresenceEvent.SYNC]({ boardId: 'board', userIds: ['user'] });
+// @ts-expect-error presence contains user IDs, not a single user
+server['presence:sync'](member);
+// @ts-expect-error presence is server-only
+client['presence:sync']({ boardId: 'board', userIds: [] });
+// @ts-expect-error presence is separate from business events
+void RealtimeServerEvent.PRESENCE_SYNC;
 client['board:join']({ boardId: 'board' }, (ack) => {
   void ack.success;
 });
