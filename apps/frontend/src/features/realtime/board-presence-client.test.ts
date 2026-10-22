@@ -1,4 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type Mock,
+} from 'vitest';
+import type { InvalidationTarget } from './event-invalidation';
 import {
   asRealtimeSocket,
   FakeSocket,
@@ -12,7 +21,7 @@ const B = '22222222-2222-4222-8222-222222222222';
 const USER = '33333333-3333-4333-8333-333333333333';
 let socket: FakeSocket;
 let client: BoardRealtimeClient;
-let invalidate: ReturnType<typeof vi.fn>;
+let invalidate: Mock<(targets: InvalidationTarget[]) => void>;
 const settle = () => vi.advanceTimersByTimeAsync(0);
 const push = (userIds: string[], boardId = A) =>
   socket.push('presence:sync', { boardId, userIds });
