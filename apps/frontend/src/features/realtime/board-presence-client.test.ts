@@ -125,6 +125,28 @@ describe('authoritative presence and join acknowledgment', () => {
 });
 
 describe('presence connection and observer cleanup', () => {
+  it('resolves a canonical REST board ID while only its uppercase URL is watched', async () => {
+    const stop = client.watch(A.toUpperCase());
+    await settle();
+    socket.open();
+    push([USER]);
+    socket.lastJoin().reply(joined(A));
+    expect(client.presence(A).userIds).toEqual([USER]);
+    stop();
+    expect(client.presence(A).userIds).toBeNull();
+  });
+  it('updates every watched spelling of a board UUID, even when an earlier room already has the snapshot', async () => {
+    await start();
+    push([USER]);
+    socket.lastJoin().reply(joined(A));
+    const uppercase = A.toUpperCase();
+    client.watch(uppercase);
+    await settle();
+    socket.lastJoin().reply(joined(uppercase));
+    push([USER]);
+    expect(client.presence(A).userIds).toEqual([USER]);
+    expect(client.presence(uppercase).userIds).toEqual([USER]);
+  });
   it('rejects queued events and ACKs from the previous connection epoch', async () => {
     await start();
     push([USER]);

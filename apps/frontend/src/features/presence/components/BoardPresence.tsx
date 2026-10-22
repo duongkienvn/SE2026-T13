@@ -1,4 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { boardKeys } from '../../boards/query-keys';
 import { useMediaQuery } from '../../../hooks/useMediaQuery';
 import { isApiError } from '../../../lib/api-client';
 import { UserAvatar } from '../../auth/components/UserAvatar';
@@ -20,6 +22,7 @@ const messages = {
 export function BoardPresence({ boardId }: { boardId: string }) {
   const presence = useBoardPresence(boardId);
   const members = useBoardMembers(boardId);
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const profiles = useMemo(() => {
     const values = new Map<string, Profile>(
@@ -34,6 +37,13 @@ export function BoardPresence({ boardId }: { boardId: string }) {
   const forbidden =
     isApiError(members.error) &&
     (members.error.status === 403 || members.error.status === 404);
+  useEffect(() => {
+    if (forbidden)
+      void queryClient.invalidateQueries({
+        queryKey: boardKeys.detail(boardId),
+        exact: true,
+      });
+  }, [boardId, forbidden, queryClient]);
   if (presence.status === 'unavailable' || forbidden) return null;
   if (presence.status !== 'live' || presence.userIds === null) {
     return (

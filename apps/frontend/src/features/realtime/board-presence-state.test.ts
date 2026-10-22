@@ -31,6 +31,7 @@ describe('presence snapshot boundary', () => {
     { boardId: 'bad', userIds: [] },
     { boardId: BOARD, userIds: 'bad' },
     { boardId: BOARD, userIds: [null] },
+    { boardId: BOARD, userIds: Array(3) },
     { boardId: BOARD, userIds: ['invalid'] },
     { boardId: BOARD, userIds: [], email: 'private' },
     { boardId: BOARD, userIds: Array(MAX_PRESENCE_USERS + 1).fill(USER) },

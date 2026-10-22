@@ -107,9 +107,18 @@ export class BoardRealtimeClient {
 
   /** Read-only external-store snapshot; reading never creates a socket/watcher. */
   presence(boardId: string): BoardPresenceState {
-    if (this.disposed || !this.watchers.has(boardId))
-      return EMPTY_PRESENCE.connecting;
-    return this.rooms.get(boardId)?.presence ?? EMPTY_PRESENCE.connecting;
+    if (this.disposed) return EMPTY_PRESENCE.connecting;
+    const exact = this.rooms.get(boardId);
+    if (exact && this.watchers.has(boardId)) return exact.presence;
+    // A page URL can use uppercase while REST returns its canonical UUID.
+    for (const room of this.rooms.values()) {
+      if (
+        this.watchers.has(room.boardId) &&
+        room.boardId.toLowerCase() === boardId.toLowerCase()
+      )
+        return room.presence;
+    }
+    return EMPTY_PRESENCE.connecting;
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -410,7 +419,7 @@ export class BoardRealtimeClient {
           previous.length === snapshot.userIds.length &&
           previous.every((id, index) => id === snapshot.userIds[index])
         )
-          return;
+          continue;
         room.presence = livePresence(snapshot.userIds);
         this.notify();
       }

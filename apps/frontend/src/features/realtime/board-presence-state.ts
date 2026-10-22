@@ -35,7 +35,7 @@ export function parsePresenceSnapshot(
     !UUID.test(value.boardId) ||
     !Array.isArray(value.userIds) ||
     value.userIds.length > MAX_PRESENCE_USERS ||
-    !value.userIds.every(
+    !Array.from(value.userIds).every(
       (id: unknown) => typeof id === 'string' && UUID.test(id),
     )
   )

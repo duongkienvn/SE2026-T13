@@ -15,7 +15,10 @@ import { createRealtimeSocket } from './socket-client';
 export function RealtimeProvider({ children }: { children: ReactNode }) {
   const { status, runAuthorized } = useAuth();
   const queryClient = useQueryClient();
-  const [client, setClient] = useState<BoardRealtimeClient | null>(null);
+  const [connection, setConnection] = useState<{
+    client: BoardRealtimeClient;
+    session: typeof runAuthorized;
+  } | null>(null);
   const authenticated = status === 'authenticated';
 
   useEffect(() => {
@@ -36,18 +39,24 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener('online', wake);
     document.addEventListener('visibilitychange', wake);
-    setClient(next);
+    setConnection({ client: next, session: runAuthorized });
     return () => {
       window.removeEventListener('online', wake);
       document.removeEventListener('visibilitychange', wake);
       next.dispose();
       queue.dispose();
-      setClient((current) => (current === next ? null : current));
+      setConnection((current) => (current?.client === next ? null : current));
     };
   }, [authenticated, runAuthorized, queryClient]);
 
   return (
-    <RealtimeContext.Provider value={client}>
+    <RealtimeContext.Provider
+      value={
+        authenticated && connection?.session === runAuthorized
+          ? connection.client
+          : null
+      }
+    >
       {children}
     </RealtimeContext.Provider>
   );

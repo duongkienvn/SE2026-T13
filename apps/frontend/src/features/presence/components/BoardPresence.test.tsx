@@ -6,7 +6,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AppProviders } from '../../../app/AppProviders';
 import { okPage } from '../../../test/board-fixtures';
 import { createdSockets, joined } from '../../../test/fake-socket';
@@ -66,6 +66,20 @@ async function openPresence(ids = [testUser.id], membersError?: number) {
 }
 
 describe('BoardPresence', () => {
+  it('uses a compact avatar and overflow count on small screens and dismisses on outside interaction', async () => {
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    await openPresence(IDS);
+    expect(screen.getAllByRole('img')).toHaveLength(1);
+    expect(screen.getByText('+5')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button'));
+    expect(await screen.findByRole('list')).toBeTruthy();
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole('list')).toBeNull();
+  });
   it('shows the current viewer using UserAvatar and an accessible count/name', async () => {
     await openPresence();
     expect(

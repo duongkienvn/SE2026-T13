@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { StrictMode, type ReactNode } from 'react';
+import { StrictMode, useLayoutEffect, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 import { AppProviders } from '../../app/AppProviders';
 import { createdSockets, joined } from '../../test/fake-socket';
@@ -19,6 +19,51 @@ const signIn = () => {
 };
 
 describe('useBoardPresence', () => {
+  it('never renders a previous session population under a replacement account', async () => {
+    storeSession();
+    let activeUser = testUser;
+    mockApi({ 'GET /users/me': () => ok(activeUser) });
+    const observed: { userId?: string; viewers: readonly string[] | null }[] =
+      [];
+    const { result } = renderHook(
+      () => {
+        const auth = useAuth();
+        useBoardRealtime(A);
+        const presence = useBoardPresence(A);
+        useLayoutEffect(() => {
+          observed.push({ userId: auth.user?.id, viewers: presence.userIds });
+        }, [auth.user, presence]);
+        return { auth, presence };
+      },
+      { wrapper },
+    );
+    await waitFor(() => expect(createdSockets).toHaveLength(1));
+    const { socket } = createdSockets[0];
+    act(() => {
+      socket.open();
+      socket.push('presence:sync', { boardId: A, userIds: [testUser.id] });
+      socket.lastJoin().reply(joined(A));
+    });
+    const [staleEvent] = socket.capture('presence:sync');
+    activeUser = { ...testUser, id: B, displayName: 'Another account' };
+    act(() =>
+      result.current.auth.signIn({
+        accessToken: 'replacement-session',
+        expiresIn: 3600,
+        tokenType: 'Bearer',
+        user: activeUser,
+      }),
+    );
+    await waitFor(() => expect(createdSockets).toHaveLength(2));
+    expect(
+      observed
+        .filter((entry) => entry.userId === B)
+        .every((entry) => entry.viewers === null),
+    ).toBe(true);
+    expect(socket.disconnect).toHaveBeenCalled();
+    act(() => staleEvent({ boardId: A, userIds: [testUser.id] }));
+    expect(result.current.presence.userIds).toBeNull();
+  });
   it('only subscribes; it never opens a socket or creates a watcher', async () => {
     signIn();
     const { result } = renderHook(
