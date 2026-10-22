@@ -37,9 +37,9 @@ export class RealtimeGateway
     this.auth.connected(socket);
   }
 
-  handleDisconnect(socket: RealtimeSocket): void {
-    socket.data.authorizedBoardIds?.clear();
+  async handleDisconnect(socket: RealtimeSocket): Promise<void> {
     this.auth.cleanup(socket);
+    await this.coordinator.disconnect(socket);
   }
 
   @SubscribeMessage(RealtimeEvent.BOARD_JOIN)

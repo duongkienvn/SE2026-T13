@@ -73,6 +73,20 @@ try {
   assert.ok(app.get(BoardMembersController) instanceof BoardMembersController);
   assert.ok(app.get(CardsService) instanceof CardsService);
   const coordinator = app.get(BoardRoomCoordinator);
+  const {
+    BoardPresenceService,
+  } = require('../../src/realtime/board-presence.service.ts');
+  const {
+    RealtimeAccessModule,
+  } = require('../../src/realtime/realtime-access.module.ts');
+  const presence = app.get(BoardPresenceService);
+  assert.equal(coordinator.presence, presence);
+  assert.equal(
+    app
+      .select(RealtimeAccessModule)
+      .get(BoardPresenceService, { strict: true }),
+    presence,
+  );
   const broadcaster = app.get(RealtimeBroadcastService);
   const gateway = app.get(RealtimeGateway);
   const rooms = app.get(BoardRoomService);
@@ -80,6 +94,9 @@ try {
   assert.equal(rooms.coordinator, coordinator);
   assert.equal(broadcaster.coordinator, coordinator);
   assert.equal(app.get(BoardMembersService).realtimeAccess, coordinator);
+  assert.equal(rooms.coordinator.presence, presence);
+  assert.equal(gateway.coordinator.presence, presence);
+  assert.equal(app.get(BoardMembersService).realtimeAccess.presence, presence);
   const {
     BoardEventPublisher,
   } = require('../../src/realtime/board-event-publisher.service.ts');
@@ -114,6 +131,7 @@ try {
   assert.equal(gateway.auth, app.get(RealtimeAuthService));
   assert.equal(rooms.auth, gateway.auth);
   assert.equal(broadcaster.auth, gateway.auth);
+  assert.equal(gateway.auth.coordinator, coordinator);
   for (const [method, path] of [
     ['post', '/api/boards'],
     ['get', '/api/boards'],

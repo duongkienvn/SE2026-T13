@@ -1,5 +1,9 @@
 import { Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
-import { boardRoom, type RealtimeServer } from './realtime.types';
+import {
+  boardRoom,
+  type RealtimeServer,
+  type RealtimeSocket,
+} from './realtime.types';
 import { BoardPresenceService } from './board-presence.service';
 
 /** Single-process ordering boundary for room access, removal and broadcast. */
@@ -14,6 +18,23 @@ export class BoardRoomCoordinator implements OnApplicationShutdown {
   /** Caller already holds this board's queue. No nested run()/async broadcast. */
   syncPresence(boardId: string): void {
     this.presence.sync(boardId, this.server);
+  }
+
+  async disconnect(socket: RealtimeSocket): Promise<void> {
+    const boards = new Set([
+      ...this.presence.boardIds(socket.id),
+      ...(socket.data.authorizedBoardIds ?? []),
+    ]);
+    // Revoke synchronously even when a join/leave currently holds a board queue.
+    socket.data.authorizedBoardIds?.clear();
+    await Promise.all(
+      [...boards].map((boardId) =>
+        this.run(boardId, () => {
+          this.presence.remove(boardId, socket.id);
+          this.syncPresence(boardId);
+        }),
+      ),
+    );
   }
 
   /** Called after removal commits, while still holding this board's queue. */
