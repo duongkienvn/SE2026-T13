@@ -9,23 +9,23 @@ import { JwtModule, JwtService } from '@nestjs/jwt';
 import { randomBytes } from 'node:crypto';
 import request from 'supertest';
 import { Logger } from 'nestjs-pino';
-import { AuthService } from '../src/api/auth/auth.service';
-import { ActivityWriterService } from '../src/api/activities/activity-writer.service';
+import { AuthService } from '../../src/api/auth/auth.service';
+import { ActivityWriterService } from '../../src/api/activities/activity-writer.service';
 import {
   JWT_AUDIENCE,
   JWT_ISSUER,
-} from '../src/api/auth/constants/auth.constants';
-import { JwtAuthGuard } from '../src/api/auth/guards/jwt-auth.guard';
-import { BoardAuthorizationService } from '../src/api/board-members/board-authorization.service';
-import { BoardMember } from '../src/api/board-members/entities/board-member.entity';
-import { Board } from '../src/api/boards/entities/board.entity';
-import { Card } from '../src/api/cards/entities/card.entity';
-import { Comment } from '../src/api/comments/entities/comment.entity';
-import { CommentsController } from '../src/api/comments/comments.controller';
-import { CommentsService } from '../src/api/comments/comments.service';
-import { createValidationPipe } from '../src/config/validation';
-import { GlobalExceptionFilter } from '../src/filters/global-exception.filter';
-import { ApiResponseInterceptor } from '../src/interceptors/api-response.interceptor';
+} from '../../src/api/auth/constants/auth.constants';
+import { JwtAuthGuard } from '../../src/api/auth/guards/jwt-auth.guard';
+import { BoardAuthorizationService } from '../../src/api/board-members/board-authorization.service';
+import { BoardMember } from '../../src/api/board-members/entities/board-member.entity';
+import { Board } from '../../src/api/boards/entities/board.entity';
+import { Card } from '../../src/api/cards/entities/card.entity';
+import { Comment } from '../../src/api/comments/entities/comment.entity';
+import { CommentsController } from '../../src/api/comments/comments.controller';
+import { CommentsService } from '../../src/api/comments/comments.service';
+import { createValidationPipe } from '../../src/config/validation';
+import { GlobalExceptionFilter } from '../../src/filters/global-exception.filter';
+import { ApiResponseInterceptor } from '../../src/interceptors/api-response.interceptor';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: (entity: { name: string }) =>
