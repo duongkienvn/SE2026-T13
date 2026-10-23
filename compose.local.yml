@@ -1,0 +1,14 @@
+# Explicit local-only override. Compose 2.24.4+ supports !override.
+# Never include this file in a production command.
+services:
+  frontend:
+    ports: !override
+      - '127.0.0.1:8080:80'
+    volumes:
+      - type: bind
+        source: ./infra/caddy/Caddyfile.local
+        target: /etc/caddy/Caddyfile
+        read_only: true
+  backend:
+    environment:
+      CORS_ORIGINS: http://localhost:8080

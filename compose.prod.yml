@@ -1,0 +1,131 @@
+name: kanvexa
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+
+x-database-environment: &database-environment
+  DATABASE_HOST: postgres
+  DATABASE_PORT: '5432'
+  DATABASE_NAME: ${DATABASE_NAME:?Set DATABASE_NAME}
+  DATABASE_USER: ${DATABASE_USER:?Set DATABASE_USER}
+  DATABASE_PASSWORD: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD}
+  DATABASE_SSL: 'false'
+  DATABASE_POOL_SIZE: '5'
+  DATABASE_CONNECT_TIMEOUT_MS: '5000'
+  DOTENV_CONFIG_QUIET: 'true'
+
+services:
+  postgres:
+    image: postgres:16.15-alpine3.24
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:?Set DATABASE_NAME}
+      POSTGRES_USER: ${DATABASE_USER:?Set DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD}
+    command:
+      ['postgres', '-c', 'shared_buffers=128MB', '-c', 'max_connections=50']
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [database]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    mem_limit: 512m
+    shm_size: 128m
+    cpus: 0.5
+    logging: *logging
+
+  backend:
+    image: ${BACKEND_IMAGE:-kanvexa-backend}:${IMAGE_TAG:?Set IMAGE_TAG to the release commit SHA}
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    environment:
+      <<: *database-environment
+      NODE_ENV: production
+      API_PORT: '3000'
+      API_PREFIX: api
+      CORS_ORIGINS: https://kanvexa.tech
+      SWAGGER_ENABLED: 'false'
+      LOG_LEVEL: info
+      JWT_SECRET: ${JWT_SECRET:?Set a random JWT_SECRET of at least 32 bytes}
+      TRUST_PROXY_HOPS: '1'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [application, database]
+    expose: ['3000']
+    read_only: true
+    tmpfs: ['/tmp:size=16m,noexec,nosuid']
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    mem_limit: 512m
+    cpus: 0.75
+    logging: *logging
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-kanvexa-frontend}:${IMAGE_TAG:?Set IMAGE_TAG to the release commit SHA}
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: /api
+    restart: unless-stopped
+    stop_grace_period: 30s
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [application]
+    read_only: true
+    tmpfs: ['/tmp:size=16m,noexec,nosuid']
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: ['no-new-privileges:true']
+    mem_limit: 128m
+    cpus: 0.5
+    logging: *logging
+
+  # One-shot operator tool; never runs as part of a normal `up`.
+  migrate:
+    profiles: [tools]
+    image: ${BACKEND_IMAGE:-kanvexa-backend}:${IMAGE_TAG:?Set IMAGE_TAG to the release commit SHA}
+    user: node
+    entrypoint: ['node', 'node_modules/typeorm/cli.js']
+    command: ['migration:show', '-d', 'dist/database/data-source.js']
+    environment: *database-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [database]
+    read_only: true
+    tmpfs: ['/tmp:size=16m,noexec,nosuid']
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    mem_limit: 384m
+    logging: *logging
+
+networks:
+  application:
+  database:
+    internal: true
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
