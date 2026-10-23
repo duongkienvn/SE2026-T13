@@ -14,7 +14,7 @@ RUN --mount=type=cache,id=kanvexa-pnpm,target=/pnpm/store \
 COPY packages/shared packages/shared
 COPY apps/backend apps/backend
 RUN pnpm --filter @kanban/backend... build \
-    && pnpm --filter @kanban/backend deploy --prod --legacy /out/backend
+    && pnpm --filter @kanban/backend deploy --prod --legacy --frozen-lockfile /out/backend
 
 FROM node:22.23.4-bookworm-slim AS runtime
 ENV NODE_ENV=production
