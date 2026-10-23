@@ -19,6 +19,7 @@ Tài liệu task được chia theo phần chịu trách nhiệm để dễ tìm
 - [Realtime board events](backend/realtime-board-events.md)
 - [Board presence backend](backend/board-presence.md)
 - [Comments API](backend/comments-api.md)
+- [Comment realtime synchronization](backend/comment-realtime.md)
 - [Activity core and read API](backend/activity-core.md)
 
 ## Frontend tasks
