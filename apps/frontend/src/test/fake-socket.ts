@@ -44,6 +44,16 @@ export class FakeSocket {
     return this;
   }
 
+  off(event: string, listener: Listener) {
+    this.listeners.get(event)?.delete(listener);
+    return this;
+  }
+
+  /** Captures delivery already queued by a previous transport, for epoch races. */
+  capture(event: string): Listener[] {
+    return [...(this.listeners.get(event) ?? [])];
+  }
+
   removeAllListeners() {
     this.listeners.clear();
     return this;

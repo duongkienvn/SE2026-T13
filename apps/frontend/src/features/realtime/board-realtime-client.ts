@@ -1,4 +1,10 @@
-import type { BoardRoomAck } from '@kanban/shared';
+import { RealtimePresenceEvent, type BoardRoomAck } from '@kanban/shared';
+import {
+  EMPTY_PRESENCE,
+  livePresence,
+  parsePresenceSnapshot,
+  type BoardPresenceState,
+} from './board-presence-state';
 import { boardKeys } from '../boards/query-keys';
 import {
   BOARD_EVENTS,
@@ -40,6 +46,9 @@ interface Room {
   attempt: number;
   retries: number;
   joinSent: boolean;
+  joinPending: boolean;
+  pendingPresence?: readonly string[];
+  presence: BoardPresenceState;
   retryTimer?: ReturnType<typeof setTimeout>;
 }
 
@@ -66,6 +75,8 @@ export class BoardRealtimeClient {
   private idleTimer?: ReturnType<typeof setTimeout>;
   private reconcileQueued = false;
   private disposed = false;
+  private connectionEpoch = 0;
+  private presenceListener?: (payload: unknown) => void;
 
   constructor(private readonly options: BoardRealtimeOptions) {
     this.ackTimeoutMs = options.ackTimeoutMs ?? 10_000;
@@ -76,6 +87,7 @@ export class BoardRealtimeClient {
 
   /** Keeps the board's room joined until the returned function is called. */
   watch(boardId: string): () => void {
+    if (this.disposed) return () => undefined;
     this.watchers.set(boardId, (this.watchers.get(boardId) ?? 0) + 1);
     this.scheduleReconcile();
     let watching = true;
@@ -91,6 +103,22 @@ export class BoardRealtimeClient {
 
   status(boardId: string): BoardRealtimeStatus {
     return this.rooms.get(boardId)?.status ?? 'connecting';
+  }
+
+  /** Read-only external-store snapshot; reading never creates a socket/watcher. */
+  presence(boardId: string): BoardPresenceState {
+    if (this.disposed) return EMPTY_PRESENCE.connecting;
+    const exact = this.rooms.get(boardId);
+    if (exact && this.watchers.has(boardId)) return exact.presence;
+    // A page URL can use uppercase while REST returns its canonical UUID.
+    for (const room of this.rooms.values()) {
+      if (
+        this.watchers.has(room.boardId) &&
+        room.boardId.toLowerCase() === boardId.toLowerCase()
+      )
+        return room.presence;
+    }
+    return EMPTY_PRESENCE.connecting;
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -122,9 +150,12 @@ export class BoardRealtimeClient {
     for (const room of this.rooms.values()) clearTimeout(room.retryTimer);
     this.rooms.clear();
     this.watchers.clear();
+    this.connectionEpoch++;
     this.socket?.removeAllListeners();
     this.socket?.disconnect();
     this.socket = null;
+    this.presenceListener = undefined;
+    this.notify();
     this.listeners.clear();
   }
 
@@ -165,6 +196,8 @@ export class BoardRealtimeClient {
         attempt: 0,
         retries: 0,
         joinSent: false,
+        joinPending: false,
+        presence: EMPTY_PRESENCE.connecting,
       };
       this.rooms.set(boardId, room);
       if (socket?.connected) this.join(room);
@@ -189,6 +222,13 @@ export class BoardRealtimeClient {
     this.socket = socket;
 
     socket.on('connect', () => {
+      const epoch = ++this.connectionEpoch;
+      if (this.presenceListener)
+        socket.off(RealtimePresenceEvent.SYNC, this.presenceListener);
+      this.presenceListener = (payload: unknown) => {
+        if (epoch === this.connectionEpoch) this.receivePresence(payload);
+      };
+      socket.on(RealtimePresenceEvent.SYNC, this.presenceListener);
       this.reconnectRetries = 0;
       for (const room of this.rooms.values()) {
         room.retries = 0;
@@ -223,7 +263,12 @@ export class BoardRealtimeClient {
     if (!socket?.connected) return;
     clearTimeout(room.retryTimer);
     const attempt = ++room.attempt;
+    const epoch = this.connectionEpoch;
     room.joinSent = true;
+    room.joinPending = true;
+    room.pendingPresence = undefined;
+    room.presence = EMPTY_PRESENCE.syncing;
+    this.notify();
     socket
       .timeout(this.ackTimeoutMs)
       .emit(
@@ -231,7 +276,15 @@ export class BoardRealtimeClient {
         { boardId: room.boardId },
         (error: Error | null, ack?: BoardRoomAck) => {
           if (this.disposed || this.rooms.get(room.boardId) !== room) return;
-          if (room.attempt !== attempt) return;
+          if (
+            !socket.connected ||
+            epoch !== this.connectionEpoch ||
+            room.attempt !== attempt ||
+            !room.joinPending ||
+            !this.watchers.has(room.boardId)
+          )
+            return;
+          room.joinPending = false;
           this.joined(room, error ? undefined : ack);
         },
       );
@@ -241,14 +294,21 @@ export class BoardRealtimeClient {
     if (ack?.success && ack.boardId === room.boardId.toLowerCase()) {
       room.status = 'live';
       room.retries = 0;
+      room.presence = room.pendingPresence
+        ? livePresence(room.pendingPresence)
+        : EMPTY_PRESENCE.syncing;
+      room.pendingPresence = undefined;
       this.options.invalidate(boardResyncTargets(room.boardId));
       this.notify();
       return;
     }
+    room.pendingPresence = undefined;
+    room.presence = EMPTY_PRESENCE.syncing;
     if (ack && !ack.success) {
       if (ack.code === 'NOT_FOUND' || ack.code === 'VALIDATION_FAILED') {
         // Not a member (any more) or no such board: let REST say so on the page.
         room.status = 'unavailable';
+        room.presence = EMPTY_PRESENCE.unavailable;
         this.options.invalidate([
           { queryKey: boardKeys.detail(room.boardId), exact: true },
         ]);
@@ -256,6 +316,7 @@ export class BoardRealtimeClient {
         return;
       }
       if (ack.code === 'UNAUTHORIZED') {
+        this.notify();
         // The server also drops this socket; reconnecting reads a new token.
         this.options.verifySession();
         return;
@@ -268,6 +329,7 @@ export class BoardRealtimeClient {
   private retryJoin(room: Room): void {
     if (room.retries >= this.maxRetries) {
       room.status = 'paused';
+      room.presence = EMPTY_PRESENCE.paused;
       this.notify();
       return;
     }
@@ -278,11 +340,23 @@ export class BoardRealtimeClient {
   }
 
   private connectionLost(): void {
+    this.connectionEpoch++;
+    if (this.presenceListener)
+      this.socket?.off(RealtimePresenceEvent.SYNC, this.presenceListener);
+    this.presenceListener = undefined;
     for (const room of this.rooms.values()) {
       clearTimeout(room.retryTimer);
       room.attempt++;
       room.joinSent = false;
+      room.joinPending = false;
+      room.pendingPresence = undefined;
       if (room.status === 'live') room.status = 'reconnecting';
+      room.presence =
+        room.status === 'unavailable'
+          ? EMPTY_PRESENCE.unavailable
+          : room.status === 'reconnecting'
+            ? EMPTY_PRESENCE.reconnecting
+            : EMPTY_PRESENCE.connecting;
     }
     this.notify();
   }
@@ -292,7 +366,10 @@ export class BoardRealtimeClient {
     if (this.watchers.size === 0) return;
     if (this.reconnectRetries >= this.maxRetries) {
       for (const room of this.rooms.values()) {
-        if (room.status !== 'unavailable') room.status = 'paused';
+        if (room.status !== 'unavailable') {
+          room.status = 'paused';
+          room.presence = EMPTY_PRESENCE.paused;
+        }
       }
       this.notify();
       return;
@@ -319,6 +396,33 @@ export class BoardRealtimeClient {
           boardId: room.boardId,
         }),
       );
+    }
+  }
+
+  private receivePresence(payload: unknown): void {
+    if (this.disposed || !this.socket?.connected) return;
+    const snapshot = parsePresenceSnapshot(payload);
+    if (!snapshot) return;
+    for (const room of this.rooms.values()) {
+      if (
+        !this.watchers.has(room.boardId) ||
+        room.boardId.toLowerCase() !== snapshot.boardId
+      )
+        continue;
+      if (room.joinPending) {
+        // Only the latest full snapshot of this outstanding attempt is needed.
+        room.pendingPresence = snapshot.userIds;
+      } else if (room.status === 'live') {
+        const previous = room.presence.userIds;
+        if (
+          previous &&
+          previous.length === snapshot.userIds.length &&
+          previous.every((id, index) => id === snapshot.userIds[index])
+        )
+          continue;
+        room.presence = livePresence(snapshot.userIds);
+        this.notify();
+      }
     }
   }
 
