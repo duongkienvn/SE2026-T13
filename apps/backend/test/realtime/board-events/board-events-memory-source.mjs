@@ -92,6 +92,11 @@ export function boardEventsMemorySource() {
           rows.delete(row.id);
           row.id = undefined;
         },
+        async softRemove(row) {
+          const value = { ...row, deletedAt: new Date() };
+          rows.set(value.id, globalThis.structuredClone(value));
+          return value;
+        },
         createQueryBuilder() {
           const filters = {};
           return {

@@ -14,6 +14,9 @@ const {
 const {
   RealtimeBroadcastService,
 } = require('../../../src/realtime/realtime-broadcast.service.ts');
+const {
+  BOARD_ROOM_REQUEST_LIMITS,
+} = require('../../../src/realtime/board-room-rate-limiter.service.ts');
 const argon2 = require('argon2');
 const request = require('supertest');
 const { io } = createRequire(
@@ -164,10 +167,10 @@ export async function runBoardEventChecks(app, source) {
         .expect(200);
       tokens[name] = login.body.data.accessToken;
     }
-    const owner = await connect(tokens.owner),
+    let owner = await connect(tokens.owner),
       member = await connect(tokens.member),
       tab = await connect(tokens.member);
-    const other = await connect(tokens.other),
+    let other = await connect(tokens.other),
       unjoined = await connect(tokens.owner),
       outsider = await connect(tokens.other);
     await join(owner, ids.a);
@@ -313,6 +316,69 @@ export async function runBoardEventChecks(app, source) {
         .columnId,
       c3.id,
     );
+    const commentPath = `${ids.a}/cards/${card.id}/comments`;
+    const commentPayload = (value) => ({
+      boardId: ids.a,
+      cardId: card.id,
+      commentId: value.id,
+    });
+    const comment = await mutation(
+      'comment:created',
+      'post',
+      commentPath,
+      { content: 'Private comment' },
+      201,
+      commentPayload,
+    );
+    await mutation(
+      'comment:updated',
+      'patch',
+      `${commentPath}/${comment.id}`,
+      { content: 'Updated comment' },
+      200,
+      commentPayload,
+    );
+    await silent(async () => {
+      await http('patch', `${commentPath}/${comment.id}`, {
+        content: 'Updated comment',
+      });
+      await http(
+        'patch',
+        `${commentPath}/${comment.id}`,
+        { content: 'Denied' },
+        403,
+        tokens.member,
+      );
+    });
+    await mutation(
+      'comment:deleted',
+      'delete',
+      `${commentPath}/${comment.id}`,
+      undefined,
+      204,
+      { boardId: ids.a, cardId: card.id, commentId: comment.id },
+    );
+    assert.ok(
+      (
+        await source.getRepository('Comment').findOne({
+          where: { id: comment.id },
+          withDeleted: true,
+        })
+      ).deletedAt,
+    );
+    for (const socket of clients) socket.close();
+    owner = await connect(tokens.owner);
+    member = await connect(tokens.member);
+    tab = await connect(tokens.member);
+    other = await connect(tokens.other);
+    unjoined = await connect(tokens.owner);
+    outsider = await connect(tokens.other);
+    await join(owner, ids.a);
+    await join(member, ids.a);
+    await join(tab, ids.a);
+    await join(member, ids.b);
+    await join(other, ids.b);
+    recipients = [owner, member, tab];
     await silent(async () => {
       await http('patch', `${ids.a}/cards/${card.id}`, { title: 'Changed' });
       await http(
@@ -364,6 +430,9 @@ export async function runBoardEventChecks(app, source) {
     pass(
       'all five Card events, both assignment operations, persisted move source and no-op suppression',
     );
+    pass(
+      'all three Comment events are ID-only, isolated and suppress no-ops and denied writes',
+    );
 
     await silent(async () => {
       await http(
@@ -389,6 +458,7 @@ export async function runBoardEventChecks(app, source) {
         403,
         tokens.member,
       );
+      await http('post', commentPath, { content: 'Archived' }, 409);
       for (const event of events)
         outsider.emit(event, {
           boardId: ids.a,
@@ -431,6 +501,23 @@ export async function runBoardEventChecks(app, source) {
       'membership events target the changed user; add never auto-joins a socket; unchanged role is silent',
     );
 
+    for (const socket of clients) socket.close();
+    owner = await connect(tokens.owner);
+    member = await connect(tokens.member);
+    tab = await connect(tokens.member);
+    other = await connect(tokens.other);
+    unjoined = await connect(tokens.owner);
+    outsider = await connect(tokens.other);
+    await join(owner, ids.a);
+    await join(member, ids.a);
+    await join(tab, ids.a);
+    await join(member, ids.b);
+    await join(other, ids.b);
+    recipients = [owner, member, tab];
+    await new Promise((resolve) =>
+      setTimeout(resolve, BOARD_ROOM_REQUEST_LIMITS.windowMs),
+    );
+
     const jwt = app.get(JwtService);
     const expired = io(base, {
       autoConnect: false,
@@ -465,6 +552,7 @@ export async function runBoardEventChecks(app, source) {
       };
     }
     recipients = [owner];
+    let activeCard;
     try {
       await mutation(
         'member:removed',
@@ -485,6 +573,26 @@ export async function runBoardEventChecks(app, source) {
         { name: 'After revoke' },
         200,
         columnPayload,
+      );
+      activeCard = await mutation(
+        'card:created',
+        'post',
+        `${ids.a}/cards`,
+        { columnId: c1.id, title: 'After revoke' },
+        201,
+        cardPayload,
+      );
+      await mutation(
+        'comment:created',
+        'post',
+        `${ids.a}/cards/${activeCard.id}/comments`,
+        { content: 'After revoke' },
+        201,
+        (value) => ({
+          boardId: ids.a,
+          cardId: activeCard.id,
+          commentId: value.id,
+        }),
       );
       assert.equal((await ack(member, 'board:join', ids.a)).code, 'NOT_FOUND');
       const reconnect = await connect(tokens.member);
@@ -522,6 +630,24 @@ export async function runBoardEventChecks(app, source) {
       broadcast.emitToBoard = async () => {
         throw new Error('unexpected delivery exception');
       };
+      let committedComment;
+      await silent(async () => {
+        const response = await http(
+          'post',
+          `${ids.a}/cards/${activeCard.id}/comments`,
+          { content: 'Committed despite transport' },
+          201,
+        );
+        committedComment = response.body.data;
+      });
+      assert.equal(
+        (
+          await source.getRepository('Comment').findOne({
+            where: { id: committedComment.id },
+          })
+        ).content,
+        'Committed despite transport',
+      );
       await silent(() =>
         http('patch', `${ids.a}/columns/${c1.id}`, {
           name: 'Committed despite transport',
@@ -536,6 +662,14 @@ export async function runBoardEventChecks(app, source) {
         'Committed despite transport',
       );
       broadcast.emitToBoard = async () => false;
+      await silent(() =>
+        http(
+          'patch',
+          `${ids.a}/cards/${activeCard.id}/comments/${committedComment.id}`,
+          { content: 'Committed without transport' },
+          200,
+        ),
+      );
       await silent(() =>
         http(
           'patch',
@@ -554,7 +688,7 @@ export async function runBoardEventChecks(app, source) {
     }
     assert.deepEqual([...seen].sort(), [...events].sort());
     pass(
-      'false/throwing delivery cannot change committed HTTP success; all twelve contracts observed exactly',
+      'false/throwing delivery cannot change committed HTTP success; all fifteen contracts observed exactly',
     );
     void unjoined;
     return checks;
