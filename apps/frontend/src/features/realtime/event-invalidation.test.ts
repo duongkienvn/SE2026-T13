@@ -1,6 +1,7 @@
 import { QueryClient, type QueryKey } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
 import { boardKeys } from '../boards/query-keys';
+import { commentKeys } from '../comments/query-keys';
 import {
   BOARD_EVENTS,
   boardResyncTargets,
@@ -24,6 +25,10 @@ const cached = {
   boardList: boardKeys.lists(),
   otherBoard: boardKeys.detail(OTHER),
   otherCards: boardKeys.cards(OTHER),
+  commentsPage1: commentKeys.page(BOARD, CARD, 1),
+  commentsPage2: commentKeys.page(BOARD, CARD, 2),
+  otherCardComments: commentKeys.page(BOARD, OTHER_CARD, 1),
+  otherBoardComments: commentKeys.page(OTHER, CARD, 1),
 } satisfies Record<string, QueryKey>;
 type CachedQuery = keyof typeof cached;
 
@@ -51,7 +56,7 @@ const cardEvent = { boardId: BOARD, cardId: CARD, columnId: 'column-1' };
 const member = { boardId: BOARD, userId: 'user-1' };
 
 describe('BOARD_EVENTS', () => {
-  it('lists the 12 board events of the shared contract', () => {
+  it('lists the 15 business events of the shared contract', () => {
     expect([...BOARD_EVENTS].sort()).toEqual([
       'card:archived',
       'card:assignees-changed',
@@ -62,6 +67,9 @@ describe('BOARD_EVENTS', () => {
       'column:deleted',
       'column:moved',
       'column:updated',
+      'comment:created',
+      'comment:deleted',
+      'comment:updated',
       'member:added',
       'member:removed',
       'member:role-changed',
@@ -85,9 +93,14 @@ describe('invalidationTargets', () => {
     'card:archived',
     'card:assignees-changed',
   ] as const)(
-    '%s refreshes the card list and that card only',
+    '%s refreshes the card list, detail and its comments',
     async (event) => {
-      expect(await hit(event, cardEvent)).toEqual(['cards', 'card']);
+      expect(await hit(event, cardEvent)).toEqual([
+        'cards',
+        'card',
+        'commentsPage1',
+        'commentsPage2',
+      ]);
     },
   );
 
@@ -99,7 +112,12 @@ describe('invalidationTargets', () => {
       toColumnId: 'column-2',
     };
 
-    expect(await hit('card:moved', moved)).toEqual(['cards', 'card']);
+    expect(await hit('card:moved', moved)).toEqual([
+      'cards',
+      'card',
+      'commentsPage1',
+      'commentsPage2',
+    ]);
   });
 
   it('member:added refreshes the members', async () => {
@@ -122,8 +140,24 @@ describe('invalidationTargets', () => {
       'card',
       'otherCard',
       'boardList',
+      'commentsPage1',
+      'commentsPage2',
+      'otherCardComments',
     ]);
   });
+
+  it.each(['comment:created', 'comment:updated', 'comment:deleted'] as const)(
+    '%s refetches only pages of its card',
+    async (event) => {
+      expect(
+        await hit(event, {
+          boardId: BOARD,
+          cardId: CARD,
+          commentId: 'comment',
+        }),
+      ).toEqual(['commentsPage1', 'commentsPage2']);
+    },
+  );
 
   it('never touches another board', async () => {
     for (const event of BOARD_EVENTS) {
@@ -138,6 +172,7 @@ describe('invalidationTargets', () => {
       const names = await invalidated(invalidationTargets(event, payload));
       expect(names).not.toContain('otherBoard');
       expect(names).not.toContain('otherCards');
+      expect(names).not.toContain('otherBoardComments');
     }
   });
 });
@@ -151,6 +186,9 @@ describe('boardResyncTargets', () => {
       'cards',
       'card',
       'otherCard',
+      'commentsPage1',
+      'commentsPage2',
+      'otherCardComments',
     ]);
   });
 });
