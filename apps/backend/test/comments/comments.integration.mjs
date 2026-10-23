@@ -131,6 +131,41 @@ try {
       .meta.total,
     1,
   );
+  await source.query(
+    `CREATE FUNCTION reject_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'audit rejected'; END $$`,
+  );
+  await source.query(
+    'CREATE TRIGGER reject_activity BEFORE INSERT ON activities FOR EACH ROW EXECUTE FUNCTION reject_audit()',
+  );
+  const eventsBeforeFailure = published.length;
+  await assert.rejects(
+    service.create(member.id, board.id, card.id, {
+      content: 'Rollback create',
+    }),
+    /audit rejected/,
+  );
+  assert.equal(await comments.count(), 1);
+  await assert.rejects(
+    service.update(member.id, board.id, card.id, createdComment.id, {
+      content: 'Rollback update',
+    }),
+    /audit rejected/,
+  );
+  assert.equal(
+    (await comments.findOneByOrFail({ id: createdComment.id })).content,
+    'Created',
+  );
+  await assert.rejects(
+    service.remove(member.id, board.id, card.id, createdComment.id),
+    /audit rejected/,
+  );
+  assert.equal(
+    (await comments.findOneByOrFail({ id: createdComment.id })).deletedAt,
+    null,
+  );
+  assert.equal(published.length, eventsBeforeFailure);
+  await source.query('DROP TRIGGER reject_activity ON activities');
+  await source.query('DROP FUNCTION reject_audit()');
   await assert.rejects(
     service.update(owner.id, board.id, card.id, createdComment.id, {
       content: 'Denied',
