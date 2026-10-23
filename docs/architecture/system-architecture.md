@@ -133,7 +133,7 @@ Môi trường development hiện tại gồm:
 
 Repository hiện đã có cấu hình TypeORM cho PostgreSQL, đường dẫn entities và migrations, đồng thời tắt schema synchronization. Tuy nhiên, source hiện tại mới có health endpoint; chưa có entity, migration, authentication, business module hoặc realtime gateway được triển khai.
 
-Tài liệu này không mô tả deployment architecture production vì project chưa ở giai đoạn đó.
+Production infrastructure cho một EC2 instance dùng Docker Compose và Caddy được mô tả trong [deployment runbook](../deployment/production.md). Development Compose giữ nguyên; AWS provisioning và automated delivery là các bước riêng.
 
 ## 7. Architectural principles
 

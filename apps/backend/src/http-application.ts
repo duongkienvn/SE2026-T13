@@ -16,6 +16,14 @@ import { RealtimeIoAdapter } from './realtime/realtime-io.adapter';
 
 export function configureHttpApplication(app: INestApplication): void {
   const config = app.get<ConfigService<EnvironmentConfig, true>>(ConfigService);
+  // Enable only behind the single private Caddy ingress; direct access stays off.
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .set(
+      'trust proxy',
+      config.get('TRUST_PROXY_HOPS', { infer: true }) === 1 ? 1 : false,
+    );
   const swaggerEnabled = config.get('SWAGGER_ENABLED', { infer: true });
   app.use(
     helmet({

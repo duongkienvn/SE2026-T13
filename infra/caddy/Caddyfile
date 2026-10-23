@@ -1,0 +1,4 @@
+kanvexa.tech {
+	header Strict-Transport-Security "max-age=31536000"
+	import /etc/caddy/routes.caddy
+}

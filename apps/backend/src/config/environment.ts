@@ -9,6 +9,7 @@ export interface EnvironmentConfig {
   CORS_ORIGINS: string[];
   LOG_LEVEL: LogLevel;
   SWAGGER_ENABLED: boolean;
+  TRUST_PROXY_HOPS: 0 | 1;
   JWT_SECRET: string;
   DATABASE_HOST: string;
   DATABASE_PORT: number;
@@ -123,6 +124,15 @@ export function validateEnvironment(
   if (Buffer.byteLength(jwtSecret, 'utf8') < 32) {
     throw new Error('JWT_SECRET must be at least 32 bytes');
   }
+  const trustProxyHops = input.TRUST_PROXY_HOPS ?? '0';
+  if (
+    trustProxyHops !== 0 &&
+    trustProxyHops !== 1 &&
+    trustProxyHops !== '0' &&
+    trustProxyHops !== '1'
+  ) {
+    throw new Error('TRUST_PROXY_HOPS must be 0 (direct) or 1 (private proxy)');
+  }
 
   return {
     NODE_ENV: nodeEnv,
@@ -131,6 +141,7 @@ export function validateEnvironment(
     CORS_ORIGINS: origins,
     LOG_LEVEL: level as LogLevel,
     JWT_SECRET: jwtSecret,
+    TRUST_PROXY_HOPS: Number(trustProxyHops) as 0 | 1,
     SWAGGER_ENABLED: boolean(
       input.SWAGGER_ENABLED,
       'SWAGGER_ENABLED',
