@@ -12,7 +12,8 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Never interrupt a production migration when another main commit arrives.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   quality:
@@ -47,3 +48,9 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Infrastructure tests
+        run: pnpm test:infra
+
+      - name: Formatting
+        run: pnpm format:check
