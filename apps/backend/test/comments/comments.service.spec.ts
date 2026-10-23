@@ -1,9 +1,9 @@
 import { Repository } from 'typeorm';
-import { Board } from '../src/api/boards/entities/board.entity';
-import { BoardAuthorizationService } from '../src/api/board-members/board-authorization.service';
-import { Card } from '../src/api/cards/entities/card.entity';
-import { Comment } from '../src/api/comments/entities/comment.entity';
-import { CommentsService } from '../src/api/comments/comments.service';
+import { Board } from '../../src/api/boards/entities/board.entity';
+import { BoardAuthorizationService } from '../../src/api/board-members/board-authorization.service';
+import { Card } from '../../src/api/cards/entities/card.entity';
+import { Comment } from '../../src/api/comments/entities/comment.entity';
+import { CommentsService } from '../../src/api/comments/comments.service';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: () => () => undefined,
@@ -83,7 +83,7 @@ function harness() {
     authorization as unknown as BoardAuthorizationService,
     {
       record: jest.fn(),
-    } as unknown as import('../src/api/activities/activity-writer.service').ActivityWriterService,
+    } as unknown as import('../../src/api/activities/activity-writer.service').ActivityWriterService,
   );
   return {
     service,

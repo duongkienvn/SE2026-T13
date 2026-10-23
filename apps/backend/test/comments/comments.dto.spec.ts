@@ -1,11 +1,11 @@
-import { Comment } from '../src/api/comments/entities/comment.entity';
+import { Comment } from '../../src/api/comments/entities/comment.entity';
 import {
   CommentResponseDto,
   toCommentResponseDto,
-} from '../src/api/comments/dto/comment-response.dto';
-import { CreateCommentDto } from '../src/api/comments/dto/create-comment.dto';
-import { UpdateCommentDto } from '../src/api/comments/dto/update-comment.dto';
-import { createValidationPipe } from '../src/config/validation';
+} from '../../src/api/comments/dto/comment-response.dto';
+import { CreateCommentDto } from '../../src/api/comments/dto/create-comment.dto';
+import { UpdateCommentDto } from '../../src/api/comments/dto/update-comment.dto';
+import { createValidationPipe } from '../../src/config/validation';
 
 const ID = 'c6ba7134-97ef-4c1b-a342-001a982a7721';
 const pipe = createValidationPipe();

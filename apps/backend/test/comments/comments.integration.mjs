@@ -9,26 +9,33 @@ import { fileURLToPath, URL } from 'node:url';
 const require = createRequire(import.meta.url);
 require('reflect-metadata');
 require('dotenv').config({
-  path: resolve(fileURLToPath(new URL('../', import.meta.url)), '../../.env'),
+  path: resolve(
+    fileURLToPath(new URL('../../', import.meta.url)),
+    '../../.env',
+  ),
   quiet: true,
 });
 
 const { Client } = require('pg');
 const { DataSource } = require('typeorm');
-const { databaseOptions } = require('../dist/database/database-options.js');
+const { databaseOptions } = require('../../dist/database/database-options.js');
 const {
   BoardAuthorizationService,
-} = require('../dist/api/board-members/board-authorization.service.js');
-const { Board } = require('../dist/api/boards/entities/board.entity.js');
+} = require('../../dist/api/board-members/board-authorization.service.js');
+const { Board } = require('../../dist/api/boards/entities/board.entity.js');
 const {
   BoardMember,
-} = require('../dist/api/board-members/entities/board-member.entity.js');
+} = require('../../dist/api/board-members/entities/board-member.entity.js');
 const {
   BoardColumn,
-} = require('../dist/api/columns/entities/board-column.entity.js');
-const { Card } = require('../dist/api/cards/entities/card.entity.js');
-const { Comment } = require('../dist/api/comments/entities/comment.entity.js');
-const { CommentsService } = require('../dist/api/comments/comments.service.js');
+} = require('../../dist/api/columns/entities/board-column.entity.js');
+const { Card } = require('../../dist/api/cards/entities/card.entity.js');
+const {
+  Comment,
+} = require('../../dist/api/comments/entities/comment.entity.js');
+const {
+  CommentsService,
+} = require('../../dist/api/comments/comments.service.js');
 
 const testDatabase = `kanban_comments_verify_${randomBytes(8).toString('hex')}`;
 const baseOptions = databaseOptions(process.env);
@@ -104,7 +111,7 @@ try {
   const authorization = new BoardAuthorizationService(members);
   const {
     ActivityWriterService,
-  } = require('../dist/api/activities/activity-writer.service.js');
+  } = require('../../dist/api/activities/activity-writer.service.js');
   const service = new CommentsService(
     comments,
     cards,
