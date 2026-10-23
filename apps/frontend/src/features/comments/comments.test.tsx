@@ -1,4 +1,11 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { focusManager } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
 import { renderApp } from '../../test/render';
 import {
@@ -211,6 +218,44 @@ describe('card comments', () => {
       ).getAttribute('aria-current'),
     ).toBe('page');
   }, 15000);
+
+  it('follows the last page when a remote comment creates a new page', async () => {
+    let total = 20;
+    const first = Array.from({ length: 20 }, (_, i) =>
+      comment('card', { id: `first-${i}`, content: `First ${i}` }),
+    );
+    setup({
+      list: () => okPage(first, { limit: 20, total }),
+      extra: (path, cardId) => ({
+        [`GET ${path}?page=2&limit=20`]: () =>
+          okPage(
+            [comment(cardId, { id: 'remote', content: 'Remote newest' })],
+            {
+              page: 2,
+              limit: 20,
+              total,
+            },
+          ),
+      }),
+    });
+    const dialog = await open();
+    await within(dialog).findByText('First 0');
+    try {
+      act(() => {
+        focusManager.setFocused(false);
+        total = 21;
+        focusManager.setFocused(true);
+      });
+      expect(await within(dialog).findByText('Remote newest')).toBeTruthy();
+      expect(
+        within(dialog)
+          .getByRole('button', { name: 'Page 2' })
+          .getAttribute('aria-current'),
+      ).toBe('page');
+    } finally {
+      focusManager.setFocused(undefined);
+    }
+  });
 
   it.each([20, 0])(
     'returns to page 1 when the current page is removed (total %i)',

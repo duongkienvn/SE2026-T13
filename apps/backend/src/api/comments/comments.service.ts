@@ -1,4 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { RealtimeServerEvent } from '@kanban/shared';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { ApplicationException } from '../../exceptions/application.exception';
@@ -23,6 +24,7 @@ import {
 } from './dto/comment-response.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
+import { BoardEventPublisher } from '../../realtime/board-event-publisher.service';
 
 @Injectable()
 export class CommentsService {
@@ -33,6 +35,7 @@ export class CommentsService {
     @InjectRepository(Board) private readonly boards: Repository<Board>,
     private readonly authorization: BoardAuthorizationService,
     private readonly activities: ActivityWriterService,
+    private readonly events: BoardEventPublisher,
   ) {}
 
   async list(
@@ -72,7 +75,7 @@ export class CommentsService {
     cardId: string,
     input: CreateCommentDto,
   ): Promise<CommentResponseDto> {
-    return this.mutate(userId, boardId, async (manager) => {
+    const result = await this.mutate(userId, boardId, async (manager) => {
       const card = await this.requireCard(
         manager.getRepository(Card),
         boardId,
@@ -81,7 +84,7 @@ export class CommentsService {
       );
       const comments = manager.getRepository(Comment);
       const comment = comments.create({
-        cardId,
+        cardId: card.id,
         authorId: userId,
         content: input.content,
       });
@@ -96,6 +99,12 @@ export class CommentsService {
       });
       return toCommentResponseDto(saved);
     });
+    await this.events.publish(RealtimeServerEvent.COMMENT_CREATED, {
+      boardId,
+      cardId: result.cardId,
+      commentId: result.id,
+    });
+    return result;
   }
 
   async update(
@@ -105,30 +114,41 @@ export class CommentsService {
     commentId: string,
     input: UpdateCommentDto,
   ): Promise<CommentResponseDto> {
-    return this.mutate(userId, boardId, async (manager) => {
-      await this.requireCard(
-        manager.getRepository(Card),
+    const { result, changed } = await this.mutate(
+      userId,
+      boardId,
+      async (manager) => {
+        await this.requireCard(
+          manager.getRepository(Card),
+          boardId,
+          cardId,
+          true,
+        );
+        const comments = manager.getRepository(Comment);
+        const comment = await this.requireComment(comments, cardId, commentId);
+        this.requireAuthor(comment, userId);
+        if (comment.content === input.content)
+          return { result: toCommentResponseDto(comment), changed: false };
+        comment.content = input.content;
+        const saved = await comments.save(comment);
+        await this.activities.record(manager, {
+          boardId,
+          actorId: userId,
+          actionType: ActivityActionType.COMMENT_UPDATED,
+          entityType: ActivityEntityType.COMMENT,
+          entityId: saved.id,
+          metadata: null,
+        });
+        return { result: toCommentResponseDto(saved), changed: true };
+      },
+    );
+    if (changed)
+      await this.events.publish(RealtimeServerEvent.COMMENT_UPDATED, {
         boardId,
-        cardId,
-        true,
-      );
-      const comments = manager.getRepository(Comment);
-      const comment = await this.requireComment(comments, cardId, commentId);
-      this.requireAuthor(comment, userId);
-      if (comment.content === input.content)
-        return toCommentResponseDto(comment);
-      comment.content = input.content;
-      const saved = await comments.save(comment);
-      await this.activities.record(manager, {
-        boardId,
-        actorId: userId,
-        actionType: ActivityActionType.COMMENT_UPDATED,
-        entityType: ActivityEntityType.COMMENT,
-        entityId: saved.id,
-        metadata: null,
+        cardId: result.cardId,
+        commentId: result.id,
       });
-      return toCommentResponseDto(saved);
-    });
+    return result;
   }
 
   async remove(
@@ -137,8 +157,8 @@ export class CommentsService {
     cardId: string,
     commentId: string,
   ): Promise<void> {
-    return this.mutate(userId, boardId, async (manager) => {
-      await this.requireCard(
+    const payload = await this.mutate(userId, boardId, async (manager) => {
+      const card = await this.requireCard(
         manager.getRepository(Card),
         boardId,
         cardId,
@@ -153,10 +173,12 @@ export class CommentsService {
         actorId: userId,
         actionType: ActivityActionType.COMMENT_DELETED,
         entityType: ActivityEntityType.COMMENT,
-        entityId: commentId.toLowerCase(),
+        entityId: comment.id,
         metadata: null,
       });
+      return { boardId, cardId: card.id, commentId: comment.id };
     });
+    await this.events.publish(RealtimeServerEvent.COMMENT_DELETED, payload);
   }
 
   private mutate<T>(

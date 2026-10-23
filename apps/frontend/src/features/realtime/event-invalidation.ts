@@ -1,6 +1,7 @@
 import { RealtimeServerEvent, type RealtimeServerEvents } from '@kanban/shared';
 import type { InvalidateQueryFilters } from '@tanstack/react-query';
 import { boardKeys } from '../boards/query-keys';
+import { commentKeys } from '../comments/query-keys';
 
 export type BoardEventName = keyof RealtimeServerEvents;
 export type BoardEventPayload<E extends BoardEventName> = Parameters<
@@ -83,6 +84,12 @@ export function invalidationTargets<E extends BoardEventName>(
         boardList(),
         allCards(boardId),
       ];
+    case 'comment:created':
+    case 'comment:updated':
+    case 'comment:deleted': {
+      const { cardId } = payload as BoardEventPayload<'comment:created'>;
+      return [{ queryKey: commentKeys.card(boardId, cardId) }];
+    }
     default:
       return [];
   }

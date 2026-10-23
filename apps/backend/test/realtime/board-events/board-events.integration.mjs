@@ -97,9 +97,9 @@ try {
   app = module.createNestApplication();
   configureHttpApplication(app);
   await app.listen(0, '127.0.0.1');
-  assert.equal(await runBoardEventChecks(app, source), 7);
+  assert.equal(await runBoardEventChecks(app, source), 8);
   pass(
-    'all twelve REST -> Socket.IO contracts and security checks on migrated PostgreSQL',
+    'all fifteen REST -> Socket.IO contracts and security checks on migrated PostgreSQL',
   );
 
   // Independent transport suites get independent application lifetimes. This

@@ -263,6 +263,24 @@ describe('BoardRealtimeClient events', () => {
     );
   });
 
+  it.each(['comment:created', 'comment:updated', 'comment:deleted'] as const)(
+    'routes %s to the matching Card comments',
+    async (event) => {
+      await live(A);
+      const payload = {
+        boardId: A.toLowerCase(),
+        cardId: 'c1',
+        commentId: 'm1',
+      };
+      socket.push(event, payload);
+      socket.push(event, { ...payload, boardId: B });
+      expect(invalidate).toHaveBeenCalledTimes(1);
+      expect(invalidate).toHaveBeenCalledWith(
+        invalidationTargets(event, { ...payload, boardId: A }),
+      );
+    },
+  );
+
   it('ignores events of other boards and malformed payloads', async () => {
     await live(A);
 
@@ -284,13 +302,16 @@ describe('BoardRealtimeClient events', () => {
     expect(invalidate).not.toHaveBeenCalled();
   });
 
-  it('listens to each of the 12 events exactly once', async () => {
+  it('listens to each of the 15 business events exactly once', async () => {
     client.watch(A);
     client.watch(B);
     await settle();
 
     expect(socket.listenerCount('card:moved')).toBe(1);
     expect(socket.listenerCount('member:removed')).toBe(1);
+    expect(socket.listenerCount('comment:created')).toBe(1);
+    expect(socket.listenerCount('comment:updated')).toBe(1);
+    expect(socket.listenerCount('comment:deleted')).toBe(1);
   });
 });
 

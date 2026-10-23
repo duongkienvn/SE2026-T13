@@ -4,7 +4,7 @@ The Card Detail dialog loads the H1a REST comments list in ascending order, 20 p
 
 The comments section is separate from the Card edit form. After a successful REST mutation, the pages of that Board/Card are invalidated; posting navigates to the last page. Closing and reopening the dialog refetches stale comments. Session changes clear private query data through the existing AuthProvider.
 
-H1b does not implement comment Socket.IO events or Activity integration. Another browser sees changes on refetch/reopen, not automatically; realtime comments belong to H1c.
+H1c adds ID-only Socket.IO hints after committed comment mutations. Another browser viewing the same Board/Card refetches its active comments page through REST without a reload; reconnecting resyncs mounted comment queries. A viewer on the last page follows a newly created last page, while an invalid page after deletion clamps to the last valid page.
 
 ## UI evidence
 

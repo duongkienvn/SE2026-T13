@@ -37,7 +37,7 @@ try {
   configureHttpApplication(app);
   await app.listen(0, '127.0.0.1');
   const count = await runBoardEventChecks(app, source);
-  assert.equal(count, 7);
+  assert.equal(count, 8);
   console.log(
     `Board events Socket.IO E2E: ${count} groups PASS (repository doubles; real REST/services/JWT/Socket.IO)`,
   );

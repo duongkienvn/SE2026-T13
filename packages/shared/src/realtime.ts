@@ -42,6 +42,9 @@ export const RealtimeServerEvent = {
   MEMBER_ADDED: 'member:added',
   MEMBER_ROLE_CHANGED: 'member:role-changed',
   MEMBER_REMOVED: 'member:removed',
+  COMMENT_CREATED: 'comment:created',
+  COMMENT_UPDATED: 'comment:updated',
+  COMMENT_DELETED: 'comment:deleted',
 } as const;
 
 export const RealtimePresenceEvent = {
@@ -77,6 +80,12 @@ export interface MemberChangedEvent {
   userId: string;
 }
 
+export interface CommentChangedEvent {
+  boardId: string;
+  cardId: string;
+  commentId: string;
+}
+
 /** Business events are invalidation hints; presence is an ephemeral full snapshot. */
 export interface RealtimeServerEvents {
   'presence:sync': (payload: BoardPresenceSnapshot) => void;
@@ -92,4 +101,7 @@ export interface RealtimeServerEvents {
   'member:added': (payload: MemberChangedEvent) => void;
   'member:role-changed': (payload: MemberChangedEvent) => void;
   'member:removed': (payload: MemberChangedEvent) => void;
+  'comment:created': (payload: CommentChangedEvent) => void;
+  'comment:updated': (payload: CommentChangedEvent) => void;
+  'comment:deleted': (payload: CommentChangedEvent) => void;
 }

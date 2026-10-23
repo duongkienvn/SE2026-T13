@@ -8,12 +8,14 @@ import { CommentsController } from './comments.controller';
 import { CommentsService } from './comments.service';
 import { Comment } from './entities/comment.entity';
 import { ActivityWriterModule } from '../activities/activity-writer.module';
+import { RealtimeDeliveryModule } from '../../realtime/realtime-delivery.module';
 
 @Module({
   imports: [
     AuthModule,
     BoardMembersModule,
     ActivityWriterModule,
+    RealtimeDeliveryModule,
     TypeOrmModule.forFeature([Comment, Card, Board]),
   ],
   controllers: [CommentsController],

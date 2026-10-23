@@ -20,7 +20,7 @@ affected data through REST, and PostgreSQL stays the source of truth.
   `success: true` for that board (10 s timeout). After every successful join,
   first or after a reconnect, the whole board is refetched, because events
   sent while the client was away are never replayed.
-- **Events → refetches.** Each of the 12 F2a events invalidates the matching
+- **Events → refetches.** The 12 F2a events and three H1c comment events invalidate the matching
   TanStack Query keys (table below). Invalidations are coalesced for 100 ms
   and held while any mutation is pending.
 - **Status pill.** Next to the role chip, shown only while live updates are
@@ -43,11 +43,13 @@ holds the whole board.
 | `member:added`                                                                          | members                                                                    |
 | `member:role-changed`                                                                   | members, board (exact), board list (the signed-in user's role lives there) |
 | `member:removed`                                                                        | members, board (exact), board list, every card (assignments are removed)   |
+| `comment:created`, `comment:updated`, `comment:deleted`                                 | every cached comments page of that Card only                               |
 | successful `board:join` (initial or rejoin)                                             | everything under the board's key                                           |
 
 Only empty columns can be deleted, so `column:deleted` never changes cards.
 `card:moved` refetches the full card list, which updates both the source and
 the destination column.
+Comment keys live under the Card detail prefix. Card events also refresh that Card's comments; comment events do not refresh the Card list or another Card.
 
 ## Decisions
 

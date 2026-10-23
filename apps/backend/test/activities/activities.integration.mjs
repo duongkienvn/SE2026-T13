@@ -281,6 +281,7 @@ try {
     boards,
     authorization,
     writer,
+    events,
   );
   const memberService = new BoardMembersService(
     members,
