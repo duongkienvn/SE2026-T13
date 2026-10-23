@@ -44,6 +44,8 @@ Initial database migration đã có; TypeORM schema synchronization và tự đ�
 
 ## Documentation
 
+- [Production deployment](docs/deployment/production.md): EC2, Docker, Caddy, explicit migrations, local smoke tests, backup and recovery. Development Compose remains unchanged.
+
 - [Project overview](docs/project-overview.md): mục tiêu, phạm vi MVP, thuật ngữ, kiến trúc tổng quan và trạng thái hiện tại.
 - [Architecture](docs/architecture/): tài liệu kiến trúc chi tiết khi được bổ sung.
 - [Tasks](docs/tasks/): tài liệu task được phân loại theo backend/frontend.
