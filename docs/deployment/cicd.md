@@ -49,7 +49,9 @@ Only the publish job has `packages: write`; it logs into GHCR with the ephemeral
 
 Build context is the exact checkout, target `linux/amd64`, public Vite build arg
 `VITE_API_BASE_URL=/api`. No production env enters a build. Build-record artifact
-upload is disabled. SHA tag names are a release convention, not registry-enforced
+upload is disabled. Workflow actions are pinned to reviewed full commit IDs; the
+adjacent comments identify the upstream major versions for deliberate updates.
+SHA tag names are a release convention, not registry-enforced
 immutability: retain release digests for incident review and restrict package
 write access. A rerun can rebuild the same tag against updated base-image patch
 tags; avoid republishing releases currently being approved/deployed.
@@ -170,7 +172,9 @@ then use an input-free main dispatch/re-run and a new environment approval.
 SSM delivery timeout is 60 seconds; document execution timeout is 1800 seconds.
 The runner polls every five seconds for up to 1980 seconds, tolerating initial
 `InvocationDoesNotExist` eventual consistency and bounded transient API failures.
-Each CLI request has a 30-second local bound, with at most three AWS attempts.
+Each CLI request has a 30-second local bound, with at most three AWS attempts for
+status reads. Submission is never automatically retried because SendCommand has
+no idempotency key; a lost submission response requires checking SSM before retry.
 The job has a 40-minute bound. AWS timeout/cancellation can leave a Docker-run
 migration container alive: inspect it before retrying, even after the host lock
 has released. Never infer database state from the workflow conclusion alone.
@@ -224,6 +228,12 @@ manual app-only procedure when schema compatibility is established:
 1. Acquire `flock -n /run/lock/kanvexa-deploy.lock` in a maintained root shell/file
    descriptor. Keep it held across the entire procedure. Record current state;
    verify no active SSM command or `kanvexa-migrate` container.
+
+   ```bash
+   exec 9>/run/lock/kanvexa-deploy.lock
+   flock -n 9 || { echo 'Another deployment owns the lock'; exit 1; }
+   ```
+
 2. Fetch main, verify `git merge-base --is-ancestor <previous-full-sha> origin/main`
    and a clean checkout, then checkout that exact SHA. Pull both previous GHCR
    images with an empty Docker config as above and verify platform/source/revision.

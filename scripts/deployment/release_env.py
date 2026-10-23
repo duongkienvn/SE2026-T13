@@ -46,7 +46,9 @@ def render_release(original, sha):
         else:
             result.append(line)
     output = b"".join(result)
-    for key in values.keys() - seen:
+    for key in values:
+        if key in seen:
+            continue
         if output and not output.endswith(b"\n"):
             output += b"\n"
         output += f"{key}={values[key]}\n".encode()
@@ -56,12 +58,21 @@ def render_release(original, sha):
 def require_protected_file(path):
     info = path.lstat()
     if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
-        raise ValueError("Env must be a regular, unlinked file")
+        raise ValueError("Env must be a regular file with a single hard link")
     if os.name == "posix":
         parent = path.parent.stat()
         if (info.st_uid != os.geteuid() or stat.S_IMODE(info.st_mode) != 0o600
                 or parent.st_uid != os.geteuid() or parent.st_mode & 0o022):
             raise ValueError("Env must be owner-only 0600 in a protected owned directory")
+
+
+def sync_directory(path):
+    if os.name == "posix":
+        directory = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
 
 
 def update_release(path, sha):
@@ -76,6 +87,8 @@ def update_release(path, sha):
         stream.write(original)
         stream.flush()
         os.fsync(stream.fileno())
+    # Make the backup directory entry durable before replacing the live env.
+    sync_directory(path.parent)
     temporary = None
     try:
         fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
@@ -89,12 +102,7 @@ def update_release(path, sha):
             raise ValueError("Env changed concurrently; refusing replacement")
         os.replace(temporary, path)
         temporary = None
-        if os.name == "posix":
-            directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
-            try:
-                os.fsync(directory)
-            finally:
-                os.close(directory)
+        sync_directory(path.parent)
     finally:
         if temporary:
             os.unlink(temporary)

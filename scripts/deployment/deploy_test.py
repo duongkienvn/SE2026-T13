@@ -71,6 +71,23 @@ class EnvTests(ProtectedFixture):
         self.assertEqual(backups[0].read_bytes(), ORIGINAL)
         self.assertEqual(len(list(self.path.parent.iterdir())), 2)
 
+    def test_concurrent_secret_change_is_not_overwritten(self):
+        changed = ORIGINAL.replace(b"JWT_SECRET=do-not-change", b"JWT_SECRET=rotated")
+        real_check = env_module.require_protected_file
+        checks = 0
+
+        def check(path):
+            nonlocal checks
+            checks += 1
+            if checks == 2:
+                path.write_bytes(changed)
+            real_check(path)
+
+        with patch.object(env_module, "require_protected_file", side_effect=check):
+            with self.assertRaisesRegex(ValueError, "changed concurrently"):
+                env_module.update_release(self.path, SHA)
+        self.assertEqual(self.path.read_bytes(), changed)
+
     @unittest.skipUnless(os.name == "posix", "POSIX file policy")
     def test_refuses_insecure_permissions_and_symlinks(self):
         self.path.chmod(0o644)
@@ -113,6 +130,10 @@ class DeployTests(ProtectedFixture):
                     "org.opencontainers.image.revision": SHA}}}
                 if failure == "wrong-image":
                     info["Architecture"] = "arm64"
+                if failure == "wrong-source":
+                    info["Config"]["Labels"]["org.opencontainers.image.source"] = "untrusted"
+                if failure == "wrong-revision":
+                    info["Config"]["Labels"]["org.opencontainers.image.revision"] = "b" * 40
                 return json.dumps([info])
             if "migration:show" in args:
                 shows += 1
@@ -154,7 +175,8 @@ class DeployTests(ProtectedFixture):
 
     def test_all_preflight_and_image_failures_precede_downtime(self):
         for failure in ["dirty", "ancestry", "database", "stale-migration",
-                        "kanvexa-backend:", "kanvexa-frontend:", "wrong-image"]:
+                        "kanvexa-backend:", "kanvexa-frontend:", "wrong-image",
+                        "wrong-source", "wrong-revision"]:
             with self.subTest(failure=failure):
                 calls = self.scenario(failure)
                 self.assertFalse(any("stop" in c or "UPDATE_ENV" in c for c in calls))

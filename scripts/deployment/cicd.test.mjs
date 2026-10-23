@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import process from 'node:process';
 import { test } from 'node:test';
 import { deploy, remoteCommand, waitForCommand } from './ssm-deploy.mjs';
@@ -50,6 +50,13 @@ test('production workflow keeps publishing and OIDC behind explicit gates', () =
     workflow,
     /AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|upload-artifact|inputs:/,
   );
+  for (const action of workflow.matchAll(/uses: (\S+)/g))
+    assert.match(
+      action[1],
+      /@[a-f0-9]{40}$/,
+      'Actions must use reviewed commit pins',
+    );
+  assert.doesNotMatch(cd, /continue-on-error|if: always/);
 });
 
 test('SSM bootstrap validates main ancestry and cleanliness before checkout', () => {
@@ -62,6 +69,19 @@ test('SSM bootstrap validates main ancestry and cleanliness before checkout', ()
   assert.match(script, /umask 077/);
   assert.match(script, /python3 -I scripts\/deployment\/deploy.py/);
   assert.throws(() => remoteCommand('main; touch /tmp/injected'));
+});
+
+test('SSM bootstrap passes actual Bash syntax validation', (t) => {
+  const bash =
+    process.platform === 'win32'
+      ? 'C:/Program Files/Git/bin/bash.exe'
+      : '/bin/bash';
+  if (!existsSync(bash))
+    return t.skip('Bash is unavailable on this workstation');
+  execFileSync(bash, ['-n'], {
+    input: remoteCommand(sha),
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
 });
 
 test('SSM request targets only one instance with bounded delivery and execution', async () => {
@@ -88,6 +108,18 @@ test('SSM request targets only one instance with bounded delivery and execution'
   assert.equal(body.OutputS3BucketName, undefined);
   assert.equal(body.CloudWatchOutputConfig.CloudWatchOutputEnabled, false);
   await assert.rejects(deploy(sha, 'i-123; id'));
+});
+
+test('uncertain SSM submission is never blindly retried', async () => {
+  let attempts = 0;
+  await assert.rejects(
+    deploy(sha, instance, () => {
+      attempts++;
+      throw new Error('connection lost after submission');
+    }),
+    /remote state unknown/,
+  );
+  assert.equal(attempts, 1);
 });
 
 function observer(sequence, timeoutMs = 20_000) {

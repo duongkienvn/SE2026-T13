@@ -40,7 +40,11 @@ function aws(args) {
       encoding: 'utf8',
       timeout: 30_000,
       maxBuffer: 1024 * 1024,
-      env: { ...process.env, AWS_MAX_ATTEMPTS: '3' },
+      // SendCommand has no idempotency key. Never automatically resubmit it.
+      env: {
+        ...process.env,
+        AWS_MAX_ATTEMPTS: args[1] === 'send-command' ? '1' : '3',
+      },
     },
   );
   if (result.error || result.status !== 0) {
@@ -106,23 +110,30 @@ export async function deploy(
   wait = waitForCommand,
 ) {
   const command = remoteCommand(sha);
-  if (!/^i-[a-f0-9]{17}$/.test(instance))
+  if (!/^i-(?:[a-f0-9]{8}|[a-f0-9]{17})$/.test(instance))
     throw new Error('Invalid EC2_INSTANCE_ID');
-  const result = request([
-    'ssm',
-    'send-command',
-    '--cli-input-json',
-    JSON.stringify({
-      DocumentName: 'AWS-RunShellScript',
-      InstanceIds: [instance],
-      TimeoutSeconds: 60,
-      Parameters: { commands: [command], executionTimeout: ['1800'] },
-      CloudWatchOutputConfig: { CloudWatchOutputEnabled: false },
-      Comment: `Kanvexa ${sha}`,
-    }),
-    '--query',
-    'Command.CommandId',
-  ]);
+  let result;
+  try {
+    result = request([
+      'ssm',
+      'send-command',
+      '--cli-input-json',
+      JSON.stringify({
+        DocumentName: 'AWS-RunShellScript',
+        InstanceIds: [instance],
+        TimeoutSeconds: 60,
+        Parameters: { commands: [command], executionTimeout: ['1800'] },
+        CloudWatchOutputConfig: { CloudWatchOutputEnabled: false },
+        Comment: `Kanvexa ${sha}`,
+      }),
+      '--query',
+      'Command.CommandId',
+    ]);
+  } catch {
+    throw new Error(
+      `SSM submission for ${sha} failed; remote state unknown. Inspect recent SSM commands before retry; no automatic resubmission.`,
+    );
+  }
   if (typeof result !== 'string' || !/^[a-f0-9-]{36}$/.test(result))
     throw new Error(
       'SSM did not return a valid command ID; inspect SSM before retry',
