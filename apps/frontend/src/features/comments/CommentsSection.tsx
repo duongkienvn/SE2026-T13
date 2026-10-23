@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Alert } from '../../components/Alert';
 import { Button } from '../../components/Button';
 import { Pagination } from '../../components/Pagination';
@@ -53,6 +53,9 @@ export function CommentsSection({
 }: CommentsSectionProps) {
   const { user } = useAuth();
   const [page, setPage] = useState(1);
+  const previousPageCount = useRef<
+    { cardId: string; totalPages: number } | undefined
+  >(undefined);
   const [content, setContent] = useState('');
   const [editingId, setEditingId] = useState<string>();
   const [editContent, setEditContent] = useState('');
@@ -69,10 +72,19 @@ export function CommentsSection({
   const byId = new Map(members.map((member) => [member.user.id, member.user]));
 
   useEffect(() => {
-    if (pageData && page > Math.max(1, pageData.meta.totalPages)) {
-      setPage(Math.max(1, pageData.meta.totalPages));
+    if (!pageData) return;
+    const totalPages = Math.max(1, pageData.meta.totalPages);
+    const previous = previousPageCount.current;
+    previousPageCount.current = { cardId, totalPages };
+    if (
+      page > totalPages ||
+      (previous?.cardId === cardId &&
+        page === previous.totalPages &&
+        totalPages > previous.totalPages)
+    ) {
+      setPage(totalPages);
     }
-  }, [page, pageData]);
+  }, [cardId, page, pageData]);
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
