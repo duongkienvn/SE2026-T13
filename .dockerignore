@@ -1,0 +1,20 @@
+# Only repository inputs belong in the build context.
+.git
+.github
+.agents
+.codex
+.codegraph
+.idea
+.vscode
+**/node_modules
+**/dist
+**/coverage
+**/*.tsbuildinfo
+**/*.log
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*.sql
+**/*.dump
+docs

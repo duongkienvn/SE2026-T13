@@ -5,6 +5,12 @@ coverage/
 .env
 .env.*
 !.env.example
+!.env.production.example
+# Deployment secrets, certificates and database exports stay outside Git.
+backups/
+*.dump
+*.pem
+*.key
 *.log
 .DS_Store
 Thumbs.db
