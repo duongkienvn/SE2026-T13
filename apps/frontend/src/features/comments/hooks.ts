@@ -11,14 +11,9 @@ import {
   updateComment,
 } from './api';
 import type { CommentRequest } from './types';
+import { commentKeys } from './query-keys';
 
-/** The card prefix permits invalidating every page without touching another card. */
-export const commentKeys = {
-  card: (boardId: string, cardId: string) =>
-    [...boardKeys.card(boardId, cardId), 'comments'] as const,
-  page: (boardId: string, cardId: string, page: number) =>
-    [...commentKeys.card(boardId, cardId), page] as const,
-};
+export { commentKeys } from './query-keys';
 
 export function useComments(boardId: string, cardId: string, page: number) {
   const { runAuthorized, user } = useAuth();
