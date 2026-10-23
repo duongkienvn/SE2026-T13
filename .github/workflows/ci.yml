@@ -92,3 +92,38 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/duongkienvn/SE2026-T13
             org.opencontainers.image.revision=${{ github.sha }}
+
+  deploy:
+    name: Deploy production
+    needs: [quality, publish]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: production
+    concurrency:
+      group: kanvexa-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.13.0'
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: kanvexa-${{ github.run_id }}
+          role-duration-seconds: 3600
+      - name: Deploy exact release through SSM and await completion
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+          EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+        run: node scripts/deployment/ssm-deploy.mjs
+      - name: HTTPS, REST, polling and WSS smoke
+        run: node scripts/deployment/smoke.mjs https://kanvexa.tech
