@@ -15,7 +15,7 @@ test('exports the separate presence contract in ESM and CommonJS', () => {
   );
 });
 
-test('exports exactly the twelve reviewed server events in ESM and CommonJS', () => {
+test('exports exactly the fifteen reviewed business events in ESM and CommonJS', () => {
   assert.deepEqual(Object.values(RealtimeServerEvent), [
     'column:created',
     'column:updated',
@@ -29,6 +29,9 @@ test('exports exactly the twelve reviewed server events in ESM and CommonJS', ()
     'member:added',
     'member:role-changed',
     'member:removed',
+    'comment:created',
+    'comment:updated',
+    'comment:deleted',
   ]);
   assert.deepEqual(
     require('@kanban/shared').RealtimeServerEvent,

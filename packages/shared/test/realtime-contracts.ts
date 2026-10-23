@@ -21,6 +21,7 @@ declare const client: RealtimeClientEvents;
 const column = { boardId: 'board', columnId: 'column' };
 const card = { ...column, cardId: 'card' };
 const member = { boardId: 'board', userId: 'user' };
+const comment = { boardId: 'board', cardId: 'card', commentId: 'comment' };
 server['column:created'](column);
 server['column:updated'](column);
 server['column:moved'](column);
@@ -38,6 +39,15 @@ server['card:moved']({
 server['member:added'](member);
 server['member:role-changed'](member);
 server['member:removed'](member);
+server['comment:created'](comment);
+server['comment:updated'](comment);
+server['comment:deleted'](comment);
+type CommentPayload = Parameters<RealtimeServerEvents['comment:created']>[0];
+const commentRejectsContent: Equal<
+  { boardId: string; cardId: string; commentId: string; content: string },
+  CommentPayload
+> = false;
+void commentRejectsContent;
 server[RealtimePresenceEvent.SYNC]({ boardId: 'board', userIds: ['user'] });
 // @ts-expect-error presence contains user IDs, not a single user
 server['presence:sync'](member);
