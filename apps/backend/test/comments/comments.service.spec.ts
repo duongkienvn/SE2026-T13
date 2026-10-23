@@ -4,6 +4,8 @@ import { BoardAuthorizationService } from '../../src/api/board-members/board-aut
 import { Card } from '../../src/api/cards/entities/card.entity';
 import { Comment } from '../../src/api/comments/entities/comment.entity';
 import { CommentsService } from '../../src/api/comments/comments.service';
+import { BoardEventPublisher } from '../../src/realtime/board-event-publisher.service';
+import { ActivityWriterService } from '../../src/api/activities/activity-writer.service';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: () => () => undefined,
@@ -76,14 +78,15 @@ function harness() {
     getManyAndCount: jest.fn().mockResolvedValue([[commentFixture()], 1]),
   };
   comments.createQueryBuilder.mockReturnValue(builder);
+  const activities = { record: jest.fn() };
+  const events = { publish: jest.fn() };
   const service = new CommentsService(
     comments as unknown as Repository<Comment>,
     cards as unknown as Repository<Card>,
     boards as unknown as Repository<Board>,
     authorization as unknown as BoardAuthorizationService,
-    {
-      record: jest.fn(),
-    } as unknown as import('../../src/api/activities/activity-writer.service').ActivityWriterService,
+    activities as unknown as ActivityWriterService,
+    events as unknown as BoardEventPublisher,
   );
   return {
     service,
@@ -94,6 +97,8 @@ function harness() {
     transaction,
     authorization,
     builder,
+    activities,
+    events,
   };
 }
 
@@ -102,7 +107,9 @@ describe('CommentsService', () => {
     const h = harness();
 
     await expect(
-      h.service.create(ID.user, ID.board, ID.card, { content: ' Hello ' }),
+      h.service.create(ID.user, ID.board, ID.card.toUpperCase(), {
+        content: ' Hello ',
+      }),
     ).resolves.toMatchObject({
       cardId: ID.card,
       authorId: ID.user,
@@ -118,6 +125,12 @@ describe('CommentsService', () => {
       cardId: ID.card,
       authorId: ID.user,
       content: ' Hello ',
+    });
+    expect(h.activities.record).toHaveBeenCalledTimes(1);
+    expect(h.events.publish).toHaveBeenCalledWith('comment:created', {
+      boardId: ID.board,
+      cardId: ID.card,
+      commentId: ID.comment,
     });
   });
 
@@ -142,6 +155,11 @@ describe('CommentsService', () => {
         content: 'Edited',
       }),
     ).resolves.toMatchObject({ content: 'Edited' });
+    expect(h.events.publish).toHaveBeenCalledWith('comment:updated', {
+      boardId: ID.board,
+      cardId: ID.card,
+      commentId: ID.comment,
+    });
     h.comments.findOne.mockResolvedValueOnce(
       commentFixture({ authorId: ID.other }),
     );
@@ -156,6 +174,12 @@ describe('CommentsService', () => {
     expect(h.comments.softRemove).toHaveBeenCalledWith(
       expect.objectContaining({ id: ID.comment }),
     );
+    expect(h.events.publish).toHaveBeenCalledWith('comment:deleted', {
+      boardId: ID.board,
+      cardId: ID.card,
+      commentId: ID.comment,
+    });
+    expect(h.events.publish).toHaveBeenCalledTimes(2);
   });
 
   it('rejects archived cards for mutations but keeps them readable', async () => {
@@ -165,8 +189,57 @@ describe('CommentsService', () => {
     await expect(
       h.service.create(ID.user, ID.board, ID.card, { content: 'No' }),
     ).rejects.toMatchObject({ status: 409 });
+    expect(h.events.publish).not.toHaveBeenCalled();
     await expect(
       h.service.list(ID.user, ID.board, ID.card, { page: 1, limit: 20 }),
     ).resolves.toBeDefined();
+  });
+
+  it('skips audit and publish for unchanged content', async () => {
+    const h = harness();
+    await expect(
+      h.service.update(ID.user, ID.board, ID.card, ID.comment, {
+        content: 'Original',
+      }),
+    ).resolves.toMatchObject({ content: 'Original' });
+    expect(h.activities.record).not.toHaveBeenCalled();
+    expect(h.events.publish).not.toHaveBeenCalled();
+  });
+
+  it('publishes only after the transaction resolves', async () => {
+    const h = harness();
+    let commit: (() => void) | undefined;
+    const committed = new Promise<void>((resolve) => {
+      commit = resolve;
+    });
+    let markRecorded: (() => void) | undefined;
+    const recorded = new Promise<void>((resolve) => {
+      markRecorded = resolve;
+    });
+    h.activities.record.mockImplementation(async () => {
+      markRecorded?.();
+    });
+    h.transaction.mockImplementation(async (operation) => {
+      const result = await operation(h.manager);
+      await committed;
+      return result;
+    });
+    const create = h.service.create(ID.user, ID.board, ID.card, {
+      content: 'New',
+    });
+    await recorded;
+    expect(h.events.publish).not.toHaveBeenCalled();
+    commit?.();
+    await create;
+    expect(h.events.publish).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not publish after an audit failure', async () => {
+    const h = harness();
+    h.activities.record.mockRejectedValueOnce(new Error('audit failed'));
+    await expect(
+      h.service.create(ID.user, ID.board, ID.card, { content: 'New' }),
+    ).rejects.toThrow('audit failed');
+    expect(h.events.publish).not.toHaveBeenCalled();
   });
 });

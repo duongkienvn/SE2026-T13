@@ -23,6 +23,7 @@ import { Card } from '../../src/api/cards/entities/card.entity';
 import { Comment } from '../../src/api/comments/entities/comment.entity';
 import { CommentsController } from '../../src/api/comments/comments.controller';
 import { CommentsService } from '../../src/api/comments/comments.service';
+import { BoardEventPublisher } from '../../src/realtime/board-event-publisher.service';
 import { createValidationPipe } from '../../src/config/validation';
 import { GlobalExceptionFilter } from '../../src/filters/global-exception.filter';
 import { ApiResponseInterceptor } from '../../src/interceptors/api-response.interceptor';
@@ -171,6 +172,7 @@ describe('Comments HTTP API with real JWT, validation and envelopes', () => {
       controllers: [CommentsController],
       providers: [
         CommentsService,
+        { provide: BoardEventPublisher, useValue: { publish: jest.fn() } },
         { provide: ActivityWriterService, useValue: { record: jest.fn() } },
         BoardAuthorizationService,
         AuthService,

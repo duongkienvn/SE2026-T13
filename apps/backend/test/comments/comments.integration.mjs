@@ -109,6 +109,7 @@ try {
   );
   const comments = source.getRepository(Comment);
   const authorization = new BoardAuthorizationService(members);
+  const published = [];
   const {
     ActivityWriterService,
   } = require('../../dist/api/activities/activity-writer.service.js');
@@ -118,6 +119,7 @@ try {
     boards,
     authorization,
     new ActivityWriterService(),
+    { publish: async (event, payload) => published.push([event, payload]) },
   );
 
   const createdComment = await service.create(member.id, board.id, card.id, {
@@ -139,6 +141,18 @@ try {
     content: 'Edited',
   });
   await service.remove(member.id, board.id, card.id, createdComment.id);
+  assert.deepEqual(
+    published.map(([event]) => event),
+    ['comment:created', 'comment:updated', 'comment:deleted'],
+  );
+  assert.deepEqual(
+    published.map(([, payload]) => payload),
+    Array(3).fill({
+      boardId: board.id,
+      cardId: card.id,
+      commentId: createdComment.id,
+    }),
+  );
   const deleted = await comments.findOne({
     where: { id: createdComment.id },
     withDeleted: true,
