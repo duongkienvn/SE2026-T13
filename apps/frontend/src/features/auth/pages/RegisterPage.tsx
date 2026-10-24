@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import type { RedirectState } from '../../../app/redirect';
 import { Alert } from '../../../components/Alert';
@@ -12,6 +12,7 @@ import { useAuthSession, type AuthSessionScope } from '../auth-session-context';
 import type { RegisterRequest } from '../types';
 import { AuthLayout } from '../components/AuthLayout';
 import { AuthSwitch } from '../components/AuthSwitch';
+import { PasswordRequirements } from '../components/PasswordRequirements';
 import { toFormErrors } from '../../../lib/form-errors';
 import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
 import { usePageTitle } from '../../../hooks/usePageTitle';
@@ -19,8 +20,6 @@ import { isApiError } from '../../../lib/api-client';
 import {
   hasErrors,
   normalizeEmail,
-  PASSWORD_MAX_LENGTH,
-  PASSWORD_MIN_LENGTH,
   validateDisplayName,
   validateEmail,
   validateNewPassword,
@@ -37,6 +36,7 @@ type Field = keyof typeof FIELD_LABELS;
 export function RegisterPage() {
   usePageTitle('Create account');
   const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
+  const passwordRequirementsId = useId();
   const scope = useAuthSession();
   const navigate = useNavigate();
   const from = (useLocation().state as RedirectState | null)?.from;
@@ -145,27 +145,29 @@ export function RegisterPage() {
       >
         {formError && <Alert variant="error">{formError}</Alert>}
 
-        <TextField
-          label="Display name"
-          name="displayName"
-          autoComplete="name"
-          placeholder="Your name"
-          icon={<UserIcon />}
-          value={values.displayName}
-          onChange={update('displayName')}
-          error={fieldErrors.displayName}
-        />
-        <TextField
-          label="Email address"
-          type="email"
-          name="email"
-          autoComplete="email"
-          placeholder="you@company.com"
-          icon={<MailIcon />}
-          value={values.email}
-          onChange={update('email')}
-          error={fieldErrors.email}
-        />
+        <div className="grid items-start gap-3 sm:grid-cols-2">
+          <TextField
+            label="Display name"
+            name="displayName"
+            autoComplete="name"
+            placeholder="Your name"
+            icon={<UserIcon />}
+            value={values.displayName}
+            onChange={update('displayName')}
+            error={fieldErrors.displayName}
+          />
+          <TextField
+            label="Email address"
+            type="email"
+            name="email"
+            autoComplete="email"
+            placeholder="you@company.com"
+            icon={<MailIcon />}
+            value={values.email}
+            onChange={update('email')}
+            error={fieldErrors.email}
+          />
+        </div>
         {/* Side by side on wider screens so the form fits without scrolling. */}
         <div className="grid items-start gap-3 sm:grid-cols-2">
           <PasswordField
@@ -173,7 +175,7 @@ export function RegisterPage() {
             name="password"
             autoComplete="new-password"
             placeholder="Create password"
-            hint={`${PASSWORD_MIN_LENGTH}–${PASSWORD_MAX_LENGTH} characters.`}
+            aria-describedby={passwordRequirementsId}
             value={values.password}
             onChange={update('password')}
             error={fieldErrors.password}
@@ -188,6 +190,11 @@ export function RegisterPage() {
             error={fieldErrors.confirmPassword}
           />
         </div>
+
+        <PasswordRequirements
+          id={passwordRequirementsId}
+          password={values.password}
+        />
 
         <Button
           type="submit"
