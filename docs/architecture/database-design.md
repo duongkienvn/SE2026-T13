@@ -2,7 +2,7 @@
 
 ## Tổng quan
 
-Tài liệu này chốt schema và các ràng buộc dữ liệu cho MVP, làm cơ sở cho task triển khai TypeORM entities và migration đầu tiên. PostgreSQL lưu persistent business state; TypeORM dùng migrations với `synchronize: false`. Thiết kế chỉ gồm tám bảng: `users`, `boards`, `board_members`, `board_columns`, `cards`, `card_assignees`, `comments` và `activities`.
+Tài liệu này chốt schema và các ràng buộc dữ liệu cho MVP, làm cơ sở cho task triển khai TypeORM entities và migration đầu tiên. PostgreSQL lưu persistent business state; TypeORM dùng migrations với `synchronize: false`. Tám bảng domain gồm `users`, `boards`, `board_members`, `board_columns`, `cards`, `card_assignees`, `comments` và `activities`; K2 và #79 bổ sung `email_verification_tokens` và `google_identities` thuộc auth.
 
 Mọi bảng dùng UUID primary key. Tên bảng/cột trong database dùng `snake_case`, property TypeScript dùng `camelCase`. Các timestamp dùng PostgreSQL `timestamptz` và lưu theo UTC.
 
@@ -75,15 +75,25 @@ Trong các bảng dưới đây, `Không` ở cột Nullable nghĩa là `NOT NUL
 
 ### `users`
 
-| Cột             | PostgreSQL type | Nullable | Ràng buộc / ý nghĩa                                   |
-| --------------- | --------------- | -------- | ----------------------------------------------------- |
-| `id`            | `uuid`          | Không    | Primary key.                                          |
-| `email`         | `varchar`       | Không    | Unique; định danh đăng nhập.                          |
-| `password_hash` | `varchar`       | Không    | Chỉ lưu password hash, không lưu plain-text password. |
-| `display_name`  | `varchar`       | Không    | Tên hiển thị.                                         |
-| `avatar_url`    | `varchar`       | Có       | URL ảnh đại diện nếu có.                              |
-| `created_at`    | `timestamptz`   | Không    | Thời điểm tạo.                                        |
-| `updated_at`    | `timestamptz`   | Không    | Thời điểm cập nhật.                                   |
+| Cột                 | PostgreSQL type | Nullable | Ràng buộc / ý nghĩa                                                     |
+| ------------------- | --------------- | -------- | ----------------------------------------------------------------------- |
+| `id`                | `uuid`          | Không    | Primary key.                                                            |
+| `email`             | `varchar`       | Không    | Unique; định danh đăng nhập.                                            |
+| `password_hash`     | `varchar`       | Có       | Argon2id cho local account; NULL cho Google-only (#79).                 |
+| `display_name`      | `varchar`       | Không    | Tên hiển thị.                                                           |
+| `avatar_url`        | `varchar`       | Có       | URL ảnh đại diện nếu có.                                                |
+| `email_verified_at` | `timestamptz`   | Có       | K2 verification gate; Google authority chỉ áp dụng lúc tạo account mới. |
+| `created_at`        | `timestamptz`   | Không    | Thời điểm tạo.                                                          |
+| `updated_at`        | `timestamptz`   | Không    | Thời điểm cập nhật.                                                     |
+
+### Auth identity extension (#79)
+
+`google_identities`: UUID `id`, UUID `user_id`, varchar(255) `google_sub`,
+`created_at` timestamptz. Unique constraints trên từng `google_sub` và `user_id`
+giữ quan hệ một user–một Google identity. FK `user_id → users.id` dùng NO ACTION,
+không âm thầm xóa identity khi xóa user. Auth entities không làm thay đổi quan hệ
+board/card. Migration `1792850400000-GoogleIdentity` giữ hash hiện có; down khóa
+bảng và từ chối nếu còn identity hoặc NULL password. Xem [transaction và rollback](../tasks/google-auth-account-linking.md).
 
 ### `boards`
 

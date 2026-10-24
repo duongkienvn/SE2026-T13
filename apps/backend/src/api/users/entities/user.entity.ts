@@ -19,7 +19,8 @@ import { Comment } from '../../comments/entities/comment.entity';
 export class User {
   @PrimaryGeneratedColumn('uuid') id!: string;
   @Column({ type: 'varchar' }) email!: string;
-  @Column({ name: 'password_hash', type: 'varchar' }) passwordHash!: string;
+  @Column({ name: 'password_hash', type: 'varchar', nullable: true })
+  passwordHash!: string | null;
   @Column({ name: 'display_name', type: 'varchar' }) displayName!: string;
   @Column({ name: 'avatar_url', type: 'varchar', nullable: true }) avatarUrl!:
     string | null;

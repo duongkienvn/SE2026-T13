@@ -13,7 +13,19 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     // Read VITE_* variables from the shared root .env file.
     envDir: repositoryRoot,
-    server: { port: Number(env.WEB_PORT || 5173) },
+    server: {
+      port: Number(env.WEB_PORT || 5173),
+      headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+        'Referrer-Policy': 'no-referrer-when-downgrade',
+      },
+    },
+    preview: {
+      headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+        'Referrer-Policy': 'no-referrer-when-downgrade',
+      },
+    },
     test: { environment: 'jsdom', setupFiles: ['./src/test/setup.ts'] },
   };
 });

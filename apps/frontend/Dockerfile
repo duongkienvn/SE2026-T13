@@ -17,8 +17,9 @@ COPY packages/shared packages/shared
 COPY apps/frontend apps/frontend
 # Public build-time configuration only. Runtime secrets never enter this stage.
 ARG VITE_API_BASE_URL=/api
+ARG VITE_GOOGLE_CLIENT_ID=
 RUN test "$VITE_API_BASE_URL" = /api \
-    && VITE_API_BASE_URL=$VITE_API_BASE_URL pnpm --filter @kanban/frontend... build
+    && VITE_API_BASE_URL="$VITE_API_BASE_URL" VITE_GOOGLE_CLIENT_ID="$VITE_GOOGLE_CLIENT_ID" pnpm --filter @kanban/frontend... build
 
 FROM caddy:2.11.7-alpine AS runtime
 COPY infra/caddy/ /etc/caddy/

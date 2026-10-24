@@ -24,7 +24,7 @@ jest.mock('@nestjs/typeorm', () => ({
 
 const JWT_SECRET = 'test-secret-that-is-at-least-32-bytes-long';
 
-function userFixture(passwordHash = 'password-hash'): User {
+function userFixture(passwordHash: string | null = 'password-hash'): User {
   return Object.assign(new User(), {
     id: '1c5e2d5b-1e13-4b31-9cc4-8e4f849d75e5',
     email: 'ada@example.com',
@@ -93,14 +93,14 @@ describe('AuthService', () => {
     const result = await service.register(input);
 
     await expect(
-      argon2.verify(user.passwordHash, input.password),
+      argon2.verify(user.passwordHash!, input.password),
     ).resolves.toBe(true);
     expect(user.passwordHash).toContain('$argon2id$');
     await expect(
-      argon2.verify(user.passwordHash, input.password.trim()),
+      argon2.verify(user.passwordHash!, input.password.trim()),
     ).resolves.toBe(false);
     await expect(
-      argon2.verify(user.passwordHash, input.password.normalize('NFC')),
+      argon2.verify(user.passwordHash!, input.password.normalize('NFC')),
     ).resolves.toBe(false);
     expect(result).not.toHaveProperty('passwordHash');
     expect(result.email).toBe(input.email);
@@ -190,6 +190,22 @@ describe('AuthService', () => {
       expect.stringMatching(/^\$argon2id\$/),
       input.password,
     );
+  });
+
+  it('rejects password login and reauthentication for Google-only users using the dummy hash', async () => {
+    repository.findOne.mockResolvedValue(userFixture(null));
+    const verify = jest.mocked(argon2.verify);
+    verify.mockResolvedValueOnce(true).mockResolvedValueOnce(true);
+    for (const operation of [
+      () => service.login({ email: 'ada@example.com', password: 'anything' }),
+      () => service.reauthenticate('user-id', 'anything'),
+    ]) {
+      await expect(operation()).rejects.toMatchObject({
+        status: 401,
+        response: { code: 'INVALID_CREDENTIALS' },
+      });
+    }
+    expect(repository.save).not.toHaveBeenCalled();
   });
 
   it('issues a one-hour HS256 token with the required claims', async () => {

@@ -110,6 +110,10 @@ test('production delivery retains SHA images, pinned actions and OIDC without ne
   assert.match(publish, /VITE_API_BASE_URL=\/api/);
   assert.match(
     publish,
+    /VITE_GOOGLE_CLIENT_ID=\$\{\{ vars\.VITE_GOOGLE_CLIENT_ID \}\}/,
+  );
+  assert.match(
+    publish,
     /kanvexa-\$\{\{ matrix.service \}\}:\$\{\{ github.sha \}\}/,
   );
   assert.match(publish, /org.opencontainers.image.source=/);

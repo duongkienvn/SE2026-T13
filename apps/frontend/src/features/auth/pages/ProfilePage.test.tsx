@@ -12,7 +12,14 @@ import { renderApp } from '../../../test/render';
 
 async function openProfile(extra: Parameters<typeof mockApi>[0] = {}) {
   storeSession('profile-token');
-  const calls = mockApi({ 'GET /users/me': ok(testUser), ...extra });
+  const calls = mockApi({
+    'GET /users/me': ok(testUser),
+    'GET /auth/linked-providers': ok({
+      googleLinked: false,
+      hasPassword: true,
+    }),
+    ...extra,
+  });
   const view = renderApp('/profile');
   await screen.findByRole('heading', { name: 'Profile' });
   return { calls, ...view };
