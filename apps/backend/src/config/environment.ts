@@ -11,6 +11,9 @@ export interface EnvironmentConfig {
   SWAGGER_ENABLED: boolean;
   TRUST_PROXY_HOPS: 0 | 1;
   JWT_SECRET: string;
+  RESEND_API_KEY: string;
+  MAIL_FROM: string;
+  PUBLIC_APP_URL: string;
   DATABASE_HOST: string;
   DATABASE_PORT: number;
   DATABASE_NAME: string;
@@ -134,7 +137,38 @@ export function validateEnvironment(
     throw new Error('TRUST_PROXY_HOPS must be 0 (direct) or 1 (private proxy)');
   }
 
+  const production = nodeEnv === 'production';
+  const resendKey = production ? required(input, 'RESEND_API_KEY') : '';
+  const mailFrom = production
+    ? required(input, 'MAIL_FROM')
+    : 'Kanvexa <no-reply@kanvexa.tech>';
+  const appUrl = production
+    ? required(input, 'PUBLIC_APP_URL')
+    : String(input.PUBLIC_APP_URL ?? 'http://localhost:5173');
+  if (production && !/^re_[A-Za-z0-9_-]{10,}$/.test(resendKey))
+    throw new Error('RESEND_API_KEY is invalid');
+  if (!/^[^<>\r\n]+ <[^<>\s@]+@[^<>\s@]+\.[^<>\s@]+>$/.test(mailFrom))
+    throw new Error('MAIL_FROM must be a display name and email address');
+  try {
+    const url = new URL(appUrl);
+    if (
+      url.origin !== appUrl ||
+      (url.protocol !== 'https:' &&
+        (production ||
+          url.protocol !== 'http:' ||
+          !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)))
+    )
+      throw new Error();
+  } catch {
+    throw new Error(
+      'PUBLIC_APP_URL must be an exact HTTPS origin (HTTP loopback allowed outside production)',
+    );
+  }
+
   return {
+    RESEND_API_KEY: resendKey,
+    MAIL_FROM: mailFrom,
+    PUBLIC_APP_URL: appUrl,
     NODE_ENV: nodeEnv,
     API_PORT: port(input.API_PORT, 'API_PORT', 3000),
     API_PREFIX: apiPrefix,
