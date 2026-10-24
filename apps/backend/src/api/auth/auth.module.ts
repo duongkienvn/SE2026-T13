@@ -15,12 +15,16 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { MailModule } from '../../mail/mail.module';
 import { EmailVerificationService } from './email-verification.service';
 import { EmailVerificationToken } from './entities/email-verification-token.entity';
+import { GoogleIdentity } from './entities/google-identity.entity';
+import { GoogleTokenVerifier } from './google-token-verifier.service';
+import { GoogleAuthService } from './google-auth.service';
+import { GoogleAuthController } from './google-auth.controller';
 
 @Module({
   imports: [
     ConfigModule,
     MailModule,
-    TypeOrmModule.forFeature([User, EmailVerificationToken]),
+    TypeOrmModule.forFeature([User, EmailVerificationToken, GoogleIdentity]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -40,8 +44,14 @@ import { EmailVerificationToken } from './entities/email-verification-token.enti
       }),
     }),
   ],
-  controllers: [AuthController],
-  providers: [AuthService, JwtAuthGuard, EmailVerificationService],
+  controllers: [AuthController, GoogleAuthController],
+  providers: [
+    AuthService,
+    JwtAuthGuard,
+    EmailVerificationService,
+    GoogleTokenVerifier,
+    GoogleAuthService,
+  ],
   exports: [AuthService, JwtAuthGuard],
 })
 export class AuthModule {}
