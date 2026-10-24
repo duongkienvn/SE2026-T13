@@ -16,6 +16,7 @@ import { ActivityWriterService } from '../../src/api/activities/activity-writer.
 import { BoardAuthorizationService } from '../../src/api/board-members/board-authorization.service';
 import { Board } from '../../src/api/boards/entities/board.entity';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
 import { JwtAuthGuard } from '../../src/api/auth/guards/jwt-auth.guard';
 import {
   JWT_AUDIENCE,
@@ -88,6 +89,7 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
         { provide: ActivityWriterService, useValue: { record: jest.fn() } },
         BoardAuthorizationService,
         AuthService,
+        { provide: EmailVerificationService, useValue: { send: jest.fn() } },
         JwtAuthGuard,
         { provide: 'BoardRepository', useValue: boards },
         { provide: 'BoardMemberRepository', useValue: members },
@@ -138,7 +140,9 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
     });
     users.findOne.mockImplementation(
       async ({ where }: { where: { id: string } }) =>
-        [OWNER, MEMBER, OUTSIDER].includes(where.id) ? { id: where.id } : null,
+        [OWNER, MEMBER, OUTSIDER].includes(where.id)
+          ? { id: where.id, emailVerifiedAt: new Date() }
+          : null,
     );
     const findMember = async ({
       where,

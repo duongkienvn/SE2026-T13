@@ -16,6 +16,7 @@ import {
 } from '../../src/common/enums/database-enums';
 import { paginate } from '../../src/common/dto/paginated-response';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
 import {
   JWT_AUDIENCE,
   JWT_ISSUER,
@@ -62,7 +63,9 @@ describe('Activities HTTP API with real JWT and validation', () => {
       .mockResolvedValue(paginate([activity], 1, { page: 1, limit: 20 })),
   };
   const users = {
-    findOne: jest.fn().mockResolvedValue({ id: ID.member }),
+    findOne: jest
+      .fn()
+      .mockResolvedValue({ id: ID.member, emailVerifiedAt: new Date() }),
   };
 
   beforeAll(async () => {
@@ -87,6 +90,7 @@ describe('Activities HTTP API with real JWT and validation', () => {
       providers: [
         { provide: ActivitiesService, useValue: activities },
         AuthService,
+        { provide: EmailVerificationService, useValue: { send: jest.fn() } },
         JwtAuthGuard,
         { provide: 'UserRepository', useValue: users },
       ],

@@ -56,6 +56,7 @@ try {
         email: `${name}@realtime.test`,
         displayName: name,
         passwordHash,
+        emailVerifiedAt: new Date(),
         avatarUrl: null,
       }),
     );

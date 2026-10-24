@@ -75,6 +75,13 @@ export class AuthService {
     const passwordHash = user?.passwordHash ?? DUMMY_PASSWORD_HASH;
     const validPassword = await argon2.verify(passwordHash, input.password);
     if (!user || !validPassword) throw this.invalidCredentials();
+    if (!user.emailVerifiedAt) {
+      throw new ApplicationException(
+        HttpStatus.FORBIDDEN,
+        ErrorCode.EMAIL_NOT_VERIFIED,
+        'Verify your email address before logging in.',
+      );
+    }
 
     const accessToken = await this.jwt.signAsync({ sub: user.id });
     return {
@@ -102,7 +109,7 @@ export class AuthService {
       throw this.unauthorized();
     }
     const user = await this.users.findOne({ where: { id: claims.sub } });
-    if (!user) throw this.unauthorized();
+    if (!user?.emailVerifiedAt) throw this.unauthorized();
     return { userId: user.id, expiresAt: claims.exp * 1000 };
   }
 

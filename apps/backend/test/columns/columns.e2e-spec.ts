@@ -15,6 +15,7 @@ import { BoardColumn } from '../../src/api/columns/entities/board-column.entity'
 import { ColumnsController } from '../../src/api/columns/columns.controller';
 import { ColumnsService } from '../../src/api/columns/columns.service';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
 import {
   JWT_AUDIENCE,
   JWT_ISSUER,
@@ -78,6 +79,7 @@ describe('columns HTTP contract', () => {
       controllers: [ColumnsController],
       providers: [
         AuthService,
+        { provide: EmailVerificationService, useValue: { send: jest.fn() } },
         JwtAuthGuard,
         { provide: ColumnsService, useValue: columns },
         { provide: 'UserRepository', useValue: users },
@@ -101,7 +103,9 @@ describe('columns HTTP contract', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    users.findOne.mockResolvedValue(Object.assign(new User(), { id: USER_ID }));
+    users.findOne.mockResolvedValue(
+      Object.assign(new User(), { id: USER_ID, emailVerifiedAt: new Date() }),
+    );
     const column = responseColumn();
     columns.list.mockResolvedValue({
       data: [column],

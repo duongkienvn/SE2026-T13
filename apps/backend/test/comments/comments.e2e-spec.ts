@@ -10,6 +10,7 @@ import { randomBytes } from 'node:crypto';
 import request from 'supertest';
 import { Logger } from 'nestjs-pino';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
 import { ActivityWriterService } from '../../src/api/activities/activity-writer.service';
 import {
   JWT_AUDIENCE,
@@ -146,7 +147,7 @@ describe('Comments HTTP API with real JWT, validation and envelopes', () => {
   const users = {
     findOne: jest.fn(async ({ where }: { where: { id: string } }) =>
       [ID.owner, ID.member, ID.outsider].includes(where.id)
-        ? { id: where.id }
+        ? { id: where.id, emailVerifiedAt: new Date() }
         : null,
     ),
   };
@@ -176,6 +177,7 @@ describe('Comments HTTP API with real JWT, validation and envelopes', () => {
         { provide: ActivityWriterService, useValue: { record: jest.fn() } },
         BoardAuthorizationService,
         AuthService,
+        { provide: EmailVerificationService, useValue: { send: jest.fn() } },
         JwtAuthGuard,
         { provide: 'CommentRepository', useValue: commentRepository },
         { provide: 'CardRepository', useValue: cards },

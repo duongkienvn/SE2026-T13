@@ -12,6 +12,7 @@ import { Logger } from 'nestjs-pino';
 import { QueryFailedError } from 'typeorm';
 import request from 'supertest';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
 import { ActivityWriterService } from '../../src/api/activities/activity-writer.service';
 import { JwtAuthGuard } from '../../src/api/auth/guards/jwt-auth.guard';
 import {
@@ -236,6 +237,7 @@ describe('Card HTTP API with real JWT, authorization, services and envelopes', (
         CardsService,
         { provide: ActivityWriterService, useValue: { record: jest.fn() } },
         AuthService,
+        { provide: EmailVerificationService, useValue: { send: jest.fn() } },
         JwtAuthGuard,
         BoardAuthorizationService,
         { provide: 'CardRepository', useValue: h.cards },
@@ -247,7 +249,7 @@ describe('Card HTTP API with real JWT, authorization, services and envelopes', (
           useValue: {
             findOne: jest.fn(async ({ where }: { where: { id: string } }) =>
               [ID.user, ID.target, OUTSIDER].includes(where.id)
-                ? { id: where.id }
+                ? { id: where.id, emailVerifiedAt: new Date() }
                 : null,
             ),
           },
