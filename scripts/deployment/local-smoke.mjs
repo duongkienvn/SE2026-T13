@@ -94,7 +94,7 @@ try {
     'frontend',
   );
   await waitForIngress();
-  const password = randomBytes(24).toString('base64');
+  const password = `Aa1!${randomBytes(24).toString('base64')}`;
   const email = `${project}@example.test`;
   await json('/api/auth/register', {
     email,
