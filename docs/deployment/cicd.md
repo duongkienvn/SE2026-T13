@@ -99,7 +99,16 @@ Only the publish job has `packages: write`; it logs into GHCR with the ephemeral
 - `ghcr.io/duongkienvn/kanvexa-frontend:<40-character-sha>`
 
 Build context is the exact checkout, target `linux/amd64`, public Vite build arg
-`VITE_API_BASE_URL=/api`. No production env enters a build. Build-record artifact
+`VITE_API_BASE_URL=/api`. Issue #79 also passes the public Web OAuth client ID from
+the **repository variable** `VITE_GOOGLE_CLIENT_ID` to the frontend build. Set it
+on the repository, not only on the protected production environment: publishing
+runs before production approval and has no environment access. Empty leaves the
+Google button disabled; local auth continues. Backend `GOOGLE_CLIENT_ID` is set
+separately in EC2's protected runtime env and must match the built frontend ID.
+Changing an EC2 variable cannot change an already published Vite bundle; publish
+a new release after a build-time ID change. No client secret, JWT secret or mail
+credential enters build arguments. See the [Google rollout gates](../tasks/google-auth-account-linking.md#production-configuration-and-rollout-gates).
+No production env file enters a build. Build-record artifact
 upload is disabled. Workflow actions are pinned to reviewed full commit IDs; the
 adjacent comments identify the upstream major versions for deliberate updates.
 SHA tag names are a release convention, not registry-enforced
