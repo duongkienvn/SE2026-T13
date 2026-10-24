@@ -1,5 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { okPage } from '../../../test/board-fixtures';
 import {
   fail,
   loginResponse,
@@ -20,6 +21,19 @@ function fillLogin(email: string, password: string) {
 }
 
 describe('LoginPage', () => {
+  it('allows a verified existing user to log in with a weak legacy password', async () => {
+    const calls = mockApi({
+      'POST /auth/login': ok(loginResponse()),
+      'GET /boards?page=1&limit=100': okPage([]),
+    });
+    renderApp('/login');
+    fillLogin(testUser.email, '12345678');
+    expect(await screen.findByRole('heading', { name: 'Boards' })).toBeTruthy();
+    expect(calls[0].body).toEqual({
+      email: testUser.email,
+      password: '12345678',
+    });
+  });
   it('renders the login form without out-of-scope controls', () => {
     renderApp('/login');
 

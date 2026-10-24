@@ -97,7 +97,7 @@ describe('authentication and profile HTTP contract', () => {
       .post('/auth/register')
       .send({
         email: 'ADA@EXAMPLE.COM',
-        password: 'correct horse battery staple',
+        password: 'Kanvexa@2026',
         displayName: ' Ada Lovelace ',
       })
       .expect(201);
@@ -110,7 +110,7 @@ describe('authentication and profile HTTP contract', () => {
     expect(response.body.data).not.toHaveProperty('passwordHash');
     expect(authService.register).toHaveBeenCalledWith({
       email: 'ada@example.com',
-      password: 'correct horse battery staple',
+      password: 'Kanvexa@2026',
       displayName: 'Ada Lovelace',
     });
     expect(response.body.data).not.toHaveProperty('accessToken');
@@ -130,6 +130,68 @@ describe('authentication and profile HTTP contract', () => {
       tokenType: 'Bearer',
       expiresIn: 3600,
       user,
+    });
+  });
+
+  it.each([
+    '12345678',
+    'Abcdefg1',
+    'Abcdefg!',
+    'abcdef1!',
+    'Ab1!xyz',
+    'ABC1234 ',
+    `ABC1234!${'x'.repeat(121)}`,
+  ])(
+    'rejects invalid registration password with a safe validation envelope: %s',
+    async (password) => {
+      const previousCalls = authService.register.mock.calls.length;
+      const response = await request(app.getHttpServer())
+        .post('/auth/register')
+        .send({ email: user.email, displayName: user.displayName, password })
+        .expect(400);
+      expect(response.body).toMatchObject({
+        success: false,
+        statusCode: 400,
+        code: 'VALIDATION_FAILED',
+        message: 'Validation failed',
+        path: '/auth/register',
+        details: expect.arrayContaining([expect.stringMatching(/^password: /)]),
+      });
+      expect(JSON.stringify(response.body)).not.toContain(password);
+      expect(authService.register).toHaveBeenCalledTimes(previousCalls);
+    },
+  );
+
+  it.each([
+    'ABC1234!',
+    'Kanvexa@2026',
+    '  ABC1234! e\u0301  ',
+    `A1!${'😀'.repeat(125)}`,
+  ])(
+    'passes valid registration password verbatim to the service: %s',
+    async (password) => {
+      const response = await request(app.getHttpServer())
+        .post('/auth/register')
+        .send({ email: user.email, displayName: user.displayName, password })
+        .expect(201);
+      expect(authService.register).toHaveBeenLastCalledWith({
+        email: user.email,
+        displayName: user.displayName,
+        password,
+      });
+      expect(response.body.data).toEqual(user);
+      expect(response.body.data).not.toHaveProperty('accessToken');
+    },
+  );
+
+  it('does not apply registration composition rules to existing users logging in', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: user.email, password: '12345678' })
+      .expect(200);
+    expect(authService.login).toHaveBeenLastCalledWith({
+      email: user.email,
+      password: '12345678',
     });
   });
 

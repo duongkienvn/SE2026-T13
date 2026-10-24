@@ -112,7 +112,7 @@ export function LoginPage() {
         ref={formRef}
         noValidate
         onSubmit={handleSubmit}
-        className="mt-6 space-y-4"
+        className="mt-6 space-y-5 short:mt-4 short:space-y-3"
       >
         {formError && <Alert variant="error">{formError}</Alert>}
         {needsVerification && (

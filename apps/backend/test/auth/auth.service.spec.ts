@@ -87,7 +87,7 @@ describe('AuthService', () => {
 
     const input: RegisterRequestDto = {
       email: 'ada@example.com',
-      password: 'correct horse battery staple',
+      password: '  Kanvexa@2026 e\u0301  ',
       displayName: 'Ada Lovelace',
     };
     const result = await service.register(input);
@@ -96,6 +96,12 @@ describe('AuthService', () => {
       argon2.verify(user.passwordHash, input.password),
     ).resolves.toBe(true);
     expect(user.passwordHash).toContain('$argon2id$');
+    await expect(
+      argon2.verify(user.passwordHash, input.password.trim()),
+    ).resolves.toBe(false);
+    await expect(
+      argon2.verify(user.passwordHash, input.password.normalize('NFC')),
+    ).resolves.toBe(false);
     expect(result).not.toHaveProperty('passwordHash');
     expect(result.email).toBe(input.email);
     expect(user.emailVerifiedAt).toBeNull();
@@ -115,7 +121,7 @@ describe('AuthService', () => {
     await expect(
       service.register({
         email: 'ada@example.com',
-        password: 'correct horse battery staple',
+        password: 'Kanvexa@2026',
         displayName: 'Ada Lovelace',
       }),
     ).rejects.toMatchObject({
@@ -153,6 +159,18 @@ describe('AuthService', () => {
       status: 401,
       response: { code: 'INVALID_CREDENTIALS' },
     });
+  });
+
+  it('logs in a verified existing user whose password no longer meets registration policy', async () => {
+    const password = '12345678';
+    const user = userFixture(
+      await argon2.hash(password, { type: argon2.argon2id }),
+    );
+    repository.findOne.mockResolvedValue(user);
+    const result = await service.login({ email: user.email, password });
+    expect((await jwt.verifyAsync(result.accessToken)).sub).toBe(user.id);
+    expect(result.user.email).toBe(user.email);
+    expect(repository.save).not.toHaveBeenCalled();
   });
 
   it('verifies a dummy Argon2id hash for an unknown email', async () => {

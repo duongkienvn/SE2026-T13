@@ -17,6 +17,18 @@ Task này triển khai luồng authentication phía frontend trên
   không hợp lệ đầu tiên.
 - Page title, keyboard navigation và responsive behavior cho desktop/mobile.
 
+## Registration password policy (#76)
+
+Register có checklist luôn hiện, cập nhật khi nhập/xóa: ít nhất 8 ký tự, một
+chữ hoa ASCII, một số ASCII và một punctuation/symbol Unicode. Giới hạn tối đa
+128 ký tự được hiển thị bằng bộ đếm và kiểm tra khi submit. Icon cùng trạng thái
+chữ cho screen reader thể hiện từng rule; Password liên kết tới checklist/lỗi
+qua `aria-describedby`. Show/hide và Confirm Password giữ nguyên.
+
+Chỉ password đăng ký mới áp dụng policy; không bắt buộc chữ thường và không
+trim/normalize password. Login vẫn chấp nhận password cũ. Chi tiết và kết quả
+verification tại [task record](../auth-registration-password-policy.md).
+
 ## Quyết định về session và bảo mật
 
 - Access token chỉ lưu trong `sessionStorage`, không lưu trong `localStorage`.

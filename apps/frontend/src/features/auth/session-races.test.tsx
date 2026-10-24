@@ -316,6 +316,7 @@ describe('auth session isolation', () => {
   it.each(['login', 'register'] as const)(
     'ignores a pending %s after another session starts',
     async (page) => {
+      const password = page === 'register' ? 'Kanvexa@2026' : 'password123';
       const response = deferred<MockResponse>();
       const calls = mockApi({ [`POST /auth/${page}`]: () => response.promise });
       const view = renderSession(`/${page}`);
@@ -324,14 +325,14 @@ describe('auth session isolation', () => {
           target: { value: testUser.displayName },
         });
         fireEvent.change(screen.getByLabelText('Confirm password'), {
-          target: { value: 'password123' },
+          target: { value: password },
         });
       }
       fireEvent.change(screen.getByLabelText('Email address'), {
         target: { value: testUser.email },
       });
       fireEvent.change(screen.getByLabelText('Password'), {
-        target: { value: 'password123' },
+        target: { value: password },
       });
       fireEvent.click(
         screen.getByRole('button', {

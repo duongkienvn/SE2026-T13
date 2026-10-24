@@ -220,7 +220,7 @@ try {
 
   const input = {
     email: 'new@example.test',
-    password: randomBytes(16).toString('hex'),
+    password: `Aa1!${randomBytes(16).toString('hex')}`,
     displayName: 'New User',
   };
   const registered = await http
