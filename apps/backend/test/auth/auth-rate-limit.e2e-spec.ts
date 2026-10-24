@@ -117,7 +117,7 @@ describe('authentication rate limits', () => {
         .post('/auth/register')
         .send({
           email: `user-${index}@example.com`,
-          password: 'password123',
+          password: 'Kanvexa@2026',
           displayName: 'Test User',
         })
         .expect(201);
@@ -126,7 +126,7 @@ describe('authentication rate limits', () => {
       .post('/auth/register')
       .send({
         email: 'user-5@example.com',
-        password: 'password123',
+        password: 'Kanvexa@2026',
         displayName: 'Test User',
       })
       .expect(429);

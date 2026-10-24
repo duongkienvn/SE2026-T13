@@ -97,7 +97,7 @@ describe('authentication and profile HTTP contract', () => {
       .post('/auth/register')
       .send({
         email: 'ADA@EXAMPLE.COM',
-        password: 'correct horse battery staple',
+        password: 'Kanvexa@2026',
         displayName: ' Ada Lovelace ',
       })
       .expect(201);
@@ -110,7 +110,7 @@ describe('authentication and profile HTTP contract', () => {
     expect(response.body.data).not.toHaveProperty('passwordHash');
     expect(authService.register).toHaveBeenCalledWith({
       email: 'ada@example.com',
-      password: 'correct horse battery staple',
+      password: 'Kanvexa@2026',
       displayName: 'Ada Lovelace',
     });
     expect(response.body.data).not.toHaveProperty('accessToken');
