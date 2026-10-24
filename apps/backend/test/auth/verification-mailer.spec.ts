@@ -5,6 +5,43 @@ import { verificationEmail } from '../../src/mail/verification-email';
 import { validateEnvironment } from '../../src/config/environment';
 
 describe('verification mail adapter', () => {
+  it('aborts a stalled request through the actual SDK without making a network call', async () => {
+    const sdkLog = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockImplementation(
+      async (_url, options) =>
+        new Promise((_resolve, reject) => {
+          const signal = options?.signal;
+          if (signal?.aborted)
+            reject(new DOMException('aborted', 'AbortError'));
+          else
+            signal?.addEventListener(
+              'abort',
+              () => reject(new DOMException('aborted', 'AbortError')),
+              { once: true },
+            );
+        }),
+    );
+    try {
+      const adapter = new ResendVerificationMailer(
+        new Resend('re_unit_test_only'),
+        'Sender <sender@example.test>',
+        5,
+      );
+      await expect(
+        adapter.send(
+          'recipient@example.test',
+          'https://example.test/',
+          'unit-request',
+        ),
+      ).rejects.toThrow('Verification email provider unavailable');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      fetchMock.mockRestore();
+      sdkLog.mockRestore();
+    }
+  });
   it('sends HTML/text with an idempotency key and an abort signal', async () => {
     const send = jest
       .fn()

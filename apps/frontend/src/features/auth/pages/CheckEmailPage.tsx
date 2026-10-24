@@ -27,6 +27,9 @@ export function CheckEmailPage() {
   );
   const [message, setMessage] = useState<string>();
   useEffect(() => {
+    setPending(false);
+  }, [scope]);
+  useEffect(() => {
     if (!cooldown) return;
     const timer = window.setTimeout(
       () => setCooldown((value) => Math.max(0, value - 1)),

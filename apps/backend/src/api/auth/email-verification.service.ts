@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { createHash, randomBytes } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { EnvironmentConfig } from '../../config/environment';
+import { ErrorCode } from '../../common/dto/api-error';
 import { ApplicationException } from '../../exceptions/application.exception';
 import { VerificationMailer } from '../../mail/verification-mailer';
 import { User } from '../users/entities/user.entity';
@@ -78,7 +79,7 @@ export class EmailVerificationService {
       if (reportDeliveryFailure)
         throw new ApplicationException(
           HttpStatus.SERVICE_UNAVAILABLE,
-          'MAIL_DELIVERY_UNAVAILABLE',
+          ErrorCode.MAIL_DELIVERY_UNAVAILABLE,
           'Account created, but verification email could not be requested. Please use resend verification.',
         );
       // Resend always has a conditional generic response, including provider
@@ -131,7 +132,7 @@ export class EmailVerificationService {
   private invalid(): ApplicationException {
     return new ApplicationException(
       HttpStatus.BAD_REQUEST,
-      'INVALID_VERIFICATION_TOKEN',
+      ErrorCode.INVALID_VERIFICATION_TOKEN,
       'Verification link is invalid or has expired. Request a new link.',
     );
   }

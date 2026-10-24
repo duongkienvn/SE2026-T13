@@ -613,6 +613,9 @@ describe('foundation helpers', () => {
         ...environment,
         NODE_ENV: 'production',
         CORS_ORIGINS: 'https://example.com',
+        RESEND_API_KEY: 're_configuration_only',
+        MAIL_FROM: 'Kanvexa <no-reply@kanvexa.tech>',
+        PUBLIC_APP_URL: 'https://kanvexa.tech',
         SWAGGER_ENABLED: undefined,
       }).SWAGGER_ENABLED,
     ).toBe(false);

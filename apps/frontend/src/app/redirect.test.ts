@@ -16,6 +16,8 @@ describe('safeRedirectPath', () => {
     'profile',
     '/login',
     '/register?x=1',
+    '/verify-email?token=placeholder',
+    '/check-email',
   ])('falls back to the default for %s', (value) => {
     expect(safeRedirectPath(value)).toBe(DEFAULT_AUTHENTICATED_PATH);
   });

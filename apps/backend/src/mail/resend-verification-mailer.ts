@@ -6,6 +6,7 @@ export class ResendVerificationMailer extends VerificationMailer {
   constructor(
     private readonly client: Resend,
     private readonly from: string,
+    private readonly timeoutMs = 10_000,
   ) {
     super();
   }
@@ -22,7 +23,7 @@ export class ResendVerificationMailer extends VerificationMailer {
           to: [email],
           ...verificationEmail(url),
         },
-        { idempotencyKey, signal: AbortSignal.timeout(10_000) },
+        { idempotencyKey, signal: AbortSignal.timeout(this.timeoutMs) },
       );
       if (result.error || !result.data?.id)
         throw new Error('Provider rejected request');

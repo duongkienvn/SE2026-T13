@@ -58,6 +58,16 @@ export class AuthController {
     status: 202,
     description:
       'Conditional acknowledgement; does not confirm account existence or delivery.',
+    schema: {
+      type: 'object',
+      required: ['success', 'statusCode', 'message', 'data'],
+      properties: {
+        success: { type: 'boolean', example: true },
+        statusCode: { type: 'integer', example: 202 },
+        message: { type: 'string' },
+        data: { type: 'object', nullable: true, example: null },
+      },
+    },
   })
   @ApiCommonErrors([400, 429, 500])
   async resend(@Body() input: ResendVerificationDto): Promise<null> {
