@@ -15,6 +15,7 @@ import { AuthSwitch } from '../components/AuthSwitch';
 import { toFormErrors } from '../../../lib/form-errors';
 import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
 import { usePageTitle } from '../../../hooks/usePageTitle';
+import { isApiError } from '../../../lib/api-client';
 import {
   hasErrors,
   normalizeEmail,
@@ -62,14 +63,30 @@ export function RegisterPage() {
         throw new Error('Session changed before request.');
       return register(input);
     },
-    // Registration does not sign the user in: continue to the login page.
+    // Registration does not sign the user in: email verification comes first.
     onSuccess: (user, { scope }) => {
       if (!scope.isCurrent()) return;
-      const state: RedirectState = { registeredEmail: user.email, from };
-      navigate('/login', { replace: true, state });
+      const state: RedirectState = {
+        registeredEmail: user.email,
+        from,
+        verificationRequested: true,
+      };
+      navigate('/check-email', { replace: true, state });
     },
-    onError: (error, { scope }) => {
+    onError: (error, { scope, input }) => {
       if (!scope.isCurrent()) return;
+      if (isApiError(error) && error.code === 'MAIL_DELIVERY_UNAVAILABLE') {
+        navigate('/check-email', {
+          replace: true,
+          state: {
+            registeredEmail: input.email,
+            from,
+            verificationRequested: true,
+            mailUnavailable: true,
+          } satisfies RedirectState,
+        });
+        return;
+      }
       const result = toFormErrors(error, FIELD_LABELS);
       setFieldErrors(result.fieldErrors);
       setFormError(result.formError);

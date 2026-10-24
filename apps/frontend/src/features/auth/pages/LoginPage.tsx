@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { useEffect, useState, type FormEvent } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import type { RedirectState } from '../../../app/redirect';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
@@ -17,6 +17,7 @@ import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
 import { usePageTitle } from '../../../hooks/usePageTitle';
 import { useAuth } from '../useAuth';
 import { hasErrors, normalizeEmail, validateEmail } from '../validation';
+import { isApiError } from '../../../lib/api-client';
 
 const FIELD_LABELS = { email: 'Email', password: 'Password' };
 type Field = keyof typeof FIELD_LABELS;
@@ -37,6 +38,7 @@ export function LoginPage() {
     Partial<Record<Field, string>>
   >({});
   const [formError, setFormError] = useState<string>();
+  const [needsVerification, setNeedsVerification] = useState(false);
 
   useEffect(() => {
     if (!state?.registeredEmail) return;
@@ -63,6 +65,11 @@ export function LoginPage() {
     },
     onError: (error, { scope }) => {
       if (!scope.isCurrent()) return;
+      if (isApiError(error) && error.code === 'EMAIL_NOT_VERIFIED') {
+        setFormError('Verify your email address before logging in.');
+        setNeedsVerification(true);
+        return;
+      }
       const result = toFormErrors(error, FIELD_LABELS);
       setFieldErrors(result.fieldErrors);
       setFormError(result.formError);
@@ -80,6 +87,7 @@ export function LoginPage() {
     };
     setFieldErrors(errors);
     setFormError(undefined);
+    setNeedsVerification(false);
     if (hasErrors(errors)) {
       focusFirstInvalid();
       return;
@@ -106,10 +114,19 @@ export function LoginPage() {
         onSubmit={handleSubmit}
         className="mt-6 space-y-4"
       >
-        {registeredEmail && !formError && (
-          <Alert variant="success">Account created. Log in to continue.</Alert>
-        )}
         {formError && <Alert variant="error">{formError}</Alert>}
+        {needsVerification && (
+          <Link
+            className="block font-semibold text-primary underline"
+            to="/check-email"
+            state={{
+              registeredEmail: normalizeEmail(email),
+              from: state?.from,
+            }}
+          >
+            Resend verification email
+          </Link>
+        )}
 
         <TextField
           label="Email address"

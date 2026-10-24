@@ -1,6 +1,11 @@
 export const DEFAULT_AUTHENTICATED_PATH = '/boards';
 
-const PUBLIC_ONLY_PATHS = ['/login', '/register'];
+const PUBLIC_ONLY_PATHS = [
+  '/login',
+  '/register',
+  '/check-email',
+  '/verify-email',
+];
 
 /**
  * Returns `value` only if it is a same-origin, in-app path that is worth
@@ -22,4 +27,6 @@ export interface RedirectState {
   from?: string;
   /** Set after a successful registration to show feedback and prefill the email. */
   registeredEmail?: string;
+  verificationRequested?: boolean;
+  mailUnavailable?: boolean;
 }

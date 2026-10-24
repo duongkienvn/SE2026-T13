@@ -13,11 +13,12 @@ import { normalizeEmail, validateEmail } from '../validation';
 
 export function CheckEmailPage() {
   usePageTitle('Check your email');
-  const state = useLocation().state as
-    (RedirectState & { mailUnavailable?: boolean }) | null;
+  const state = useLocation().state as RedirectState | null;
   const scope = useAuthSession();
   const [email, setEmail] = useState(state?.registeredEmail ?? '');
-  const [cooldown, setCooldown] = useState(state?.registeredEmail ? 60 : 0);
+  const [cooldown, setCooldown] = useState(
+    state?.verificationRequested ? 60 : 0,
+  );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | undefined>(
     state?.mailUnavailable
@@ -107,7 +108,7 @@ export function CheckEmailPage() {
       <Link
         className="mt-5 block font-semibold text-primary underline"
         to="/login"
-        state={state?.from ? { from: state.from } : undefined}
+        state={{ from: state?.from, registeredEmail: normalizeEmail(email) }}
       >
         Back to login
       </Link>
