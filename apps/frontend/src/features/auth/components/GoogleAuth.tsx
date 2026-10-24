@@ -22,8 +22,17 @@ export function GoogleAuth({ disabled = false }: { disabled?: boolean }) {
     };
   }, []);
   return (
-    <>
+    <section
+      aria-label="Alternative sign-in"
+      className="mt-5 space-y-4 short:mt-4 short:space-y-3"
+    >
+      <div className="flex items-center gap-3 text-xs text-muted">
+        <span aria-hidden="true" className="h-px flex-1 bg-line" />
+        <span>or continue with</span>
+        <span aria-hidden="true" className="h-px flex-1 bg-line" />
+      </div>
       <GoogleSignInButton
+        fitContainer
         disabled={disabled}
         onStart={() => {
           setError(undefined);
@@ -61,7 +70,7 @@ export function GoogleAuth({ disabled = false }: { disabled?: boolean }) {
         }}
       />
       {error && (
-        <div className="mt-3">
+        <div>
           <Alert variant="error">{error}</Alert>
         </div>
       )}
@@ -74,6 +83,6 @@ export function GoogleAuth({ disabled = false }: { disabled?: boolean }) {
           Request verification email
         </Link>
       )}
-    </>
+    </section>
   );
 }

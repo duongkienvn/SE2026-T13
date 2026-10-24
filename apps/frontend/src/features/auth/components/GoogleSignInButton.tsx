@@ -11,9 +11,15 @@ interface Props {
   /** Snapshot at the deliberate button click, before Google opens its popup. */
   onStart: () => ((credential: string) => Promise<void>) | undefined;
   disabled?: boolean;
+  /** Login/Register opt in; Profile keeps its existing compact presentation. */
+  fitContainer?: boolean;
 }
 
-export function GoogleSignInButton({ onStart, disabled = false }: Props) {
+export function GoogleSignInButton({
+  onStart,
+  disabled = false,
+  fitContainer = false,
+}: Props) {
   const element = useRef<HTMLDivElement>(null);
   const scope = useAuthSession();
   const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>(
@@ -73,6 +79,7 @@ export function GoogleSignInButton({ onStart, disabled = false }: Props) {
                 'Complete the Google popup. If it closes or is blocked, try again or use email and password.',
               );
           },
+          fitContainer,
         );
         setStatus('ready');
       })
@@ -84,18 +91,27 @@ export function GoogleSignInButton({ onStart, disabled = false }: Props) {
       request = undefined;
       dispose?.();
     };
-  }, [clientId, scope]);
+  }, [clientId, scope, fitContainer]);
 
   if (!clientId)
     return (
-      <p className="mt-4 text-center text-sm text-muted">
+      <p
+        className={`${fitContainer ? '' : 'mt-4 '}text-center text-sm text-muted`}
+      >
         Google sign-in is not configured. Use email and password.
       </p>
     );
   return (
-    <div className="mt-4 space-y-2" aria-busy={busy}>
+    <div
+      className={
+        fitContainer
+          ? 'mx-auto w-full max-w-[400px] space-y-2'
+          : 'mt-4 space-y-2'
+      }
+      aria-busy={busy}
+    >
       <div className="flex min-h-10 justify-center" inert={disabled || busy}>
-        <div ref={element} className="max-w-full" />
+        <div ref={element} className={fitContainer ? 'w-full' : 'max-w-full'} />
       </div>
       {status === 'loading' && (
         <p role="status" className="text-center text-sm text-muted">

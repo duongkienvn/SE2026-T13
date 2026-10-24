@@ -19,7 +19,7 @@ function mount(
   return render(
     <StrictMode>
       <AuthSessionContext value={{ generation: 0, isCurrent: current }}>
-        <GoogleSignInButton onStart={onStart} />
+        <GoogleSignInButton fitContainer onStart={onStart} />
       </AuthSessionContext>
     </StrictMode>,
   );
@@ -101,7 +101,7 @@ describe('Google sign-in button lifecycle', () => {
     );
     mount();
     const script = document.querySelector(
-      'script[src="https://accounts.google.com/gsi/client"]',
+      'script[src="https://accounts.google.com/gsi/client?hl=en"]',
     );
     expect(script).toBeTruthy();
     act(() => script!.dispatchEvent(new Event('error')));

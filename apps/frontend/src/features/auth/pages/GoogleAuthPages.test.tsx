@@ -1,4 +1,10 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { installGoogle } from '../../../test/fake-google';
 import { fail, loginResponse, mockApi, ok } from '../../../test/mock-api';
@@ -7,6 +13,54 @@ import { renderApp } from '../../../test/render';
 
 afterEach(() => vi.unstubAllEnvs());
 describe('Google login and registration', () => {
+  it.each(['/login', '/register'])(
+    'orders primary action, one divider, Google and page switch on %s',
+    async (path) => {
+      const google = installGoogle();
+      mockApi({});
+      const view = renderApp(path);
+      const primary = screen.getByRole('button', {
+        name: path === '/login' ? 'Log In' : 'Create account',
+      });
+      const divider = screen.getByText('or continue with');
+      const social = screen.getByRole('region', {
+        name: 'Alternative sign-in',
+      });
+      const button = await within(social).findByRole('button', {
+        name: 'Continue with Google',
+      });
+      const link = screen.getByRole('link', {
+        name: path === '/login' ? 'Create one' : 'Log in',
+      });
+      const precedes = (a: Element, b: Element) =>
+        expect(
+          a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+      precedes(primary, divider);
+      precedes(divider, button);
+      precedes(button, link);
+      expect(screen.getAllByText('or continue with')).toHaveLength(1);
+      expect(screen.queryByText('or', { exact: true })).toBeNull();
+      // Rerender with local input state, then switch routes without reloading GIS.
+      fireEvent.change(screen.getByLabelText('Email address'), {
+        target: { value: 'ada@example.com' },
+      });
+      expect(
+        screen.getAllByRole('button', { name: 'Continue with Google' }),
+      ).toHaveLength(1);
+      fireEvent.click(link);
+      await waitFor(() =>
+        expect(view.router.state.location.pathname).toBe(
+          path === '/login' ? '/register' : '/login',
+        ),
+      );
+      expect(
+        await screen.findByRole('button', { name: 'Continue with Google' }),
+      ).toBeTruthy();
+      expect(screen.getAllByText('or continue with')).toHaveLength(1);
+      expect(google.api.initialize).toHaveBeenCalledTimes(1);
+    },
+  );
   it.each(['/login', '/register'])(
     'exchanges Google credential via the shared auth session from %s',
     async (path) => {

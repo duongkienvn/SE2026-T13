@@ -19,6 +19,8 @@ export interface GoogleIdentityApi {
       size: 'large';
       text: 'continue_with';
       width: number;
+      shape?: 'rectangular';
+      locale?: 'en';
       state: string;
       click_listener: () => void;
     },
@@ -39,7 +41,8 @@ export function getGoogleClientId(): string | null {
     : null;
 }
 
-const SCRIPT_URL = 'https://accounts.google.com/gsi/client';
+// GIS requires the script language as well as the button locale for fixed text.
+const SCRIPT_URL = 'https://accounts.google.com/gsi/client?hl=en';
 let loading: Promise<GoogleIdentityApi> | undefined;
 const initialized = new WeakMap<GoogleIdentityApi, string>();
 const receivers = new Map<string, (credential: string) => void>();
@@ -87,6 +90,7 @@ export function renderGoogleButton(
   element: HTMLElement,
   onCredential: (credential: string) => void,
   onClick: () => void,
+  fitContainer = false,
 ): () => void {
   const previous = initialized.get(api);
   if (previous && previous !== clientId)
@@ -113,21 +117,43 @@ export function renderGoogleButton(
   }
   const state = crypto.randomUUID();
   receivers.set(state, onCredential);
-  try {
+  let disposed = false;
+  let previousWidth = 0;
+  let observer: ResizeObserver | undefined;
+  const draw = () => {
+    if (disposed) return;
+    const width = Math.max(200, Math.min(400, element.clientWidth || 280));
+    if (width === previousWidth) return;
+    previousWidth = width;
+    // Replace only our mount's children. Google owns its button/iframe styling.
+    element.replaceChildren();
     api.renderButton(element, {
       type: 'standard',
       theme: 'outline',
       size: 'large',
       text: 'continue_with',
-      width: Math.max(200, Math.min(400, element.clientWidth || 280)),
+      ...(fitContainer
+        ? { shape: 'rectangular' as const, locale: 'en' as const }
+        : {}),
+      width,
       state,
       click_listener: onClick,
     });
+  };
+  try {
+    draw();
+    if (fitContainer && typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(draw);
+      observer.observe(element);
+    }
   } catch (error) {
+    observer?.disconnect();
     receivers.delete(state);
     throw error;
   }
   return () => {
+    disposed = true;
+    observer?.disconnect();
     receivers.delete(state);
     element.replaceChildren();
   };
