@@ -573,7 +573,7 @@ try {
     { env: process.env, stdio: ['pipe', 'pipe', 'pipe'] },
   );
   check(
-    'existing database foundation suite passes with both migrations and entity metadata',
+    'existing database foundation suite passes with all three migrations and entity metadata',
   );
   console.log(`${checks} PostgreSQL/HTTP/Socket.IO integration checks passed.`);
 } finally {

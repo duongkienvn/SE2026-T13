@@ -79,6 +79,10 @@ describe('GIS shared loader and callback isolation', () => {
     respond('old-token', 0);
     expect(old).not.toHaveBeenCalled();
     expect(next).not.toHaveBeenCalled();
+    const callback = vi.mocked(api.initialize).mock.calls[0][0].callback;
+    callback({ credential: 'without-state' });
+    callback({ credential: 'wrong-state', state: 'unknown-button' });
+    expect(next).not.toHaveBeenCalled();
     respond('current-token', 1);
     expect(next).toHaveBeenCalledWith('current-token');
     expect(firstElement.childElementCount).toBe(0);

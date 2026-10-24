@@ -5,12 +5,13 @@ import { randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
 import process from 'node:process';
 import { setTimeout as delay } from 'node:timers/promises';
+import { URL } from 'node:url';
 
 // Isolated PostgreSQL and explicit config; never reads .env or contacts Google/mail.
 const require = createRequire(import.meta.url);
 require('reflect-metadata');
 const { DataSource } = require('typeorm');
-const { ConfigModule, ConfigService } = require('@nestjs/config');
+const { ConfigModule } = require('@nestjs/config');
 const { TypeOrmModule } = require('@nestjs/typeorm');
 const { Test } = require('@nestjs/testing');
 const { LoggerModule } = require('nestjs-pino');
@@ -178,6 +179,23 @@ try {
   );
   check(
     'upgrade/backward-compatible empty rollback/rerun preserve legacy hash and board',
+  );
+
+  const [passwordless] =
+    await source.query(`INSERT INTO users(email,password_hash,display_name)
+    VALUES('rollback-guard@example.com',NULL,'Rollback guard') RETURNING id`);
+  await assert.rejects(
+    source.undoLastMigration(),
+    /Cannot revert Google identity/,
+  );
+  assert.equal(
+    (await source.query('SELECT count(*)::int AS n FROM google_identities'))[0]
+      .n,
+    0,
+  );
+  await source.query('DELETE FROM users WHERE id=$1', [passwordless.id]);
+  check(
+    'rollback refuses NULL passwords even when the identity table is empty',
   );
 
   const mailer = new FakeVerificationMailer();
@@ -356,13 +374,57 @@ try {
   assert.equal(pending.emailVerifiedAt, null);
   assert.equal(pending.passwordHash, null);
   const deliveries = mailer.deliveries.length;
+  // A changed Google mailbox must not silently verify the original stored email.
+  profiles.get(pendingKey).email = 'changed-pending@gmail.com';
+  profiles.get(pendingKey).authoritativeEmail = true;
   await rejectCode(service.signIn(pendingKey), 'EMAIL_NOT_VERIFIED');
   assert.equal(mailer.deliveries.length, deliveries);
   const token = new URL(mailer.deliveries.at(-1).url).searchParams.get('token');
   await http.post('/api/auth/verify-email').send({ token }).expect(204);
   assert.equal((await service.signIn(pendingKey)).user.id, pending.id);
+  assert.equal(
+    (await service.signIn(pendingKey)).user.email,
+    'third@example.com',
+  );
   check(
     'third-party email requires K2 verification with cooldown; verified account then signs in with Google',
+  );
+
+  const normalSend = mailer.send.bind(mailer);
+  mailer.send = async () => {
+    throw new Error('Mocked mail outage');
+  };
+  const failedMailKey = profile(
+    'failed-mail-google',
+    'failed-mail@example.com',
+    false,
+  );
+  await rejectCode(service.signIn(failedMailKey), 'MAIL_DELIVERY_UNAVAILABLE');
+  mailer.send = normalSend;
+  const failedMailUser = await source
+    .getRepository(User)
+    .findOneByOrFail({ email: 'failed-mail@example.com' });
+  assert.equal(failedMailUser.emailVerifiedAt, null);
+  assert.equal(
+    (
+      await source.query(
+        'SELECT count(*)::int AS n FROM google_identities WHERE user_id=$1',
+        [failedMailUser.id],
+      )
+    )[0].n,
+    1,
+  );
+  await rejectCode(service.signIn(failedMailKey), 'EMAIL_NOT_VERIFIED');
+  assert.equal(
+    (
+      await source.query(
+        "SELECT count(*)::int AS n FROM users WHERE email='failed-mail@example.com'",
+      )
+    )[0].n,
+    1,
+  );
+  check(
+    'Google third-party delivery failure preserves one recoverable pending user and identity',
   );
 
   const raceKey = profile('race-signup', 'race@gmail.com');
