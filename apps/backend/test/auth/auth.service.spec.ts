@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { QueryFailedError } from 'typeorm';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
 import {
   JWT_AUDIENCE,
   JWT_ISSUER,
@@ -67,6 +68,7 @@ describe('AuthService', () => {
     const module = await Test.createTestingModule({
       providers: [
         AuthService,
+        { provide: EmailVerificationService, useValue: { send: jest.fn() } },
         { provide: 'UserRepository', useValue: repository },
         { provide: JwtService, useValue: jwt },
       ],

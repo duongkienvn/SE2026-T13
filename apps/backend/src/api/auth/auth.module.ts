@@ -12,11 +12,15 @@ import {
   JWT_ISSUER,
 } from './constants/auth.constants';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { MailModule } from '../../mail/mail.module';
+import { EmailVerificationService } from './email-verification.service';
+import { EmailVerificationToken } from './entities/email-verification-token.entity';
 
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([User]),
+    MailModule,
+    TypeOrmModule.forFeature([User, EmailVerificationToken]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -37,7 +41,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtAuthGuard],
+  providers: [AuthService, JwtAuthGuard, EmailVerificationService],
   exports: [AuthService, JwtAuthGuard],
 })
 export class AuthModule {}

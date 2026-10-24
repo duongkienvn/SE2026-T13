@@ -12,6 +12,7 @@ import { Logger } from 'nestjs-pino';
 import request from 'supertest';
 import { AuthController } from '../../src/api/auth/auth.controller';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
 import { GlobalExceptionFilter } from '../../src/filters/global-exception.filter';
 import { HttpThrottlerGuard } from '../../src/guards/http-throttler.guard';
 
@@ -31,6 +32,10 @@ class ProbeController {
   imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }])],
   controllers: [AuthController, ProbeController],
   providers: [
+    {
+      provide: EmailVerificationService,
+      useValue: { send: jest.fn(), verify: jest.fn() },
+    },
     {
       provide: AuthService,
       useValue: {

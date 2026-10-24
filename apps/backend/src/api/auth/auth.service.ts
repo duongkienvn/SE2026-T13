@@ -18,6 +18,7 @@ import {
 import { LoginRequestDto } from './dto/login-request.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { RegisterRequestDto } from './dto/register-request.dto';
+import { EmailVerificationService } from './email-verification.service';
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -39,6 +40,7 @@ export class AuthService {
   constructor(
     @InjectRepository(User) private readonly users: Repository<User>,
     private readonly jwt: JwtService,
+    private readonly verification: EmailVerificationService,
   ) {}
 
   async register(input: RegisterRequestDto): Promise<UserResponseDto> {
@@ -55,8 +57,11 @@ export class AuthService {
         }),
         displayName: input.displayName,
         avatarUrl: null,
+        emailVerifiedAt: null,
       });
-      return toUserResponseDto(await this.users.save(user));
+      const saved = await this.users.save(user);
+      await this.verification.send(saved.email, true);
+      return toUserResponseDto(saved);
     } catch (error) {
       if (error instanceof QueryFailedError && isUniqueViolation(error)) {
         throw this.emailAlreadyExists();
