@@ -45,6 +45,8 @@ apps/frontend/src/
 
 - Realtime nằm ở `features/realtime/` (#43): `RealtimeProvider` (trong `AppProviders`) giữ một Socket.IO connection cho mỗi auth session; board page gọi `useBoardRealtime(boardId)` để join room và invalidate query keys khi có event. Chi tiết: `docs/tasks/frontend/realtime-frontend.md`.
 
+- Activity History nằm ở `features/activities/` (#61): dialog chỉ đọc mở từ header Board, REST phân trang `limit=8`, query keys dưới `boardKeys.detail(boardId)` nên realtime resync cũng làm mới lịch sử. Chi tiết: `docs/tasks/frontend/activity-history.md`.
+
 Hiện chưa có:
 
 - feature folder `comments`, `presence`.

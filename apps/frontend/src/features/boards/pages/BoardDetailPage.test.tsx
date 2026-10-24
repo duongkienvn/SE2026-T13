@@ -8,7 +8,7 @@ import {
 } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Board } from '../types';
-import { makeBoard, okPage } from '../../../test/board-fixtures';
+import { makeActivity, makeBoard, okPage } from '../../../test/board-fixtures';
 import {
   fail,
   mockApi,
@@ -251,5 +251,81 @@ describe('BoardDetailPage', () => {
     expect(
       screen.queryByRole('button', { name: 'Actions for Frozen' }),
     ).toBeNull();
+  });
+});
+
+describe('BoardDetailPage activity history', () => {
+  const activities = (boardId: string) =>
+    `GET /boards/${boardId}/activities?page=1&limit=8`;
+
+  it('opens the history from the header and returns focus on close', async () => {
+    const board = makeBoard({ name: 'Roadmap', currentUserRole: 'MEMBER' });
+    const { calls } = openBoard(board, {
+      [activities(board.id)]: okPage(
+        [makeActivity({ boardId: board.id, actionType: 'CARD_CREATED' })],
+        { limit: 8 },
+      ),
+    });
+    await screen.findByRole('heading', { name: 'Roadmap' });
+    expect(calls.some((call) => call.path.includes('/activities'))).toBe(false);
+
+    const trigger = screen.getByRole('button', { name: 'Activity' });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const dialog = await screen.findByRole('dialog', { name: 'Activity' });
+    await waitFor(() =>
+      expect(dialog.textContent).toContain('You created a card'),
+    );
+    expect(
+      calls.filter((call) => call.path.includes('/activities')).length,
+    ).toBe(1);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(document.activeElement).toBe(trigger);
+    // The board itself is still there.
+    expect(screen.getByRole('heading', { name: 'Roadmap' })).toBeTruthy();
+  });
+
+  it('keeps history readable on archived boards', async () => {
+    const board = makeBoard({ name: 'Frozen', isArchived: true });
+    openBoard(board, {
+      [activities(board.id)]: okPage(
+        [makeActivity({ boardId: board.id, actionType: 'CARD_ARCHIVED' })],
+        { limit: 8 },
+      ),
+    });
+    await screen.findByRole('heading', { name: 'Frozen' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Activity' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Activity' });
+    await waitFor(() =>
+      expect(dialog.textContent).toContain('You archived a card'),
+    );
+  });
+
+  it('closes the history when access to the board is lost', async () => {
+    const board = makeBoard({ name: 'Secret plans', currentUserRole: 'OWNER' });
+    openBoard(board, {
+      [`GET /boards/${board.id}`]: then(ok(board), fail(404, 'NOT_FOUND')),
+      [activities(board.id)]: okPage(
+        [makeActivity({ boardId: board.id, actionType: 'COLUMN_CREATED' })],
+        { limit: 8 },
+      ),
+    });
+    await screen.findByRole('heading', { name: 'Secret plans' });
+    fireEvent.click(screen.getByRole('button', { name: 'Activity' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Activity' });
+    await waitFor(() =>
+      expect(dialog.textContent).toContain('created a column'),
+    );
+
+    refocusWindow();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Board not found' }),
+    ).toBeTruthy();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByText(/created a column/)).toBeNull();
   });
 });
