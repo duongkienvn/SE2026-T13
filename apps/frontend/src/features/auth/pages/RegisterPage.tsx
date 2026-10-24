@@ -141,11 +141,11 @@ export function RegisterPage() {
         ref={formRef}
         noValidate
         onSubmit={handleSubmit}
-        className="mt-5 space-y-3"
+        className="mt-6 space-y-5 short:mt-4 short:space-y-3"
       >
         {formError && <Alert variant="error">{formError}</Alert>}
 
-        <div className="grid items-start gap-3 sm:grid-cols-2">
+        <div className="grid items-start gap-4 short:gap-3 sm:grid-cols-2">
           <TextField
             label="Display name"
             name="displayName"
@@ -169,7 +169,7 @@ export function RegisterPage() {
           />
         </div>
         {/* Side by side on wider screens so the form fits without scrolling. */}
-        <div className="grid items-start gap-3 sm:grid-cols-2">
+        <div className="grid items-start gap-4 short:gap-3 sm:grid-cols-2">
           <PasswordField
             label="Password"
             name="password"

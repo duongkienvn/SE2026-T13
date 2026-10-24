@@ -128,3 +128,60 @@ lock users out without a password-change flow, so Login keeps its old rules.
 Frontend and backend validation are both tested against the agreed matrix;
 the backend remains authoritative for clients that skip browser validation.
 No push, pull request creation, merge or deployment is part of this task.
+
+## Shared Login/Register UI polish
+
+The follow-up preserves the six password-policy commits and changes presentation
+only. The card's 1180 px maximum, 440 px form cap and percentage-based desktop
+padding left the two-column register fields narrow. Content-driven card height
+could also differ between Login and Register. The accepted follow-up explicitly
+requires the two pages to share frame dimensions, padding and responsive behavior.
+
+`AuthLayout.tsx` now uses a shared maximum width of 1380 px and a form cap of
+560 px. The original 48/52 panel split, artwork, branding, grid/gradient,
+typography and colors are retained. Horizontal form padding grows through
+24/40/48/64 px at base/`sm`/`lg`/`xl` breakpoints. The centered outer frame keeps
+16 px mobile margins and 24 px from `sm`.
+
+To keep the frame stable across Login/Register, its height follows the viewport
+minus those margins and is capped at 720 px from `sm`. It is not a minimum height:
+shorter laptop viewports get a shorter frame. CSS sizing targets (not browser
+measurements) are 1380×720 at 1920×1080, 1318×720 at 1366×768, 1232×672 at 1280×720,
+and 358×812 at 390×844. The right panel can scroll independently for long errors
+or very small viewports. Auto margins center short content and resolve to zero
+when content overflows, so the top of the form and its CTA remain reachable.
+A stable scrollbar gutter avoids changing form width when scrolling is needed.
+Content inherits `overflow-wrap: anywhere` to let long unbroken error text wrap
+within the form instead of widening its fields or creating horizontal overflow.
+
+Login/Register keep 24 px between the subtitle and form, then 20 px between
+form groups, including checklist → Create account. Register's paired fields
+use 16 px gaps. Checklist row spacing increases to 8 px, with separate maximum
+length feedback. The existing `short:` variant reduces form margins/groups to
+16/12 px, field gaps to 12 px and checklist row gaps to 4 px. AuthSwitch and all
+business logic are unchanged. Check Email and Verify Email inherit the same
+shared frame and retain their own content/behavior.
+
+Changed files: `apps/frontend/src/features/auth/components/AuthLayout.tsx`,
+`components/PasswordRequirements.tsx`, `pages/LoginPage.tsx`,
+`pages/RegisterPage.tsx` (the last three under the same auth feature),
+`docs/design/design-guidelines.md` and this record. Only CSS classes and the
+layout comment change in application code; no dependencies, backend, validation,
+state, API calls or verification flow change.
+
+The targeted auth regression run passed 73 tests across six files, including
+Login/Register, Check Email/Verify Email, branding, auth routing and session races.
+The final text-wrapping adjustment also passed 46 auth-page tests across four
+files. `pnpm lint`, `pnpm test` (873 tests: backend 406, frontend 461, shared 6),
+`pnpm build`, Prettier for all six changed files and `git diff --check` passed.
+The existing Vite `NODE_ENV` and chunk-size warnings remain. Static review of
+the generated CSS confirmed the width/height, scrollbar-gutter and wrapping
+rules compile. An AST comparison against `15034d5`, ignoring CSS classes and
+comments, confirmed all four application components retain the same content,
+structure and logic. These checks are not a substitute for browser layout QA.
+
+Chrome DevTools MCP is still unavailable. Desktop 1920×1080, laptop 1366×768 and
+1280×720, mobile 390×844 and short/error states still need actual browser QA.
+Check frame stability while switching Login/Register, panel scrolling, CTA
+reachability, long messages, horizontal overflow, keyboard focus and auth-page
+regressions. No visual pass or screenshot measurement is claimed.
