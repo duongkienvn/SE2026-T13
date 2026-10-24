@@ -108,10 +108,12 @@ The production Environment already contains:
 | `EC2_INSTANCE_ID` | SSM request, exactly one validated EC2 instance ID    |
 
 Only `deploy` grants `id-token: write`. Keep the existing IAM trust scoped to
-GitHub's provider, audience `sts.amazonaws.com` and subject
-`repo:duongkienvn/SE2026-T13:environment:production`. Enforce the Environment's
-`main` branch rule and required reviewer; environment subjects replace the usual
-branch subject. Verify these controls before approving, without sharing tokens.
+GitHub's provider, audience `sts.amazonaws.com` and subject with immutable owner
+and repository IDs:
+`repo:duongkienvn@159404198/SE2026-T13@1406038597:environment:production`.
+Enforce the Environment's `main` branch rule and required reviewer; environment
+subjects replace the usual branch subject. Verify these controls before approving,
+without sharing tokens.
 
 The role needs `ssm:SendCommand` limited to the AWS-RunShellScript document and
 the designated instance ARN, plus `ssm:GetCommandInvocation` (this read action
