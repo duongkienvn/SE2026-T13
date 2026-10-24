@@ -9,24 +9,103 @@ const sha = 'a'.repeat(40);
 const instance = 'i-0123456789abcdef0';
 const id = '00000000-0000-0000-0000-000000000068';
 
-test('production workflow keeps publishing and OIDC behind explicit gates', () => {
-  const workflow = readFileSync('.github/workflows/ci.yml', 'utf8');
-  const [quality, publish, cd] = workflow.split(/^  (?:publish|deploy):\r?$/m);
-  assert.match(quality, /pull_request:\s+branches: \[main\]/);
-  assert.match(quality, /pnpm test:infra/);
+const ci = readFileSync('.github/workflows/ci.yml', 'utf8');
+const cd = readFileSync('.github/workflows/cd.yml', 'utf8');
+const [ciHeader, quality] = ci.split(/^  quality:\r?$/m);
+const [cdHeader, reusable, publish, deployJob] = cd.split(
+  /^  (?:quality|publish|deploy):\r?$/m,
+);
+const mainOnly =
+  /if: github.ref == 'refs\/heads\/main' && \(github.event_name == 'push' \|\| github.event_name == 'workflow_dispatch'\)/;
+
+test('CI runs only PR checks or reusable quality with read-only permissions', () => {
+  assert.match(ciHeader, /^name: CI\r?$/m);
   assert.match(
-    quality,
+    ciHeader,
+    /on:\s+pull_request:\s+branches: \[main\]\s+workflow_call:\s+permissions:/,
+  );
+  assert.match(ciHeader, /permissions:\s+contents: read/);
+  // This is the required status context in the main branch ruleset.
+  assert.match(quality, /name: Quality checks/);
+  assert.deepEqual(
+    [...quality.matchAll(/run: (pnpm .+)/g)].map((match) => match[1].trim()),
+    [
+      'pnpm install --frozen-lockfile',
+      'pnpm lint',
+      'pnpm test',
+      'pnpm build',
+      'pnpm test:infra',
+      'pnpm format:check',
+    ],
+  );
+  assert.deepEqual(
+    [...ci.matchAll(/^  (\w+):\r?$/gm)].map((m) => m[1]),
+    ['pull_request', 'workflow_call', 'quality'],
+  );
+  assert.doesNotMatch(
+    ci,
+    /packages:|id-token:|environment:|ghcr\.io|secrets\.|ssm-deploy|smoke\.mjs|docker\/|aws-actions\//,
+  );
+});
+
+test('CD calls CI on main and gates publishing and deployment on success', () => {
+  assert.match(cdHeader, /^name: CD\r?$/m);
+  assert.match(
+    cdHeader,
+    /on:\s+push:\s+branches: \[main\]\s+workflow_dispatch:\s+permissions:/,
+  );
+  assert.match(cdHeader, /permissions:\s+contents: read/);
+  assert.deepEqual(
+    [...cd.matchAll(/^  (\w+):\r?$/gm)].map((m) => m[1]),
+    ['push', 'workflow_dispatch', 'quality', 'publish', 'deploy'],
+  );
+  assert.match(reusable, /uses: \.\/\.github\/workflows\/ci\.yml/);
+  assert.doesNotMatch(
+    reusable,
+    /runs-on:|steps:|secrets:|permissions:|environment:/,
+  );
+  assert.match(publish, /needs: quality/);
+  assert.match(deployJob, /needs: \[quality, publish\]/);
+  for (const job of [reusable, publish, deployJob]) assert.match(job, mainOnly);
+  // The implicit success() condition must remain in effect for dependent jobs.
+  assert.doesNotMatch(cd, /continue-on-error|always\(|!cancelled\(|failure\(/);
+  assert.equal([...cd.matchAll(/environment:/g)].length, 1);
+  assert.match(deployJob, /environment: production/);
+  assert.match(publish, /permissions:\s+contents: read\s+packages: write/);
+  assert.match(deployJob, /permissions:\s+contents: read\s+id-token: write/);
+  assert.doesNotMatch(
+    cdHeader + reusable + publish,
+    /id-token:|configure-aws-credentials/,
+  );
+  assert.doesNotMatch(cdHeader + reusable + deployJob, /packages:/);
+});
+
+test('caller and reusable concurrency never collide or interrupt production', () => {
+  assert.match(ciHeader, /group: ci-quality-\$\{\{ github.ref \}\}/);
+  assert.match(
+    ciHeader,
     /cancel-in-progress: \$\{\{ github.event_name == 'pull_request' \}\}/,
   );
-  for (const job of [publish, cd]) {
-    assert.match(
-      job,
-      /if: github.ref == 'refs\/heads\/main' && \(github.event_name == 'push' \|\| github.event_name == 'workflow_dispatch'\)/,
-    );
+  assert.match(
+    cdHeader,
+    /group: cd-\$\{\{ github.ref \}\}\s+#.*\s+cancel-in-progress: false/,
+  );
+  assert.match(
+    deployJob,
+    /group: kanvexa-production\s+cancel-in-progress: false/,
+  );
+  const ciGroups = [...ci.matchAll(/group: (.+)/g)].map((m) => m[1].trim());
+  const cdGroups = [...cd.matchAll(/group: (.+)/g)].map((m) => m[1].trim());
+  for (const group of cdGroups) assert(!ciGroups.includes(group));
+  assert.doesNotMatch(ci + cd, /group:.*github.workflow/);
+  assert.equal([...ci.matchAll(/concurrency:/g)].length, 1);
+  assert.equal([...cd.matchAll(/concurrency:/g)].length, 2);
+});
+
+test('production delivery retains SHA images, pinned actions and OIDC without new secrets', () => {
+  for (const job of [publish, deployJob]) {
     assert.match(job, /ref: \$\{\{ github.sha \}\}/);
   }
-  assert.match(publish, /needs: quality/);
-  assert.match(publish, /packages: write/);
   assert.match(publish, /platforms: linux\/amd64/);
   assert.match(publish, /VITE_API_BASE_URL=\/api/);
   assert.match(
@@ -35,28 +114,28 @@ test('production workflow keeps publishing and OIDC behind explicit gates', () =
   );
   assert.match(publish, /org.opencontainers.image.source=/);
   assert.match(publish, /secrets.GITHUB_TOKEN/);
-  assert.doesNotMatch(
-    quality + publish,
-    /id-token: write|configure-aws-credentials/,
-  );
-  assert.match(cd, /needs: \[quality, publish\]/);
-  assert.match(cd, /environment: production/);
-  assert.match(cd, /group: kanvexa-production\s+cancel-in-progress: false/);
-  assert.match(cd, /id-token: write/);
   for (const variable of ['AWS_ROLE_ARN', 'AWS_REGION', 'EC2_INSTANCE_ID'])
-    assert(cd.includes(`vars.${variable}`));
-  assert.match(cd, /smoke.mjs https:\/\/kanvexa.tech/);
+    assert(deployJob.includes(`vars.${variable}`));
+  assert.match(deployJob, /configure-aws-credentials@[a-f0-9]{40}/);
+  assert.match(deployJob, /run: node scripts\/deployment\/ssm-deploy.mjs/);
+  assert.match(deployJob, /RELEASE_SHA: \$\{\{ github.sha \}\}/);
+  assert.match(deployJob, /smoke.mjs https:\/\/kanvexa.tech/);
   assert.doesNotMatch(
-    workflow,
+    ci + cd,
     /AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|upload-artifact|inputs:/,
   );
-  for (const action of workflow.matchAll(/uses: (\S+)/g))
+  assert.deepEqual(
+    [...(ci + cd).matchAll(/secrets\.(\w+)/g)].map((m) => m[1]),
+    ['GITHUB_TOKEN'],
+  );
+  for (const action of (ci + cd).matchAll(/uses: (\S+)/g)) {
+    if (action[1] === './.github/workflows/ci.yml') continue;
     assert.match(
       action[1],
       /@[a-f0-9]{40}$/,
       'Actions must use reviewed commit pins',
     );
-  assert.doesNotMatch(cd, /continue-on-error|if: always/);
+  }
 });
 
 test('SSM bootstrap validates main ancestry and cleanliness before checkout', () => {
