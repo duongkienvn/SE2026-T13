@@ -16,6 +16,9 @@ describe('AppShell', () => {
     const header = screen.getByRole('banner');
     expect(within(header).getByText('Kanvexa')).toBeTruthy();
     expect(within(header).queryByText('Kanban')).toBeNull();
+    // Check the DOM too: a decorative duplicate has alt="" and is excluded
+    // from accessible image queries.
+    expect(header.querySelector('img')).toBeNull();
     const logo = within(
       screen.getByRole('navigation', { name: 'Primary' }),
     ).getByRole('img', { name: 'Kanvexa' });

@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { Brand } from '../../components/Brand';
 
 interface AppHeaderProps {
   /** Page context next to the brand, e.g. the current board name. */
@@ -11,7 +10,9 @@ interface AppHeaderProps {
 export function AppHeader({ context, actions }: AppHeaderProps) {
   return (
     <header className="flex h-14 shrink-0 items-center gap-4 px-4 md:h-15 md:gap-5 md:px-6">
-      <Brand size="sm" className="text-ink" />
+      <span className="shrink-0 text-lg font-semibold tracking-tight text-ink md:text-xl">
+        Kanvexa
+      </span>
       {context && (
         <>
           <span aria-hidden="true" className="h-6 w-px shrink-0 bg-line" />
