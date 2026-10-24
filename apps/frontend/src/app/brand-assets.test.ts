@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -40,11 +41,11 @@ describe('public brand assets', () => {
 
   it('serves the official transparent artwork without changing pixels or colors', () => {
     const served = readFileSync(publicAsset('/branding/kanvexa-logo-v1.png'));
-    const original = readFileSync(
-      resolve('../../branding-assets/kanvexa-logo-transparent.png'),
+    // Pin the approved public artwork without depending on temporary sources.
+    expect(createHash('sha256').update(served).digest('hex')).toBe(
+      '9dcb6593a1edef473753ffd36f2939a8035740fa46cc36faba9b7f661af3587f',
     );
-    expect(served.equals(original)).toBe(true);
-    expect(served.subarray(1, 4).toString()).toBe('PNG');
+    expect(served.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
     expect(served.readUInt32BE(16)).toBe(1024);
     expect(served.readUInt32BE(20)).toBe(1024);
     expect(served[25]).toBe(6); // PNG RGBA, retaining the alpha channel.
