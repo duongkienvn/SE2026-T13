@@ -12,6 +12,8 @@ import { Logger } from 'nestjs-pino';
 import request from 'supertest';
 import { AuthController } from '../../src/api/auth/auth.controller';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
+import { createValidationPipe } from '../../src/config/validation';
 import { GlobalExceptionFilter } from '../../src/filters/global-exception.filter';
 import { HttpThrottlerGuard } from '../../src/guards/http-throttler.guard';
 
@@ -31,6 +33,10 @@ class ProbeController {
   imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }])],
   controllers: [AuthController, ProbeController],
   providers: [
+    {
+      provide: EmailVerificationService,
+      useValue: { send: jest.fn(), verify: jest.fn() },
+    },
     {
       provide: AuthService,
       useValue: {
@@ -55,6 +61,7 @@ describe('authentication rate limits', () => {
       imports: [AuthRateLimitTestModule],
     }).compile();
     app = module.createNestApplication();
+    app.useGlobalPipes(createValidationPipe());
     app.useGlobalFilters(
       new GlobalExceptionFilter({ error: jest.fn() } as unknown as Logger),
     );
@@ -63,6 +70,29 @@ describe('authentication rate limits', () => {
 
   afterAll(async () => {
     await app.close();
+  });
+
+  it('rate limits verification and resend per IP', async () => {
+    // Validate throttling independently of provider latency by using malformed
+    // bodies; add validation here so no mail call or response delay is reached.
+    for (let i = 0; i < 10; i++)
+      await request(app.getHttpServer())
+        .post('/auth/verify-email')
+        .send({ token: 'bad' })
+        .expect(400);
+    await request(app.getHttpServer())
+      .post('/auth/verify-email')
+      .send({ token: 'bad' })
+      .expect(429);
+    for (let i = 0; i < 5; i++)
+      await request(app.getHttpServer())
+        .post('/auth/resend-verification')
+        .send({ email: 'bad' })
+        .expect(400);
+    await request(app.getHttpServer())
+      .post('/auth/resend-verification')
+      .send({ email: 'bad' })
+      .expect(429);
   });
 
   it('limits login to ten requests per minute while leaving the global probe available', async () => {

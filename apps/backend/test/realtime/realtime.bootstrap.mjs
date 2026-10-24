@@ -42,6 +42,7 @@ const users = new Map(
       email: `${name}@realtime.test`,
       displayName: name,
       passwordHash,
+      emailVerifiedAt: new Date(),
       avatarUrl: null,
       createdAt: new Date(),
       updatedAt: new Date(),

@@ -58,6 +58,9 @@ services:
       SWAGGER_ENABLED: 'false'
       LOG_LEVEL: info
       JWT_SECRET: ${JWT_SECRET:?Set a random JWT_SECRET of at least 32 bytes}
+      RESEND_API_KEY: ${RESEND_API_KEY:?Set RESEND_API_KEY outside the repository}
+      MAIL_FROM: ${MAIL_FROM:?Set MAIL_FROM to the verified sender}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:?Set PUBLIC_APP_URL to the HTTPS application origin}
       TRUST_PROXY_HOPS: '1'
     depends_on:
       postgres:

@@ -121,6 +121,27 @@ describe('LoginPage', () => {
     );
   });
 
+  it('offers resend for an unverified account and never stores a session', async () => {
+    mockApi({ 'POST /auth/login': fail(403, 'EMAIL_NOT_VERIFIED') });
+    const { router } = renderApp('/login');
+    fillLogin('ada@example.com', 'correct-password');
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'Verify your email',
+    );
+    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    fireEvent.click(
+      screen.getByRole('link', { name: 'Resend verification email' }),
+    );
+    expect(router.state.location.pathname).toBe('/check-email');
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Resend verification email',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(false);
+  });
+
   it('prevents duplicate submissions while the request is pending', async () => {
     let release: () => void = () => undefined;
     const calls = mockApi({

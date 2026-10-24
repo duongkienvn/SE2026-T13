@@ -23,6 +23,8 @@ export class User {
   @Column({ name: 'display_name', type: 'varchar' }) displayName!: string;
   @Column({ name: 'avatar_url', type: 'varchar', nullable: true }) avatarUrl!:
     string | null;
+  @Column({ name: 'email_verified_at', type: 'timestamptz', nullable: true })
+  emailVerifiedAt!: Date | null;
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })

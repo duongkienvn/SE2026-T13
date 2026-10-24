@@ -18,6 +18,7 @@ import {
 import { LoginRequestDto } from './dto/login-request.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { RegisterRequestDto } from './dto/register-request.dto';
+import { EmailVerificationService } from './email-verification.service';
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -39,6 +40,7 @@ export class AuthService {
   constructor(
     @InjectRepository(User) private readonly users: Repository<User>,
     private readonly jwt: JwtService,
+    private readonly verification: EmailVerificationService,
   ) {}
 
   async register(input: RegisterRequestDto): Promise<UserResponseDto> {
@@ -55,8 +57,11 @@ export class AuthService {
         }),
         displayName: input.displayName,
         avatarUrl: null,
+        emailVerifiedAt: null,
       });
-      return toUserResponseDto(await this.users.save(user));
+      const saved = await this.users.save(user);
+      await this.verification.send(saved.email, true);
+      return toUserResponseDto(saved);
     } catch (error) {
       if (error instanceof QueryFailedError && isUniqueViolation(error)) {
         throw this.emailAlreadyExists();
@@ -70,6 +75,13 @@ export class AuthService {
     const passwordHash = user?.passwordHash ?? DUMMY_PASSWORD_HASH;
     const validPassword = await argon2.verify(passwordHash, input.password);
     if (!user || !validPassword) throw this.invalidCredentials();
+    if (!user.emailVerifiedAt) {
+      throw new ApplicationException(
+        HttpStatus.FORBIDDEN,
+        ErrorCode.EMAIL_NOT_VERIFIED,
+        'Verify your email address before logging in.',
+      );
+    }
 
     const accessToken = await this.jwt.signAsync({ sub: user.id });
     return {
@@ -97,7 +109,7 @@ export class AuthService {
       throw this.unauthorized();
     }
     const user = await this.users.findOne({ where: { id: claims.sub } });
-    if (!user) throw this.unauthorized();
+    if (!user?.emailVerifiedAt) throw this.unauthorized();
     return { userId: user.id, expiresAt: claims.exp * 1000 };
   }
 

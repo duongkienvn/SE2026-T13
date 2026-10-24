@@ -84,6 +84,14 @@ disable these settings to run a release.
 
 ## Identity and existing infrastructure
 
+For a K2 release, complete the [email verification rollout checklist](../tasks/email-verification.md)
+before production approval: configure the external Resend key/sender/public URL,
+verify off-host database backup and rehearse the new legacy-user backfill migration.
+Only backend receives mail config; production startup fails if it is absent/invalid.
+The existing stop-app → explicit migrations → start-app order prevents registrations
+during backfill. A rollback to pre-K2 code would bypass the new verified gate for
+pending users, so keep auth traffic in maintenance or use a reviewed forward fix.
+
 Only the publish job has `packages: write`; it logs into GHCR with the ephemeral
 `GITHUB_TOKEN`. Images have full event-SHA tags and OCI source/revision labels:
 

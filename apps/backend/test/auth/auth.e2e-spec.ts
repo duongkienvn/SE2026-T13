@@ -10,6 +10,7 @@ import { Logger } from 'nestjs-pino';
 import request from 'supertest';
 import { AuthController } from '../../src/api/auth/auth.controller';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
 import { JwtAuthGuard } from '../../src/api/auth/guards/jwt-auth.guard';
 import { UsersController } from '../../src/api/users/users.controller';
 import { UsersService } from '../../src/api/users/users.service';
@@ -66,6 +67,10 @@ describe('authentication and profile HTTP contract', () => {
       controllers: [AuthController, UsersController],
       providers: [
         { provide: AuthService, useValue: authService },
+        {
+          provide: EmailVerificationService,
+          useValue: { send: jest.fn(), verify: jest.fn() },
+        },
         { provide: UsersService, useValue: usersService },
         JwtAuthGuard,
       ],

@@ -36,16 +36,14 @@ const validInput = {
 };
 
 describe('RegisterPage', () => {
-  it('registers without signing in and continues to login', async () => {
+  it('registers without signing in and continues to check-email', async () => {
     const calls = mockApi({ 'POST /auth/register': ok(testUser, 201) });
     const { router } = renderApp('/register');
 
     fillRegister(validInput);
 
-    expect((await screen.findByRole('status')).textContent).toContain(
-      'Account created',
-    );
-    expect(router.state.location.pathname).toBe('/login');
+    await screen.findByRole('heading', { name: 'Check your email' });
+    expect(router.state.location.pathname).toBe('/check-email');
     expect(
       (screen.getByLabelText('Email address') as HTMLInputElement).value,
     ).toBe(testUser.email);
@@ -56,12 +54,10 @@ describe('RegisterPage', () => {
     });
     expect(calls[0].body).not.toHaveProperty('confirmPassword');
     expect(sessionStorage.getItem('kanban.session')).toBeNull();
-    // The one-time feedback is removed from history so reloads don't repeat it.
-    // The history update happens in an effect after the message renders.
-    await waitFor(() =>
-      expect(router.state.location.state).not.toHaveProperty('registeredEmail'),
-    );
-    expect(screen.getByRole('status').textContent).toContain('Account created');
+    expect(
+      screen.queryByText('Account created. Log in to continue.'),
+    ).toBeNull();
+    expect(screen.getByRole('button', { name: 'Resend in 60s' })).toBeTruthy();
   });
 
   it('keeps the originally requested page through register and login', async () => {
@@ -73,7 +69,8 @@ describe('RegisterPage', () => {
 
     fireEvent.click(await screen.findByRole('link', { name: 'Create one' }));
     fillRegister(validInput);
-    await screen.findByRole('status');
+    fireEvent.click(await screen.findByRole('link', { name: 'Back to login' }));
+    await screen.findByLabelText('Password');
     fireEvent.change(screen.getByLabelText('Password'), {
       target: { value: validInput.password },
     });
@@ -103,6 +100,20 @@ describe('RegisterPage', () => {
     ).toBeTruthy();
     expect(screen.getByText('Passwords do not match.')).toBeTruthy();
     expect(calls).toHaveLength(0);
+  });
+
+  it('keeps provider failure recoverable without asking for duplicate registration', async () => {
+    mockApi({ 'POST /auth/register': fail(503, 'MAIL_DELIVERY_UNAVAILABLE') });
+    const { router } = renderApp('/register');
+    fillRegister(validInput);
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'account was created',
+    );
+    expect(router.state.location.pathname).toBe('/check-email');
+    expect(
+      (screen.getByLabelText('Email address') as HTMLInputElement).value,
+    ).toBe('ada@example.com');
+    expect(sessionStorage.getItem('kanban.session')).toBeNull();
   });
 
   it('treats a generic 409 conflict as a duplicate email', async () => {

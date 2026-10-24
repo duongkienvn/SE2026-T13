@@ -90,6 +90,15 @@ Keep these prerequisites in place; CI/CD does not recreate infrastructure:
 
 ## Environment and secrets
 
+K2 adds required backend mail configuration: `RESEND_API_KEY` (owner-managed
+server secret), `MAIL_FROM="Kanvexa <no-reply@kanvexa.tech>"`, and
+`PUBLIC_APP_URL=https://kanvexa.tech`. Add these to the protected external production
+env before approving the K2 release; never put them in Vite variables/build args or
+GitHub logs. Production validates them at startup and uses Resend HTTPS, without
+an SMTP fallback. The migration tool does not consume the mail credentials.
+See [K2 rollout and recovery](../tasks/email-verification.md) for backfill, backup,
+dry-run and real-inbox verification. No real email is sent by automated tests.
+
 Development `.env` and `docker-compose.yml` remain unchanged. Always explicitly
 select production Compose and its environment file; never use bare `compose up`.
 Create secrets outside the checkout, using an authorized administrator shell:
@@ -217,6 +226,10 @@ pnpm test:infra:smoke
 ```
 
 Configuration tests require Docker CLI/Compose and Python 3, but not a daemon.
+The explicit local Compose override now uses `NODE_ENV=test` and fake mail delivery;
+the smoke script verifies only its synthetic account directly in its disposable
+database. This checks application/image wiring without contacting Resend. It is
+not evidence of production mail configuration or inbox delivery.
 CI/CD tests inject command failures without AWS or production access. Image/smoke
 verification requires a running Linux Docker daemon. The smoke script owns a
 random Compose project with random in-memory secrets and temporary named volumes;

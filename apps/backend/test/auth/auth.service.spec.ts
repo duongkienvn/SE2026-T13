@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { QueryFailedError } from 'typeorm';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
 import {
   JWT_AUDIENCE,
   JWT_ISSUER,
@@ -30,6 +31,7 @@ function userFixture(passwordHash = 'password-hash'): User {
     passwordHash,
     displayName: 'Ada Lovelace',
     avatarUrl: null,
+    emailVerifiedAt: new Date(),
     createdAt: new Date('2026-10-12T00:00:00.000Z'),
     updatedAt: new Date('2026-10-12T00:00:00.000Z'),
   });
@@ -67,6 +69,7 @@ describe('AuthService', () => {
     const module = await Test.createTestingModule({
       providers: [
         AuthService,
+        { provide: EmailVerificationService, useValue: { send: jest.fn() } },
         { provide: 'UserRepository', useValue: repository },
         { provide: JwtService, useValue: jwt },
       ],
@@ -95,6 +98,7 @@ describe('AuthService', () => {
     expect(user.passwordHash).toContain('$argon2id$');
     expect(result).not.toHaveProperty('passwordHash');
     expect(result.email).toBe(input.email);
+    expect(user.emailVerifiedAt).toBeNull();
   });
 
   it('returns EMAIL_ALREADY_EXISTS for a concurrent unique constraint conflict', async () => {
@@ -208,6 +212,30 @@ describe('AuthService', () => {
       status: 401,
     });
     expect(repository.findOne).not.toHaveBeenCalled();
+  });
+
+  it('blocks correct credentials and even properly signed JWTs for unverified users', async () => {
+    const user = userFixture(await argon2.hash('correct password'));
+    user.emailVerifiedAt = null;
+    repository.findOne.mockResolvedValue(user);
+    await expect(
+      service.login({ email: user.email, password: 'correct password' }),
+    ).rejects.toMatchObject({
+      status: 403,
+      response: { code: 'EMAIL_NOT_VERIFIED' },
+    });
+    await expect(
+      service.login({ email: user.email, password: 'incorrect' }),
+    ).rejects.toMatchObject({
+      status: 401,
+      response: { code: 'INVALID_CREDENTIALS' },
+    });
+    await expect(
+      service.authenticateAccessToken(await jwt.signAsync({ sub: user.id })),
+    ).rejects.toMatchObject({
+      status: 401,
+      response: { code: 'UNAUTHORIZED' },
+    });
   });
 
   it('verifies JWT claims and loads the authenticated user from the database', async () => {

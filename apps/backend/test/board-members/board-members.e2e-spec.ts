@@ -16,6 +16,7 @@ import { ActivityWriterService } from '../../src/api/activities/activity-writer.
 import { BoardMember } from '../../src/api/board-members/entities/board-member.entity';
 import { Board } from '../../src/api/boards/entities/board.entity';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
 import { JwtAuthGuard } from '../../src/api/auth/guards/jwt-auth.guard';
 import {
   JWT_AUDIENCE,
@@ -53,6 +54,7 @@ describe('board-members HTTP contract', () => {
     email: 'member@example.com',
     displayName: 'Member',
     avatarUrl: null,
+    emailVerifiedAt: new Date(),
     createdAt: new Date('2026-10-13T00:00:00Z'),
     updatedAt: new Date('2026-10-13T00:00:00Z'),
   });
@@ -102,6 +104,7 @@ describe('board-members HTTP contract', () => {
         { provide: ActivityWriterService, useValue: { record: jest.fn() } },
         BoardAuthorizationService,
         AuthService,
+        { provide: EmailVerificationService, useValue: { send: jest.fn() } },
         JwtAuthGuard,
         { provide: 'BoardRepository', useValue: boards },
         { provide: 'BoardMemberRepository', useValue: members },
@@ -137,7 +140,7 @@ describe('board-members HTTP contract', () => {
       async ({ where }: { where: { id?: string; email?: string } }) => {
         if (where.email === memberUser.email) return memberUser;
         return where.id && [OWNER, MEMBER, OUTSIDER].includes(where.id)
-          ? { id: where.id }
+          ? { id: where.id, emailVerifiedAt: new Date() }
           : null;
       },
     );
