@@ -1,8 +1,24 @@
-# Kanvexa production deployment — Issue #64
+# Kanvexa production deployment — Issues #64 and #68
 
 This runbook prepares one AWS EC2 Ubuntu Server 24.04 LTS machine with about
-2 GiB RAM. Infrastructure provisioning, DNS changes, image publishing and
-automated delivery are separate work. Server commands use Bash from the repo root.
+2 GiB RAM. Kanvexa is live at https://kanvexa.tech. The existing checkout is
+`/opt/kanvexa`, secrets are `/etc/kanvexa/production.env` (root-owned 0600), and
+the Compose project is `kanvexa`. Infrastructure/DNS are already provisioned.
+See [production CI/CD](cicd.md) for GHCR publishing, review-gated OIDC/SSM delivery,
+first-publication steps, failure handling and manual release controls. Server
+commands below use an authorized Bash administrator session from the repo root.
+
+PRs targeting `main` run **CI** (`.github/workflows/ci.yml`), retaining the required
+`Quality checks` status. A push to `main` or manual **Actions → CD → Run workflow →
+main** runs **CD** (`.github/workflows/cd.yml`): reusable CI → publish both SHA-tagged
+GHCR images → production approval → OIDC/SSM delivery → production smoke. A failed
+quality check blocks publishing and deployment; off-main dispatch skips every job.
+Only `deploy` uses the protected `production` environment. CI/CD concurrency groups
+are distinct; main CD runs and the existing `kanvexa-production` deploy group do
+not cancel active runs. Deployments remain serialized, including migration work;
+keep the host lock for manual operations. See the CI/CD runbook for pending-run
+replacement semantics and the branch-protection inspection limits. This workflow
+refactor performs no production deployment and changes no deployment scripts.
 
 ## Architecture and verified repository facts
 
@@ -47,7 +63,7 @@ Internet -> HTTPS/WSS kanvexa.tech -> frontend (Caddy + React static /srv)
 
 ## Infrastructure prerequisites
 
-Prepare these during the next AWS provisioning phase:
+Keep these prerequisites in place; CI/CD does not recreate infrastructure:
 
 1. Ubuntu 24.04 EC2, a stable public IP/Elastic IP, encrypted EBS (start with at
    least 20 GiB), accurate system time and security updates. Reserve space for
@@ -57,17 +73,18 @@ Prepare these during the next AWS provisioning phase:
    [official Ubuntu instructions](https://docs.docker.com/engine/install/ubuntu/).
    Enable Docker at boot. Local overrides require Compose 2.24.4+.
    Docker-group membership grants effectively root access.
-3. Use key-based SSH, restrict the administrator account and disable password/root
-   SSH login. Security Group: TCP 22 only from administrator IPs, public TCP
+3. Use SSM for delivery and authorized administration. No inbound SSH is required
+   by CI/CD; do not open TCP 22 for the runner. Security Group: public TCP
    80/443, optionally UDP 443. Never expose 3000, 5432 or 2019. Docker published
    ports can bypass UFW; use Security Groups and inspect actual bindings.
 4. Permit required outbound DNS, time, image registries, ACME HTTPS and backup
    traffic. Point `kanvexa.tech` A to the stable IP when authorized; remove stale
    AAAA records unless IPv6 is configured. Port 80/443 admission and correct DNS
    are necessary for automatic certificate issuance/renewal.
-5. A checkout at the selected release and image access. This issue supports local
-   image archives; GitHub Actions/GHCR delivery comes later. If private GHCR is
-   subsequently used, keep package-read credentials outside Git/build arguments.
+5. A clean checkout at `/opt/kanvexa`, anonymous access to both public GHCR release
+   images, Python 3, Git, Bash, `flock`, Docker Engine and Compose on `linux/amd64`.
+   Local archives below remain an administrator fallback. No GHCR login/PAT is
+   needed or used on EC2; a private package must block deployment.
 6. An encrypted off-instance backup destination, retention, failure alerts,
    monitoring and a tested restore procedure. Agree RPO/RTO before serving users.
 
@@ -123,7 +140,10 @@ Docker administrators can inspect container secrets. The PostgreSQL bootstrap
 role is administrative; separate limited application/migration roles are an
 additional operational hardening option when required by policy.
 
-## Build and first deployment
+## Manual image archive fallback
+
+Normal releases use [the CI/CD runbook](cicd.md). The commands here are for an
+explicitly authorized manual fallback or isolated verification.
 
 On a suitably sized Docker host with the same CPU architecture as EC2:
 
@@ -138,7 +158,7 @@ sha256sum "kanvexa-$IMAGE_TAG.tar" > "kanvexa-$IMAGE_TAG.tar.sha256"
 ```
 
 Transfer through an approved secure channel, verify the checksum on the server
-and `docker image load -i <archive>`. This issue publishes no images. A manual
+and `docker image load -i <archive>`. A manual
 server build is also possible, after checking memory/disk and scheduling downtime.
 Keep previous images for rollback.
 
@@ -196,7 +216,8 @@ pnpm verify:images
 pnpm test:infra:smoke
 ```
 
-Configuration tests require Docker CLI/Compose, but not its daemon. Image/smoke
+Configuration tests require Docker CLI/Compose and Python 3, but not a daemon.
+CI/CD tests inject command failures without AWS or production access. Image/smoke
 verification requires a running Linux Docker daemon. The smoke script owns a
 random Compose project with random in-memory secrets and temporary named volumes;
 it does not load development or production secrets. It tests migrations,
@@ -211,12 +232,19 @@ that override on production. No real DNS or ACME certificate is needed locally.
 
 ## Updates, rollback and migration failure
 
+For automated releases, follow [approval and failure handling](cicd.md); the
+pipeline implements these steps without building on EC2 or modifying PostgreSQL.
+For manual maintenance:
+
 1. Review release/migration SQL and backward compatibility. Verify images
    off-server, record the current SHA and ensure a recent verified off-host
    backup. Schedule downtime for this single-instance MVP.
-2. Load new images while retaining old ones. `dc stop frontend backend` stops
+2. Pull and verify **both** release images anonymously (or load verified archives)
+   while retaining old ones, before stopping anything or changing env.
+   `dc stop frontend backend` stops
    application traffic. Keep PostgreSQL and volumes intact; take/export a backup.
-3. Change IMAGE_TAG in the protected env file to the new SHA. Run config validation,
+3. Atomically update only IMAGE_TAG, BACKEND_IMAGE and FRONTEND_IMAGE in the
+   protected env file with a 0600 backup (see CI/CD runbook). Run config validation,
    migration status, explicit migration execution, then status again.
 4. On failure, keep traffic stopped. Inspect the migration/transaction state and
    backup; do not enable synchronization, fake migration history or start an
@@ -225,7 +253,7 @@ that override on production. No real DNS or ACME certificate is needed locally.
    WSS and resources before reopening. Docker health failure alone does not
    restart a still-running container; monitor unhealthy states explicitly.
 
-Application rollback: stop frontend/backend, restore the previous IMAGE_TAG and
+Application rollback: stop frontend/backend, restore the previous release's three image keys and
 run the same `up --no-build` command. Never automatically revert migrations.
 The old application must tolerate the current schema. Prefer expand/contract
 schema changes. Otherwise choose a forward fix or approved restore, explicitly
@@ -305,9 +333,9 @@ Preserve the original database until recovery is confirmed.
 - Storage: inspect `df -h`, `docker system df`, retention and log rotation. Remove
   only identified unused images while retaining rollback releases. Never perform
   blanket volume pruning. Keep builds off the 2 GiB serving instance.
-- Before launch: provision AWS/DNS, configure off-host backups and monitoring,
-  review security policies, load-test capacity and verify real TLS/WSS. None of
-  those external actions is performed by this infrastructure issue.
+- Before approving a release: verify the existing AWS/DNS setup, off-host backups,
+  migration compatibility, capacity and TLS/WSS. Provisioning, backup/monitoring
+  implementation and live rollouts are outside this repository change.
 
 ## References
 

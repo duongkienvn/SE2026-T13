@@ -12,7 +12,7 @@
     "build": "pnpm -r build",
     "lint": "eslint apps packages",
     "test": "pnpm --filter @kanban/shared build && pnpm -r test",
-    "test:infra": "node --test scripts/deployment/config.test.mjs",
+    "test:infra": "node --test scripts/deployment/config.test.mjs scripts/deployment/cicd.test.mjs",
     "verify:images": "node scripts/deployment/verify-images.mjs",
     "test:infra:smoke": "node scripts/deployment/local-smoke.mjs",
     "smoke:production": "node scripts/deployment/smoke.mjs",
