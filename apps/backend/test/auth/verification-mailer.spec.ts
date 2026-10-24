@@ -132,7 +132,7 @@ describe('verification mail adapter', () => {
       'PUBLIC_APP_URL',
     );
   });
-  it('validates production and forces development/test to fake delivery even with a key', () => {
+  it('validates production and keeps test delivery fake even with a key', () => {
     expect(validateEnvironment(base).PUBLIC_APP_URL).toBe(
       'https://kanvexa.tech',
     );

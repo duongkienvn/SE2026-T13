@@ -17,7 +17,7 @@ import { ResendVerificationMailer } from './resend-verification-mailer';
       useFactory: (
         config: ConfigService<EnvironmentConfig, true>,
       ): VerificationMailer => {
-        if (config.get('NODE_ENV', { infer: true }) !== 'production')
+        if (config.get('MAIL_TRANSPORT', { infer: true }) === 'fake')
           return new FakeVerificationMailer();
         return new ResendVerificationMailer(
           new Resend(config.get('RESEND_API_KEY', { infer: true })),

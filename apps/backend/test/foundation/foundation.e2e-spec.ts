@@ -613,6 +613,7 @@ describe('foundation helpers', () => {
         ...environment,
         NODE_ENV: 'production',
         CORS_ORIGINS: 'https://example.com',
+        MAIL_TRANSPORT: 'resend',
         RESEND_API_KEY: 're_configuration_only',
         MAIL_FROM: 'Kanvexa <no-reply@kanvexa.tech>',
         PUBLIC_APP_URL: 'https://kanvexa.tech',

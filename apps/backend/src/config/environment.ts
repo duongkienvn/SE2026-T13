@@ -1,4 +1,5 @@
 export type AppEnvironment = 'development' | 'test' | 'production';
+export type MailTransport = 'fake' | 'resend';
 export type LogLevel =
   'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
 
@@ -11,6 +12,7 @@ export interface EnvironmentConfig {
   SWAGGER_ENABLED: boolean;
   TRUST_PROXY_HOPS: 0 | 1;
   JWT_SECRET: string;
+  MAIL_TRANSPORT: MailTransport;
   RESEND_API_KEY: string;
   MAIL_FROM: string;
   PUBLIC_APP_URL: string;
@@ -138,14 +140,27 @@ export function validateEnvironment(
   }
 
   const production = nodeEnv === 'production';
-  const resendKey = production ? required(input, 'RESEND_API_KEY') : '';
-  const mailFrom = production
+  const requestedTransport =
+    input.MAIL_TRANSPORT === undefined
+      ? production
+        ? 'resend'
+        : 'fake'
+      : input.MAIL_TRANSPORT;
+  if (requestedTransport !== 'fake' && requestedTransport !== 'resend')
+    throw new Error('MAIL_TRANSPORT must be fake or resend');
+  if (production && requestedTransport !== 'resend')
+    throw new Error('MAIL_TRANSPORT must be resend in production');
+  // Test processes never use real delivery, even if the local .env enables it.
+  const mailTransport = nodeEnv === 'test' ? 'fake' : requestedTransport;
+  const useResend = mailTransport === 'resend';
+  const resendKey = useResend ? required(input, 'RESEND_API_KEY') : '';
+  const mailFrom = useResend
     ? required(input, 'MAIL_FROM')
     : 'Kanvexa <no-reply@kanvexa.tech>';
-  const appUrl = production
+  const appUrl = useResend
     ? required(input, 'PUBLIC_APP_URL')
     : String(input.PUBLIC_APP_URL ?? 'http://localhost:5173');
-  if (production && !/^re_[A-Za-z0-9_-]{10,}$/.test(resendKey))
+  if (useResend && !/^re_[A-Za-z0-9_-]{10,}$/.test(resendKey))
     throw new Error('RESEND_API_KEY is invalid');
   if (!/^[^<>\r\n]+ <[^<>\s@]+@[^<>\s@]+\.[^<>\s@]+>$/.test(mailFrom))
     throw new Error('MAIL_FROM must be a display name and email address');
@@ -166,6 +181,7 @@ export function validateEnvironment(
   }
 
   return {
+    MAIL_TRANSPORT: mailTransport,
     RESEND_API_KEY: resendKey,
     MAIL_FROM: mailFrom,
     PUBLIC_APP_URL: appUrl,
