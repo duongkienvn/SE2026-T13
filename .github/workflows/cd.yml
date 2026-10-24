@@ -51,7 +51,9 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ghcr.io/duongkienvn/kanvexa-${{ matrix.service }}:${{ github.sha }}
-          build-args: VITE_API_BASE_URL=/api
+          build-args: |
+            VITE_API_BASE_URL=/api
+            VITE_GOOGLE_CLIENT_ID=${{ vars.VITE_GOOGLE_CLIENT_ID }}
           labels: |
             org.opencontainers.image.source=https://github.com/duongkienvn/SE2026-T13
             org.opencontainers.image.revision=${{ github.sha }}
