@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { ActionMenu } from '../../../components/ActionMenu';
 import { Alert } from '../../../components/Alert';
-import { buttonClassName } from '../../../components/Button';
-import { UsersIcon } from '../../../components/icons';
+import { Button, buttonClassName } from '../../../components/Button';
+import { ActivityIcon, UsersIcon } from '../../../components/icons';
 import { PageContainer } from '../../../components/PageContainer';
 import { PageHeader } from '../../../components/PageHeader';
 import {
@@ -14,6 +14,7 @@ import {
 } from '../../../components/states';
 import { usePageTitle } from '../../../hooks/usePageTitle';
 import { isApiError } from '../../../lib/api-client';
+import { ActivityHistoryDialog } from '../../activities/components/ActivityHistoryDialog';
 import { RealtimeStatus } from '../../realtime/components/RealtimeStatus';
 import { useBoardRealtime } from '../../realtime/useBoardRealtime';
 import { BoardPresence } from '../../presence/components/BoardPresence';
@@ -62,6 +63,7 @@ export function BoardDetailPage() {
   });
   const [editing, setEditing] = useState(false);
   const [archiving, setArchiving] = useState(false);
+  const [showingActivity, setShowingActivity] = useState(false);
   const [notice, setNotice] = useState<string>();
   usePageTitle(board.data?.name ?? 'Board');
 
@@ -112,6 +114,13 @@ export function BoardDetailPage() {
                 <BoardPresence boardId={data.id} />
                 <RealtimeStatus {...realtime} />
                 <RoleChip role={data.currentUserRole} />
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowingActivity(true)}
+                >
+                  <ActivityIcon aria-hidden="true" className="size-4.5" />
+                  Activity
+                </Button>
                 <Link
                   to={`/boards/${data.id}/members`}
                   className={buttonClassName('secondary')}
@@ -147,6 +156,13 @@ export function BoardDetailPage() {
         <KanbanBoard boardId={data.id} readOnly={data.isArchived} />
       </div>
 
+      {showingActivity && (
+        <ActivityHistoryDialog
+          boardId={data.id}
+          open
+          onClose={() => setShowingActivity(false)}
+        />
+      )}
       {editing && (
         <EditBoardDialog
           board={data}
