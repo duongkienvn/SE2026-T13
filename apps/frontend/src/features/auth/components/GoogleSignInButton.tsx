@@ -94,14 +94,6 @@ export function GoogleSignInButton({ onStart, disabled = false }: Props) {
     );
   return (
     <div className="mt-4 space-y-2" aria-busy={busy}>
-      <div
-        className="flex items-center gap-3 text-xs text-muted"
-        aria-hidden="true"
-      >
-        <span className="h-px flex-1 bg-line" />
-        or
-        <span className="h-px flex-1 bg-line" />
-      </div>
       <div className="flex min-h-10 justify-center" inert={disabled || busy}>
         <div ref={element} className="max-w-full" />
       </div>
