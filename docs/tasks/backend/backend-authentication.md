@@ -16,6 +16,14 @@ Success responses dùng envelope chung `{ success, statusCode, message, data }`.
 
 Register normalize email bằng trim/lowercase, giữ nguyên password trước khi hash, và whitelist `email`, `password`, `displayName`. Profile chỉ cho phép `displayName` và `avatarUrl`; avatar URL phải là HTTPS hoặc `null` để xóa. Unknown fields bị global validation pipe từ chối.
 
+Từ Issue #76, password đăng ký phải dài 8–128 ký tự, có ít nhất một chữ hoa
+ASCII `A–Z`, một chữ số ASCII `0–9` và một punctuation/symbol Unicode. Không
+bắt buộc chữ thường; whitespace được phép nhưng không tính là ký tự đặc biệt.
+Chỉ registration mới áp dụng policy này. Login của tài khoản cũ giữ nguyên;
+không thay đổi password hash hoặc vô hiệu hóa tài khoản có mật khẩu yếu hơn.
+Xem [registration password policy](../auth-registration-password-policy.md)
+cho chi tiết validation và verification.
+
 Login giới hạn 10 requests/60 giây/IP; register giới hạn 5 requests/300 giây/IP. Rate limit là in-memory theo process và không dùng `X-Forwarded-For` khi server chưa cấu hình trusted proxy.
 
 Logout chỉ xác nhận request có JWT hợp lệ. Server không tạo session, refresh token, blacklist hoặc revoke token; access token đã phát vẫn hợp lệ đến `exp`. Frontend phải xóa token và auth state ngay cả khi logout request thất bại.
