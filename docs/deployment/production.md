@@ -8,6 +8,18 @@ See [production CI/CD](cicd.md) for GHCR publishing, review-gated OIDC/SSM deliv
 first-publication steps, failure handling and manual release controls. Server
 commands below use an authorized Bash administrator session from the repo root.
 
+PRs targeting `main` run **CI** (`.github/workflows/ci.yml`), retaining the required
+`Quality checks` status. A push to `main` or manual **Actions → CD → Run workflow →
+main** runs **CD** (`.github/workflows/cd.yml`): reusable CI → publish both SHA-tagged
+GHCR images → production approval → OIDC/SSM delivery → production smoke. A failed
+quality check blocks publishing and deployment; off-main dispatch skips every job.
+Only `deploy` uses the protected `production` environment. CI/CD concurrency groups
+are distinct; main CD runs and the existing `kanvexa-production` deploy group do
+not cancel active runs. Deployments remain serialized, including migration work;
+keep the host lock for manual operations. See the CI/CD runbook for pending-run
+replacement semantics and the branch-protection inspection limits. This workflow
+refactor performs no production deployment and changes no deployment scripts.
+
 ## Architecture and verified repository facts
 
 ```text

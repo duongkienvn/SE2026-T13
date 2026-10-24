@@ -2,7 +2,8 @@
 
 Scope: [issue #68](https://github.com/duongkienvn/SE2026-T13/issues/68).
 The application already runs on one `linux/amd64` EC2 at https://kanvexa.tech.
-This change adds delivery code; it does not provision AWS or perform a rollout.
+CI and CD use separate workflows; this refactor does not provision AWS or perform
+a rollout. Deployment scripts, image builds and production smoke stay unchanged.
 Use [production.md](production.md) for topology, secrets, backup/restore and
 operator smoke details. No business, schema, Compose topology or Dockerfile changes.
 
@@ -10,10 +11,14 @@ operator smoke details. No business, schema, Compose topology or Dockerfile chan
 
 ```mermaid
 flowchart TD
-  PR[PR targeting main] --> Q[Quality: lint, test, build, infra, format]
-  MAIN[Push main or input-free dispatch on main] --> Q
-  Q -->|main only, checks pass| P[Publish backend + frontend on GitHub runners]
+  PR[PR targeting main] --> CI[CI: ci.yml / Quality checks]
+  MAIN[Push main or input-free dispatch on main] --> CD[CD: cd.yml]
+  CD --> Q[quality: reusable ci.yml / Quality checks]
+  CI --> CHECKS[lint, test, build, infra, format]
+  Q --> CHECKS
+  Q -->|success| P[Publish backend + frontend on GitHub runners]
   P --> A[production environment: main rule + required reviewer]
+  Q --> A
   A --> O[Deploy job alone obtains AWS OIDC credentials]
   O --> S[SSM AWS-RunShellScript to configured EC2]
   S --> V[Clean checkout + full SHA on main + lock]
@@ -24,20 +29,58 @@ flowchart TD
   H --> W[Runner HTTPS / REST / polling / WSS smoke]
 ```
 
-PRs and dispatches on branches other than `main` run quality only. There are no
-dispatch inputs for a SHA, shell command, host or env path. A main dispatch reruns
-all quality checks and publishes its exact event SHA before seeking approval.
-`publish` needs successful `quality`; `deploy` needs both and uses
-`environment: production`. The reviewer/branch restriction is the existing GitHub
-Environment setting, not a protection that YAML can create itself.
+`.github/workflows/ci.yml` is named **CI**. It runs for `pull_request` targeting
+`main` and supports `workflow_call`; its sole job remains `quality`, named
+`Quality checks`. It installs dependencies with the frozen lockfile and runs lint,
+test, build, infrastructure tests and formatting. It grants only `contents: read`
+and has no package publishing, OIDC or production environment access. It has no
+independent push or manual trigger, so a main push runs quality once through CD.
 
-Workflow concurrency cancels superseded PR checks only. Main runs do not cancel
-an active migration; deploy jobs also share `kanvexa-production` with
+`.github/workflows/cd.yml` is named **CD**. Its only events are `push` to `main`
+and `workflow_dispatch`. GitHub does not offer a branch filter for dispatch, so
+`quality`, `publish` and `deploy` each require `refs/heads/main` and a push/dispatch
+event. An off-main dispatch skips all jobs, including quality. There are no
+dispatch inputs for a SHA, shell command, host or env path. Job `quality` calls
+`./.github/workflows/ci.yml` from the same commit without forwarding secrets.
+A main dispatch reruns quality and publishes its exact event SHA before approval.
+`publish` needs successful `quality`; `deploy` needs both, retains the implicit
+success condition and alone uses `environment: production`. Failed or cancelled
+quality cannot publish or deploy. The reviewer/branch restriction is the existing
+GitHub Environment setting, not a protection that YAML can create itself.
+
+CI uses `ci-quality-${{ github.ref }}` and cancels superseded PR checks only.
+CD uses `cd-${{ github.ref }}` with `cancel-in-progress: false`, serializing main
+release runs without cancelling an active migration. The reusable workflow sees
+the caller's `github.workflow` value, so the explicit distinct prefixes are
+intentional: sharing a caller/callee concurrency group could block or cancel the
+caller. Deploy jobs also share the existing `kanvexa-production` group with
 `cancel-in-progress: false`. GitHub concurrency can replace a _pending_ run; it is
 not a FIFO release queue. Review the SHA actually awaiting approval. A host `flock`
 also serializes SSM/manual operations using `/run/lock/kanvexa-deploy.lock`.
 Do not click Cancel during migrations. A workflow cancellation or lost runner
 does not prove a remote process/container stopped.
+
+## Required checks and environment protection
+
+The PR workflow remains **CI** and its job name remains **Quality checks**, which
+preserves the PR status context used by branch protection. Reusable checks in CD
+may appear as `quality / Quality checks`; those post-merge checks do not replace
+the PR check. Do not require CD publishing/deployment for merging a PR, because CD
+does not run on pull requests.
+
+Read-only GitHub inspection on 2026-10-24 found the active
+[Protect main ruleset](https://github.com/duongkienvn/SE2026-T13/rules/24628639)
+requires `Quality checks` from the GitHub Actions integration (ID 15368), with no
+workflow-name/path rule. No ruleset update is needed for this refactor. The classic
+branch-protection endpoint returned 403 to the connected integration, so any
+additional classic settings could not be inspected. Verify the first PR still
+reports the required context after these local commits are pushed separately.
+
+The public environment API confirmed that `production` has a required reviewer
+and a custom deployment branch policy allowing branch `main`. These settings stay
+unchanged; only `deploy` references the environment and requests an OIDC token.
+Local tests check the YAML gate, not GitHub's external approval enforcement. Never
+disable these settings to run a release.
 
 ## Identity and existing infrastructure
 
@@ -87,7 +130,7 @@ global Git configuration. No Node/pnpm installation is required on EC2.
 
 ## One-time public GHCR bootstrap
 
-1. After normal PR review/merge, let the main CI run pass quality and publish
+1. After normal PR review/merge, let the main CD run pass reusable CI and publish
    **both** images. Leave the deployment waiting at the production approval gate.
    If packages with these names already exist, verify the repository has Actions
    write access to them; do not add a PAT as a workaround.
@@ -204,7 +247,7 @@ leftover migration container **only after** verifying it is not running and
 database state is understood. No script prunes volumes, calls `down -v`, enables
 schema sync or reverts migrations.
 
-Manual dispatch is available in Actions → CI → Run workflow → branch **main**.
+Manual dispatch is available in Actions → CD → Run workflow → branch **main**.
 It accepts no operator shell inputs and repeats checks/publish/approval. To withhold
 a release, reject/leave approval pending. To retry, resolve the failure and check
 there is no live SSM/migration operation first. Do not change Environment protections
@@ -265,12 +308,21 @@ Docker or volume prune is part of deployment/recovery.
 
 ## Verification and limits
 
-Run `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm test:infra`, `pnpm format:check`.
+Run `actionlint .github/workflows/ci.yml .github/workflows/cd.yml`, `pnpm lint`,
+`pnpm test`, `pnpm build`, `pnpm test:infra`, `pnpm format:check`.
 Infra tests include isolated Python fault injection for env preservation/atomic
 replace/0600 policy (POSIX), both pull failures before stop, dirty/non-main checkout,
 stale migration/DB failure, migration failure/pending and health failure. Node
-tests cover workflow gates, single-target SSM request, actual status waiting,
+tests cover separate triggers, reusable CI, job dependencies, least-privilege
+permissions, exclusive production environment access, distinct concurrency groups,
+SHA image tags/action pins, single-target SSM request, actual status waiting,
 eventual consistency, terminal failures and unknown-state timeouts.
+
+On Windows, `core.autocrlf=true` can make the unchanged checkout fail the default
+LF formatting check. `pnpm exec prettier --check . --end-of-line auto` can diagnose
+this without rewriting files; it is supplementary and does not replace the
+required `pnpm format:check` or change the workflow's formatting gate. Keep
+unrelated line-ending normalization outside this refactor.
 
 Build local images and run `pnpm verify:images` / `pnpm test:infra:smoke` only with
 the isolated project and random secrets documented in `production.md`. Local HTTP
@@ -279,6 +331,8 @@ or the existing environment reviewer settings. Verify those during the controlle
 first release; no live deployment is needed to review this change.
 
 Primary references:
+[Reusable workflows](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows),
+[Workflow/job concurrency](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency),
 [GHCR authentication and public access](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry),
 [AWS OIDC environment trust](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws),
 [SSM invocation status and eventual consistency](https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_GetCommandInvocation.html),
