@@ -18,6 +18,40 @@ export function login(input: LoginRequest): Promise<LoginResponse> {
   });
 }
 
+export function googleSignIn(credential: string): Promise<LoginResponse> {
+  return apiRequest<LoginResponse>('/auth/google', {
+    method: 'POST',
+    body: { credential },
+  });
+}
+
+export interface LinkedProviders {
+  googleLinked: boolean;
+  hasPassword: boolean;
+}
+
+export function getLinkedProviders(
+  accessToken: string,
+  signal?: AbortSignal,
+): Promise<LinkedProviders> {
+  return apiRequest<LinkedProviders>('/auth/linked-providers', {
+    accessToken,
+    signal,
+  });
+}
+
+export function linkGoogle(
+  accessToken: string,
+  credential: string,
+  password: string,
+): Promise<void> {
+  return apiRequest<void>('/auth/google/link', {
+    method: 'POST',
+    accessToken,
+    body: { credential, password },
+  });
+}
+
 export function verifyEmail(token: string): Promise<void> {
   return apiRequest<void>('/auth/verify-email', {
     method: 'POST',

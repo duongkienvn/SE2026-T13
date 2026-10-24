@@ -12,6 +12,7 @@ import { useAuthSession, type AuthSessionScope } from '../auth-session-context';
 import type { LoginRequest } from '../types';
 import { AuthLayout } from '../components/AuthLayout';
 import { AuthSwitch } from '../components/AuthSwitch';
+import { GoogleAuth } from '../components/GoogleAuth';
 import { toFormErrors } from '../../../lib/form-errors';
 import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
 import { usePageTitle } from '../../../hooks/usePageTitle';
@@ -159,6 +160,7 @@ export function LoginPage() {
         </Button>
       </form>
 
+      <GoogleAuth disabled={mutation.isPending} />
       <AuthSwitch
         prompt="Don't have an account?"
         to="/register"

@@ -12,6 +12,7 @@ import { useAuthSession, type AuthSessionScope } from '../auth-session-context';
 import type { RegisterRequest } from '../types';
 import { AuthLayout } from '../components/AuthLayout';
 import { AuthSwitch } from '../components/AuthSwitch';
+import { GoogleAuth } from '../components/GoogleAuth';
 import { PasswordRequirements } from '../components/PasswordRequirements';
 import { toFormErrors } from '../../../lib/form-errors';
 import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
@@ -206,6 +207,7 @@ export function RegisterPage() {
         </Button>
       </form>
 
+      <GoogleAuth disabled={mutation.isPending} />
       <AuthSwitch
         prompt="Already have an account?"
         to="/login"
