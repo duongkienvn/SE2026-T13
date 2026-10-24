@@ -42,7 +42,7 @@ describe('LoginPage', () => {
 
   it('sets the tab title', () => {
     renderApp('/login');
-    expect(document.title).toBe('Log in · Kanban');
+    expect(document.title).toBe('Log in · Kanvexa');
   });
 
   it('moves focus to the first invalid field after a failed submit', () => {

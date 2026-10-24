@@ -18,29 +18,6 @@ function Svg({ children, ...props }: IconProps) {
   );
 }
 
-export function LogoIcon(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <rect x="3" y="3" width="8" height="10" rx="1.5" />
-      <rect x="13" y="3" width="8" height="6" rx="1.5" />
-      <rect x="3" y="15" width="8" height="6" rx="1.5" />
-      <rect x="13" y="11" width="8" height="10" rx="1.5" />
-    </Svg>
-  );
-}
-
-/** Four-square brand mark used on the authentication screens. */
-export function BrandMarkIcon(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <rect x="2" y="2" width="9" height="9" rx="2" />
-      <rect x="13" y="2" width="9" height="9" rx="2" />
-      <rect x="2" y="13" width="9" height="9" rx="2" />
-      <rect x="13" y="13" width="9" height="9" rx="2" />
-    </Svg>
-  );
-}
-
 function StrokeSvg({ children, ...props }: IconProps) {
   return (
     <Svg

@@ -25,7 +25,7 @@ describe('ProfilePage', () => {
     const email = screen.getByLabelText('Email address') as HTMLInputElement;
     expect(email.value).toBe(testUser.email);
     expect(email.readOnly).toBe(true);
-    expect(document.title).toBe('Profile · Kanban');
+    expect(document.title).toBe('Profile · Kanvexa');
     expect(
       (screen.getByLabelText('Display name') as HTMLInputElement).value,
     ).toBe(testUser.displayName);

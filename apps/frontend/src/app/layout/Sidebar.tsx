@@ -1,4 +1,4 @@
-import { LogoIcon } from '../../components/icons';
+import { BrandLogo } from '../../components/Brand';
 import type { NavItem } from './navigation';
 
 interface SidebarProps {
@@ -17,8 +17,8 @@ export function Sidebar({
       aria-label="Primary"
       className="flex w-14 shrink-0 flex-col border-r border-line bg-surface md:w-15"
     >
-      <div className="grid h-14 shrink-0 place-items-center bg-brand-soft text-white md:h-15">
-        <LogoIcon className="size-6" />
+      <div className="grid h-14 shrink-0 place-items-center md:h-15">
+        <BrandLogo className="size-12" />
       </div>
       <ul className="mt-3 flex flex-col">
         {primaryItems.map((item) => (

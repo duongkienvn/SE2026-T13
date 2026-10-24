@@ -103,6 +103,32 @@ describe('verification mail adapter', () => {
     expect(fake.deliveries).toHaveLength(1);
   });
 
+  it('uses public, recipient-independent PNG artwork and keeps verification links intact', () => {
+    const url =
+      'http://localhost:5173/verify-email?token=unit-only&source=mail';
+    const email = verificationEmail(url);
+    const images = [...email.html.matchAll(/<img\b[^>]*src="([^"]+)"[^>]*>/g)];
+    expect(images).toHaveLength(1);
+    const imageUrl = new URL(images[0][1]);
+    expect(imageUrl.protocol).toBe('https:');
+    expect(imageUrl.hostname).toBe('kanvexa.tech');
+    expect(imageUrl.pathname).toBe('/branding/kanvexa-logo-v1.png');
+    expect(imageUrl.search).toBe('');
+    expect(images[0][0]).toContain('width="64" height="64" alt=""');
+    expect(email.html).toContain('role="presentation"');
+    // The wordmark remains text when remote images are blocked. Two links
+    // (CTA and fallback) retain the same escaped verification URL.
+    expect(email.html).toContain('>Kanvexa</td>');
+    expect(
+      email.html.match(
+        /href="http:\/\/localhost:5173\/verify-email\?token=unit-only&amp;source=mail"/g,
+      ),
+    ).toHaveLength(2);
+    expect(email.text).toContain(url);
+    expect(email.text).not.toContain(imageUrl.href);
+    expect(email.html).not.toMatch(/src="(?:data:|cid:|file:|\/)/);
+  });
+
   const base = {
     NODE_ENV: 'production',
     CORS_ORIGINS: 'https://kanvexa.tech',
