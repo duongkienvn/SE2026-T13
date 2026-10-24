@@ -12,6 +12,7 @@ export interface EnvironmentConfig {
   SWAGGER_ENABLED: boolean;
   TRUST_PROXY_HOPS: 0 | 1;
   JWT_SECRET: string;
+  GOOGLE_CLIENT_ID: string;
   MAIL_TRANSPORT: MailTransport;
   RESEND_API_KEY: string;
   MAIL_FROM: string;
@@ -126,6 +127,17 @@ export function validateEnvironment(
     throw new Error('LOG_LEVEL is invalid');
   }
   const jwtSecret = required(input, 'JWT_SECRET');
+  const googleClientId = input.GOOGLE_CLIENT_ID ?? '';
+  if (
+    typeof googleClientId !== 'string' ||
+    (googleClientId !== '' &&
+      !/^\d+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/.test(
+        googleClientId,
+      ))
+  )
+    throw new Error(
+      'GOOGLE_CLIENT_ID must be a Web OAuth client ID or empty to disable Google sign-in',
+    );
   if (Buffer.byteLength(jwtSecret, 'utf8') < 32) {
     throw new Error('JWT_SECRET must be at least 32 bytes');
   }
@@ -191,6 +203,7 @@ export function validateEnvironment(
     CORS_ORIGINS: origins,
     LOG_LEVEL: level as LogLevel,
     JWT_SECRET: jwtSecret,
+    GOOGLE_CLIENT_ID: googleClientId,
     TRUST_PROXY_HOPS: Number(trustProxyHops) as 0 | 1,
     SWAGGER_ENABLED: boolean(
       input.SWAGGER_ENABLED,
