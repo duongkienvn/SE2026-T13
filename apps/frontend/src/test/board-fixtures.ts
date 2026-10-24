@@ -1,3 +1,4 @@
+import type { Activity } from '../features/activities/types';
 import type { BoardMember } from '../features/board-members/types';
 import type { Board } from '../features/boards/types';
 import type { Card } from '../features/cards/types';
@@ -75,6 +76,22 @@ export function makeCard(overrides: Partial<Card> = {}): Card {
     createdAt: '2026-10-16T00:00:00.000Z',
     updatedAt: '2026-10-16T00:00:00.000Z',
     assignees: [],
+    ...overrides,
+  };
+}
+
+/** An activity record as returned by the Activity History API (#42). */
+export function makeActivity(overrides: Partial<Activity> = {}): Activity {
+  const id = nextId();
+  return {
+    id,
+    boardId: '00000000-0000-4000-9000-000000000000',
+    actorId: testUser.id,
+    actionType: 'BOARD_UPDATED',
+    entityType: 'BOARD',
+    entityId: '00000000-0000-4000-9000-000000000000',
+    metadata: null,
+    createdAt: '2026-10-22T00:00:00.000Z',
     ...overrides,
   };
 }
