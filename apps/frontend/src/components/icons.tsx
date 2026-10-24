@@ -213,6 +213,15 @@ export function ClockIcon(props: IconProps) {
   );
 }
 
+/** Pulse line, as on the Activity heading in card-detail.png. */
+export function ActivityIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M3 12h4l3-7 4 14 3-7h4" />
+    </StrokeSvg>
+  );
+}
+
 export function MoreVerticalIcon(props: IconProps) {
   return (
     <Svg {...props}>

@@ -26,6 +26,16 @@ const dateFormat = new Intl.DateTimeFormat('en', {
   day: 'numeric',
 });
 
+const dateTimeFormat = new Intl.DateTimeFormat('en', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
+
+/** "Oct 12, 2026, 8:30 AM" — from an ISO timestamp, in local time. */
+export function formatDateTime(iso: string): string {
+  return dateTimeFormat.format(new Date(iso));
+}
+
 /** "Oct 12, 2026" — from an ISO timestamp. */
 export function formatDate(iso: string): string {
   return dateFormat.format(new Date(iso));

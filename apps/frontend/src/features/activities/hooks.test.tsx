@@ -92,6 +92,45 @@ describe('useActivities', () => {
     expect(activityCalls(calls)).toHaveLength(3);
   });
 
+  it('keeps the previous page while the next loads, but not across boards', async () => {
+    storeSession();
+    const first = makeActivity({ boardId: 'b1' });
+    let releaseSecond!: () => void;
+    let releaseOther!: () => void;
+    mockApi({
+      'GET /users/me': ok(testUser),
+      [`GET ${pagePath('b1', 1)}`]: okPage([first], { limit: 8, total: 9 }),
+      [`GET ${pagePath('b1', 2)}`]: () =>
+        new Promise((resolve) => {
+          releaseSecond = () =>
+            resolve(okPage([], { page: 2, limit: 8, total: 9 }));
+        }),
+      [`GET ${pagePath('b2', 1)}`]: () =>
+        new Promise((resolve) => {
+          releaseOther = () => resolve(okPage([], { limit: 8 }));
+        }),
+    });
+
+    const { result, rerender } = renderHook(
+      ({ board, page }) => useActivities(board, page),
+      { wrapper, initialProps: { board: 'b1', page: 1 } },
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    rerender({ board: 'b1', page: 2 });
+    await waitFor(() => expect(releaseSecond).toBeDefined());
+    expect(result.current.isPlaceholderData).toBe(true);
+    expect(result.current.data?.items).toEqual([first]);
+    releaseSecond();
+    await waitFor(() => expect(result.current.data?.items).toEqual([]));
+
+    rerender({ board: 'b2', page: 1 });
+    await waitFor(() => expect(releaseOther).toBeDefined());
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.isPending).toBe(true);
+    releaseOther();
+  });
+
   it('does not retry when access is lost', async () => {
     storeSession();
     const calls = mockApi({
