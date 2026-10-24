@@ -31,8 +31,8 @@ function fillRegister(values: {
 const validInput = {
   displayName: '  Ada Lovelace ',
   email: 'Ada@Example.com',
-  password: 'analytical-engine',
-  confirmPassword: 'analytical-engine',
+  password: 'Kanvexa@2026',
+  confirmPassword: 'Kanvexa@2026',
 };
 
 describe('RegisterPage', () => {
@@ -50,7 +50,7 @@ describe('RegisterPage', () => {
     expect(calls[0].body).toEqual({
       displayName: 'Ada Lovelace',
       email: 'ada@example.com',
-      password: 'analytical-engine',
+      password: 'Kanvexa@2026',
     });
     expect(calls[0].body).not.toHaveProperty('confirmPassword');
     expect(sessionStorage.getItem('kanban.session')).toBeNull();
