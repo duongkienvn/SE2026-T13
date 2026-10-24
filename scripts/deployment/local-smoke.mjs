@@ -18,6 +18,9 @@ const env = {
   DATABASE_USER: 'smoke',
   DATABASE_PASSWORD: randomBytes(32).toString('hex'),
   JWT_SECRET: randomBytes(48).toString('base64'),
+  RESEND_API_KEY: 're_local_fake_transport_only',
+  MAIL_FROM: 'Kanvexa <no-reply@kanvexa.tech>',
+  PUBLIC_APP_URL: 'http://localhost:8080',
 };
 const args = [
   'compose',
@@ -98,6 +101,22 @@ try {
     password,
     displayName: 'Infrastructure smoke',
   });
+  // This isolated database has no real mail provider. Explicitly verify only
+  // this smoke account in its disposable project before testing authenticated UI.
+  compose(
+    'exec',
+    '-T',
+    'postgres',
+    'psql',
+    '-U',
+    'smoke',
+    '-d',
+    'smoke',
+    '-v',
+    'ON_ERROR_STOP=1',
+    '-c',
+    `UPDATE users SET email_verified_at = now() WHERE email = '${email}'`,
+  );
   const { accessToken } = await json('/api/auth/login', { email, password });
   const board = await json(
     '/api/boards',

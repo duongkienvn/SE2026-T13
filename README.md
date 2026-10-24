@@ -44,6 +44,9 @@ Initial database migration đã có; TypeORM schema synchronization và tự đ�
 
 ## Documentation
 
+- [Email verification K2](docs/tasks/email-verification.md): Resend configuration,
+  verification/resend API, legacy-user backfill, isolated tests and rollout checklist.
+
 - [Production deployment](docs/deployment/production.md): EC2, Docker, Caddy, explicit migrations, local smoke tests, backup and recovery. Development Compose remains unchanged.
 
 - [Project overview](docs/project-overview.md): mục tiêu, phạm vi MVP, thuật ngữ, kiến trúc tổng quan và trạng thái hiện tại.

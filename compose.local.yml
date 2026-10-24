@@ -11,4 +11,7 @@ services:
         read_only: true
   backend:
     environment:
+      # Explicit isolated verification mode: never contact the real mail provider.
+      NODE_ENV: test
+      PUBLIC_APP_URL: http://localhost:8080
       CORS_ORIGINS: http://localhost:8080

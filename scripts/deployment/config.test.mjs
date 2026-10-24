@@ -10,6 +10,9 @@ const env = {
   DATABASE_USER: 'configuration_test',
   DATABASE_PASSWORD: 'validation-only-not-a-deployment-password',
   JWT_SECRET: 'validation-only-not-a-deployment-jwt-secret',
+  RESEND_API_KEY: 're_configuration_test_only',
+  MAIL_FROM: 'Kanvexa <no-reply@kanvexa.tech>',
+  PUBLIC_APP_URL: 'https://kanvexa.tech',
   IMAGE_TAG: 'configuration-test',
   BACKEND_IMAGE: 'kanvexa-backend',
   FRONTEND_IMAGE: 'kanvexa-frontend',
@@ -90,6 +93,11 @@ test('runtime, migrations, readiness and resource limits are explicit', () => {
     'https://kanvexa.tech',
   );
   assert.equal(services.backend.environment.TRUST_PROXY_HOPS, '1');
+  assert.equal(services.backend.environment.RESEND_API_KEY, env.RESEND_API_KEY);
+  assert.equal(services.backend.environment.MAIL_FROM, env.MAIL_FROM);
+  assert.equal(services.backend.environment.PUBLIC_APP_URL, env.PUBLIC_APP_URL);
+  for (const name of ['frontend', 'postgres', 'migrate'])
+    assert.equal(services[name].environment?.RESEND_API_KEY, undefined);
   assert.equal(services.backend.environment.DATABASE_HOST, 'postgres');
   assert.equal(services.backend.init, true);
   assert.equal(services.backend.read_only, true);
@@ -140,6 +148,9 @@ test('missing release tags or secrets fail before containers can start', () => {
     'DATABASE_USER',
     'DATABASE_PASSWORD',
     'JWT_SECRET',
+    'RESEND_API_KEY',
+    'MAIL_FROM',
+    'PUBLIC_APP_URL',
   ]) {
     const result = spawnSync('docker', [...args, 'config', '--quiet'], {
       env: { ...env, [name]: '' },
@@ -152,6 +163,7 @@ test('missing release tags or secrets fail before containers can start', () => {
 
 test('local HTTP override replaces every public binding without changing production HTTPS', () => {
   const local = config(true);
+  assert.equal(local.services.backend.environment.NODE_ENV, 'test');
   assert.deepEqual(
     local.services.frontend.ports.map((p) => [
       p.host_ip,
