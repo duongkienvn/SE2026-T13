@@ -28,7 +28,7 @@ export function GoogleAuth({ disabled = false }: { disabled?: boolean }) {
     >
       <div className="flex items-center gap-3 text-xs text-muted">
         <span aria-hidden="true" className="h-px flex-1 bg-line" />
-        <span>or continue with</span>
+        <span>or</span>
         <span aria-hidden="true" className="h-px flex-1 bg-line" />
       </div>
       <GoogleSignInButton
