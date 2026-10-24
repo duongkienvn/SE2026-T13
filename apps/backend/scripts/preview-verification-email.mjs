@@ -1,6 +1,7 @@
+import console from 'node:console';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, URL } from 'node:url';
 
 // QA only: do not load the app, .env, a mail client or real recipient/token data.
 const require = createRequire(import.meta.url);
