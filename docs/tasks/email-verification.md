@@ -225,6 +225,13 @@ configuration fix; the local real-inbox instructions above are a manual step.
 
 ## Production rollout and rollback
 
+The HTML email header uses the official Kanvexa PNG at
+`https://kanvexa.tech/branding/kanvexa-logo-v1.png`. The frontend serves this
+public, versioned asset; it must remain available for previously delivered email.
+Local `PUBLIC_APP_URL` changes only the verification link, not the public image
+origin. See [branding integration and QA](kanvexa-branding.md) for image delivery
+and email-client checks. The text wordmark remains visible when images are blocked.
+
 1. Review migrations/code and take/export/verify a PostgreSQL backup. Rehearse on
    an isolated clone with legacy users and existing board/card data; record the
    previous app/image SHA and recovery point.
