@@ -10,6 +10,7 @@ import { updateCurrentUser } from '../api';
 import { currentUserQueryKey } from '../AuthProvider';
 import { useAuthSession, type AuthSessionScope } from '../auth-session-context';
 import { UserAvatar } from '../components/UserAvatar';
+import { ConnectedAccounts } from '../components/ConnectedAccounts';
 import { toFormErrors } from '../../../lib/form-errors';
 import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
 import { usePageTitle } from '../../../hooks/usePageTitle';
@@ -198,6 +199,7 @@ function ProfileForm({ user }: { user: User }) {
           </div>
         </div>
       </form>
+      <ConnectedAccounts />
     </PageContainer>
   );
 }
