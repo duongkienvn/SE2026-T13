@@ -149,7 +149,7 @@ describe('RegisterPage', () => {
     ).toBe('true');
     // Server-side field errors also move focus to the field.
     expect(document.activeElement).toBe(screen.getByLabelText('Email address'));
-    expect(document.title).toBe('Create account · Kanban');
+    expect(document.title).toBe('Create account · Kanvexa');
   });
 
   it('maps backend validation details to fields', async () => {

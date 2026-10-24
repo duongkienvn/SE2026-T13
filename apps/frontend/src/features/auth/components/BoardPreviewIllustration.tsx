@@ -1,4 +1,4 @@
-import { LogoIcon } from '../../../components/icons';
+import { BrandLogo } from '../../../components/Brand';
 
 /*
  * Decorative product preview for the login panel. It deliberately uses
@@ -29,8 +29,8 @@ export function BoardPreviewIllustration({
     <div aria-hidden="true" className={className}>
       <div className="flex h-full overflow-hidden rounded-tl-2xl bg-surface/95 shadow-frame">
         <div className="w-12 shrink-0 border-r border-line">
-          <div className="grid h-12 place-items-center bg-brand-soft text-white">
-            <LogoIcon className="size-5" />
+          <div className="grid h-12 place-items-center">
+            <BrandLogo decorative className="size-10" />
           </div>
           {[0, 1, 2, 3].map((index) => (
             <div key={index} className="grid h-12 place-items-center">
@@ -42,7 +42,7 @@ export function BoardPreviewIllustration({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex h-12 items-center gap-3 px-5">
-            <span className="text-sm font-semibold text-brand">Kanban</span>
+            <span className="text-sm font-semibold text-ink">Kanvexa</span>
             <span className="h-6 w-28 rounded-md border border-line" />
           </div>
           <div className="mx-5 mt-2 h-3 w-24 rounded bg-muted/15" />

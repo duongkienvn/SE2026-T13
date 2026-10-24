@@ -14,6 +14,12 @@ describe('AppShell', () => {
     );
 
     const header = screen.getByRole('banner');
+    expect(within(header).getByText('Kanvexa')).toBeTruthy();
+    expect(within(header).queryByText('Kanban')).toBeNull();
+    const logo = within(
+      screen.getByRole('navigation', { name: 'Primary' }),
+    ).getByRole('img', { name: 'Kanvexa' });
+    expect(logo.getAttribute('src')).toBe('/branding/kanvexa-logo-v1.png');
     expect(within(header).getByText('Sprint board')).toBeTruthy();
     expect(
       within(header).getByRole('button', { name: 'Account' }),

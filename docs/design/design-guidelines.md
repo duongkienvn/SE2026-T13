@@ -19,6 +19,14 @@ Use the five unmodified images in `docs/design/screens/reference/` as visual acc
 
 Each screenshot is an **approved UI target**, not a substitute for actual React components or working business behavior. Do not independently redesign, replace with generic admin dashboards, or use the screenshots as flat background images in the app.
 
+Branding exception: the official Kanvexa artwork in `branding-assets/` replaces
+the older placeholder symbols and product wordmark in these references. Use the
+shared `Brand` / `BrandLogo` components without altering the supplied gradient
+or proportions. The wordmark is separate text, and inherits the surrounding
+text color so it can be used on light and dark surfaces. The existing light UI
+palette and layout remain the visual baseline; branding does not introduce a
+new application theme or a theme switcher.
+
 ### Visual fidelity required
 
 At desktop viewport sizes corresponding to the images, implement UI as close as practicable to the screenshots in:
@@ -71,8 +79,8 @@ The frontend defines these tokens in `apps/frontend/src/style.css` (Tailwind `@t
 | `--color-primary-strong` | `--color-primary-strong` | `#6058F9`             |                                                                                             |
 | —                        | `--color-primary-hover`  | `#4F49E6`             | Added: visible hover for primary buttons                                                    |
 | —                        | `--color-primary-soft`   | `#F0F2FE`             | Added: active navigation background                                                         |
-| —                        | `--color-brand`          | `#6466FA`             | Added: "Kanban" wordmark                                                                    |
-| —                        | `--color-brand-soft`     | `#9294FC`             | Added: side-rail logo tile                                                                  |
+| —                        | `--color-brand`          | `#6466FA`             | Legacy accent; the official Kanvexa logo retains its supplied colors                        |
+| —                        | `--color-brand-soft`     | `#9294FC`             | Legacy accent; the logo tile now uses the surrounding surface                               |
 | `--color-bg-app`         | `--color-app`            | `#F7F7F9`             |                                                                                             |
 | `--color-surface`        | `--color-surface`        | `#FFFFFF`             |                                                                                             |
 | `--color-outer-frame`    | `--color-frame`          | `#A6A9D0`             | _Refined_: sampled from boards/kanban/team screens (`#E5E8F9` matches the login background) |

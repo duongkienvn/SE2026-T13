@@ -38,7 +38,7 @@ describe('auth routing and session restore', () => {
     );
     expect(await screen.findByRole('heading', { name: 'Boards' })).toBeTruthy();
     expect(calls[0].headers.Authorization).toBe('Bearer stored-token');
-    expect(document.title).toBe('Boards · Kanban');
+    expect(document.title).toBe('Boards · Kanvexa');
   });
 
   it('keeps signed-in users away from login and register', async () => {
@@ -130,7 +130,7 @@ describe('auth routing and session restore', () => {
 
   it('shows a not-found page for unknown routes', () => {
     renderApp('/does-not-exist');
-    expect(document.title).toBe('Page not found · Kanban');
+    expect(document.title).toBe('Page not found · Kanvexa');
     expect(
       screen.getByRole('heading', { name: 'Page not found' }),
     ).toBeTruthy();

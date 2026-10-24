@@ -127,7 +127,7 @@ describe('BoardMembersPage (as OWNER)', () => {
     expect(within(rows[0]).getAllByRole('cell')[1].textContent).toBe('Owner');
     expect(within(rows[1]).getAllByRole('cell')[1].textContent).toBe('Member');
     expect(within(rows[0]).getByText('Oct 1, 2026')).toBeTruthy();
-    expect(document.title).toBe('Members · Design Team · Kanban');
+    expect(document.title).toBe('Members · Design Team · Kanvexa');
   });
 
   it('highlights Board members in the sidebar', async () => {

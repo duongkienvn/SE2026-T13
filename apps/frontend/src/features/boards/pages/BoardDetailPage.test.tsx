@@ -73,7 +73,7 @@ describe('BoardDetailPage', () => {
     expect(
       await main.findByRole('heading', { name: 'No columns yet' }),
     ).toBeTruthy();
-    expect(document.title).toBe('Product Development · Kanban');
+    expect(document.title).toBe('Product Development · Kanvexa');
   });
 
   it('shows the board name in the header and enables Board members in the sidebar', async () => {
