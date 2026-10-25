@@ -327,8 +327,8 @@ function ArchiveCardSection({
       className="space-y-3 rounded-lg border border-danger/30 bg-danger/5 p-3"
     >
       <p className="text-sm text-ink">
-        Archive this card? It disappears from the board for every member.
-        Archived cards can’t be restored yet.
+        Archive this card? It disappears from the board for every member. You
+        can restore it from Archived cards in the board actions menu.
       </p>
       {error && <Alert variant="error">{error}</Alert>}
       <div className="flex flex-wrap gap-2">
