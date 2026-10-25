@@ -64,6 +64,22 @@ function rows() {
 }
 
 describe('ActivityHistoryDialog', () => {
+  it('shows board archive and restore actions in history', async () => {
+    renderDialog({
+      [page(1)]: okPage(
+        [
+          makeActivity({ actionType: 'BOARD_RESTORED', entityType: 'BOARD' }),
+          makeActivity({ actionType: 'BOARD_ARCHIVED', entityType: 'BOARD' }),
+        ],
+        { limit: 8 },
+      ),
+    });
+
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    expect(rows()[0].textContent).toContain('You restored the board');
+    expect(rows()[1].textContent).toContain('You archived the board');
+  });
+
   it('renders the server order with actors, labels, details and times', async () => {
     renderDialog({
       [page(1)]: okPage(

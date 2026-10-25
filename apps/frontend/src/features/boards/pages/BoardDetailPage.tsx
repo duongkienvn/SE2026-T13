@@ -19,6 +19,7 @@ import { RealtimeStatus } from '../../realtime/components/RealtimeStatus';
 import { useBoardRealtime } from '../../realtime/useBoardRealtime';
 import { BoardPresence } from '../../presence/components/BoardPresence';
 import { ArchiveBoardDialog } from '../components/ArchiveBoardDialog';
+import { RestoreBoardDialog } from '../components/RestoreBoardDialog';
 import { KanbanBoard } from '../components/KanbanBoard';
 import { BoardIcon } from '../components/BoardIcon';
 import { EditBoardDialog } from '../components/BoardFormDialog';
@@ -64,6 +65,7 @@ export function BoardDetailPage() {
   const [editing, setEditing] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [showingActivity, setShowingActivity] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const [notice, setNotice] = useState<string>();
   usePageTitle(board.data?.name ?? 'Board');
 
@@ -141,6 +143,18 @@ export function BoardDetailPage() {
                     ]}
                   />
                 )}
+                {data.isArchived &&
+                  data.currentUserRole === BoardRole.OWNER && (
+                    <ActionMenu
+                      label={`Actions for ${data.name}`}
+                      items={[
+                        {
+                          label: 'Restore board',
+                          onSelect: () => setRestoring(true),
+                        },
+                      ]}
+                    />
+                  )}
               </>
             }
           />
@@ -184,6 +198,17 @@ export function BoardDetailPage() {
               notice: `Board “${saved.name}” archived.`,
             };
             navigate('/boards', { replace: true, state });
+          }}
+        />
+      )}
+      {restoring && (
+        <RestoreBoardDialog
+          board={data}
+          open
+          onClose={() => setRestoring(false)}
+          onRestored={(saved) => {
+            setRestoring(false);
+            setNotice(`Board “${saved.name}” restored.`);
           }}
         />
       )}

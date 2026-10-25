@@ -302,7 +302,7 @@ describe('BoardRealtimeClient events', () => {
     expect(invalidate).not.toHaveBeenCalled();
   });
 
-  it('listens to each of the 15 business events exactly once', async () => {
+  it('listens to each of the 17 business events exactly once', async () => {
     client.watch(A);
     client.watch(B);
     await settle();
@@ -312,6 +312,8 @@ describe('BoardRealtimeClient events', () => {
     expect(socket.listenerCount('comment:created')).toBe(1);
     expect(socket.listenerCount('comment:updated')).toBe(1);
     expect(socket.listenerCount('comment:deleted')).toBe(1);
+    expect(socket.listenerCount('board:archived')).toBe(1);
+    expect(socket.listenerCount('board:restored')).toBe(1);
   });
 });
 

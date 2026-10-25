@@ -11,11 +11,13 @@ export function listBoards(
   accessToken: string,
   page: number,
   signal?: AbortSignal,
+  status: 'active' | 'archived' = 'active',
 ): Promise<Page<Board>> {
   const query = new URLSearchParams({
     page: String(page),
     limit: String(MAX_PAGE_LIMIT),
   });
+  if (status === 'archived') query.set('status', status);
   return apiRequestPage<Board>(`/boards?${query}`, { accessToken, signal });
 }
 
@@ -26,8 +28,9 @@ export function listBoards(
 export function listAllBoards(
   accessToken: string,
   signal?: AbortSignal,
+  status: 'active' | 'archived' = 'active',
 ): Promise<Board[]> {
-  return fetchAllPages((page) => listBoards(accessToken, page, signal));
+  return fetchAllPages((page) => listBoards(accessToken, page, signal, status));
 }
 
 export function getBoard(
@@ -69,6 +72,16 @@ export function archiveBoard(
   boardId: string,
 ): Promise<Board> {
   return apiRequest<Board>(`/boards/${encodeURIComponent(boardId)}/archive`, {
+    method: 'POST',
+    accessToken,
+  });
+}
+
+export function restoreBoard(
+  accessToken: string,
+  boardId: string,
+): Promise<Board> {
+  return apiRequest<Board>(`/boards/${encodeURIComponent(boardId)}/restore`, {
     method: 'POST',
     accessToken,
   });

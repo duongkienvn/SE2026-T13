@@ -15,6 +15,8 @@ const COLUMN_B = '00000000-0000-4000-9000-00000000000b';
 describe('describeActivity', () => {
   it.each([
     ['BOARD_UPDATED', 'updated the board'],
+    ['BOARD_ARCHIVED', 'archived the board'],
+    ['BOARD_RESTORED', 'restored the board'],
     ['MEMBER_ADDED', 'added a board member'],
     ['MEMBER_REMOVED', 'removed a board member'],
     ['ROLE_CHANGED', "changed a member's role"],

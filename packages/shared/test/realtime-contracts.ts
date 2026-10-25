@@ -22,6 +22,8 @@ const column = { boardId: 'board', columnId: 'column' };
 const card = { ...column, cardId: 'card' };
 const member = { boardId: 'board', userId: 'user' };
 const comment = { boardId: 'board', cardId: 'card', commentId: 'comment' };
+server['board:archived']({ boardId: 'board' });
+server['board:restored']({ boardId: 'board' });
 server['column:created'](column);
 server['column:updated'](column);
 server['column:moved'](column);

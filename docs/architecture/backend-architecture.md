@@ -242,7 +242,7 @@ Các endpoint đã triển khai:
   theo email. Google-only users có password hash NULL và local login từ chối an toàn.
 - `POST /api/auth/google/link` yêu cầu JWT + current password + Google credential
   cùng email, trả 204; `GET /api/auth/linked-providers` chỉ trả trạng thái boolean.
-  Xem [security, transactions và rollout #79](../tasks/google-auth-account-linking.md).
+  Xem [security, transactions và rollout #79](../tasks/backend/google-auth-account-linking.md).
 - `POST /api/auth/logout` là protected stateless endpoint trả `204`; server không revoke hoặc blacklist token.
 - `GET /api/users/me` và `PATCH /api/users/me` là protected profile endpoints; chỉ cập nhật user lấy từ JWT context.
 

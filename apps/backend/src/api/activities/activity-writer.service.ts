@@ -18,6 +18,8 @@ const MAX_METADATA_STRING_LENGTH = 200;
 
 const ENTITY_FOR_ACTION: Record<ActivityActionType, ActivityEntityType> = {
   [ActivityActionType.BOARD_UPDATED]: ActivityEntityType.BOARD,
+  [ActivityActionType.BOARD_ARCHIVED]: ActivityEntityType.BOARD,
+  [ActivityActionType.BOARD_RESTORED]: ActivityEntityType.BOARD,
   [ActivityActionType.MEMBER_ADDED]: ActivityEntityType.MEMBER,
   [ActivityActionType.MEMBER_REMOVED]: ActivityEntityType.MEMBER,
   [ActivityActionType.ROLE_CHANGED]: ActivityEntityType.MEMBER,

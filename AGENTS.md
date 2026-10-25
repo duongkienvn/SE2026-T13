@@ -36,7 +36,9 @@ docs/
 - `apps/backend`: NestJS backend.
 - `packages/shared`: types, contracts, enums, and event names shared between frontend and backend.
 - `docs/design`: approved visual references and implementation screenshots.
+- `docs/tasks/README.md`: task-document index and placement rules.
 - `docs/tasks/backend`: backend task records; `docs/tasks/frontend`: frontend task records.
+- Keep `docs/tasks/` root free of task records; put each record in the matching `backend/` or `frontend/` folder and update the index and links when moving it.
 - Do not put backend-only code such as TypeORM entities or services in `packages/shared`.
 
 ## Core Architecture Rules

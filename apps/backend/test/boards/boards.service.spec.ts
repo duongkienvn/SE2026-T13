@@ -7,6 +7,8 @@ import { BoardMember } from '../../src/api/board-members/entities/board-member.e
 import { BoardMemberRole } from '../../src/common/enums/database-enums';
 import { BoardAuthorizationService } from '../../src/api/board-members/board-authorization.service';
 import { ActivityWriterService } from '../../src/api/activities/activity-writer.service';
+import { BoardEventPublisher } from '../../src/realtime/board-event-publisher.service';
+import { ActivityActionType } from '../../src/common/enums/database-enums';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: (entity: { name: string }) =>
@@ -37,6 +39,8 @@ describe('BoardsService', () => {
   const transaction = jest.fn();
   const boards = { manager: { transaction }, createQueryBuilder: jest.fn() };
   const members = { findOne: jest.fn() };
+  const activities = { record: jest.fn() };
+  const events = { publish: jest.fn() };
 
   beforeEach(async () => {
     jest.resetAllMocks();
@@ -55,7 +59,8 @@ describe('BoardsService', () => {
       providers: [
         BoardsService,
         BoardAuthorizationService,
-        { provide: ActivityWriterService, useValue: { record: jest.fn() } },
+        { provide: ActivityWriterService, useValue: activities },
+        { provide: BoardEventPublisher, useValue: events },
         { provide: getRepositoryToken(Board), useValue: boards },
         { provide: getRepositoryToken(BoardMember), useValue: members },
       ],
@@ -249,6 +254,15 @@ describe('BoardsService', () => {
     expect(Date.parse(result.archivedAt!)).toBeGreaterThanOrEqual(before);
     expect(board.members).toHaveLength(1);
     expect(txBoards.save).toHaveBeenCalledTimes(1);
+    expect(activities.record).toHaveBeenCalledWith(
+      manager,
+      expect.objectContaining({
+        actionType: ActivityActionType.BOARD_ARCHIVED,
+        entityId: BOARD_ID,
+        metadata: null,
+      }),
+    );
+    expect(events.publish).toHaveBeenCalledTimes(1);
     const archivedAt = board.archivedAt;
     await expect(service.archive(USER_ID, BOARD_ID)).rejects.toMatchObject({
       status: 409,
@@ -259,6 +273,53 @@ describe('BoardsService', () => {
     ).rejects.toMatchObject({ status: 409 });
     expect(board.archivedAt).toBe(archivedAt);
     expect(txBoards.save).toHaveBeenCalledTimes(1);
+    expect(activities.record).toHaveBeenCalledTimes(1);
+    expect(events.publish).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores only archived boards and records audit before publishing', async () => {
+    board.isArchived = true;
+    board.archivedAt = new Date();
+    txBoards.findOne.mockResolvedValue(board);
+    txMembers.findOne.mockResolvedValue({ role: BoardMemberRole.OWNER });
+    const result = await service.restore(USER_ID, BOARD_ID);
+    expect(result).toMatchObject({
+      isArchived: false,
+      archivedAt: null,
+      id: BOARD_ID,
+    });
+    expect(activities.record).toHaveBeenCalledWith(
+      manager,
+      expect.objectContaining({
+        actionType: ActivityActionType.BOARD_RESTORED,
+        entityId: BOARD_ID,
+        metadata: null,
+      }),
+    );
+    expect(events.publish).toHaveBeenCalledWith('board:restored', {
+      boardId: BOARD_ID,
+    });
+    expect(transaction.mock.invocationCallOrder[0]).toBeLessThan(
+      events.publish.mock.invocationCallOrder[0],
+    );
+    await expect(service.restore(USER_ID, BOARD_ID)).rejects.toMatchObject({
+      status: 409,
+      response: { code: 'BOARD_NOT_ARCHIVED' },
+    });
+    expect(activities.record).toHaveBeenCalledTimes(1);
+    expect(events.publish).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not publish when activity recording fails inside the transaction', async () => {
+    board.isArchived = true;
+    board.archivedAt = new Date();
+    txBoards.findOne.mockResolvedValue(board);
+    txMembers.findOne.mockResolvedValue({ role: BoardMemberRole.OWNER });
+    activities.record.mockRejectedValue(new Error('Audit failed'));
+    await expect(service.restore(USER_ID, BOARD_ID)).rejects.toThrow(
+      'Audit failed',
+    );
+    expect(events.publish).not.toHaveBeenCalled();
   });
 
   it.each(['update', 'archive'] as const)(

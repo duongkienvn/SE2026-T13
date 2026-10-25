@@ -5,6 +5,8 @@
 export const boardKeys = {
   all: ['boards'] as const,
   lists: () => [...boardKeys.all, 'list'] as const,
+  list: (status: 'active' | 'archived') =>
+    [...boardKeys.lists(), status] as const,
   detail: (boardId: string) => [...boardKeys.all, 'detail', boardId] as const,
   members: (boardId: string) =>
     [...boardKeys.all, 'detail', boardId, 'members'] as const,

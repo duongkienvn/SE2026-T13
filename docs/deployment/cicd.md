@@ -84,7 +84,7 @@ disable these settings to run a release.
 
 ## Identity and existing infrastructure
 
-For a K2 release, complete the [email verification rollout checklist](../tasks/email-verification.md)
+For a K2 release, complete the [email verification rollout checklist](../tasks/backend/email-verification.md)
 before production approval: configure the external Resend key/sender/public URL,
 verify off-host database backup and rehearse the new legacy-user backfill migration.
 Only backend receives mail config; production startup fails if it is absent/invalid.
@@ -107,7 +107,7 @@ Google button disabled; local auth continues. Backend `GOOGLE_CLIENT_ID` is set
 separately in EC2's protected runtime env and must match the built frontend ID.
 Changing an EC2 variable cannot change an already published Vite bundle; publish
 a new release after a build-time ID change. No client secret, JWT secret or mail
-credential enters build arguments. See the [Google rollout gates](../tasks/google-auth-account-linking.md#production-configuration-and-rollout-gates).
+credential enters build arguments. See the [Google rollout gates](../tasks/backend/google-auth-account-linking.md#production-configuration-and-rollout-gates).
 No production env file enters a build. Build-record artifact
 upload is disabled. Workflow actions are pinned to reviewed full commit IDs; the
 adjacent comments identify the upstream major versions for deliberate updates.

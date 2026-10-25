@@ -626,6 +626,46 @@ export async function runBoardEventChecks(app, source) {
       'remove commits then revokes every tab before emission, including double transport failure; other-board grant survives',
     );
 
+    await mutation(
+      'board:archived',
+      'post',
+      `${ids.a}/archive`,
+      undefined,
+      200,
+      { boardId: ids.a },
+    );
+    await silent(() => http('post', `${ids.a}/archive`, undefined, 409));
+    assert.equal(
+      (await source.getRepository('Board').findOne({ where: { id: ids.a } }))
+        .isArchived,
+      true,
+    );
+    await mutation(
+      'board:restored',
+      'post',
+      `${ids.a}/restore`,
+      undefined,
+      200,
+      { boardId: ids.a },
+    );
+    await silent(() => http('post', `${ids.a}/restore`, undefined, 409));
+    assert.equal(
+      (await source.getRepository('Board').findOne({ where: { id: ids.a } }))
+        .isArchived,
+      false,
+    );
+    for (const action of ['BOARD_ARCHIVED', 'BOARD_RESTORED']) {
+      const rows = await source
+        .getRepository('Activity')
+        .find({ where: { boardId: ids.a, actionType: action } });
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].entityId, ids.a);
+      assert.equal(rows[0].metadata, null);
+    }
+    pass(
+      'archive and restore emit once after REST persistence and only to authorized board recipients',
+    );
+
     const original = broadcast.emitToBoard;
     try {
       broadcast.emitToBoard = async () => {
@@ -689,7 +729,7 @@ export async function runBoardEventChecks(app, source) {
     }
     assert.deepEqual([...seen].sort(), [...events].sort());
     pass(
-      'false/throwing delivery cannot change committed HTTP success; all fifteen contracts observed exactly',
+      'false/throwing delivery cannot change committed HTTP success; all seventeen contracts observed exactly',
     );
     void unjoined;
     return checks;

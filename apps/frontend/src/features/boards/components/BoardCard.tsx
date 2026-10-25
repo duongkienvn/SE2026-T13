@@ -11,13 +11,19 @@ interface BoardCardProps {
   /** OWNER-only actions; omitted for members. */
   onEdit?: () => void;
   onArchive?: () => void;
+  onRestore?: () => void;
 }
 
 /**
  * Board tile from boards.png. The whole card opens the board. Its height is
  * fixed so the boards page can count how many rows fit on screen.
  */
-export function BoardCard({ board, onEdit, onArchive }: BoardCardProps) {
+export function BoardCard({
+  board,
+  onEdit,
+  onArchive,
+  onRestore,
+}: BoardCardProps) {
   const actions = [
     onEdit && { label: 'Edit board', onSelect: onEdit },
     onArchive && {
@@ -25,6 +31,7 @@ export function BoardCard({ board, onEdit, onArchive }: BoardCardProps) {
       onSelect: onArchive,
       tone: 'danger' as const,
     },
+    onRestore && { label: 'Restore board', onSelect: onRestore },
   ].filter((item) => !!item);
 
   return (
@@ -46,9 +53,9 @@ export function BoardCard({ board, onEdit, onArchive }: BoardCardProps) {
             <p className="flex min-w-0 items-center gap-1 text-[13px] text-muted">
               <ClockIcon aria-hidden="true" className="size-3.5 shrink-0" />
               <span className="truncate">
-                Updated{' '}
-                <time dateTime={board.updatedAt}>
-                  {formatRelativeTime(board.updatedAt)}
+                {board.isArchived ? 'Archived' : 'Updated'}{' '}
+                <time dateTime={board.archivedAt ?? board.updatedAt}>
+                  {formatRelativeTime(board.archivedAt ?? board.updatedAt)}
                 </time>
               </span>
             </p>
