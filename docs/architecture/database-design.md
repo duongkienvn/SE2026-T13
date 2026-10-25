@@ -80,6 +80,7 @@ Trong các bảng dưới đây, `Không` ở cột Nullable nghĩa là `NOT NUL
 | `id`                | `uuid`          | Không    | Primary key.                                                            |
 | `email`             | `varchar`       | Không    | Unique; định danh đăng nhập.                                            |
 | `password_hash`     | `varchar`       | Có       | Argon2id cho local account; NULL cho Google-only (#79).                 |
+| `auth_version`      | `integer`       | Không    | Default 0; atomic increment on password reset/change (#93).             |
 | `display_name`      | `varchar`       | Không    | Tên hiển thị.                                                           |
 | `avatar_url`        | `varchar`       | Có       | URL ảnh đại diện nếu có.                                                |
 | `email_verified_at` | `timestamptz`   | Có       | K2 verification gate; Google authority chỉ áp dụng lúc tạo account mới. |
@@ -94,6 +95,17 @@ giữ quan hệ một user–một Google identity. FK `user_id → users.id` d�
 không âm thầm xóa identity khi xóa user. Auth entities không làm thay đổi quan hệ
 board/card. Migration `1792850400000-GoogleIdentity` giữ hash hiện có; down khóa
 bảng và từ chối nếu còn identity hoặc NULL password. Xem [transaction và rollback](../tasks/backend/google-auth-account-linking.md).
+
+### Password recovery extension (#93)
+
+Migration `1792922400093-PasswordRecoverySecurity` adds `users.auth_version` and
+`password_reset_tokens`, independently of verification and Google identity.
+The recovery table has UUID `id`, unique `user_id` (FK to users, ON DELETE CASCADE),
+unique SHA-256 `token_hash` (`char(64)`), `created_at`, indexed `expires_at`, nullable
+`consumed_at`/`sent_at`, `window_started_at` (`timestamptz`) and integer `attempts`.
+It retains one current proof and its issuance quota per account. No plaintext proof
+is persisted. Its rollback refuses to discard any recovery row or nonzero auth
+version. See [lifecycle and deployment details](../tasks/backend/password-recovery-security.md).
 
 ### `boards`
 
