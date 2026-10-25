@@ -18,8 +18,8 @@ import { usePageParam } from '../../../hooks/usePageParam';
 import { usePageTitle } from '../../../hooks/usePageTitle';
 import { paginate } from '../../../lib/pagination';
 import { ArchiveBoardDialog } from '../components/ArchiveBoardDialog';
+import { BoardCard } from '../components/BoardCard';
 import { RestoreBoardDialog } from '../components/RestoreBoardDialog';
-import { BoardCard, CreateBoardTile } from '../components/BoardCard';
 import {
   CreateBoardDialog,
   EditBoardDialog,
@@ -31,8 +31,6 @@ import type { Board } from '../types';
 export interface BoardsLocationState {
   notice?: string;
 }
-
-const CREATE_TILE = 'create' as const;
 
 function matches(board: Board, query: string): boolean {
   const text = `${board.name} ${board.description ?? ''}`.toLowerCase();
@@ -54,6 +52,7 @@ export function BoardsPage() {
     maxColumns: 3,
     reserve: 8,
     fallbackRows: 4,
+    measurementKey: status,
   });
   const [page, setPage] = usePageParam();
   const [searches, setSearches] = useState({ active: '', archived: '' });
@@ -83,10 +82,17 @@ export function BoardsPage() {
   const visible = query
     ? loaded.filter((board) => matches(board, query))
     : loaded;
-  // The dashed "create" tile follows the last board, except in search results.
-  const tiles: (Board | typeof CREATE_TILE)[] =
-    query || status === 'archived' ? visible : [...visible, CREATE_TILE];
-  const shown = paginate(tiles, page, fit.pageSize);
+  const shown = paginate(visible, page, fit.pageSize);
+
+  // Keep the URL in sync when data or available grid space removes a page.
+  // Cached data may arrive before the grid measures its rows. A fallback page
+  // size can hide valid saved pages, so only normalize after a complete measure.
+  // Empty results need no row measurement to know that only page 1 exists.
+  useEffect(() => {
+    if (boards.data === undefined || (visible.length > 0 && !fit.isMeasured))
+      return;
+    if (page !== shown.page) setPage(shown.page);
+  }, [boards.data, fit.isMeasured, visible.length, page, shown.page, setPage]);
 
   const openCreate = () => {
     setNotice(undefined);
@@ -110,9 +116,9 @@ export function BoardsPage() {
         title="Boards"
         description="Organize your work with Kanban boards for different projects and teams."
         actions={
-          <>
-            {/* Keep the box while a query is active, so it can always be cleared. */}
-            {(loaded.length > 0 || search) && (
+          loaded.length > 0 || search ? (
+            <>
+              {/* Keep the box while a query is active, so it can always be cleared. */}
               <SearchField
                 label="Search boards"
                 placeholder="Search boards..."
@@ -120,14 +126,14 @@ export function BoardsPage() {
                 onChange={changeSearch}
                 className="w-full sm:w-[280px]"
               />
-            )}
-            {status === 'active' && (
-              <Button onClick={openCreate}>
-                <PlusIcon aria-hidden="true" className="size-4.5" />
-                New Board
-              </Button>
-            )}
-          </>
+              {status === 'active' && loaded.length > 0 && (
+                <Button onClick={openCreate}>
+                  <PlusIcon aria-hidden="true" className="size-4.5" />
+                  New Board
+                </Button>
+              )}
+            </>
+          ) : undefined
         }
       />
 
@@ -203,38 +209,32 @@ export function BoardsPage() {
               gridTemplateColumns: `repeat(${fit.columns}, minmax(0, 1fr))`,
             }}
           >
-            {shown.items.map((tile) =>
-              tile === CREATE_TILE ? (
-                <li key="create" data-fit-row className="flex">
-                  <CreateBoardTile onClick={openCreate} />
-                </li>
-              ) : (
-                <li key={tile.id} data-fit-row className="flex">
-                  <BoardCard
-                    board={tile}
-                    // UI hint only: the backend enforces OWNER-only actions.
-                    onEdit={
-                      status === 'active' &&
-                      tile.currentUserRole === BoardRole.OWNER
-                        ? () => setEditing(tile)
-                        : undefined
-                    }
-                    onArchive={
-                      status === 'active' &&
-                      tile.currentUserRole === BoardRole.OWNER
-                        ? () => setArchiving(tile)
-                        : undefined
-                    }
-                    onRestore={
-                      status === 'archived' &&
-                      tile.currentUserRole === BoardRole.OWNER
-                        ? () => setRestoring(tile)
-                        : undefined
-                    }
-                  />
-                </li>
-              ),
-            )}
+            {shown.items.map((board) => (
+              <li key={board.id} data-fit-row className="flex">
+                <BoardCard
+                  board={board}
+                  // UI hint only: the backend enforces OWNER-only actions.
+                  onEdit={
+                    status === 'active' &&
+                    board.currentUserRole === BoardRole.OWNER
+                      ? () => setEditing(board)
+                      : undefined
+                  }
+                  onArchive={
+                    status === 'active' &&
+                    board.currentUserRole === BoardRole.OWNER
+                      ? () => setArchiving(board)
+                      : undefined
+                  }
+                  onRestore={
+                    status === 'archived' &&
+                    board.currentUserRole === BoardRole.OWNER
+                      ? () => setRestoring(board)
+                      : undefined
+                  }
+                />
+              </li>
+            ))}
           </ul>
         )}
       </div>

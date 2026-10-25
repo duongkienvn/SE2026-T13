@@ -38,7 +38,9 @@ describe('create board', () => {
       'POST /boards': ok(created, 201),
     });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'New Board' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create board' }),
+    );
     const dialog = screen.getByRole('dialog', { name: 'Create a new board' });
     const name = within(dialog).getByLabelText('Board name');
     expect(document.activeElement).toBe(name);
@@ -66,6 +68,10 @@ describe('create board', () => {
       description: null,
     });
     expect(await screen.findByRole('link', { name: 'Roadmap' })).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'New Board' })).toHaveLength(
+      1,
+    );
+    expect(screen.queryByRole('button', { name: 'Create board' })).toBeNull();
   });
 
   it('rejects names over 120 characters before sending', async () => {
@@ -96,7 +102,9 @@ describe('create board', () => {
       ]),
     });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'New Board' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create board' }),
+    );
     const dialog = screen.getByRole('dialog');
     fireEvent.change(within(dialog).getByLabelText('Board name'), {
       target: { value: 'Fine name' },
@@ -113,12 +121,10 @@ describe('create board', () => {
     expect(screen.getByRole('dialog')).toBeTruthy();
   });
 
-  it('offers creation from the empty state and the dashed tile', async () => {
+  it('offers creation from the header when boards exist', async () => {
     openBoards({ [LIST]: okPage([makeBoard()]) });
 
-    fireEvent.click(
-      await screen.findByRole('button', { name: /Create a new board/ }),
-    );
+    fireEvent.click(await screen.findByRole('button', { name: 'New Board' }));
     expect(
       screen.getByRole('dialog', { name: 'Create a new board' }),
     ).toBeTruthy();
@@ -126,6 +132,76 @@ describe('create board', () => {
 });
 
 describe('edit and archive board', () => {
+  it('keeps a single creation action through archive/restore and refreshes both status lists', async () => {
+    const board = makeBoard({ name: 'Round trip' });
+    let current = board;
+    const archivedList = 'GET /boards?page=1&limit=100&status=archived';
+    const calls = openBoards({
+      [LIST]: () => okPage(current.isArchived ? [] : [current]),
+      [archivedList]: () => okPage(current.isArchived ? [current] : []),
+      [`POST /boards/${board.id}/archive`]: () => {
+        current = {
+          ...current,
+          isArchived: true,
+          archivedAt: '2026-10-25T00:00:00Z',
+        };
+        return ok(current);
+      },
+      [`POST /boards/${board.id}/restore`]: () => {
+        current = { ...current, isArchived: false, archivedAt: null };
+        return ok(current);
+      },
+    });
+    await screen.findByRole('link', { name: 'Round trip' });
+    expect(screen.getAllByRole('button', { name: 'New Board' })).toHaveLength(
+      1,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Round trip' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Archive board' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Archive board',
+      }),
+    );
+    await screen.findByText('Board “Round trip” archived.');
+    await screen.findByRole('heading', { name: 'No boards yet' });
+    expect(screen.queryByRole('button', { name: 'New Board' })).toBeNull();
+    expect(
+      screen.getAllByRole('button', { name: 'Create board' }),
+    ).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Archived' }));
+    await screen.findByRole('link', { name: 'Round trip' });
+    expect(
+      screen.queryByRole('button', { name: /New Board|Create.*board/i }),
+    ).toBeNull();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Round trip' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Restore board' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Restore board',
+      }),
+    );
+    await screen.findByText('Board “Round trip” restored.');
+    await screen.findByRole('heading', { name: 'No archived boards' });
+    expect(
+      screen.queryByRole('button', { name: /New Board|Create.*board/i }),
+    ).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Active' }));
+    await screen.findByRole('link', { name: 'Round trip' });
+    expect(screen.getAllByRole('button', { name: 'New Board' })).toHaveLength(
+      1,
+    );
+    expect(
+      calls.filter((call) => call.method === 'POST').map((call) => call.path),
+    ).toEqual([`/boards/${board.id}/archive`, `/boards/${board.id}/restore`]);
+  });
+
   it('shows OWNER actions only on boards the user owns', async () => {
     openBoards({
       [LIST]: okPage([

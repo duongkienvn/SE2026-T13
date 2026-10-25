@@ -1,5 +1,8 @@
+import { useId } from 'react';
 import { BrandLogo } from '../../components/Brand';
+import { ChevronRightIcon } from '../../components/icons';
 import type { NavItem } from './navigation';
+import { useSidebarPreference } from './useSidebarPreference';
 
 interface SidebarProps {
   primaryItems: NavItem[];
@@ -12,32 +15,69 @@ export function Sidebar({
   secondaryItems,
   activeItemId,
 }: SidebarProps) {
+  const { expanded, desktop, toggle } = useSidebarPreference();
+  const itemsId = useId();
   return (
     <nav
       aria-label="Primary"
-      className="flex w-14 shrink-0 flex-col border-r border-line bg-surface md:w-15"
+      className={`flex shrink-0 flex-col border-r border-line bg-surface ${expanded ? 'w-56' : 'w-14 md:w-15'}`}
     >
-      <div className="grid h-14 shrink-0 place-items-center md:h-15">
+      <div className="flex h-14 shrink-0 items-center justify-center md:h-15">
         <BrandLogo className="size-12" />
+        {expanded && (
+          <span className="text-xl font-semibold tracking-tight text-ink">
+            Kanvexa
+          </span>
+        )}
       </div>
-      <ul className="mt-3 flex flex-col">
-        {primaryItems.map((item) => (
-          <SidebarItem
-            key={item.id}
-            item={item}
-            active={item.id === activeItemId}
-          />
-        ))}
-      </ul>
-      <ul className="mt-auto mb-3 flex flex-col">
-        {secondaryItems.map((item) => (
-          <SidebarItem
-            key={item.id}
-            item={item}
-            active={item.id === activeItemId}
-          />
-        ))}
-      </ul>
+      <button
+        type="button"
+        aria-label={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
+        title={
+          !desktop
+            ? 'Sidebar stays compact on narrow screens'
+            : expanded
+              ? 'Collapse sidebar'
+              : 'Expand sidebar'
+        }
+        aria-expanded={expanded}
+        aria-controls={itemsId}
+        disabled={!desktop}
+        onClick={toggle}
+        className="mx-1 my-2 flex min-h-10 shrink-0 items-center justify-center gap-3 rounded-lg text-sm text-muted enabled:hover:bg-app enabled:hover:text-ink focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50"
+      >
+        <ChevronRightIcon
+          className={`size-5 shrink-0 ${expanded ? 'rotate-180' : ''}`}
+        />
+        {expanded && <span>Collapse sidebar</span>}
+      </button>
+      <div
+        id={itemsId}
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+      >
+        <ul className="flex flex-col">
+          {primaryItems.map((item) => (
+            <SidebarItem
+              key={item.id}
+              item={item}
+              active={item.id === activeItemId}
+              expanded={expanded}
+            />
+          ))}
+        </ul>
+        {secondaryItems.length > 0 && (
+          <ul className="mt-auto mb-3 flex flex-col">
+            {secondaryItems.map((item) => (
+              <SidebarItem
+                key={item.id}
+                item={item}
+                active={item.id === activeItemId}
+                expanded={expanded}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
     </nav>
   );
 }
@@ -45,9 +85,10 @@ export function Sidebar({
 interface SidebarItemProps {
   item: NavItem;
   active: boolean;
+  expanded: boolean;
 }
 
-function SidebarItem({ item, active }: SidebarItemProps) {
+function SidebarItem({ item, active, expanded }: SidebarItemProps) {
   const { icon: Icon, label, onSelect } = item;
   // The current page is never "coming soon", even before its handler is wired.
   const available = active || Boolean(onSelect);
@@ -66,9 +107,10 @@ function SidebarItem({ item, active }: SidebarItemProps) {
         aria-disabled={available ? undefined : true}
         title={available ? label : `${label} — coming soon`}
         onClick={onSelect}
-        className={`grid h-12 w-full place-items-center transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary ${stateClasses}`}
+        className={`flex min-h-12 w-full items-center gap-3 py-3 transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary ${expanded ? 'px-5 text-left' : 'justify-center'} ${stateClasses}`}
       >
-        <Icon className="size-5" />
+        <Icon className="size-5 shrink-0" />
+        {expanded && <span className="text-sm font-medium">{label}</span>}
       </button>
     </li>
   );

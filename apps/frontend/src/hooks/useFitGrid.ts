@@ -10,6 +10,8 @@ export interface FitGridOptions {
   reserve?: number;
   /** Used until the layout can be measured (and in tests, which have no layout). */
   fallbackRows: number;
+  /** Re-measure before trusting capacity for a different content/layout scope. */
+  measurementKey?: string;
 }
 
 export interface FitGrid {
@@ -19,6 +21,8 @@ export interface FitGrid {
   columns: number;
   /** Items that fit on one page: rows × columns. */
   pageSize: number;
+  /** True only after measuring a nonzero container and row height. */
+  isMeasured: boolean;
 }
 
 /**
@@ -32,12 +36,23 @@ export function useFitGrid({
   maxColumns = 1,
   reserve = 0,
   fallbackRows,
+  measurementKey,
 }: FitGridOptions): FitGrid {
   const [element, setElement] = useState<HTMLElement | null>(null);
-  const [fit, setFit] = useState({ rows: fallbackRows, columns: maxColumns });
+  const [fit, setFit] = useState({
+    rows: fallbackRows,
+    columns: maxColumns,
+    isMeasured: false,
+    measurementKey,
+  });
 
   const measure = useCallback(() => {
-    if (!element || element.clientHeight === 0) return;
+    if (!element || element.clientWidth === 0 || element.clientHeight === 0) {
+      setFit((current) =>
+        current.isMeasured ? { ...current, isMeasured: false } : current,
+      );
+      return;
+    }
     const columns = minColumnWidth
       ? Math.min(
           maxColumns,
@@ -51,7 +66,9 @@ export function useFitGrid({
     const rowHeight = row?.getBoundingClientRect().height ?? 0;
     if (rowHeight === 0) {
       setFit((current) =>
-        current.columns === columns ? current : { ...current, columns },
+        current.columns === columns && !current.isMeasured
+          ? current
+          : { ...current, columns, isMeasured: false },
       );
       return;
     }
@@ -66,11 +83,14 @@ export function useFitGrid({
       Math.floor((element.clientHeight - fixed + gap) / (rowHeight + gap)),
     );
     setFit((current) =>
-      current.rows === rows && current.columns === columns
+      current.rows === rows &&
+      current.columns === columns &&
+      current.isMeasured &&
+      current.measurementKey === measurementKey
         ? current
-        : { rows, columns },
+        : { rows, columns, isMeasured: true, measurementKey },
     );
-  }, [element, gap, minColumnWidth, maxColumns, reserve]);
+  }, [element, gap, minColumnWidth, maxColumns, reserve, measurementKey]);
 
   // Content can change without the container resizing (data arriving, a
   // breakpoint changing row height), so re-measure after every render too.
@@ -89,5 +109,6 @@ export function useFitGrid({
     rows: fit.rows,
     columns: fit.columns,
     pageSize: fit.rows * fit.columns,
+    isMeasured: fit.isMeasured && fit.measurementKey === measurementKey,
   };
 }

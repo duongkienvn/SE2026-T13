@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { ActionMenu } from '../../../components/ActionMenu';
-import { ClockIcon, PlusIcon } from '../../../components/icons';
+import { ClockIcon } from '../../../components/icons';
 import { formatRelativeTime } from '../../../lib/format';
 import type { Board } from '../types';
 import { BoardIcon } from './BoardIcon';
@@ -74,28 +74,5 @@ export function BoardCard({
         {board.description || 'No description'}
       </p>
     </article>
-  );
-}
-
-/** Dashed "Create a new board" tile shown after the last board (boards.png). */
-export function CreateBoardTile({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex h-34 w-full items-center justify-center gap-3 rounded-xl border-2 border-dashed border-line bg-surface/50 p-4 text-left transition-colors hover:border-primary/40 hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-    >
-      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-app text-xl text-muted">
-        <PlusIcon />
-      </span>
-      <span>
-        <span className="block text-[15px] font-semibold text-ink">
-          Create a new board
-        </span>
-        <span className="mt-0.5 block max-w-[240px] text-[13px] text-muted">
-          Start a new Kanban board for your project or team.
-        </span>
-      </span>
-    </button>
   );
 }
