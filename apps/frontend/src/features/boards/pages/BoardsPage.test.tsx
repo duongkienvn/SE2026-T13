@@ -1,5 +1,12 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { focusManager } from '@tanstack/react-query';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 import { makeBoard, okPage } from '../../../test/board-fixtures';
 import {
   fail,
@@ -14,6 +21,8 @@ import { renderApp } from '../../../test/render';
 const PAGE_1 = 'GET /boards?page=1&limit=100';
 const PAGE_2 = 'GET /boards?page=2&limit=100';
 
+afterEach(() => focusManager.setFocused(undefined));
+
 function openBoards(
   handlers: Record<string, MockResponse | (() => MockResponse)>,
 ) {
@@ -24,6 +33,62 @@ function openBoards(
 }
 
 describe('BoardsPage', () => {
+  it('keeps creation hidden and preserves the requested page throughout initial loading', async () => {
+    let finish!: (response: MockResponse) => void;
+    const response = new Promise<MockResponse>((resolve) => {
+      finish = resolve;
+    });
+    storeSession();
+    mockApi({ 'GET /users/me': ok(testUser), [PAGE_1]: () => response });
+    const { router } = renderApp('/boards?page=2');
+    await screen.findByText('Loading boards…');
+    expect(
+      screen.queryByRole('button', { name: /New Board|Create.*board/i }),
+    ).toBeNull();
+    expect(router.state.location.search).toBe('?page=2');
+    await act(async () => {
+      finish(okPage(fourteenBoards()));
+      await response;
+    });
+    await screen.findByRole('link', { name: 'Item 13' });
+    expect(router.state.location.search).toBe('?page=2');
+    expect(screen.getAllByRole('button', { name: 'New Board' })).toHaveLength(
+      1,
+    );
+  });
+
+  it('clamps after boards disappear and returns to the single empty-state action', async () => {
+    let count = 13;
+    openBoards({
+      [PAGE_1]: () =>
+        okPage(
+          Array.from({ length: count }, (_, i) =>
+            makeBoard({ name: `Project ${i + 1}` }),
+          ),
+        ),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Page 2' }));
+    await screen.findByRole('link', { name: 'Project 13' });
+    count = 12;
+    const refocus = () =>
+      act(() => {
+        focusManager.setFocused(false);
+        focusManager.setFocused(true);
+      });
+    refocus();
+    await screen.findByRole('link', { name: 'Project 1' });
+    expect(
+      screen.queryByRole('navigation', { name: 'Boards pages' }),
+    ).toBeNull();
+    count = 0;
+    refocus();
+    await screen.findByRole('heading', { name: 'No boards yet' });
+    expect(screen.queryByRole('button', { name: 'New Board' })).toBeNull();
+    expect(
+      screen.getAllByRole('button', { name: 'Create board' }),
+    ).toHaveLength(1);
+  });
+
   it('shows the boards from the API with role and update time', async () => {
     const product = makeBoard({
       name: 'Product Development',
