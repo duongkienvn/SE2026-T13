@@ -5,6 +5,8 @@ import type { Activity } from './types';
 /** Lowercase so a row reads "<actor> <action>", as in card-detail.png. */
 const ACTION_LABELS: Record<string, string> = {
   BOARD_UPDATED: 'updated the board',
+  BOARD_ARCHIVED: 'archived the board',
+  BOARD_RESTORED: 'restored the board',
   MEMBER_ADDED: 'added a board member',
   MEMBER_REMOVED: 'removed a board member',
   ROLE_CHANGED: "changed a member's role",
