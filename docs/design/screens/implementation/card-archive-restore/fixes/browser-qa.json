@@ -1,0 +1,193 @@
+{
+  "scope": "Real Chromium rendering production components; API responses and readOnly prop transitions are deterministic fixtures. Backend unchanged; prior PostgreSQL/socket evidence retained.",
+  "captures": [
+    {
+      "name": "archive-guidance-375",
+      "viewport": 375,
+      "documentWidth": 375,
+      "reducedMotion": true,
+      "dialogs": [
+        {
+          "x": 16,
+          "y": 16,
+          "width": 343,
+          "height": 868
+        }
+      ]
+    },
+    {
+      "name": "pending-confirm-375",
+      "viewport": 375,
+      "documentWidth": 375,
+      "reducedMotion": true,
+      "dialogs": [
+        {
+          "x": 16,
+          "y": 314,
+          "width": 343,
+          "height": 272
+        }
+      ]
+    },
+    {
+      "name": "pending-list-375",
+      "viewport": 375,
+      "documentWidth": 375,
+      "reducedMotion": true,
+      "dialogs": [
+        {
+          "x": 16,
+          "y": 268,
+          "width": 343,
+          "height": 364
+        }
+      ]
+    },
+    {
+      "name": "retry-success-375",
+      "viewport": 375,
+      "documentWidth": 375,
+      "reducedMotion": true,
+      "dialogs": [
+        {
+          "x": 16,
+          "y": 227.5,
+          "width": 343,
+          "height": 445
+        }
+      ]
+    },
+    {
+      "name": "archive-guidance-768",
+      "viewport": 768,
+      "documentWidth": 768,
+      "reducedMotion": true,
+      "dialogs": [
+        {
+          "x": 16,
+          "y": 16,
+          "width": 736,
+          "height": 868
+        }
+      ]
+    },
+    {
+      "name": "pending-confirm-768",
+      "viewport": 768,
+      "documentWidth": 768,
+      "reducedMotion": true,
+      "dialogs": [
+        {
+          "x": 128,
+          "y": 360,
+          "width": 512,
+          "height": 180
+        }
+      ]
+    },
+    {
+      "name": "pending-list-768",
+      "viewport": 768,
+      "documentWidth": 768,
+      "reducedMotion": true,
+      "dialogs": [
+        {
+          "x": 16,
+          "y": 308,
+          "width": 736,
+          "height": 284
+        }
+      ]
+    },
+    {
+      "name": "retry-success-768",
+      "viewport": 768,
+      "documentWidth": 768,
+      "reducedMotion": true,
+      "dialogs": [
+        {
+          "x": 16,
+          "y": 262.75,
+          "width": 736,
+          "height": 374.5
+        }
+      ]
+    },
+    {
+      "name": "archive-guidance-1280",
+      "viewport": 1280,
+      "documentWidth": 1280,
+      "reducedMotion": true,
+      "dialogs": [
+        {
+          "x": 192,
+          "y": 16,
+          "width": 896,
+          "height": 868
+        }
+      ]
+    },
+    {
+      "name": "pending-confirm-1280",
+      "viewport": 1280,
+      "documentWidth": 1280,
+      "reducedMotion": true,
+      "dialogs": [
+        {
+          "x": 384,
+          "y": 360,
+          "width": 512,
+          "height": 180
+        }
+      ]
+    },
+    {
+      "name": "readonly-during-request",
+      "viewport": 1280,
+      "documentWidth": 1280,
+      "reducedMotion": true,
+      "dialogs": [
+        {
+          "x": 192,
+          "y": 279,
+          "width": 896,
+          "height": 342
+        }
+      ]
+    },
+    {
+      "name": "pending-list-1280",
+      "viewport": 1280,
+      "documentWidth": 1280,
+      "reducedMotion": true,
+      "dialogs": [
+        {
+          "x": 192,
+          "y": 308,
+          "width": 896,
+          "height": 284
+        }
+      ]
+    },
+    {
+      "name": "retry-success-1280",
+      "viewport": 1280,
+      "documentWidth": 1280,
+      "reducedMotion": true,
+      "dialogs": [
+        {
+          "x": 192,
+          "y": 262.75,
+          "width": 896,
+          "height": 374.5
+        }
+      ]
+    }
+  ],
+  "checks": [
+    "375px: archive guidance wraps; reduced motion enabled; pending double-click sends once; Escape blocked; board archive/restore leaves list action disabled until settlement; retry sends second POST and succeeds",
+    "768px: archive guidance wraps; reduced motion enabled; pending double-click sends once; Escape blocked; board archive/restore leaves list action disabled until settlement; retry sends second POST and succeeds",
+    "1280px: archive guidance wraps; reduced motion enabled; pending double-click sends once; Escape blocked; board archive/restore leaves list action disabled until settlement; retry sends second POST and succeeds"
+  ],
+  "consoleErrors": []
+}

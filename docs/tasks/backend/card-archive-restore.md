@@ -112,7 +112,7 @@ Database checks actually executed:
   PASS**, including the updated database foundation and migration run/down/rerun
   checks. These auth suites use their own disposable Docker PostgreSQL instances.
 
-Workspace results on the final code:
+Workspace results for the initial implementation at `c64034f`:
 
 | Check                                           | Result                                          |
 | ----------------------------------------------- | ----------------------------------------------- |
@@ -138,3 +138,48 @@ migrations, CI, remote push, PR creation and deployment were not performed.
 
 Permalinks (P1-03), bulk restore, hard delete, retention, choosing another column,
 new ACL/schema, notifications and production deployment are excluded.
+
+## Follow-up: restore recovery and archive guidance
+
+The completion audit reproduced a pending-request lifecycle defect: another
+session could archive then restore the board while Restore was waiting, returning
+the UI to the archive list. Selecting a card called mutation `reset()`, detaching
+the observer and skipping its per-call `onSettled`. The submission ref remained
+locked even after the request finished.
+
+`ArchivedCardsDialog` now releases the ref in the `mutateAsync` promise's
+`finally`, independently of observer callbacks. Archive-list Restore controls
+remain disabled until the pending request settles. Existing error handling,
+double-click protection and server-confirmed success messages are retained.
+Card Detail's archive confirmation now points to Archived cards in the board
+actions menu instead of saying restoration is unavailable.
+
+`ArchivedCardsRecovery.test.tsx` reproduces the board transition, verifies the
+pending action is disabled and a later retry succeeds, and covers failed restore
+retry plus 401/403/404 hiding cached content. Before the fix, the pending-transition
+test failed; after it, all five recovery cases and the existing archive/Card
+interaction suites passed (21 tests across three suites).
+
+Fresh [component browser evidence](../../design/screens/implementation/card-archive-restore/fixes/browser-qa.json)
+contains 13 captures of the changed states at 375/768/1280px, with reduced motion
+explicitly enabled and checked. Real Chromium mounts the production components;
+API replies and board read-only transitions use deterministic fixtures to hold
+the pending-request race. This complements the earlier real PostgreSQL/Socket.IO
+and full-board browser run; it does not claim a new backend integration run.
+The browser verifies one pending POST despite double-click, blocked Escape,
+read-only transition, disabled Restore after the board becomes active, a second
+POST on retry after settlement, success, and corrected archive guidance.
+
+The fresh code review and both independent visual review passes returned **PASS**
+for these fixes. Each visual reviewer opened all 13 new captures and checked
+dimensions, freshness, responsive wrapping and disabled/read-only/success states.
+`pnpm lint`, `pnpm build`, changed-file Prettier checks and `git diff --check`
+passed. The full workspace test run passed 6 shared and 541 backend tests; its
+frontend run passed 647 of 648 cases and timed out in an unchanged registration
+test. The final frontend rerun with `--maxWorkers=1` passed **71 suites / 648
+tests**, without changing assertions or timeouts. Thus all **1,195 tests** passed
+across the verified workspace suites. Whole-repository `pnpm format:check` still
+reports the same **282 unchanged baseline files**; every added/changed text file
+passes Prettier. The final five-lane recheck passed, including a fresh focused
+run of **42 tests across four files**. The follow-up fixes were reviewed before
+their local commits; no push, PR or production operation was performed.
