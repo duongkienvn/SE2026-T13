@@ -48,10 +48,13 @@ export class PasswordSecurityController {
   })
   @ApiCommonErrors([400, 429])
   async forgot(@Body() input: ForgotPasswordDto): Promise<null> {
-    // Equal floor covers the bounded provider deadline for every account state,
-    // including cooldown, unknown/unverified accounts and delivery failures.
-    // Storage/provider errors cannot turn account eligibility into an oracle.
-    await Promise.allSettled([this.security.send(input.email), delay(10_500)]);
+    // Only the timer gates HTTP completion; DB/delivery latency must not reveal
+    // eligibility. Handle the entire background job, including synchronous throws
+    // and transaction/final-update rejections, without logging sensitive data.
+    void Promise.resolve()
+      .then(() => this.security.send(input.email))
+      .catch(() => undefined);
+    await delay(10_500);
     return null;
   }
 

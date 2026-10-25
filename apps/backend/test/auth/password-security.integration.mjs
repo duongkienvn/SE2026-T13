@@ -74,6 +74,22 @@ let source,
   started = false,
   checks = 0;
 const sockets = [];
+const pendingSends = new Set();
+function createGate() {
+  let release;
+  const promise = new Promise((resolve) => {
+    release = resolve;
+  });
+  return { promise, release };
+}
+async function eventually(predicate, label, timeoutMs = 5000) {
+  const deadline = performance.now() + timeoutMs;
+  while (performance.now() < deadline) {
+    if (await predicate()) return;
+    await delay(20);
+  }
+  assert.fail(label);
+}
 const check = (label) => {
   checks++;
   console.log(`PASS: ${label}`);
@@ -199,7 +215,9 @@ try {
         ignoreEnvVars: true,
         load: [() => config],
       }),
-      TypeOrmModule.forRoot(options),
+      // Allow the pool-exhaustion test to hold work beyond the HTTP timer.
+      // This override is test-only; production connection deadlines stay intact.
+      TypeOrmModule.forRoot({ ...options, connectTimeoutMS: 30_000 }),
       ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
       LoggerModule.forRoot({ pinoHttp: { level: 'silent' } }),
       AuthModule,
@@ -242,6 +260,19 @@ try {
   const http = request(app.getHttpServer());
   const auth = app.get(AuthService);
   const security = app.get(PasswordSecurityService);
+  // Observe completion only in the test harness. The controller must never wait
+  // for this set; drain it before replacing test doubles or closing PostgreSQL.
+  const sendRecovery = security.send.bind(security);
+  security.send = (email) => {
+    const job = sendRecovery(email).finally(() => pendingSends.delete(job));
+    pendingSends.add(job);
+    return job;
+  };
+  const settleSends = () =>
+    eventually(
+      () => pendingSends.size === 0,
+      'Background recovery did not settle',
+    );
   const users = source.getRepository(User);
   const tokens = source.getRepository(Token);
   const find = (id) => users.findOneByOrFail({ id });
@@ -293,16 +324,41 @@ try {
     unverified.email,
     'missing@example.com',
   ];
-  const generic = await Promise.all(
-    states.map(async (email) => {
-      const begin = performance.now();
-      const response = await http
-        .post('/api/auth/forgot-password')
-        .send({ email: email.toUpperCase() })
-        .expect(202);
-      return { body: response.body, elapsed: performance.now() - begin };
-    }),
-  );
+  const deliver = mailer.send.bind(mailer);
+  const deliveryGate = createGate();
+  let deliveryEntered = false;
+  mailer.send = async (email, url) => {
+    if (email === known.email) {
+      deliveryEntered = true;
+      await deliveryGate.promise;
+    }
+    await deliver(email, url);
+  };
+  const requestRecovery = async (email) => {
+    const begin = performance.now();
+    const response = await http
+      .post('/api/auth/forgot-password')
+      .send({ email: email.toUpperCase() })
+      .timeout({ deadline: 15_000 })
+      .expect(202);
+    return { body: response.body, elapsed: performance.now() - begin };
+  };
+  let generic;
+  try {
+    generic = await Promise.all(states.map(requestRecovery));
+    assert(deliveryEntered, 'Expected the eligible delivery to be in flight');
+    assert(
+      pendingSends.size > 0,
+      'HTTP acknowledgement incorrectly waited for delivery',
+    );
+    assert(
+      !mailer.deliveries.some((delivery) => delivery.email === known.email),
+    );
+  } finally {
+    deliveryGate.release();
+    await settleSends();
+    mailer.send = deliver;
+  }
   assert(
     generic.every(
       (result) =>
@@ -311,9 +367,14 @@ try {
   );
   assert(generic.every((result) => result.elapsed >= 10_400));
   assert.equal(await tokens.countBy({ userId: unverified.id }), 0);
-  assert.equal(mailer.deliveries.length, 2);
+  await eventually(
+    () => mailer.deliveries.length === 2,
+    'Verified accounts did not receive eventual recovery mail',
+  );
+  assert((await tokens.findOneByOrFail({ userId: known.id })).sentAt);
+  assert((await tokens.findOneByOrFail({ userId: other.id })).sentAt);
   check(
-    'existing/unknown/unverified receive identical 202 envelopes and timing floor; only verified accounts mailed',
+    '202/timer does not wait for an in-flight provider; eligible/unknown/unverified responses match and verified delivery completes eventually',
   );
   await assert.rejects(
     source.undoLastMigration(),
@@ -586,6 +647,11 @@ try {
     .send({ email: google.email })
     .expect(202);
   assert.deepEqual(googleAcknowledgement.body, generic[0].body);
+  await settleSends();
+  await eventually(
+    () => mailer.deliveries.some((delivery) => delivery.email === google.email),
+    'Google-only recovery was not delivered eventually',
+  );
   await http
     .post('/api/auth/change-password')
     .set('Authorization', `Bearer ${googleResponse.body.data.accessToken}`)
@@ -701,26 +767,133 @@ try {
     null,
   );
   assert.equal((await find(failed.id)).authVersion, 0);
-  const savedSend = mailer.send.bind(mailer);
-  mailer.send = async () => {
-    throw new Error('simulated ambiguous provider failure');
-  };
-  try {
-    const response = await http
-      .post('/api/auth/forgot-password')
-      .send({ email: unverified.email })
-      .expect(202);
-    assert.deepEqual(response.body, generic[0].body);
-    const eligibleFailure = await http
-      .post('/api/auth/forgot-password')
-      .send({ email: unrelated.email })
-      .expect(202);
-    assert.deepEqual(eligibleFailure.body, generic[0].body);
-  } finally {
-    mailer.send = savedSend;
-  }
   check(
     'persistent hourly cap/window reset and ambiguous provider failures retain quota without retry or credential changes',
+  );
+
+  // A queued DB connection must not hold the HTTP response either, including
+  // requests whose eligibility has not yet been discovered by the database.
+  const queued = await local('queued@example.com');
+  const appSource = app.get(DataSource);
+  const heldConnections = [];
+  try {
+    for (let i = 0; i < options.poolSize; i++) {
+      const runner = appSource.createQueryRunner();
+      await runner.connect();
+      heldConnections.push(runner);
+    }
+    const responses = await Promise.all(
+      [queued.email, 'queued-missing@example.com'].map(requestRecovery),
+    );
+    assert(
+      responses.every(
+        (response) =>
+          JSON.stringify(response.body) === JSON.stringify(generic[0].body),
+      ),
+    );
+    assert.equal(await tokens.countBy({ userId: queued.id }), 0);
+    assert(
+      pendingSends.size >= 2,
+      'Queued database work should still be pending after HTTP 202',
+    );
+  } finally {
+    await Promise.all(heldConnections.map((runner) => runner.release()));
+    await settleSends();
+  }
+  await eventually(
+    () => mailer.deliveries.some((delivery) => delivery.email === queued.email),
+    'Recovery queued behind DB connections was not delivered',
+  );
+  check(
+    'HTTP 202 is independent of database pool waiting; queued work delivers eventually after connections are released',
+  );
+
+  const dbFailure = await local('database-failure@example.com');
+  const providerFailure = await local('provider-failure@example.com');
+  const finalFailure = await local('final-update-failure@example.com');
+  // Real PostgreSQL failures at both ends of send(), before and after mail.
+  await source.query(
+    `CREATE FUNCTION test_fail_recovery_send() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic confidential DB failure'; END $$`,
+  );
+  await source.query(
+    `CREATE TRIGGER test_fail_recovery_issue BEFORE INSERT ON password_reset_tokens FOR EACH ROW WHEN (NEW.user_id = '${dbFailure.id}'::uuid) EXECUTE FUNCTION test_fail_recovery_send()`,
+  );
+  await source.query(
+    `CREATE TRIGGER test_fail_recovery_sent BEFORE UPDATE ON password_reset_tokens FOR EACH ROW WHEN (NEW.user_id = '${finalFailure.id}'::uuid AND NEW.sent_at IS NOT NULL) EXECUTE FUNCTION test_fail_recovery_send()`,
+  );
+  const failureGate = createGate();
+  const providerAttempts = new Map();
+  mailer.send = async (email, url) => {
+    providerAttempts.set(email, (providerAttempts.get(email) ?? 0) + 1);
+    await failureGate.promise;
+    if (email === providerFailure.email)
+      throw new Error('synthetic confidential provider failure');
+    await deliver(email, url);
+  };
+  try {
+    await tokens.update({ userId: known.id }, { createdAt: new Date() });
+    const responses = await Promise.all(
+      [
+        dbFailure.email,
+        providerFailure.email,
+        finalFailure.email,
+        unverified.email,
+        'failure-missing@example.com',
+        known.email,
+      ].map(requestRecovery),
+    );
+    assert(
+      responses.every(
+        (response) =>
+          JSON.stringify(response.body) === JSON.stringify(generic[0].body),
+      ),
+    );
+    assert.equal(providerAttempts.size, 2);
+    assert(
+      pendingSends.size >= 2,
+      'Late provider/update work must not delay acknowledgement',
+    );
+    assert.equal(await tokens.countBy({ userId: dbFailure.id }), 0);
+    // Release only after all HTTP responses: provider rejection and final token
+    // update failure now happen after 202. Strict unhandled-rejection mode must
+    // still complete this suite successfully.
+  } finally {
+    failureGate.release();
+    await settleSends();
+    mailer.send = deliver;
+    await source.query(
+      'DROP TRIGGER test_fail_recovery_issue ON password_reset_tokens',
+    );
+    await source.query(
+      'DROP TRIGGER test_fail_recovery_sent ON password_reset_tokens',
+    );
+    await source.query('DROP FUNCTION test_fail_recovery_send()');
+  }
+  assert.equal(providerAttempts.get(providerFailure.email), 1);
+  assert.equal(providerAttempts.get(finalFailure.email), 1);
+  assert(
+    !mailer.deliveries.some(
+      (delivery) => delivery.email === providerFailure.email,
+    ),
+  );
+  assert(
+    mailer.deliveries.some((delivery) => delivery.email === finalFailure.email),
+  );
+  for (const user of [providerFailure, finalFailure]) {
+    const token = await tokens.findOneByOrFail({ userId: user.id });
+    assert.equal(token.sentAt, null);
+    assert.equal(token.attempts, 1);
+    assert.equal((await find(user.id)).authVersion, 0);
+  }
+  await security.send(providerFailure.email);
+  assert.equal(providerAttempts.get(providerFailure.email), 1);
+  const deliveredToken = new URL(
+    mailer.deliveries.find((delivery) => delivery.email === finalFailure.email)
+      .url,
+  ).searchParams.get('token');
+  await security.reset(deliveredToken, 'DeliveredAfterAck123!');
+  check(
+    'issuance DB errors and late provider/final-update errors keep generic 202, quota and valid delivered proofs without retry or unhandled rejection',
   );
 
   const inFlight = await local('inflight@example.com');
@@ -796,6 +969,7 @@ try {
   }
 } finally {
   for (const socket of sockets) socket.close();
+  await Promise.allSettled([...pendingSends]);
   if (app) await app.close();
   if (source?.isInitialized) await source.destroy();
   if (started) docker('rm', '--force', name);

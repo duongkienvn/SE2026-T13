@@ -36,11 +36,13 @@ Profile writes now update only permitted profile fields, preventing a concurrent
 
 Proofs use 32 CSPRNG bytes (256 bits), encoded as 43 base64url characters, with 30-minute TTL. Only SHA-256 is persisted; proofs are opaque, never JWTs. Verification and recovery use separate tables, mailers and templates. Unverified accounts cannot receive a recovery proof or become verified via reset. A verified Google-only account may consume recovery to set a local password while preserving user ID, Google subject/identity and business ownership. A Google-only JWT alone cannot set a password.
 
-Issuance is serialized per account in PostgreSQL: 60-second cooldown, maximum five issues per one-hour window, including failed/ambiguous delivery attempts. Concurrent requests cannot send duplicate proofs. Public forgot responds with the same 202 body and a 10.5-second timing floor, including unknown/unverified accounts, cooldown and provider failures. Storage failures also remain non-enumerating at this endpoint. Its issuance transaction bounds statement/lock waits. As with other network services, contention or overload can exceed the floor; this is mitigation, not a constant-time guarantee.
+Issuance is serialized per account in PostgreSQL: 60-second cooldown, maximum five issues per one-hour window, including failed/ambiguous delivery attempts. Concurrent requests cannot send duplicate proofs. Public forgot schedules issuance and delivery in an in-process background promise and awaits only a separate 10.5-second timer before returning the same generic 202. Database connection waits, issuance, provider delivery and the final token annotation do not gate HTTP completion. Unknown/unverified accounts, cooldown and database/provider failures retain the same acknowledgement. The whole background promise handles rejections, including synchronous invocation failures and errors after the response, without logging account state or sensitive error details. The issuance transaction still bounds statement/lock waits. Timer scheduling, event-loop load and network overhead can add jitter; this removes the delivery-completion timing dependency, not every possible timing signal or a strict constant-time guarantee.
+
+The 202 is an acknowledgement, not proof of token persistence or mail delivery. Background work is best effort within the current process, without a durable queue or automatic retry. Process shutdown/crash can abandon work before persistence or after issuance; after issuance, the persisted cooldown/quota and valid proof remain. A later explicit request can retry after cooldown. More robust shutdown draining or durable delivery requires a separate lifecycle/infrastructure change.
 
 HTTP throttles are forgot 5/5 minutes/IP, reset 10/minute/IP, change 5/5 minutes/IP plus an additional authenticated-account bucket across IPs. The account guard runs **after** JWT authentication. HTTP throttling uses existing per-process storage; distributed enforcement requires ingress protection before running multiple backend instances. Recovery's account quota is database-backed and shared across instances/restarts.
 
-`PasswordRecoveryMailer` selects fake/Resend using existing configuration. The dedicated branded template contains `/reset-password?token=...` built from `PUBLIC_APP_URL`, neutral copy, expiry and ignore instructions. It uses table/inline-style layout and no external images/tracking resources. Production Resend has a 10-second abort deadline and deterministic per-proof idempotency key. SDK errors are sanitized. No automatic retry occurs; ambiguous delivery retains the valid proof and charges quota. After cooldown a user may explicitly request rotation. `sent_at` is informational and updated after delivery using a hash predicate so delayed provider completion cannot overwrite a rotated proof. A process crash after issuance but before delivery may require another request after cooldown.
+`PasswordRecoveryMailer` selects fake/Resend using existing configuration. The dedicated branded template contains `/reset-password?token=...` built from `PUBLIC_APP_URL`, neutral copy, expiry and ignore instructions. It uses table/inline-style layout and no external images/tracking resources. Production Resend has a 10-second abort deadline and deterministic per-proof idempotency key. SDK errors are sanitized. No automatic retry occurs; ambiguous delivery retains the valid proof and charges quota. After cooldown a user may explicitly request rotation. `sent_at` is informational and updated after delivery using a hash predicate so delayed provider completion cannot overwrite a rotated proof. Failure of that annotation does not invalidate an already delivered proof.
 
 Request logging excludes bodies, raw queries and credentials; no new token/password/provider-error logging was added. Frontend captures the incoming recovery proof in bootstrap memory, replaces the URL before React mounts, and clears the bootstrap reference on use. In-app query links receive the same replacement. Proofs are never put in router state or browser storage. Referrer policy is `no-referrer`. After the URL has been stripped, refreshing the bare page requires reopening the original email link (or requesting a fresh one). Initial navigation URLs can still reach browsers, mail providers and ingress/access logs; deployments must redact query strings, avoid analytics on auth pages and preserve TLS. JavaScript memory is not a defense against an XSS-compromised origin.
 
@@ -163,3 +165,48 @@ had no console errors or warnings. Plain `pnpm format:check` still reports CRLF
 differences in 457 untouched files; the full check with `--end-of-line auto`
 passed. Those unrelated files were not normalized. The temporary QA servers and
 disposable database were stopped after verification.
+
+## PR #94 timing review follow-up
+
+The CodeRabbit finding in `PasswordSecurityController.forgot()` was valid:
+`Promise.allSettled([send(), delay(10_500)])` waited for both promises. The
+provider's 10-second deadline did not bound database acquisition, the sum of
+issuance statements and delivery, or the final `sent_at` update. Eligible-account
+work could therefore extend the HTTP response beyond the common timer.
+
+The controller now schedules `send()` through a promise with a terminal rejection
+handler and awaits only the timer. The promise bridge also catches synchronous
+invocation errors. No email, proof, account state or provider/database error is
+logged. Generic 202, DTO validation, HTTP rate limits, database cooldown/quota,
+proof lifecycle, provider deadline/idempotency and mail delivery are unchanged.
+No service, schema, frontend or infrastructure change is required. See the
+in-process reliability and timing limits under Recovery and mail security above.
+
+Eight controller tests independently control the timer and delivery, including
+pending work, ineligible/successful outcomes, synchronous errors and early/late
+rejections. HTTP/database integration no longer treats 202 as completed delivery:
+it gates a provider past the response and checks eventual mail and `sent_at`,
+exhausts the application connection pool past the response and checks eventual
+issuance, and injects real PostgreSQL failures during issuance and final token
+annotation. Provider rejection and annotation failure are deliberately released
+after 202. Eligible, missing, unverified, cooldown and failure responses retain
+the same envelope; failed/ambiguous delivery retains quota, and a delivered proof
+still resets successfully when its final annotation fails. Test-only gates and a
+30-second pool acquisition deadline make these assertions deterministic without
+changing production deadlines. The harness drains background work before teardown.
+
+Validation on 2026-10-25:
+
+- Targeted controller/HTTP/service/mailer suites: **37 tests passed**.
+- `node --unhandled-rejections=strict apps/backend/test/auth/password-security.integration.mjs`
+  after backend build: **16 grouped checks passed**; disposable container removed.
+- `pnpm lint`: passed.
+- `pnpm test` with `VITEST_MAX_WORKERS=2`: **51 backend suites / 492 tests,
+  68 frontend files / 624 tests, 6 shared tests (1,122 total)** passed.
+- `pnpm build`: passed; existing Vite environment and bundle-size warnings remain.
+- `pnpm format:check`: still fails on **457 untouched CRLF files**;
+  `pnpm format:check --end-of-line auto`, standard Prettier checks on all four
+  changed files, and `git diff --check` pass. No unrelated normalization was made.
+
+This follow-up is a local fix only. No push, new PR, remote review reply/resolution,
+merge, deployment, production database or live Resend delivery was performed.
