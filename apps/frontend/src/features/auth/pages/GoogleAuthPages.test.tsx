@@ -22,7 +22,7 @@ describe('Google login and registration', () => {
       const primary = screen.getByRole('button', {
         name: path === '/login' ? 'Log In' : 'Create account',
       });
-      const divider = screen.getByText('or continue with');
+      const divider = screen.getByText('or', { exact: true });
       const social = screen.getByRole('region', {
         name: 'Alternative sign-in',
       });
@@ -39,8 +39,8 @@ describe('Google login and registration', () => {
       precedes(primary, divider);
       precedes(divider, button);
       precedes(button, link);
-      expect(screen.getAllByText('or continue with')).toHaveLength(1);
-      expect(screen.queryByText('or', { exact: true })).toBeNull();
+      expect(screen.getAllByText('or', { exact: true })).toHaveLength(1);
+      expect(screen.queryByText('or continue with')).toBeNull();
       // Rerender with local input state, then switch routes without reloading GIS.
       fireEvent.change(screen.getByLabelText('Email address'), {
         target: { value: 'ada@example.com' },
@@ -57,7 +57,8 @@ describe('Google login and registration', () => {
       expect(
         await screen.findByRole('button', { name: 'Continue with Google' }),
       ).toBeTruthy();
-      expect(screen.getAllByText('or continue with')).toHaveLength(1);
+      expect(screen.getAllByText('or', { exact: true })).toHaveLength(1);
+      expect(screen.queryByText('or continue with')).toBeNull();
       expect(google.api.initialize).toHaveBeenCalledTimes(1);
     },
   );
