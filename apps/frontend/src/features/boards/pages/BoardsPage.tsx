@@ -73,6 +73,12 @@ export function BoardsPage() {
     : loaded;
   const shown = paginate(visible, page, fit.pageSize);
 
+  // Keep the URL in sync when data or available grid space removes a page.
+  // Do not clamp against the empty placeholder before the first load finishes.
+  useEffect(() => {
+    if (boards.data && page !== shown.page) setPage(shown.page);
+  }, [boards.data, page, shown.page, setPage]);
+
   const openCreate = () => {
     setNotice(undefined);
     setCreating(true);
@@ -91,15 +97,13 @@ export function BoardsPage() {
           loaded.length > 0 || search ? (
             <>
               {/* Keep the box while a query is active, so it can always be cleared. */}
-              {(loaded.length > 0 || search) && (
-                <SearchField
-                  label="Search boards"
-                  placeholder="Search boards..."
-                  value={search}
-                  onChange={changeSearch}
-                  className="w-full sm:w-[280px]"
-                />
-              )}
+              <SearchField
+                label="Search boards"
+                placeholder="Search boards..."
+                value={search}
+                onChange={changeSearch}
+                className="w-full sm:w-[280px]"
+              />
               {loaded.length > 0 && (
                 <Button onClick={openCreate}>
                   <PlusIcon aria-hidden="true" className="size-4.5" />

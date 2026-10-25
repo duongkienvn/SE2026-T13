@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useFitGrid, type FitGridOptions } from './useFitGrid';
 
@@ -33,6 +33,40 @@ afterEach(() => {
 });
 
 describe('useFitGrid', () => {
+  it('remeasures available columns when the sidebar changes the container width', () => {
+    stubLayout({ width: 900, height: 500 });
+    let resize!: () => void;
+    const disconnect = vi.fn();
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: () => void) {
+          resize = callback;
+        }
+        observe = vi.fn();
+        disconnect = disconnect;
+      },
+    );
+    const view = render(
+      <Probe
+        fallbackRows={4}
+        minColumnWidth={280}
+        maxColumns={3}
+        gap={16}
+        reserve={8}
+      />,
+    );
+    expect(screen.getByRole('status').textContent).toBe('3x3=9');
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(736);
+    act(() => resize());
+    expect(screen.getByRole('status').textContent).toBe('3x2=6');
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(900);
+    act(() => resize());
+    expect(screen.getByRole('status').textContent).toBe('3x3=9');
+    view.unmount();
+    expect(disconnect).toHaveBeenCalledOnce();
+  });
+
   it('uses the fallback until the layout can be measured', () => {
     render(<Probe fallbackRows={4} maxColumns={3} minColumnWidth={280} />);
     expect(screen.getByRole('status').textContent).toBe('4x3=12');

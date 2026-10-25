@@ -193,6 +193,46 @@ describe('BoardsPage', () => {
       makeBoard({ name: `Item ${String(index + 1).padStart(2, '0')}` }),
     );
 
+  it.each([
+    [12, 1, 12],
+    [13, 2, 1],
+    [25, 3, 1],
+  ])(
+    'paginates %s real boards into %s pages without a creation-only page',
+    async (count, pageCount, finalCount) => {
+      openBoards({
+        [PAGE_1]: okPage(
+          Array.from({ length: count }, (_, i) =>
+            makeBoard({ name: `Board ${i + 1}` }),
+          ),
+        ),
+      });
+      await screen.findByRole('link', { name: 'Board 1' });
+      if (pageCount === 1) {
+        expect(
+          screen.queryByRole('navigation', { name: 'Boards pages' }),
+        ).toBeNull();
+      } else {
+        const pages = within(
+          screen.getByRole('navigation', { name: 'Boards pages' }),
+        );
+        expect(
+          pages.queryByRole('button', { name: `Page ${pageCount + 1}` }),
+        ).toBeNull();
+        fireEvent.click(
+          pages.getByRole('button', { name: `Page ${pageCount}` }),
+        );
+        await screen.findByRole('link', { name: `Board ${count}` });
+      }
+      expect(
+        within(screen.getByRole('main')).getAllByRole('article'),
+      ).toHaveLength(finalCount);
+      expect(
+        screen.queryByRole('button', { name: /Create.*board/i }),
+      ).toBeNull();
+    },
+  );
+
   it('splits boards into numbered pages instead of scrolling', async () => {
     const { router } = openBoards({ [PAGE_1]: okPage(fourteenBoards()) });
 
@@ -234,10 +274,13 @@ describe('BoardsPage', () => {
       'GET /users/me': ok(testUser),
       [PAGE_1]: okPage(fourteenBoards()),
     });
-    renderApp('/boards?page=9');
+    const { router } = renderApp('/boards?page=9&view=grid');
 
     expect(await screen.findByRole('link', { name: 'Item 14' })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Item 01' })).toBeNull();
+    await waitFor(() =>
+      expect(router.state.location.search).toBe('?page=2&view=grid'),
+    );
   });
 
   it('goes back to the first page when searching', async () => {
