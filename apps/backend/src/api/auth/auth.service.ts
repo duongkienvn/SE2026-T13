@@ -94,7 +94,10 @@ export class AuthService {
         'Verify your email address before logging in.',
       );
     }
-    const accessToken = await this.jwt.signAsync({ sub: user.id });
+    const accessToken = await this.jwt.signAsync({
+      sub: user.id,
+      authVersion: user.authVersion,
+    });
     return {
       accessToken,
       tokenType: 'Bearer',
@@ -124,6 +127,9 @@ export class AuthService {
     }
     if (
       !UUID_PATTERN.test(claims.sub) ||
+      (claims.authVersion !== undefined &&
+        (!Number.isSafeInteger(claims.authVersion) ||
+          claims.authVersion < 0)) ||
       !Number.isSafeInteger(claims.exp) ||
       claims.exp * 1000 <= Date.now() ||
       !Number.isSafeInteger(claims.exp * 1000)
@@ -131,8 +137,16 @@ export class AuthService {
       throw this.unauthorized();
     }
     const user = await this.users.findOne({ where: { id: claims.sub } });
-    if (!user?.emailVerifiedAt) throw this.unauthorized();
-    return { userId: user.id, expiresAt: claims.exp * 1000 };
+    if (
+      !user?.emailVerifiedAt ||
+      (claims.authVersion ?? 0) !== user.authVersion
+    )
+      throw this.unauthorized();
+    return {
+      userId: user.id,
+      authVersion: user.authVersion,
+      expiresAt: claims.exp * 1000,
+    };
   }
 
   private emailAlreadyExists(): ApplicationException {

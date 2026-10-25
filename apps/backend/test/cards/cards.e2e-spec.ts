@@ -249,7 +249,7 @@ describe('Card HTTP API with real JWT, authorization, services and envelopes', (
           useValue: {
             findOne: jest.fn(async ({ where }: { where: { id: string } }) =>
               [ID.user, ID.target, OUTSIDER].includes(where.id)
-                ? { id: where.id, emailVerifiedAt: new Date() }
+                ? { id: where.id, authVersion: 0, emailVerifiedAt: new Date() }
                 : null,
             ),
           },

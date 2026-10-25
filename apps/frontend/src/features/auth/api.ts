@@ -70,6 +70,35 @@ export function logout(accessToken: string): Promise<void> {
   return apiRequest<void>('/auth/logout', { method: 'POST', accessToken });
 }
 
+export function forgotPassword(email: string): Promise<null> {
+  return apiRequest<null>('/auth/forgot-password', {
+    method: 'POST',
+    body: { email },
+  });
+}
+
+export function resetPassword(
+  token: string,
+  newPassword: string,
+): Promise<void> {
+  return apiRequest<void>('/auth/reset-password', {
+    method: 'POST',
+    body: { token, newPassword },
+  });
+}
+
+export function changePassword(
+  accessToken: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  return apiRequest<void>('/auth/change-password', {
+    method: 'POST',
+    accessToken,
+    body: { currentPassword, newPassword },
+  });
+}
+
 export function getCurrentUser(
   accessToken: string,
   signal?: AbortSignal,

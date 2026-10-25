@@ -19,12 +19,20 @@ import { GoogleIdentity } from './entities/google-identity.entity';
 import { GoogleTokenVerifier } from './google-token-verifier.service';
 import { GoogleAuthService } from './google-auth.service';
 import { GoogleAuthController } from './google-auth.controller';
+import { PasswordSecurityService } from './password-security.service';
+import { PasswordSecurityController } from './password-security.controller';
+import { PasswordResetToken } from './entities/password-reset-token.entity';
 
 @Module({
   imports: [
     ConfigModule,
     MailModule,
-    TypeOrmModule.forFeature([User, EmailVerificationToken, GoogleIdentity]),
+    TypeOrmModule.forFeature([
+      User,
+      EmailVerificationToken,
+      GoogleIdentity,
+      PasswordResetToken,
+    ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -44,9 +52,14 @@ import { GoogleAuthController } from './google-auth.controller';
       }),
     }),
   ],
-  controllers: [AuthController, GoogleAuthController],
+  controllers: [
+    AuthController,
+    GoogleAuthController,
+    PasswordSecurityController,
+  ],
   providers: [
     AuthService,
+    PasswordSecurityService,
     JwtAuthGuard,
     EmailVerificationService,
     GoogleTokenVerifier,

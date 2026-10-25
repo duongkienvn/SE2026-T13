@@ -11,6 +11,7 @@ import { currentUserQueryKey } from '../AuthProvider';
 import { useAuthSession, type AuthSessionScope } from '../auth-session-context';
 import { UserAvatar } from '../components/UserAvatar';
 import { ConnectedAccounts } from '../components/ConnectedAccounts';
+import { AccountSecurity } from '../components/AccountSecurity';
 import { toFormErrors } from '../../../lib/form-errors';
 import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
 import { usePageTitle } from '../../../hooks/usePageTitle';
@@ -200,6 +201,7 @@ function ProfileForm({ user }: { user: User }) {
         </div>
       </form>
       <ConnectedAccounts />
+      <AccountSecurity />
     </PageContainer>
   );
 }

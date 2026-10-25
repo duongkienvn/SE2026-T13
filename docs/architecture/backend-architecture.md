@@ -233,7 +233,22 @@ Authentication và authorization là hai concern khác nhau.
 
 Authentication MVP dùng JWT access token stateless với HS256, TTL 3600 giây, issuer `kanban-api`, audience `kanban-web` và secret từ `JWT_SECRET`. `JwtAuthGuard` kiểm tra Bearer header, signature, algorithm, expiration, issuer, audience và user còn tồn tại trong PostgreSQL; identity được đưa vào `CurrentUser` dưới dạng user ID.
 
+P1-06 adds the persisted `users.auth_version` credential revocation marker. New
+JWTs carry `authVersion`; REST authentication and Socket.IO handshakes compare it
+with the current database value. Versionless JWTs remain compatible only at
+version zero. Password reset/change increments this marker atomically with the
+password update. Existing live sockets retain their grants until expiration or
+disconnect; reconnect with old credentials is rejected. See the
+[password security contract, tests and rollout notes](../tasks/backend/password-recovery-security.md).
+
 Các endpoint đã triển khai:
+
+- `POST /api/auth/forgot-password` returns a generic `202`; verified accounts can
+  receive a single-use recovery email with persistent cooldown/quota enforcement.
+- `POST /api/auth/reset-password` returns `204` after consuming an opaque recovery
+  proof, updating an Argon2id password and revoking previous JWT versions.
+- `POST /api/auth/change-password` requires JWT plus current-password
+  reauthentication, returns `204`, invalidates recovery proofs and requires login.
 
 - `POST /api/auth/register` trả `201`, tạo user với Argon2id và không phát token.
 - `POST /api/auth/login` trả `200` cùng `accessToken`, `tokenType`, `expiresIn` và public user DTO.

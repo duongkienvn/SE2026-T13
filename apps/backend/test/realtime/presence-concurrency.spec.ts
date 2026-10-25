@@ -36,7 +36,9 @@ describe('Presence lifecycle concurrency', () => {
     ({
       id,
       connected: true,
-      data: { identity: { userId, expiresAt: Date.now() + 60_000 } },
+      data: {
+        identity: { userId, authVersion: 0, expiresAt: Date.now() + 60_000 },
+      },
       join: jest.fn(),
       leave: jest.fn(),
       emit: jest.fn(),

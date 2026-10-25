@@ -17,13 +17,13 @@ export default defineConfig(({ mode }) => {
       port: Number(env.WEB_PORT || 5173),
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
-        'Referrer-Policy': 'no-referrer-when-downgrade',
+        'Referrer-Policy': 'no-referrer',
       },
     },
     preview: {
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
-        'Referrer-Policy': 'no-referrer-when-downgrade',
+        'Referrer-Policy': 'no-referrer',
       },
     },
     test: { environment: 'jsdom', setupFiles: ['./src/test/setup.ts'] },

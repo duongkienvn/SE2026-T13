@@ -4,6 +4,8 @@ import { ProfilePage } from '../features/auth/pages/ProfilePage';
 import { RegisterPage } from '../features/auth/pages/RegisterPage';
 import { CheckEmailPage } from '../features/auth/pages/CheckEmailPage';
 import { VerifyEmailPage } from '../features/auth/pages/VerifyEmailPage';
+import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage';
+import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage';
 import { BoardMembersPage } from '../features/board-members/pages/BoardMembersPage';
 import { BoardDetailPage } from '../features/boards/pages/BoardDetailPage';
 import { BoardsPage } from '../features/boards/pages/BoardsPage';
@@ -22,6 +24,8 @@ export const routes: RouteObject[] = [
       { index: true, element: <LandingPage /> },
       { path: 'check-email', element: <CheckEmailPage /> },
       { path: 'verify-email', element: <VerifyEmailPage /> },
+      { path: 'forgot-password', element: <ForgotPasswordPage /> },
+      { path: 'reset-password', element: <ResetPasswordPage /> },
       {
         element: <PublicOnly />,
         children: [

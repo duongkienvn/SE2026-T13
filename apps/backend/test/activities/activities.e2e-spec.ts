@@ -63,9 +63,11 @@ describe('Activities HTTP API with real JWT and validation', () => {
       .mockResolvedValue(paginate([activity], 1, { page: 1, limit: 20 })),
   };
   const users = {
-    findOne: jest
-      .fn()
-      .mockResolvedValue({ id: ID.member, emailVerifiedAt: new Date() }),
+    findOne: jest.fn().mockResolvedValue({
+      id: ID.member,
+      authVersion: 0,
+      emailVerifiedAt: new Date(),
+    }),
   };
 
   beforeAll(async () => {
