@@ -81,6 +81,35 @@ describe('LandingPage', () => {
     ).toBeNull();
   });
 
+  it('lists the four features and the three how-it-works steps', () => {
+    mockApi({});
+    renderApp('/');
+
+    const features = document.getElementById('features')!;
+    expect(
+      within(features)
+        .getAllByRole('heading', { level: 3 })
+        .map((heading) => heading.textContent),
+    ).toEqual([
+      'Visual boards',
+      'Real-time collaboration',
+      'Team management',
+      'Activity history',
+    ]);
+
+    const steps = within(document.getElementById('how-it-works')!);
+    expect(steps.getByRole('heading', { level: 2 }).textContent).toBe(
+      'How it works',
+    );
+    expect(
+      steps.getAllByRole('heading', { level: 3 }).map((h) => h.textContent),
+    ).toEqual([
+      'Step 1: Create a board',
+      'Step 2: Organize tasks',
+      'Step 3: Collaborate in real time',
+    ]);
+  });
+
   it('links the three header anchors to three distinct sections', () => {
     mockApi({});
     renderApp('/');

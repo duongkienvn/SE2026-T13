@@ -1,4 +1,6 @@
 import { useEffect } from 'react';
+import { FeaturesSection } from '../components/FeaturesSection';
+import { HowItWorksSection } from '../components/HowItWorksSection';
 import { LandingHeader } from '../components/LandingHeader';
 import { LandingHero } from '../components/LandingHero';
 import { landingContainer, landingSection } from '../components/layout';
@@ -34,24 +36,8 @@ export function LandingPage() {
       <LandingHeader session={session} />
       <main id="main-content" tabIndex={-1} className="outline-none">
         <LandingHero session={session} />
-        <section
-          id="features"
-          aria-labelledby="features-title"
-          className={`${landingSection} ${landingContainer} py-16`}
-        >
-          <h2 id="features-title" className="text-3xl font-bold">
-            Everything your team needs
-          </h2>
-        </section>
-        <section
-          id="how-it-works"
-          aria-labelledby="how-it-works-title"
-          className={`${landingSection} ${landingContainer} py-16`}
-        >
-          <h2 id="how-it-works-title" className="text-3xl font-bold">
-            How it works
-          </h2>
-        </section>
+        <FeaturesSection />
+        <HowItWorksSection />
         <section
           id="why-kanvexa"
           aria-labelledby="why-kanvexa-title"

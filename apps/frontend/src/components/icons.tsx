@@ -331,3 +331,30 @@ export function TeamIcon(props: IconProps) {
     </StrokeSvg>
   );
 }
+
+export function ColumnsIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <rect x="3.5" y="4" width="17" height="16" rx="2.5" />
+      <path d="M9.5 4v16M15 4v16" />
+    </StrokeSvg>
+  );
+}
+
+export function HistoryIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3L4 9.4" />
+      <path d="M4 4.5v4.9h4.9M12 8v4l2.8 1.8" />
+    </StrokeSvg>
+  );
+}
+
+export function LayersIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="m12 3.5 8.5 4.5-8.5 4.5L3.5 8z" />
+      <path d="m3.5 12 8.5 4.5 8.5-4.5M3.5 16l8.5 4.5 8.5-4.5" />
+    </StrokeSvg>
+  );
+}
