@@ -7,6 +7,11 @@ Tài liệu task được chia theo phần chịu trách nhiệm để dễ tìm
 - [`frontend/`](frontend/) chứa UI, client integration, responsive behavior và
   realtime phía trình duyệt.
 
+Các task records ghi lại phạm vi, quyết định và kết quả tại thời điểm thực hiện;
+không phải danh sách trạng thái release hiện tại. Xem [project overview](../project-overview.md)
+cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho phạm vi
+đã duyệt tiếp theo. Mục lục dưới đây liệt kê toàn bộ task documents hiện có.
+
 ## Quy tắc đặt tài liệu
 
 - Thư mục `docs/tasks/` chỉ chứa file `README.md` này. Không tạo task document
@@ -39,6 +44,7 @@ Tài liệu task được chia theo phần chịu trách nhiệm để dễ tìm
 - [Comments API](backend/comments-api.md)
 - [Comment realtime synchronization](backend/comment-realtime.md)
 - [Activity core and read API](backend/activity-core.md)
+- [Activity integration with business mutations](backend/activity-integration.md)
 
 ## Frontend tasks
 
@@ -46,11 +52,13 @@ Tài liệu task được chia theo phần chịu trách nhiệm để dễ tìm
 - [Kanvexa branding](frontend/kanvexa-branding.md)
 - [Frontend authentication](frontend/frontend-auth.md)
 - [Authentication integration with the real backend](frontend/frontend-auth-integration.md)
+- [Google Sign-In UI polish](frontend/google-sign-in-ui-polish.md)
 - [Frontend compact layout](frontend/frontend-compact-layout.md)
 - [Boards and board members frontend](frontend/boards-frontend.md)
 - [Kanban board UI](frontend/kanban-board-ui.md)
 - [Realtime frontend synchronization](frontend/realtime-frontend.md)
 - [Board presence frontend](frontend/board-presence.md)
+- [Card comments UI](frontend/comments-ui.md)
 - [Activity History frontend](frontend/activity-history.md)
 - [Sidebar navigation and board creation UX](frontend/app-navigation-board-ux.md)
 
