@@ -5,6 +5,8 @@ const PUBLIC_ONLY_PATHS = [
   '/register',
   '/check-email',
   '/verify-email',
+  '/forgot-password',
+  '/reset-password',
 ];
 
 /**
@@ -23,6 +25,7 @@ export function safeRedirectPath(value: unknown): string {
 
 /** Router `state` carried to the login page. */
 export interface RedirectState {
+  passwordUpdated?: boolean;
   /** Protected path the user tried to open before signing in. */
   from?: string;
   /** Set after a successful registration to show feedback and prefill the email. */
