@@ -154,7 +154,7 @@ try {
   );
   await source.destroy();
   source = await new DataSource(options).initialize();
-  assert.equal((await source.runMigrations()).length, 3);
+  assert.equal((await source.runMigrations()).length, 4);
   assert.equal(
     (
       await source.query('SELECT password_hash FROM users WHERE id=$1', [
@@ -163,6 +163,7 @@ try {
     )[0].password_hash,
     hash,
   );
+  await source.undoLastMigration();
   await source.undoLastMigration();
   await source.undoLastMigration();
   await source.undoLastMigration();
@@ -190,6 +191,7 @@ try {
   const [passwordless] =
     await source.query(`INSERT INTO users(email,password_hash,display_name)
     VALUES('rollback-guard@example.com',NULL,'Rollback guard') RETURNING id`);
+  await source.undoLastMigration();
   await source.undoLastMigration();
   await source.undoLastMigration();
   await assert.rejects(
@@ -554,6 +556,7 @@ try {
   );
   await source.undoLastMigration();
   await source.undoLastMigration();
+  await source.undoLastMigration();
   await assert.rejects(
     source.undoLastMigration(),
     /Cannot revert Google identity/,
@@ -574,7 +577,7 @@ try {
       ])
     ).length,
   );
-  assert.equal((await source.runMigrations()).length, 2);
+  assert.equal((await source.runMigrations()).length, 3);
   check(
     'FK prevents silent identity deletion; rollback refuses without losing users/identities/business data',
   );

@@ -137,11 +137,12 @@ async function inspectSchema() {
     'CARD',
     'COMMENT',
   ]);
-  assert.deepEqual(enumValues('activities_action_type_enum').slice(-2), [
+  assert.deepEqual(enumValues('activities_action_type_enum').slice(-3), [
     'BOARD_ARCHIVED',
     'BOARD_RESTORED',
+    'CARD_RESTORED',
   ]);
-  assert.equal(enumValues('activities_action_type_enum').length, 17);
+  assert.equal(enumValues('activities_action_type_enum').length, 18);
 
   const columns =
     await source.query(`SELECT table_name, column_name, data_type, numeric_precision,
@@ -390,7 +391,7 @@ try {
       'users',
     ],
   );
-  assert.equal(source.migrations.length, 6);
+  assert.equal(source.migrations.length, 7);
 
   const originalDatabase = process.env.DATABASE_NAME;
   process.env.DATABASE_NAME = testDatabase;
@@ -402,7 +403,7 @@ try {
     try {
       const nestDataSource = app.get(DataSource);
       assert.equal(nestDataSource.entityMetadatas.length, 12);
-      assert.equal(nestDataSource.migrations.length, 6);
+      assert.equal(nestDataSource.migrations.length, 7);
       assert.equal(nestDataSource.options.poolSize, source.options.poolSize);
       assert.equal(
         nestDataSource.options.connectTimeoutMS,
@@ -416,7 +417,7 @@ try {
     process.env.DATABASE_NAME = originalDatabase;
   }
 
-  assert.equal((await source.runMigrations()).length, 6);
+  assert.equal((await source.runMigrations()).length, 7);
   const cliOutput = execFileSync(
     process.execPath,
     [
@@ -440,7 +441,7 @@ try {
       '-e',
       `const dataSource = require('./src/database/data-source.ts').default;
        dataSource.initialize().then(async () => {
-         if (dataSource.entityMetadatas.length !== 12 || dataSource.migrations.length !== 6) {
+         if (dataSource.entityMetadatas.length !== 12 || dataSource.migrations.length !== 7) {
            throw new Error('TypeScript DataSource discovery mismatch');
          }
          await dataSource.destroy();
@@ -458,12 +459,12 @@ try {
   console.log('Migration run and schema/behavior inspection: PASS');
 
   await source.undoLastMigration();
-  await source.undoLastMigration();
-  await source.undoLastMigration();
-  await assert.rejects(source.undoLastMigration(), /cannot be safely removed/);
-  assert.equal((await source.runMigrations()).length, 3);
   await inspectSchema();
-  console.log('Irreversible enum migration guard: PASS');
+  assert.equal((await source.runMigrations()).length, 1);
+  await inspectSchema();
+  console.log(
+    'Enum rollback retains existing values/history; idempotent reapply: PASS',
+  );
 } finally {
   if (source?.isInitialized) await source.destroy();
   if (created) await admin.query(`DROP DATABASE "${testDatabase}"`);

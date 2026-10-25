@@ -154,7 +154,7 @@ try {
   const legacyJwt = await signer.signAsync({ sub: legacy });
   await source.destroy();
   source = await new DataSource(options).initialize();
-  assert.equal((await source.runMigrations()).length, 5);
+  assert.equal((await source.runMigrations()).length, 6);
   assert(
     (await source.getRepository(User).findOneByOrFail({ id: legacy }))
       .emailVerifiedAt,
@@ -177,7 +177,7 @@ try {
     ...options,
     database: 'k2_fresh',
   }).initialize();
-  assert.equal((await fresh.runMigrations()).length, 6);
+  assert.equal((await fresh.runMigrations()).length, 7);
   await fresh.query(
     "INSERT INTO users(email,password_hash,display_name) VALUES('fresh@example.test','test-hash','Fresh')",
   );
@@ -186,6 +186,7 @@ try {
       .email_verified_at,
     null,
   );
+  await fresh.undoLastMigration();
   await fresh.undoLastMigration();
   assert.equal(
     (await fresh.query('SELECT count(*)::int AS count FROM users'))[0].count,
