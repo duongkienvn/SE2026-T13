@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, Inject } from '@nestjs/common';
 import { APP_GUARD, Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -11,6 +11,10 @@ import { createValidationPipe } from '../../src/config/validation';
 import { HttpThrottlerGuard } from '../../src/guards/http-throttler.guard';
 import { GlobalExceptionFilter } from '../../src/filters/global-exception.filter';
 import { ApiResponseInterceptor } from '../../src/interceptors/api-response.interceptor';
+
+jest.mock('@nestjs/typeorm', () => ({
+  InjectRepository: () => Inject('UserRepository'),
+}));
 
 describe('password security HTTP validation and throttling', () => {
   let app: INestApplication;

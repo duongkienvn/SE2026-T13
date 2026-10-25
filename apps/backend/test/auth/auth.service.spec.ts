@@ -222,6 +222,7 @@ describe('AuthService', () => {
 
     expect(claims).toMatchObject({
       sub: user.id,
+      authVersion: 0,
       iss: JWT_ISSUER,
       aud: JWT_AUDIENCE,
     });
@@ -230,6 +231,29 @@ describe('AuthService', () => {
       expiresIn: 3600,
     });
     expect((claims.exp ?? 0) - (claims.iat ?? 0)).toBe(3600);
+  });
+
+  it('accepts legacy tokens only at version zero and rejects stale or malformed versions', async () => {
+    const user = userFixture();
+    repository.findOne.mockResolvedValue(user);
+    const legacy = await jwt.signAsync({ sub: user.id });
+    await expect(
+      service.authenticateAccessToken(legacy),
+    ).resolves.toMatchObject({ userId: user.id, authVersion: 0 });
+    user.authVersion = 1;
+    await expect(service.authenticateAccessToken(legacy)).rejects.toMatchObject(
+      { status: 401 },
+    );
+    for (const authVersion of [0, -1, 1.5, '1', null]) {
+      const token = await jwt.signAsync({ sub: user.id, authVersion });
+      await expect(
+        service.authenticateAccessToken(token),
+      ).rejects.toMatchObject({ status: 401 });
+    }
+    const current = await service.issueLoginResponse(user);
+    await expect(
+      service.authenticateAccessToken(current.accessToken),
+    ).resolves.toMatchObject({ userId: user.id, authVersion: 1 });
   });
 
   it('rejects a signed access token without a finite expiration', async () => {
@@ -279,6 +303,7 @@ describe('AuthService', () => {
 
     await expect(service.authenticateAccessToken(token)).resolves.toEqual({
       userId: user.id,
+      authVersion: 0,
       expiresAt: jwt.decode<{ exp: number }>(token).exp * 1000,
     });
     await expect(
