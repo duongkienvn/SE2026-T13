@@ -7,11 +7,29 @@ Tài liệu task được chia theo phần chịu trách nhiệm để dễ tìm
 - [`frontend/`](frontend/) chứa UI, client integration, responsive behavior và
   realtime phía trình duyệt.
 
+## Quy tắc đặt tài liệu
+
+- Thư mục `docs/tasks/` chỉ chứa file `README.md` này. Không tạo task document
+  trực tiếp ở thư mục gốc.
+- Đặt tài liệu trong `backend/` khi phần chịu trách nhiệm chính là API, domain
+  rules, authorization, persistence, migration, mail hoặc server-side realtime.
+- Đặt tài liệu trong `frontend/` khi phần chịu trách nhiệm chính là UI, browser
+  behavior, responsive/accessibility, client state hoặc frontend realtime.
+- Với task liên quan cả hai phía, đặt một task record tại nơi có phần triển khai
+  chính và liên kết tài liệu phía còn lại nếu cần; không nhân bản cùng một record.
+- Dùng tên file kebab-case và cập nhật mục lục này cùng mọi liên kết khi tạo,
+  di chuyển hoặc đổi tên tài liệu.
+
 ## Backend tasks
 
 - [Backend foundation](backend/backend-foundation-pr-description.md)
 - [Authentication](backend/backend-authentication.md)
+- [Registration password policy](backend/auth-registration-password-policy.md)
+- [Email verification](backend/email-verification.md)
+- [Google Sign-In and account linking](backend/google-auth-account-linking.md)
+- [Verification email layout](backend/verification-email-layout.md)
 - [Board management API](backend/board-management-api.md)
+- [Board archive management](backend/board-archive-management.md)
 - [Board members management](backend/board-members-management.md)
 - [Column management API](backend/column-management-api.md)
 - [Card management API](backend/card-management-api.md)
@@ -25,6 +43,7 @@ Tài liệu task được chia theo phần chịu trách nhiệm để dễ tìm
 ## Frontend tasks
 
 - [Frontend application foundation](frontend/frontend-foundation.md)
+- [Kanvexa branding](frontend/kanvexa-branding.md)
 - [Frontend authentication](frontend/frontend-auth.md)
 - [Authentication integration with the real backend](frontend/frontend-auth-integration.md)
 - [Frontend compact layout](frontend/frontend-compact-layout.md)
@@ -37,8 +56,6 @@ Tài liệu task được chia theo phần chịu trách nhiệm để dễ tìm
 
 ## Quy ước
 
-- Task mới dùng tên file kebab-case và được đặt đúng trong `backend/` hoặc
-  `frontend/`.
 - Không đặt screenshot trong `docs/tasks/`. Ảnh thiết kế mẫu nằm trong
   [`../design/screens/reference/`](../design/screens/reference/); ảnh chụp giao
   diện thực tế nằm trong

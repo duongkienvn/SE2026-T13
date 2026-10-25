@@ -63,11 +63,13 @@ try {
   const {
     ActivityWriterService,
   } = require('../../dist/api/activities/activity-writer.service.js');
+  const activityWriter = new ActivityWriterService();
   const service = new BoardsService(
     boards,
     members,
     new BoardAuthorizationService(members),
-    new ActivityWriterService(),
+    activityWriter,
+    { publish: async () => undefined },
   );
   const user = (name) =>
     users.save(
@@ -76,6 +78,7 @@ try {
         displayName: name,
         passwordHash: 'test-only-hash',
         avatarUrl: null,
+        emailVerifiedAt: new Date(),
       }),
     );
   const owner = await user('owner');
@@ -137,6 +140,48 @@ try {
   });
   const archived = await service.create(owner.id, { name: 'Archived' });
   await service.archive(owner.id, archived.id);
+  const archivedTwin = await service.create(owner.id, {
+    name: 'Archived twin',
+  });
+  await service.archive(owner.id, archivedTwin.id);
+  const sharedArchiveTime = new Date('2026-10-14T00:00:00Z');
+  await boards.update(archived.id, { archivedAt: sharedArchiveTime });
+  await boards.update(archivedTwin.id, { archivedAt: sharedArchiveTime });
+  await members.save(
+    members.create({ boardId: archived.id, userId: member.id, role: 'MEMBER' }),
+  );
+  const archivedOrder = [archived.id, archivedTwin.id].sort().reverse();
+  const archivedPage = await service.list(owner.id, {
+    page: 1,
+    limit: 1,
+    status: 'archived',
+  });
+  assert.deepEqual(
+    archivedPage.data.map((board) => board.id),
+    archivedOrder.slice(0, 1),
+  );
+  assert.deepEqual(archivedPage.meta, {
+    page: 1,
+    limit: 1,
+    total: 2,
+    totalPages: 2,
+  });
+  assert.deepEqual(
+    (
+      await service.list(owner.id, { page: 2, limit: 1, status: 'archived' })
+    ).data.map((board) => board.id),
+    archivedOrder.slice(1),
+  );
+  const memberArchivedPage = await service.list(member.id, {
+    page: 1,
+    limit: 20,
+    status: 'archived',
+  });
+  assert.deepEqual(
+    memberArchivedPage.data.map((board) => board.id),
+    [archived.id],
+  );
+  assert.equal(memberArchivedPage.data[0].currentUserRole, 'MEMBER');
   await members.save(
     members.create({ boardId: first.id, userId: member.id, role: 'MEMBER' }),
   );
@@ -209,33 +254,47 @@ try {
     `INSERT INTO board_columns (board_id, name, position) VALUES ($1, 'Todo', 100) RETURNING id`,
     [first.id],
   );
-  await source.query(
-    `INSERT INTO cards (board_id, column_id, created_by_id, title, position) VALUES ($1, $2, $3, 'Card', 100)`,
+  const [card] = await source.query(
+    `INSERT INTO cards (board_id, column_id, created_by_id, title, position, is_archived) VALUES ($1, $2, $3, 'Card', 100, true) RETURNING id`,
     [first.id, column.id, owner.id],
   );
+  await source.query(
+    'INSERT INTO card_assignees (card_id, user_id) VALUES ($1, $2)',
+    [card.id, member.id],
+  );
+  await source.query(
+    "INSERT INTO comments (card_id, author_id, content) VALUES ($1, $2, 'Keep')",
+    [card.id, member.id],
+  );
+  const relatedRows = () =>
+    Promise.all([
+      source.query(
+        'SELECT id, name, position FROM board_columns WHERE board_id = $1 ORDER BY id',
+        [first.id],
+      ),
+      source.query(
+        'SELECT id, column_id, position, is_archived FROM cards WHERE board_id = $1 ORDER BY id',
+        [first.id],
+      ),
+      source.query(
+        'SELECT a.card_id, a.user_id FROM card_assignees a JOIN cards c ON c.id = a.card_id WHERE c.board_id = $1 ORDER BY a.card_id, a.user_id',
+        [first.id],
+      ),
+      source.query(
+        'SELECT m.id, m.card_id, m.author_id, m.content FROM comments m JOIN cards c ON c.id = m.card_id WHERE c.board_id = $1 ORDER BY m.id',
+        [first.id],
+      ),
+      source.query(
+        'SELECT user_id, role FROM board_members WHERE board_id = $1 ORDER BY user_id',
+        [first.id],
+      ),
+    ]);
+  const beforeArchive = await relatedRows();
   const result = await service.archive(owner.id, first.id);
   const persisted = await boards.findOneByOrFail({ id: first.id });
   assert.equal(persisted.isArchived, true);
   assert.equal(persisted.archivedAt.toISOString(), result.archivedAt);
-  assert.equal(await members.countBy({ boardId: first.id }), 2);
-  assert.equal(
-    (
-      await source.query(
-        'SELECT count(*)::int AS n FROM board_columns WHERE board_id = $1',
-        [first.id],
-      )
-    )[0].n,
-    1,
-  );
-  assert.equal(
-    (
-      await source.query(
-        'SELECT count(*)::int AS n FROM cards WHERE board_id = $1',
-        [first.id],
-      )
-    )[0].n,
-    1,
-  );
+  assert.deepEqual(await relatedRows(), beforeArchive);
   await rejectsStatus(service.update(owner.id, first.id, { name: 'No' }), 409);
   await rejectsStatus(service.archive(owner.id, first.id), 409);
   assert.equal(
@@ -243,8 +302,34 @@ try {
     result.archivedAt,
   );
   assert.equal((await service.getDetail(member.id, first.id)).isArchived, true);
+  await rejectsStatus(service.restore(member.id, first.id), 403);
+  await rejectsStatus(service.restore(outsider.id, first.id), 404);
+  const restored = await service.restore(owner.id, first.id);
+  assert.equal(restored.id, first.id);
+  assert.equal(restored.isArchived, false);
+  assert.equal(restored.archivedAt, null);
+  await rejectsStatus(service.restore(owner.id, first.id), 409);
+  assert.equal(await boards.countBy({ id: first.id }), 1);
+  assert.deepEqual(await relatedRows(), beforeArchive);
+  const audit = await source.query(
+    'SELECT action_type, entity_id, metadata FROM activities WHERE board_id = $1 ORDER BY created_at, id',
+    [first.id],
+  );
+  assert.equal(
+    audit.filter((row) => row.action_type === 'BOARD_ARCHIVED').length,
+    1,
+  );
+  assert.equal(
+    audit.filter((row) => row.action_type === 'BOARD_RESTORED').length,
+    1,
+  );
+  assert.ok(
+    audit
+      .filter((row) => row.action_type.startsWith('BOARD_'))
+      .every((row) => row.entity_id === first.id && row.metadata === null),
+  );
   console.log(
-    'PostgreSQL OWNER permissions, update persistence and archive preserving BoardMember/Column/Card: PASS',
+    'PostgreSQL OWNER permissions, update persistence and archive/restore preserving membership, ordering, archived Card, assignments and comments: PASS',
   );
 
   const racing = await service.create(owner.id, { name: 'Concurrent archive' });
@@ -258,6 +343,58 @@ try {
   );
   const rejected = races.find((result) => result.status === 'rejected');
   assert.equal(rejected.reason.getStatus(), 409);
+  const restoreRaces = await Promise.allSettled([
+    service.restore(owner.id, racing.id),
+    service.restore(owner.id, racing.id),
+  ]);
+  assert.equal(
+    restoreRaces.filter((result) => result.status === 'fulfilled').length,
+    1,
+  );
+  assert.equal(
+    restoreRaces
+      .find((result) => result.status === 'rejected')
+      .reason.getStatus(),
+    409,
+  );
+  assert.equal(
+    (
+      await source.query(
+        "SELECT count(*)::int AS n FROM activities WHERE board_id = $1 AND action_type = 'BOARD_RESTORED'",
+        [racing.id],
+      )
+    )[0].n,
+    1,
+  );
+  const failedAuditBoard = await service.create(owner.id, {
+    name: 'Audit rollback',
+  });
+  await service.archive(owner.id, failedAuditBoard.id);
+  const recordActivity = activityWriter.record;
+  activityWriter.record = async (manager, input) => {
+    if (input.boardId === failedAuditBoard.id) {
+      await manager.query('SELECT 1 / 0');
+    }
+    return recordActivity.call(activityWriter, manager, input);
+  };
+  try {
+    await assert.rejects(service.restore(owner.id, failedAuditBoard.id));
+  } finally {
+    activityWriter.record = recordActivity;
+  }
+  assert.equal(
+    (await boards.findOneByOrFail({ id: failedAuditBoard.id })).isArchived,
+    true,
+  );
+  assert.equal(
+    (
+      await source.query(
+        "SELECT count(*)::int AS n FROM activities WHERE board_id = $1 AND action_type = 'BOARD_RESTORED'",
+        [failedAuditBoard.id],
+      )
+    )[0].n,
+    0,
+  );
   const queued = await service.create(owner.id, { name: 'Waiting update' });
   const runner = source.createQueryRunner();
   let pending;
@@ -357,9 +494,22 @@ try {
     .post(`/api/boards/${response.body.data.id}/archive`)
     .set('Authorization', `Bearer ${token}`)
     .expect(200);
+  const archivedList = await request(app.getHttpServer())
+    .get('/api/boards?status=archived')
+    .set('Authorization', `Bearer ${token}`)
+    .expect(200);
+  assert.ok(
+    archivedList.body.data.some((board) => board.id === response.body.data.id),
+  );
+  const restoredResponse = await request(app.getHttpServer())
+    .post(`/api/boards/${response.body.data.id}/restore`)
+    .set('Authorization', `Bearer ${token}`)
+    .expect(200);
+  assert.equal(restoredResponse.body.data.archivedAt, null);
+  assert.equal(restoredResponse.body.data.isArchived, false);
   await request(app.getHttpServer()).get('/api-docs-json').expect(200);
   console.log(
-    'Real compiled AppModule HTTP bootstrap, JWT, readiness, Swagger and all five board endpoints: PASS',
+    'Real compiled AppModule HTTP bootstrap, JWT, readiness, Swagger and all six board endpoints: PASS',
   );
 } finally {
   if (app) await app.close();

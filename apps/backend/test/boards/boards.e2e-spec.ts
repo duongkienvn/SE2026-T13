@@ -26,6 +26,7 @@ import { createValidationPipe } from '../../src/config/validation';
 import { ApiResponseInterceptor } from '../../src/interceptors/api-response.interceptor';
 import { GlobalExceptionFilter } from '../../src/filters/global-exception.filter';
 import { BoardMemberRole } from '../../src/common/enums/database-enums';
+import { BoardEventPublisher } from '../../src/realtime/board-event-publisher.service';
 import { User } from '../../src/api/users/entities/user.entity';
 
 jest.mock('@nestjs/typeorm', () => ({
@@ -87,6 +88,7 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
       providers: [
         BoardsService,
         { provide: ActivityWriterService, useValue: { record: jest.fn() } },
+        { provide: BoardEventPublisher, useValue: { publish: jest.fn() } },
         BoardAuthorizationService,
         AuthService,
         { provide: EmailVerificationService, useValue: { send: jest.fn() } },
@@ -189,6 +191,10 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
     request(app.getHttpServer())
       .post(`/api/boards/${id}/archive`)
       .set('Authorization', `Bearer ${tokens[user]}`);
+  const restore = (user: string, id = BOARD_ID) =>
+    request(app.getHttpServer())
+      .post(`/api/boards/${id}/restore`)
+      .set('Authorization', `Bearer ${tokens[user]}`);
 
   it('creates with 201, authenticated creator, one OWNER and the public envelope', async () => {
     const response = await request(app.getHttpServer())
@@ -219,6 +225,7 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
     ['get', `/api/boards/${BOARD_ID}`],
     ['patch', `/api/boards/${BOARD_ID}`],
     ['post', `/api/boards/${BOARD_ID}/archive`],
+    ['post', `/api/boards/${BOARD_ID}/restore`],
   ] as const)(
     'protects %s %s with real JWT verification',
     async (method, path) => {
@@ -366,6 +373,21 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
     expect(txBoards.save).toHaveBeenCalledTimes(1);
   });
 
+  it('restores archived boards for OWNER, rejects MEMBER and repeat restore', async () => {
+    await archive(OWNER).expect(200);
+    await restore(MEMBER).expect(403);
+    await restore(OUTSIDER).expect(404);
+    const response = await restore(OWNER).expect(200);
+    expect(response.body).toMatchObject({
+      success: true,
+      message: 'Board restored',
+      data: { id: BOARD_ID, isArchived: false, archivedAt: null },
+    });
+    await restore(OWNER)
+      .expect(409)
+      .expect((res) => expect(res.body.code).toBe('BOARD_NOT_ARCHIVED'));
+  });
+
   it.each([
     '?page=0',
     '?limit=101',
@@ -373,6 +395,7 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
     '?page=1.2',
     '?search=board',
     '?isArchived=true',
+    '?status=other',
     '?page=9007199254740991&limit=100',
   ])('rejects pagination or out-of-scope query %s', async (query) => {
     await get(`/api/boards${query}`).expect(400);
@@ -430,6 +453,7 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
       '/api/boards',
       '/api/boards/{boardId}',
       '/api/boards/{boardId}/archive',
+      '/api/boards/{boardId}/restore',
     ]);
     const operations = [
       document.paths['/api/boards'].get!,
@@ -437,6 +461,7 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
       document.paths['/api/boards/{boardId}'].get!,
       document.paths['/api/boards/{boardId}'].patch!,
       document.paths['/api/boards/{boardId}/archive'].post!,
+      document.paths['/api/boards/{boardId}/restore'].post!,
     ];
     for (const operation of operations) {
       expect(operation.security).toEqual([{ bearer: [] }]);

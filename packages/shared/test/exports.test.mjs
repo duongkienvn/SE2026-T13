@@ -30,6 +30,8 @@ test('provides the shared domain values to ESM and CommonJS consumers', () => {
   assert.deepEqual(BoardRole, { OWNER: 'OWNER', MEMBER: 'MEMBER' });
   assert.deepEqual(ActivityActionType, {
     BOARD_UPDATED: 'BOARD_UPDATED',
+    BOARD_ARCHIVED: 'BOARD_ARCHIVED',
+    BOARD_RESTORED: 'BOARD_RESTORED',
     MEMBER_ADDED: 'MEMBER_ADDED',
     MEMBER_REMOVED: 'MEMBER_REMOVED',
     ROLE_CHANGED: 'ROLE_CHANGED',

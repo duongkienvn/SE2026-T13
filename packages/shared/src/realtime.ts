@@ -30,6 +30,8 @@ export interface RealtimeClientEvents {
 }
 
 export const RealtimeServerEvent = {
+  BOARD_ARCHIVED: 'board:archived',
+  BOARD_RESTORED: 'board:restored',
   COLUMN_CREATED: 'column:created',
   COLUMN_UPDATED: 'column:updated',
   COLUMN_MOVED: 'column:moved',
@@ -88,6 +90,8 @@ export interface CommentChangedEvent {
 
 /** Business events are invalidation hints; presence is an ephemeral full snapshot. */
 export interface RealtimeServerEvents {
+  'board:archived': (payload: BoardRoomRequest) => void;
+  'board:restored': (payload: BoardRoomRequest) => void;
   'presence:sync': (payload: BoardPresenceSnapshot) => void;
   'column:created': (payload: ColumnChangedEvent) => void;
   'column:updated': (payload: ColumnChangedEvent) => void;

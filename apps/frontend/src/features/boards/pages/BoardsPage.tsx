@@ -19,6 +19,7 @@ import { usePageTitle } from '../../../hooks/usePageTitle';
 import { paginate } from '../../../lib/pagination';
 import { ArchiveBoardDialog } from '../components/ArchiveBoardDialog';
 import { BoardCard } from '../components/BoardCard';
+import { RestoreBoardDialog } from '../components/RestoreBoardDialog';
 import {
   CreateBoardDialog,
   EditBoardDialog,
@@ -38,21 +39,28 @@ function matches(board: Board, query: string): boolean {
 
 export function BoardsPage() {
   usePageTitle('Boards');
-  const boards = useBoards();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const status =
+    new URLSearchParams(location.search).get('status') === 'archived'
+      ? 'archived'
+      : 'active';
+  const boards = useBoards(status);
   const fit = useFitGrid({
     gap: 16,
     minColumnWidth: 280,
     maxColumns: 3,
     reserve: 8,
     fallbackRows: 4,
+    measurementKey: status,
   });
   const [page, setPage] = usePageParam();
-  const [search, setSearch] = useState('');
+  const [searches, setSearches] = useState({ active: '', archived: '' });
+  const search = searches[status];
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Board | null>(null);
   const [archiving, setArchiving] = useState<Board | null>(null);
-  const location = useLocation();
-  const navigate = useNavigate();
+  const [restoring, setRestoring] = useState<Board | null>(null);
   const incoming = (location.state as BoardsLocationState | null)?.notice;
   const [notice, setNotice] = useState<string | undefined>(incoming);
 
@@ -64,8 +72,11 @@ export function BoardsPage() {
   }, [incoming, location, navigate]);
 
   const loaded = useMemo(
-    () => (boards.data ?? []).filter((board) => !board.isArchived),
-    [boards.data],
+    () =>
+      (boards.data ?? []).filter(
+        (board) => board.isArchived === (status === 'archived'),
+      ),
+    [boards.data, status],
   );
   const query = search.trim().toLowerCase();
   const visible = query
@@ -88,8 +99,15 @@ export function BoardsPage() {
     setCreating(true);
   };
   const changeSearch = (value: string) => {
-    setSearch(value);
+    setSearches((current) => ({ ...current, [status]: value }));
     setPage(1);
+  };
+  const changeStatus = (next: 'active' | 'archived') => {
+    const params = new URLSearchParams(location.search);
+    params.delete('page');
+    if (next === 'archived') params.set('status', next);
+    else params.delete('status');
+    navigate({ pathname: location.pathname, search: params.toString() });
   };
 
   return (
@@ -108,7 +126,7 @@ export function BoardsPage() {
                 onChange={changeSearch}
                 className="w-full sm:w-[280px]"
               />
-              {loaded.length > 0 && (
+              {status === 'active' && loaded.length > 0 && (
                 <Button onClick={openCreate}>
                   <PlusIcon aria-hidden="true" className="size-4.5" />
                   New Board
@@ -119,6 +137,23 @@ export function BoardsPage() {
         }
       />
 
+      <nav aria-label="Board status" className="mt-5 flex gap-2">
+        <Button
+          variant={status === 'active' ? 'primary' : 'secondary'}
+          aria-current={status === 'active' ? 'page' : undefined}
+          onClick={() => changeStatus('active')}
+        >
+          Active
+        </Button>
+        <Button
+          variant={status === 'archived' ? 'primary' : 'secondary'}
+          aria-current={status === 'archived' ? 'page' : undefined}
+          onClick={() => changeStatus('archived')}
+        >
+          Archived
+        </Button>
+      </nav>
+
       {notice && (
         <div className="mt-4">
           <Alert variant="success">{notice}</Alert>
@@ -128,19 +163,39 @@ export function BoardsPage() {
       {/* Fills the remaining height; the page size is however many rows fit here. */}
       <div ref={fit.ref} className="mt-5 min-h-0 flex-1">
         {boards.isPending ? (
-          <LoadingState label="Loading boards…" />
+          <LoadingState
+            label={
+              status === 'archived'
+                ? 'Loading archived boards…'
+                : 'Loading boards…'
+            }
+          />
         ) : boards.isError && !boards.data ? (
           <ErrorState
-            title="We couldn't load your boards"
+            title={
+              status === 'archived'
+                ? "We couldn't load archived boards"
+                : "We couldn't load your boards"
+            }
             description="Check your connection and try again."
             onRetry={() => void boards.refetch()}
           />
         ) : loaded.length === 0 ? (
           <EmptyState
             icon={<FolderIcon />}
-            title="No boards yet"
-            description="Create your first board, or ask a board owner to add you."
-            action={<Button onClick={openCreate}>Create board</Button>}
+            title={
+              status === 'archived' ? 'No archived boards' : 'No boards yet'
+            }
+            description={
+              status === 'archived'
+                ? 'Boards you belong to will appear here when archived.'
+                : 'Create your first board, or ask a board owner to add you.'
+            }
+            action={
+              status === 'active' ? (
+                <Button onClick={openCreate}>Create board</Button>
+              ) : undefined
+            }
           />
         ) : visible.length === 0 ? (
           <EmptyState
@@ -160,13 +215,21 @@ export function BoardsPage() {
                   board={board}
                   // UI hint only: the backend enforces OWNER-only actions.
                   onEdit={
+                    status === 'active' &&
                     board.currentUserRole === BoardRole.OWNER
                       ? () => setEditing(board)
                       : undefined
                   }
                   onArchive={
+                    status === 'active' &&
                     board.currentUserRole === BoardRole.OWNER
                       ? () => setArchiving(board)
+                      : undefined
+                  }
+                  onRestore={
+                    status === 'archived' &&
+                    board.currentUserRole === BoardRole.OWNER
+                      ? () => setRestoring(board)
                       : undefined
                   }
                 />
@@ -211,6 +274,17 @@ export function BoardsPage() {
           onArchived={(board) => {
             setArchiving(null);
             setNotice(`Board “${board.name}” archived.`);
+          }}
+        />
+      )}
+      {restoring && (
+        <RestoreBoardDialog
+          board={restoring}
+          open
+          onClose={() => setRestoring(null)}
+          onRestored={(board) => {
+            setRestoring(null);
+            setNotice(`Board “${board.name}” restored.`);
           }}
         />
       )}

@@ -44,13 +44,13 @@ Initial database migration đã có; TypeORM schema synchronization và tự đ�
 
 ## Documentation
 
-- [Google Sign-In and secure account linking](docs/tasks/google-auth-account-linking.md):
+- [Google Sign-In and secure account linking](docs/tasks/backend/google-auth-account-linking.md):
   optional `GOOGLE_CLIENT_ID` / `VITE_GOOGLE_CLIENT_ID`, Google Cloud setup,
   PostgreSQL tests, migration safety and production rollout gates. Use the same
   Web client ID for backend runtime and frontend build; empty disables Google
   while email/password authentication remains available. No client secret.
 
-- [Email verification K2](docs/tasks/email-verification.md): Resend configuration,
+- [Email verification K2](docs/tasks/backend/email-verification.md): Resend configuration,
   verification/resend API, legacy-user backfill, isolated tests and rollout checklist.
 
 - [Production deployment](docs/deployment/production.md): EC2, Docker, Caddy, explicit migrations, local smoke tests, backup and recovery. Development Compose remains unchanged.

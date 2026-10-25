@@ -1,4 +1,5 @@
 import { act, render, screen } from '@testing-library/react';
+import { useEffect } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useFitGrid, type FitGridOptions } from './useFitGrid';
 
@@ -35,6 +36,30 @@ afterEach(() => {
 });
 
 describe('useFitGrid', () => {
+  it('does not reuse a completed measurement for a different content scope', () => {
+    stubLayout();
+    const observations: { scope: string; measured: boolean }[] = [];
+    function ScopedProbe({ scope }: { scope: string }) {
+      const fit = useFitGrid({ fallbackRows: 4, measurementKey: scope });
+      useEffect(() => {
+        observations.push({ scope, measured: fit.isMeasured });
+      }, [scope, fit.isMeasured]);
+      return (
+        <div ref={fit.ref}>
+          <div data-fit-row />
+        </div>
+      );
+    }
+    const view = render(<ScopedProbe scope="active" />);
+    expect(observations.at(-1)).toEqual({ scope: 'active', measured: true });
+    view.rerender(<ScopedProbe scope="archived" />);
+    expect(
+      observations
+        .filter((entry) => entry.scope === 'archived')
+        .map((entry) => entry.measured),
+    ).toEqual([false, true]);
+  });
+
   it('remeasures available columns when the sidebar changes the container width', () => {
     stubLayout({ width: 900, height: 500 });
     let resize!: () => void;

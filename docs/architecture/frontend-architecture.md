@@ -89,7 +89,7 @@ Opaque button state, mount lifecycle và auth generation chặn callback cũ. Kh
 lưu Google credential trong storage/router/query cache. Connected accounts query
 được scope theo session generation; link yêu cầu password reauthentication và
 không đổi JWT. `VITE_GOOGLE_CLIENT_ID` là public build config; cấu hình thiếu/lỗi
-không làm hỏng local form. Xem [contracts và verification](../tasks/google-auth-account-linking.md).
+không làm hỏng local form. Xem [contracts và verification](../tasks/backend/google-auth-account-linking.md).
 
 ### Server state
 

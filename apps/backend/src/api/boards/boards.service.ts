@@ -22,6 +22,8 @@ import { ApplicationException } from '../../exceptions/application.exception';
 import { ErrorCode } from '../../common/dto/api-error';
 import { UpdateBoardDto } from './dto/update-board.dto';
 import { BoardAuthorizationService } from '../board-members/board-authorization.service';
+import { BoardEventPublisher } from '../../realtime/board-event-publisher.service';
+import { RealtimeServerEvent } from '@kanban/shared';
 
 @Injectable()
 export class BoardsService {
@@ -31,10 +33,11 @@ export class BoardsService {
     private readonly members: Repository<BoardMember>,
     private readonly authorization: BoardAuthorizationService,
     private readonly activities: ActivityWriterService,
+    private readonly events: BoardEventPublisher,
   ) {}
 
   async archive(userId: string, boardId: string): Promise<BoardResponseDto> {
-    return this.boards.manager.transaction(async (manager) => {
+    const saved = await this.boards.manager.transaction(async (manager) => {
       const { board, member } = await this.authorization.requireMutableOwner(
         userId,
         boardId,
@@ -42,11 +45,50 @@ export class BoardsService {
       );
       board.isArchived = true;
       board.archivedAt = new Date();
-      return toBoardResponseDto(
-        await manager.getRepository(Board).save(board),
-        member.role,
-      );
+      const saved = await manager.getRepository(Board).save(board);
+      await this.activities.record(manager, {
+        boardId,
+        actorId: userId,
+        actionType: ActivityActionType.BOARD_ARCHIVED,
+        entityType: ActivityEntityType.BOARD,
+        entityId: boardId,
+        metadata: null,
+      });
+      return toBoardResponseDto(saved, member.role);
     });
+    await this.events.publish(RealtimeServerEvent.BOARD_ARCHIVED, { boardId });
+    return saved;
+  }
+
+  async restore(userId: string, boardId: string): Promise<BoardResponseDto> {
+    const saved = await this.boards.manager.transaction(async (manager) => {
+      const { board, member } = await this.authorization.requireOwner(
+        userId,
+        boardId,
+        manager,
+      );
+      if (!board.isArchived) {
+        throw new ApplicationException(
+          HttpStatus.CONFLICT,
+          ErrorCode.BOARD_NOT_ARCHIVED,
+          'Board is not archived',
+        );
+      }
+      board.isArchived = false;
+      board.archivedAt = null;
+      const saved = await manager.getRepository(Board).save(board);
+      await this.activities.record(manager, {
+        boardId,
+        actorId: userId,
+        actionType: ActivityActionType.BOARD_RESTORED,
+        entityType: ActivityEntityType.BOARD,
+        entityId: boardId,
+        metadata: null,
+      });
+      return toBoardResponseDto(saved, member.role);
+    });
+    await this.events.publish(RealtimeServerEvent.BOARD_RESTORED, { boardId });
+    return saved;
   }
 
   async update(
@@ -107,7 +149,7 @@ export class BoardsService {
 
   async list(
     userId: string,
-    query: PageQueryDto,
+    query: PageQueryDto & { status?: 'active' | 'archived' },
   ): Promise<PaginatedResponse<BoardResponseDto>> {
     try {
       pageOffset(query);
@@ -128,9 +170,11 @@ export class BoardsService {
           'member.userId = :userId',
           { userId },
         )
-        .where('board.isArchived = :isArchived', { isArchived: false }),
+        .where('board.isArchived = :isArchived', {
+          isArchived: query.status === 'archived',
+        }),
       query,
-      'createdAt',
+      query.status === 'archived' ? 'archivedAt' : 'createdAt',
       'DESC',
     );
     return paginate(

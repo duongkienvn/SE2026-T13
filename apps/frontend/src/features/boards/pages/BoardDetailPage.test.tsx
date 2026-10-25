@@ -246,9 +246,10 @@ describe('BoardDetailPage', () => {
         'This board is archived. It can be viewed but no longer changed.',
       ),
     ).toBeTruthy();
-    expect(
-      screen.queryByRole('button', { name: 'Actions for Frozen' }),
-    ).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Actions for Frozen' }));
+    expect(screen.getByRole('button', { name: 'Restore board' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Edit board' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add column' })).toBeNull();
   });
 });
 

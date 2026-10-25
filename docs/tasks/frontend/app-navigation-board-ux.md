@@ -90,6 +90,63 @@ All source/test paths below are under `apps/frontend/src/`:
 
 ## Automated verification
 
+### Merge integration with PR #86
+
+Merged `origin/main` at `0a493c95ec0cf6090258f6846a94f1cd379cad71`
+(Archived Boards & Restore) into the published #85 branch using a merge,
+without rebasing or rewriting its commits. The initial worktree was clean and
+there was no unfinished merge. Git marked only `BoardsPage.tsx` as conflicted:
+both branches changed imports, list pagination, creation actions and card actions.
+
+The resolution combines the status-aware query/list filtering, independent
+searches, status URL navigation, archive times, OWNER-only Restore and existing
+dialogs/callbacks with #85's real-board-only pagination, one creation action per
+active state, no creation action in Archived, and measurement-gated URL clamp.
+`BoardCard`, the board hooks/query keys, Board Detail and realtime integration
+were reviewed after auto-merge. No `CREATE_TILE` or `CreateBoardTile` remains.
+Backend and shared files are preserved exactly as on the fetched main; no
+production migration or production environment action was performed.
+
+`useFitGrid` accepts an optional `measurementKey`, supplied with the selected
+status by BoardsPage. Switching to a cached status invalidates readiness in the
+first render, before the new layout-effect measurement. This prevents the
+previous tab's completed capacity from overwriting a valid saved page. Other
+consumers retain their default behavior.
+
+Integration regressions cover Active/Archived cached Board → Back navigation
+with immediate/deferred measurements; cached tab → tab → Back with different
+capacities; pending/empty Archived data; preserved unrelated URL parameters;
+independent searches; OWNER/MEMBER controls; and Archive → Restore with refreshed
+lists, success notices and the correct sole creation action at each step.
+
+Verification for this merge:
+
+- Targeted Boards, Members, realtime, layout, grid and Activity tests:
+  **26 files / 319 tests passed**. The final query-parameter test adjustment
+  also passed its **31-test** BoardsPage file.
+- Full frontend with empty test-process `VITE_GOOGLE_CLIENT_ID` and
+  `--maxWorkers=2`: **66 files / 608 tests passed**. No `.env` edit.
+- Backend: **47 suites / 454 tests passed**. Shared: **6 tests passed**.
+- `pnpm lint`, `pnpm build`, changed-file Prettier with `--end-of-line auto`,
+  `git diff --check` and the staged diff check: passed. Existing build warnings
+  remain.
+- Default `pnpm test`: **605 frontend tests passed, 3 pre-existing auth tests
+  failed** in the unchanged ProfilePage/RegisterPage status queries.
+- `pnpm format:check`: reported **475 files** in this checkout. Unrelated
+  repository-wide formatting remains outside the merge resolution.
+- Chrome synthetic REST/Socket.IO QA: desktop 1280×600 and 1040×600, mobile
+  390×844. Archived has no creation action; MEMBER cards have no Restore menu;
+  OWNER Restore succeeded on desktop/mobile with its notice, removal from
+  Archived and appearance in Active. The mobile dialog had no overflow.
+  Active had one New Board action. With 14 boards and two per page on mobile,
+  Board → browser Back preserved page 5 and `view=grid` with no replacement URL.
+  Sidebar collapse remeasured the desktop grid without overflow. Final browser
+  console checks were clean; observed normal REST requests returned 200.
+
+The browser checks use fixture data, not production or real backend
+authentication. Real multi-user PostgreSQL/migration QA was not repeated for
+this merge; the backend changes are inherited unchanged from #86.
+
 ### PR #85: completed grid measurement before URL normalization
 
 The P2 review identified a cached-list Back navigation race: the initial
@@ -253,8 +310,8 @@ Reference files were not edited.
 - **NOT VERIFIED:** actual 200% browser zoom and screen-reader speech output.
   Follow-up: zoom each authenticated route, Tab through controls, check long
   labels/text scaling and announce expanded/current-page states with a reader.
-- **NOT VERIFIED:** Archived Boards/Restore (#71), which is not on this base.
-  Recheck overlap with BoardsPage when that feature lands.
+- Initial Issue #81 evidence predates Archived Boards/Restore (#71).
+  See the PR #86 integration section above for the merge checks.
 - Repository-wide formatting and the local-config auth test failures remain
   outside this task. No unrelated formatting or auth fixes were included.
 
