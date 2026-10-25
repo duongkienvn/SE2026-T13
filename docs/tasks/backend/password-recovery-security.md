@@ -105,3 +105,61 @@ Final local commit hashes are reported in the delivery message. The initial broa
 5. Merge #88's independent user migration without renaming an applied migration. #91 must preserve current board/profile and public-auth routes. #92 owns Settings shell/routing; consume the integration contract above. No preferences, board/card logic, new global-state library or infrastructure was introduced.
 
 Existing standalone email/Google/database-foundation runners contain older hardcoded entity/migration counts (some already stale on this base). They were not used as acceptance evidence here. The dedicated #93 runner checks the current complete migration set and the real Google/verification regressions; `pnpm test` still runs all existing Jest/Vitest suites. Modernizing every historical standalone runner is outside this change.
+
+## Profile scrolling follow-up — shared App Shell
+
+The longer Account Security form exposed an existing AppShell containment defect.
+`h-dvh`, the padded `h-full` frame, column flex sizing and main's `min-h-0` were
+already correct: at 1280×800 the shell was 800px high and main was 716px high.
+However, `main` was statically positioned. The absolute `sr-only` spans/live region
+in Password Requirements used BODY/the initial containing block instead of the
+main scroller. Their static positions below the viewport escaped the intervening
+overflow clips, growing document height to 1046px and producing a second scrollbar
+and lavender area below the shell. At 375×812 document height was 1287px.
+
+The fix adds only `relative` to AppShell's existing main scroller, making it the
+containing block for those announcements. Main retains its original size and
+scrollable content; document stays at viewport height. No global overflow lock,
+height change, form redesign or changes to AuthenticatedLayout, PageContainer,
+Profile, AccountSecurity, NewPasswordForm or style.css are needed. The live regions
+remain in the accessibility tree. **#91 / Mylecute:** preserve this positioned
+scroll-container boundary when integrating App Shell V2; the defect belongs to
+shared shell containment, while #93 supplied the long content that exposed it.
+
+`apps/frontend/test/app-shell-scroll.browser.mjs` contains native-browser regression
+assertions, deliberately separate from JSDOM tests (which cannot measure layout).
+With Vite running, import `/test/app-shell-scroll.browser.mjs` in the browser and
+call `verifyProfileScrolling()` on a loaded local-password Profile. It checks
+natural and bottom scrolling, fixed header/sidebar positions, horizontal bounds,
+focus reaching the final control, and a temporary long-content/absolute-live-region
+probe. The assertions failed before the fix at all three target sizes (1920×1080
+needed the stress probe, which grew the document to 3430px), then passed after it.
+`verifyPublicAuthScrolling()` guards public form scrolling without a global lock;
+`verifyDialogScrolling()` guards body-portaled dialog scrolling and background
+isolation. These browser functions run explicitly during QA, not inside `pnpm test`.
+
+| Profile CSS viewport | Document height after fix | Main viewport height | Natural main content height |
+| -------------------- | ------------------------- | -------------------- | --------------------------- |
+| 375×812              | 812                       | 756                  | 1448                        |
+| 1280×800             | 800                       | 716                  | 1198                        |
+| 1920×1080            | 1080                      | 996                  | 1198                        |
+
+At every size, scrolling/focusing bottom controls left `window.scrollY=0`; only
+main scrolled. Mobile empty-submit focus reached Current Password while keeping
+the document fixed. Bottom screenshots: [375×812](../../design/screens/implementation/password-recovery-security/profile-scroll-375x812.png),
+[1280×800](../../design/screens/implementation/password-recovery-security/profile-scroll-1280x800.png),
+[1920×1080](../../design/screens/implementation/password-recovery-security/profile-scroll-1920x1080.png).
+Browser smoke checks also covered sidebar collapse/expansion, a real Board Detail,
+keyboard column drag/drop with viewport-fixed overlay and persisted reorder after
+reload, mobile Kanban horizontal scrolling, long dialog content, Escape/focus
+restoration and public auth scrolling. All QA data lived in an owned disposable
+PostgreSQL container with fake mail; no production data or real mail was used.
+
+Follow-up validation: `pnpm lint`, `pnpm test` (484 backend + 624 frontend + 6
+shared tests), `pnpm build`, changed-file Prettier checks and `git diff --check`
+passed. Targeted shell/navigation/Profile/Dialog and Kanban suites passed 41 tests.
+The native-browser regressions above passed; final Profile/public-auth reloads
+had no console errors or warnings. Plain `pnpm format:check` still reports CRLF
+differences in 457 untouched files; the full check with `--end-of-line auto`
+passed. Those unrelated files were not normalized. The temporary QA servers and
+disposable database were stopped after verification.
