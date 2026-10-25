@@ -64,6 +64,7 @@ async function inspectSchema() {
       'comments',
       'email_verification_tokens',
       'google_identities',
+      'user_preferences',
       'users',
     ],
   );
@@ -96,7 +97,7 @@ async function inspectSchema() {
   for (const [name, behavior] of Object.entries(deletes)) {
     assert.equal(byName.get(name)?.confdeltype, behavior, name);
   }
-  assert.equal(constraints.filter((row) => row.contype === 'f').length, 16);
+  assert.equal(constraints.filter((row) => row.contype === 'f').length, 17);
   for (const row of constraints.filter(
     (row) => row.contype === 'f' && !(row.conname in deletes),
   )) {
@@ -159,6 +160,10 @@ async function inspectSchema() {
   assert.equal(column('cards', 'is_archived')?.column_default, 'false');
   assert.equal(column('users', 'email')?.is_nullable, 'NO');
   for (const table of tables.map((row) => row.table_name)) {
+    if (table === 'user_preferences') {
+      assert.equal(column(table, 'user_id')?.data_type, 'uuid');
+      continue;
+    }
     assert.equal(column(table, 'id')?.data_type, 'uuid');
     assert.match(
       column(table, 'id')?.column_default ?? '',
@@ -365,7 +370,7 @@ try {
   assert.equal(source.options.logging, false);
   assert.equal(source.options.synchronize, false);
   assert.equal(source.options.migrationsRun, false);
-  assert.equal(source.entityMetadatas.length, 10);
+  assert.equal(source.entityMetadatas.length, 11);
   assert.deepEqual(
     source.entityMetadatas.map((entity) => entity.tableName).sort(),
     [
@@ -378,10 +383,11 @@ try {
       'comments',
       'email_verification_tokens',
       'google_identities',
+      'user_preferences',
       'users',
     ],
   );
-  assert.equal(source.migrations.length, 4);
+  assert.equal(source.migrations.length, 5);
 
   const originalDatabase = process.env.DATABASE_NAME;
   process.env.DATABASE_NAME = testDatabase;
@@ -392,8 +398,8 @@ try {
     });
     try {
       const nestDataSource = app.get(DataSource);
-      assert.equal(nestDataSource.entityMetadatas.length, 10);
-      assert.equal(nestDataSource.migrations.length, 4);
+      assert.equal(nestDataSource.entityMetadatas.length, 11);
+      assert.equal(nestDataSource.migrations.length, 5);
       assert.equal(nestDataSource.options.poolSize, source.options.poolSize);
       assert.equal(
         nestDataSource.options.connectTimeoutMS,
@@ -407,7 +413,7 @@ try {
     process.env.DATABASE_NAME = originalDatabase;
   }
 
-  assert.equal((await source.runMigrations()).length, 4);
+  assert.equal((await source.runMigrations()).length, 5);
   const cliOutput = execFileSync(
     process.execPath,
     [
@@ -431,7 +437,7 @@ try {
       '-e',
       `const dataSource = require('./src/database/data-source.ts').default;
        dataSource.initialize().then(async () => {
-         if (dataSource.entityMetadatas.length !== 10 || dataSource.migrations.length !== 4) {
+         if (dataSource.entityMetadatas.length !== 11 || dataSource.migrations.length !== 5) {
            throw new Error('TypeScript DataSource discovery mismatch');
          }
          await dataSource.destroy();
@@ -449,8 +455,9 @@ try {
   console.log('Migration run and schema/behavior inspection: PASS');
 
   await source.undoLastMigration();
+  await source.undoLastMigration();
   await assert.rejects(source.undoLastMigration(), /cannot be safely removed/);
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 2);
   await inspectSchema();
   console.log('Irreversible enum migration guard: PASS');
 } finally {
