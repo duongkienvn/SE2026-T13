@@ -7,10 +7,29 @@ import {
   VerificationMailer,
 } from './verification-mailer';
 import { ResendVerificationMailer } from './resend-verification-mailer';
+import {
+  PasswordRecoveryMailer,
+  FakePasswordRecoveryMailer,
+} from './password-recovery-mailer';
+import { ResendPasswordRecoveryMailer } from './resend-password-recovery-mailer';
 
 @Module({
   imports: [ConfigModule],
   providers: [
+    {
+      provide: PasswordRecoveryMailer,
+      inject: [ConfigService],
+      useFactory: (
+        config: ConfigService<EnvironmentConfig, true>,
+      ): PasswordRecoveryMailer => {
+        if (config.get('MAIL_TRANSPORT', { infer: true }) === 'fake')
+          return new FakePasswordRecoveryMailer();
+        return new ResendPasswordRecoveryMailer(
+          new Resend(config.get('RESEND_API_KEY', { infer: true })),
+          config.get('MAIL_FROM', { infer: true }),
+        );
+      },
+    },
     {
       provide: VerificationMailer,
       inject: [ConfigService],
@@ -26,6 +45,6 @@ import { ResendVerificationMailer } from './resend-verification-mailer';
       },
     },
   ],
-  exports: [VerificationMailer],
+  exports: [VerificationMailer, PasswordRecoveryMailer],
 })
 export class MailModule {}
