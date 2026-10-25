@@ -37,11 +37,11 @@ export function ResetPasswordPage() {
           submit={(password) => resetPassword(token.current!, password)}
           onSuccess={() => {
             token.current = null;
-            if (status !== 'anonymous') signOut();
             navigate('/login', {
               replace: true,
               state: { passwordUpdated: true },
             });
+            if (status !== 'anonymous') signOut();
           }}
         />
       ) : (

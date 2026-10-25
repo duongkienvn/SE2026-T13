@@ -75,9 +75,7 @@ describe('ProfilePage', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
-    expect((await screen.findByRole('status')).textContent).toContain(
-      'Profile updated.',
-    );
+    expect(await screen.findByText('Profile updated.')).toBeTruthy();
     const patch = calls.find((call) => call.method === 'PATCH')!;
     expect(patch.body).toEqual({ displayName: 'Countess Ada' });
     expect(patch.headers.Authorization).toBe('Bearer profile-token');

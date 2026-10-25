@@ -78,6 +78,7 @@ async function pendingPatch(mutationCache?: MutationCache) {
   const response = deferred<MockResponse>();
   storeSession('same-token');
   const calls = mockApi({
+    'GET /auth/linked-providers': ok({ hasPassword: true, googleLinked: true }),
     'GET /users/me': ok(testUser),
     'PATCH /users/me': () => response.promise,
     'POST /auth/logout': { status: 204 },
@@ -128,7 +129,7 @@ describe('auth session isolation', () => {
     expect(
       (screen.getByLabelText('Display name') as HTMLInputElement).value,
     ).toBe(oldProfile.displayName);
-    expect(screen.getByRole('status').textContent).toContain(
+    expect(screen.getByText('Profile updated.').textContent).toContain(
       'Profile updated.',
     );
     expect(

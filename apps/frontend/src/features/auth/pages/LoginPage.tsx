@@ -33,7 +33,9 @@ export function LoginPage() {
   const state = location.state as RedirectState | null;
   // Registration feedback is shown once; it must not reappear on reload or back.
   const [registeredEmail] = useState(state?.registeredEmail);
-  const [passwordUpdated] = useState(state?.passwordUpdated);
+  const [passwordUpdated, setPasswordUpdated] = useState(
+    state?.passwordUpdated,
+  );
   const [email, setEmail] = useState(registeredEmail ?? '');
   const [password, setPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState<
@@ -44,6 +46,9 @@ export function LoginPage() {
 
   useEffect(() => {
     if (!state?.registeredEmail && !state?.passwordUpdated) return;
+    // The protected-route logout redirect may mount Login before the explicit
+    // success navigation arrives. Capture that later state before clearing it.
+    if (state.passwordUpdated) setPasswordUpdated(true);
     const remaining: RedirectState = state.from ? { from: state.from } : {};
     const { pathname, search, hash } = location;
     navigate({ pathname, search, hash }, { replace: true, state: remaining });
