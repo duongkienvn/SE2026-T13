@@ -10,6 +10,8 @@ import {
   createCard,
   getCard,
   listAllCards,
+  listArchivedCards,
+  restoreCard,
   moveCard,
   unassignCard,
   updateCard,
@@ -34,6 +36,42 @@ export function useCards(boardId: string, { enabled = true } = {}) {
       runAuthorized((token) => listAllCards(token, boardId, signal)),
     retry: retryUnlessClientError,
     enabled,
+  });
+}
+
+export function useArchivedCards(boardId: string, page: number) {
+  const { runAuthorized } = useAuth();
+  return useQuery({
+    queryKey: boardKeys.archivedCardsPage(boardId, page),
+    queryFn: ({ signal }) =>
+      runAuthorized((token) => listArchivedCards(token, boardId, page, signal)),
+    retry: retryUnlessClientError,
+  });
+}
+
+export function useRestoreCard(boardId: string) {
+  const { runAuthorized } = useAuth();
+  const client = useQueryClient();
+  const refreshBoard = useRefreshIfArchived(boardId);
+  const invalidate = () =>
+    Promise.all([
+      client.invalidateQueries({ queryKey: boardKeys.cards(boardId) }),
+      client.invalidateQueries({ queryKey: boardKeys.archivedCards(boardId) }),
+    ]);
+  return useMutation({
+    mutationFn: (cardId: string) =>
+      runAuthorized((token) => restoreCard(token, boardId, cardId)),
+    onSuccess: invalidate,
+    onError: (error) => {
+      refreshBoard(error);
+      void invalidate();
+      if (isApiError(error) && [403, 404].includes(error.status)) {
+        void client.invalidateQueries({
+          queryKey: boardKeys.detail(boardId),
+          exact: true,
+        });
+      }
+    },
   });
 }
 
@@ -128,11 +166,18 @@ export function useUpdateCard(boardId: string, cardId: string) {
 export function useArchiveCard(boardId: string, cardId: string) {
   const { runAuthorized } = useAuth();
   const save = useSaveCard(boardId);
+  const client = useQueryClient();
   const onError = useRefreshAfterCardError(boardId);
   return useMutation({
     mutationFn: () =>
       runAuthorized((token) => archiveCard(token, boardId, cardId)),
-    onSuccess: save,
+    onSuccess: (card) =>
+      Promise.all([
+        save(card),
+        client.invalidateQueries({
+          queryKey: boardKeys.archivedCards(boardId),
+        }),
+      ]),
     onError,
   });
 }

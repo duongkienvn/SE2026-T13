@@ -69,10 +69,18 @@ export function invalidationTargets<E extends BoardEventName>(
     case 'card:created':
     case 'card:updated':
     case 'card:moved':
-    case 'card:archived':
     case 'card:assignees-changed': {
       const { cardId } = payload as BoardEventPayload<'card:updated'>;
       return [cardList(boardId), card(boardId, cardId)];
+    }
+    case 'card:archived':
+    case 'card:restored': {
+      const { cardId } = payload as BoardEventPayload<'card:archived'>;
+      return [
+        cardList(boardId),
+        card(boardId, cardId),
+        { queryKey: boardKeys.archivedCards(boardId) },
+      ];
     }
     case 'member:added':
       return [members(boardId)];
@@ -86,6 +94,7 @@ export function invalidationTargets<E extends BoardEventName>(
         boardDetail(boardId),
         boardList(),
         allCards(boardId),
+        { queryKey: boardKeys.archivedCards(boardId) },
       ];
     case 'comment:created':
     case 'comment:updated':

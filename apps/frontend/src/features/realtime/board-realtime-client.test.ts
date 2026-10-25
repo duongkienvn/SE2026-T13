@@ -302,7 +302,7 @@ describe('BoardRealtimeClient events', () => {
     expect(invalidate).not.toHaveBeenCalled();
   });
 
-  it('listens to each of the 17 business events exactly once', async () => {
+  it('listens to each of the 18 business events exactly once', async () => {
     client.watch(A);
     client.watch(B);
     await settle();

@@ -26,6 +26,7 @@ import { EditBoardDialog } from '../components/BoardFormDialog';
 import { RoleChip } from '../components/RoleChip';
 import { useBoard } from '../hooks';
 import type { BoardsLocationState } from './BoardsPage';
+import { ArchivedCardsDialog } from '../../cards/components/ArchivedCardsDialog';
 
 /** 403 and 404 both mean "not available to you"; never reveal which. */
 export function isBoardUnavailable(error: unknown): boolean {
@@ -65,6 +66,7 @@ export function BoardDetailPage() {
   const [editing, setEditing] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [showingActivity, setShowingActivity] = useState(false);
+  const [showingArchivedCards, setShowingArchivedCards] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [notice, setNotice] = useState<string>();
   usePageTitle(board.data?.name ?? 'Board');
@@ -130,31 +132,40 @@ export function BoardDetailPage() {
                   <UsersIcon aria-hidden="true" className="size-4.5" />
                   Members
                 </Link>
-                {canManage && (
+                {
                   <ActionMenu
+                    className="ml-auto"
                     label={`Actions for ${data.name}`}
                     items={[
-                      { label: 'Edit board', onSelect: () => setEditing(true) },
                       {
-                        label: 'Archive board',
-                        onSelect: () => setArchiving(true),
-                        tone: 'danger',
+                        label: 'Archived cards',
+                        onSelect: () => setShowingArchivedCards(true),
                       },
+                      ...(canManage
+                        ? [
+                            {
+                              label: 'Edit board',
+                              onSelect: () => setEditing(true),
+                            },
+                            {
+                              label: 'Archive board',
+                              onSelect: () => setArchiving(true),
+                              tone: 'danger' as const,
+                            },
+                          ]
+                        : []),
+                      ...(data.isArchived &&
+                      data.currentUserRole === BoardRole.OWNER
+                        ? [
+                            {
+                              label: 'Restore board',
+                              onSelect: () => setRestoring(true),
+                            },
+                          ]
+                        : []),
                     ]}
                   />
-                )}
-                {data.isArchived &&
-                  data.currentUserRole === BoardRole.OWNER && (
-                    <ActionMenu
-                      label={`Actions for ${data.name}`}
-                      items={[
-                        {
-                          label: 'Restore board',
-                          onSelect: () => setRestoring(true),
-                        },
-                      ]}
-                    />
-                  )}
+                }
               </>
             }
           />
@@ -170,6 +181,13 @@ export function BoardDetailPage() {
         <KanbanBoard boardId={data.id} readOnly={data.isArchived} />
       </div>
 
+      {showingArchivedCards && (
+        <ArchivedCardsDialog
+          boardId={data.id}
+          readOnly={data.isArchived}
+          onClose={() => setShowingArchivedCards(false)}
+        />
+      )}
       {showingActivity && (
         <ActivityHistoryDialog
           boardId={data.id}

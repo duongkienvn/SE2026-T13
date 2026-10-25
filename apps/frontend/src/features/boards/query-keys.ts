@@ -17,4 +17,8 @@ export const boardKeys = {
     [...boardKeys.all, 'detail', boardId, 'cards'] as const,
   card: (boardId: string, cardId: string) =>
     [...boardKeys.all, 'detail', boardId, 'cards', cardId] as const,
+  archivedCards: (boardId: string) =>
+    [...boardKeys.all, 'detail', boardId, 'archived-cards'] as const,
+  archivedCardsPage: (boardId: string, page: number) =>
+    [...boardKeys.all, 'detail', boardId, 'archived-cards', page] as const,
 };

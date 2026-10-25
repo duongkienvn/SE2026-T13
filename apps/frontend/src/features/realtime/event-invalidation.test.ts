@@ -22,9 +22,12 @@ const cached = {
   cards: boardKeys.cards(BOARD),
   card: boardKeys.card(BOARD, CARD),
   otherCard: boardKeys.card(BOARD, OTHER_CARD),
+  archived: boardKeys.archivedCardsPage(BOARD, 1),
+  archivedPage2: boardKeys.archivedCardsPage(BOARD, 2),
   boardList: boardKeys.lists(),
   otherBoard: boardKeys.detail(OTHER),
   otherCards: boardKeys.cards(OTHER),
+  otherArchived: boardKeys.archivedCardsPage(OTHER, 1),
   commentsPage1: commentKeys.page(BOARD, CARD, 1),
   commentsPage2: commentKeys.page(BOARD, CARD, 2),
   otherCardComments: commentKeys.page(BOARD, OTHER_CARD, 1),
@@ -56,7 +59,7 @@ const cardEvent = { boardId: BOARD, cardId: CARD, columnId: 'column-1' };
 const member = { boardId: BOARD, userId: 'user-1' };
 
 describe('BOARD_EVENTS', () => {
-  it('lists the 17 business events of the shared contract', () => {
+  it('lists the 18 business events of the shared contract', () => {
     expect([...BOARD_EVENTS].sort()).toEqual([
       'board:archived',
       'board:restored',
@@ -64,6 +67,7 @@ describe('BOARD_EVENTS', () => {
       'card:assignees-changed',
       'card:created',
       'card:moved',
+      'card:restored',
       'card:updated',
       'column:created',
       'column:deleted',
@@ -118,17 +122,26 @@ describe('invalidationTargets', () => {
     expect(await hit(event, column)).toEqual(['columns']);
   });
 
-  it.each([
-    'card:created',
-    'card:updated',
-    'card:archived',
-    'card:assignees-changed',
-  ] as const)(
+  it.each(['card:created', 'card:updated', 'card:assignees-changed'] as const)(
     '%s refreshes the card list, detail and its comments',
     async (event) => {
       expect(await hit(event, cardEvent)).toEqual([
         'cards',
         'card',
+        'commentsPage1',
+        'commentsPage2',
+      ]);
+    },
+  );
+
+  it.each(['card:archived', 'card:restored'] as const)(
+    '%s refreshes both lists, the detail and comments',
+    async (event) => {
+      expect(await hit(event, cardEvent)).toEqual([
+        'cards',
+        'card',
+        'archived',
+        'archivedPage2',
         'commentsPage1',
         'commentsPage2',
       ]);
@@ -170,6 +183,8 @@ describe('invalidationTargets', () => {
       'cards',
       'card',
       'otherCard',
+      'archived',
+      'archivedPage2',
       'boardList',
       'commentsPage1',
       'commentsPage2',
@@ -203,6 +218,7 @@ describe('invalidationTargets', () => {
       const names = await invalidated(invalidationTargets(event, payload));
       expect(names).not.toContain('otherBoard');
       expect(names).not.toContain('otherCards');
+      expect(names).not.toContain('otherArchived');
       expect(names).not.toContain('otherBoardComments');
     }
   });
@@ -217,6 +233,8 @@ describe('boardResyncTargets', () => {
       'cards',
       'card',
       'otherCard',
+      'archived',
+      'archivedPage2',
       'boardList',
       'commentsPage1',
       'commentsPage2',
