@@ -14,7 +14,7 @@ Modern, polished SaaS marketing page, inspired by precise product-first layouts 
 ## Visual hierarchy
 
 1. **Header:** authentic Kanvexa logo + wordmark left; **exactly three** in-page anchors (`Features`, `How it works`, `Why Kanvexa`) center; auth-aware actions right.
-2. **Hero:** left-aligned eyebrow, large two-line headline *Organize work. Move together.*, concise body copy, two CTAs, subtle benefits; large tilted or layered realistic Kanban UI preview right.
+2. **Hero:** left-aligned eyebrow, large two-line headline _Organize work. Move together._, concise body copy, two CTAs, subtle benefits; large tilted or layered realistic Kanban UI preview right.
 3. **Features** — `<section id="features">`: centered section introduction and four cards in one desktop row (Visual Boards, Real-time Collaboration, Team Management, Activity History).
 4. **How it works** — `<section id="how-it-works">`: compact, elegant 3-step explanation **Create a board → Organize tasks → Collaborate in real time**. Responsive layout with icons and subtle connecting visual accents; designed in the same palette and spacing as V1.
 5. **Why Kanvexa / Product showcase** — `<section id="why-kanvexa">`: use the **existing V1 “Built for real teams / A better way to manage your work” composition**, with layered authentic UI preview and benefit-led explanation. **Do not add a redundant second benefits block.**
