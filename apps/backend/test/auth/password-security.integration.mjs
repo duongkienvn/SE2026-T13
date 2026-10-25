@@ -192,6 +192,7 @@ try {
     1,
   );
   await source.undoLastMigration();
+  await source.undoLastMigration();
   await source.runMigrations();
   assert.equal((await source.runMigrations()).length, 0);
   assert.deepEqual(
@@ -376,6 +377,7 @@ try {
   check(
     '202/timer does not wait for an in-flight provider; eligible/unknown/unverified responses match and verified delivery completes eventually',
   );
+  await source.undoLastMigration();
   await assert.rejects(
     source.undoLastMigration(),
     /Cannot discard recovery proofs/,

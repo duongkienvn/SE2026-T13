@@ -31,6 +31,9 @@ server['column:deleted'](column);
 server['card:created'](card);
 server['card:updated'](card);
 server['card:archived'](card);
+server['card:restored'](card);
+// @ts-expect-error restoring a card requires its original column
+server['card:restored']({ boardId: 'board', cardId: 'card' });
 server['card:assignees-changed'](card);
 server['card:moved']({
   boardId: 'board',

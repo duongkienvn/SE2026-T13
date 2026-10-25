@@ -18,6 +18,7 @@ const ACTION_LABELS: Record<string, string> = {
   CARD_UPDATED: 'updated a card',
   CARD_MOVED: 'moved a card',
   CARD_ARCHIVED: 'archived a card',
+  CARD_RESTORED: 'restored a card',
   COMMENT_CREATED: 'added a comment',
   COMMENT_UPDATED: 'edited a comment',
   COMMENT_DELETED: 'deleted a comment',

@@ -40,6 +40,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 - [Board members management](backend/board-members-management.md)
 - [Column management API](backend/column-management-api.md)
 - [Card management API](backend/card-management-api.md)
+- [Archived cards management and restore](backend/card-archive-restore.md)
 - [Realtime foundation](backend/realtime-foundation.md)
 - [Realtime board events](backend/realtime-board-events.md)
 - [Board presence backend](backend/board-presence.md)

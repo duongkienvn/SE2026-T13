@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
 describe('Board business events through REST and real Socket.IO', () => {
-  it('delivers all seventeen minimal contracts with isolation, no-ops and revocation', () => {
+  it('delivers all eighteen minimal contracts with isolation, no-ops and revocation', () => {
     const output = execFileSync(
       process.execPath,
       [

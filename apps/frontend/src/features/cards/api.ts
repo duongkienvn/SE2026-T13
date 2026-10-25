@@ -44,6 +44,34 @@ export function listAllCards(
   return fetchAllPages((page) => listCards(accessToken, boardId, page, signal));
 }
 
+export function listArchivedCards(
+  accessToken: string,
+  boardId: string,
+  page: number,
+  signal?: AbortSignal,
+): Promise<Page<Card>> {
+  const query = new URLSearchParams({
+    status: 'archived',
+    page: String(page),
+    limit: '20',
+  });
+  return apiRequestPage<Card>(`${cardsPath(boardId)}?${query}`, {
+    accessToken,
+    signal,
+  });
+}
+
+export function restoreCard(
+  accessToken: string,
+  boardId: string,
+  cardId: string,
+): Promise<Card> {
+  return apiRequest<Card>(`${cardsPath(boardId, cardId)}/restore`, {
+    method: 'POST',
+    accessToken,
+  });
+}
+
 /** Also returns archived cards. */
 export function getCard(
   accessToken: string,

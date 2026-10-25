@@ -123,9 +123,10 @@ describe('BoardDetailPage', () => {
     const shared = makeBoard({ name: 'Theirs', currentUserRole: 'MEMBER' });
     openBoard(shared);
     await screen.findByRole('heading', { name: 'Theirs' });
-    expect(
-      screen.queryByRole('button', { name: 'Actions for Theirs' }),
-    ).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Actions for Theirs' }));
+    expect(screen.getByRole('button', { name: 'Archived cards' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Edit board' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Archive board' })).toBeNull();
   });
 
   it.each([

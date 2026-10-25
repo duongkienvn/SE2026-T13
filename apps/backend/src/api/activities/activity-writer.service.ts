@@ -31,6 +31,7 @@ const ENTITY_FOR_ACTION: Record<ActivityActionType, ActivityEntityType> = {
   [ActivityActionType.CARD_UPDATED]: ActivityEntityType.CARD,
   [ActivityActionType.CARD_MOVED]: ActivityEntityType.CARD,
   [ActivityActionType.CARD_ARCHIVED]: ActivityEntityType.CARD,
+  [ActivityActionType.CARD_RESTORED]: ActivityEntityType.CARD,
   [ActivityActionType.COMMENT_CREATED]: ActivityEntityType.COMMENT,
   [ActivityActionType.COMMENT_UPDATED]: ActivityEntityType.COMMENT,
   [ActivityActionType.COMMENT_DELETED]: ActivityEntityType.COMMENT,

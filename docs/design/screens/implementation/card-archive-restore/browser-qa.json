@@ -1,0 +1,275 @@
+{
+  "captures": [
+    {
+      "name": "archive-375",
+      "width": 375,
+      "height": 900,
+      "documentWidth": 375,
+      "dialogs": [
+        {
+          "x": 16,
+          "y": 16,
+          "width": 343,
+          "height": 868,
+          "scrollHeight": 3395,
+          "clientHeight": 868
+        }
+      ]
+    },
+    {
+      "name": "confirm-375",
+      "width": 375,
+      "height": 900,
+      "documentWidth": 375,
+      "dialogs": [
+        {
+          "x": 16,
+          "y": 314,
+          "width": 343,
+          "height": 272,
+          "scrollHeight": 272,
+          "clientHeight": 272
+        }
+      ]
+    },
+    {
+      "name": "archive-768",
+      "width": 768,
+      "height": 900,
+      "documentWidth": 768,
+      "dialogs": [
+        {
+          "x": 16,
+          "y": 16,
+          "width": 736,
+          "height": 868,
+          "scrollHeight": 2331,
+          "clientHeight": 868
+        }
+      ]
+    },
+    {
+      "name": "confirm-768",
+      "width": 768,
+      "height": 900,
+      "documentWidth": 768,
+      "dialogs": [
+        {
+          "x": 128,
+          "y": 360,
+          "width": 512,
+          "height": 180,
+          "scrollHeight": 180,
+          "clientHeight": 180
+        }
+      ]
+    },
+    {
+      "name": "archive-1280",
+      "width": 1280,
+      "height": 900,
+      "documentWidth": 1280,
+      "dialogs": [
+        {
+          "x": 192,
+          "y": 16,
+          "width": 896,
+          "height": 868,
+          "scrollHeight": 2331,
+          "clientHeight": 868
+        }
+      ]
+    },
+    {
+      "name": "confirm-1280",
+      "width": 1280,
+      "height": 900,
+      "documentWidth": 1280,
+      "dialogs": [
+        {
+          "x": 384,
+          "y": 360,
+          "width": 512,
+          "height": 180,
+          "scrollHeight": 180,
+          "clientHeight": 180
+        }
+      ]
+    },
+    {
+      "name": "archive-page-2",
+      "width": 1280,
+      "height": 900,
+      "documentWidth": 1280,
+      "dialogs": [
+        {
+          "x": 192,
+          "y": 229.5,
+          "width": 896,
+          "height": 441,
+          "scrollHeight": 441,
+          "clientHeight": 441
+        }
+      ]
+    },
+    {
+      "name": "restore-pending",
+      "width": 1280,
+      "height": 900,
+      "documentWidth": 1280,
+      "dialogs": [
+        {
+          "x": 384,
+          "y": 360,
+          "width": 512,
+          "height": 180,
+          "scrollHeight": 180,
+          "clientHeight": 180
+        }
+      ]
+    },
+    {
+      "name": "restore-success",
+      "width": 1280,
+      "height": 900,
+      "documentWidth": 1280,
+      "dialogs": [
+        {
+          "x": 192,
+          "y": 16,
+          "width": 896,
+          "height": 868,
+          "scrollHeight": 2389,
+          "clientHeight": 868
+        }
+      ]
+    },
+    {
+      "name": "kanban-restored-member",
+      "width": 1280,
+      "height": 900,
+      "documentWidth": 1280,
+      "dialogs": []
+    },
+    {
+      "name": "archived-board-readonly",
+      "width": 1280,
+      "height": 900,
+      "documentWidth": 1280,
+      "dialogs": [
+        {
+          "x": 192,
+          "y": 16,
+          "width": 896,
+          "height": 868,
+          "scrollHeight": 2389,
+          "clientHeight": 868
+        }
+      ]
+    },
+    {
+      "name": "archive-loading",
+      "width": 1280,
+      "height": 900,
+      "documentWidth": 1280,
+      "dialogs": [
+        {
+          "x": 192,
+          "y": 310,
+          "width": 896,
+          "height": 280,
+          "scrollHeight": 280,
+          "clientHeight": 280
+        }
+      ]
+    },
+    {
+      "name": "archive-error",
+      "width": 1280,
+      "height": 900,
+      "documentWidth": 1280,
+      "dialogs": [
+        {
+          "x": 192,
+          "y": 239.75,
+          "width": 896,
+          "height": 420.5,
+          "scrollHeight": 421,
+          "clientHeight": 421
+        }
+      ]
+    },
+    {
+      "name": "archive-retry-success",
+      "width": 1280,
+      "height": 900,
+      "documentWidth": 1280,
+      "dialogs": [
+        {
+          "x": 192,
+          "y": 16,
+          "width": 896,
+          "height": 868,
+          "scrollHeight": 2331,
+          "clientHeight": 868
+        }
+      ]
+    },
+    {
+      "name": "restore-conflict",
+      "width": 1280,
+      "height": 900,
+      "documentWidth": 1280,
+      "dialogs": [
+        {
+          "x": 384,
+          "y": 319,
+          "width": 512,
+          "height": 262,
+          "scrollHeight": 262,
+          "clientHeight": 262
+        }
+      ]
+    },
+    {
+      "name": "reconnect-restored",
+      "width": 1280,
+      "height": 900,
+      "documentWidth": 1280,
+      "dialogs": []
+    },
+    {
+      "name": "access-revoked",
+      "width": 1280,
+      "height": 900,
+      "documentWidth": 1280,
+      "dialogs": []
+    },
+    {
+      "name": "archive-empty",
+      "width": 1280,
+      "height": 900,
+      "documentWidth": 1280,
+      "dialogs": [
+        {
+          "x": 192,
+          "y": 291.75,
+          "width": 896,
+          "height": 316.5,
+          "scrollHeight": 317,
+          "clientHeight": 317
+        }
+      ]
+    }
+  ],
+  "checks": [
+    "viewport 375: no overflow; confirmation initial focus, Tab trap and Escape",
+    "viewport 768: no overflow; confirmation initial focus, Tab trap and Escape",
+    "viewport 1280: no overflow; confirmation initial focus, Tab trap and Escape",
+    "real REST restore: pending double click writes one activity; second browser archive refreshes; foreign board stays isolated",
+    "concurrent-browser 409 has no false success; reconnect refetch catches restore missed offline; list loading state",
+    "archived board read-only; archive list error/retry; membership revoked during confirmation hides cached board",
+    "empty state"
+  ],
+  "consoleErrors": []
+}

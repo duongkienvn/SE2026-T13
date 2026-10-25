@@ -199,6 +199,71 @@ export class CardsService {
     return result;
   }
 
+  async restore(
+    userId: string,
+    boardId: string,
+    cardId: string,
+  ): Promise<CardResponseDto> {
+    const result = await this.mutate(userId, boardId, async (manager) => {
+      const cards = manager.getRepository(Card);
+      const card = await this.requireCard(cards, boardId, cardId);
+      if (!card.isArchived) {
+        throw new ApplicationException(
+          HttpStatus.CONFLICT,
+          'CARD_NOT_ARCHIVED',
+          'Card is already active',
+        );
+      }
+      const column = await manager
+        .getRepository(BoardColumn)
+        .findOne({ where: { id: card.columnId, boardId } });
+      if (!column) {
+        throw new ApplicationException(
+          HttpStatus.CONFLICT,
+          'CARD_COLUMN_UNAVAILABLE',
+          'The original card column is unavailable',
+        );
+      }
+      const last = await cards.findOne({
+        where: { boardId, columnId: column.id, isArchived: false },
+        order: { position: 'DESC', id: 'DESC' },
+      });
+      const position = cardInsertionPosition(last?.position);
+      if (position) {
+        card.position = position;
+      } else {
+        const active = await cards.find({
+          where: { boardId, columnId: column.id, isArchived: false },
+          order: { position: 'ASC', id: 'ASC' },
+        });
+        const positions = rebalancePositions(active.length + 1);
+        active.forEach((row, index) => {
+          row.position = positions[index];
+        });
+        await cards.save(active);
+        card.position = positions[active.length];
+      }
+      card.isArchived = false;
+      card.archivedAt = null;
+      const saved = await cards.save(card);
+      await this.activities.record(manager, {
+        boardId,
+        actorId: userId,
+        actionType: ActivityActionType.CARD_RESTORED,
+        entityType: ActivityEntityType.CARD,
+        entityId: saved.id,
+        metadata: null,
+      });
+      return toCardResponseDto(saved);
+    });
+    await this.events.publish(RealtimeServerEvent.CARD_RESTORED, {
+      boardId: result.boardId,
+      cardId: result.id,
+      columnId: result.columnId,
+    });
+    return result;
+  }
+
   async move(
     userId: string,
     boardId: string,
@@ -413,18 +478,25 @@ export class CardsService {
       .createQueryBuilder('card')
       .leftJoinAndSelect('card.assignees', 'assignee')
       .where('card.boardId = :boardId', { boardId })
-      .andWhere('card.isArchived = :isArchived', { isArchived: false });
+      .andWhere('card.isArchived = :isArchived', {
+        isArchived: query.status === 'archived',
+      });
     if (query.columnId) {
-      builder
-        .andWhere('card.columnId = :columnId', { columnId: query.columnId })
-        .orderBy('card.position', 'ASC');
+      builder.andWhere('card.columnId = :columnId', {
+        columnId: query.columnId,
+      });
+    }
+    if (query.status === 'archived') {
+      builder.orderBy('card.archivedAt', 'DESC');
+    } else if (query.columnId) {
+      builder.orderBy('card.position', 'ASC');
     } else {
       builder
         .orderBy('card.columnId', 'ASC')
         .addOrderBy('card.position', 'ASC');
     }
     const [cards, total] = await builder
-      .addOrderBy('card.id', 'ASC')
+      .addOrderBy('card.id', query.status === 'archived' ? 'DESC' : 'ASC')
       .skip(offset)
       .take(query.limit)
       .getManyAndCount();

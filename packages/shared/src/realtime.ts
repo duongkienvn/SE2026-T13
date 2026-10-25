@@ -40,6 +40,7 @@ export const RealtimeServerEvent = {
   CARD_UPDATED: 'card:updated',
   CARD_MOVED: 'card:moved',
   CARD_ARCHIVED: 'card:archived',
+  CARD_RESTORED: 'card:restored',
   CARD_ASSIGNEES_CHANGED: 'card:assignees-changed',
   MEMBER_ADDED: 'member:added',
   MEMBER_ROLE_CHANGED: 'member:role-changed',
@@ -101,6 +102,7 @@ export interface RealtimeServerEvents {
   'card:updated': (payload: CardChangedEvent) => void;
   'card:moved': (payload: CardMovedEvent) => void;
   'card:archived': (payload: CardChangedEvent) => void;
+  'card:restored': (payload: CardChangedEvent) => void;
   'card:assignees-changed': (payload: CardChangedEvent) => void;
   'member:added': (payload: MemberChangedEvent) => void;
   'member:role-changed': (payload: MemberChangedEvent) => void;
