@@ -1,4 +1,4 @@
-# Kanban UI Design and Implementation Screens
+# Kanvexa UI Design — MVP & Post-MVP
 
 Thư mục `screens/` tách hai loại ảnh có mục đích khác nhau:
 
@@ -28,3 +28,32 @@ giữ visual fidelity mà không tự ý mở rộng product scope.
 
 Mỗi thư mục con dưới `screens/implementation/` dùng cùng slug với tài liệu task
 frontend. Ảnh mới phải được đặt tại đây, không đặt trong `docs/tasks/`.
+
+## Post-MVP Design
+
+Thiết kế Post-MVP mở rộng Kanvexa theo roadmap, bao gồm Workspace, Board/Card,
+Home Dashboard, My Tasks, Notifications và Account Settings.
+
+Đây là thiết kế và phạm vi đã duyệt cho giai đoạn tiếp theo. Trạng thái chức năng
+đã triển khai được phân biệt riêng trong [project overview](../project-overview.md);
+mockup Post-MVP không phải ảnh kiểm chứng MVP.
+
+- [Product & UX Blueprint](product-ux-blueprint.md) mô tả cấu trúc sản phẩm,
+  navigation và các quyết định tương tác đã duyệt.
+- [Post-MVP design guidelines](design-guidelines.post-mvp.md) bổ sung hướng dẫn
+  thiết kế cho các khu vực Post-MVP.
+- [Visual reference register](post-mvp/visual-reference-register.md) ghi nhận
+  các visual reference đã duyệt; mockup và UX spec tương ứng nằm trong
+  [thư mục `post-mvp/`](post-mvp/).
+- [Post-MVP roadmap](../roadmap/post-mvp.md) xác định phạm vi và các giai đoạn
+  triển khai.
+
+Các nguyên tắc áp dụng cho thiết kế và triển khai Post-MVP:
+
+- Giữ nguyên branding và design system Kanvexa.
+- Mockup Post-MVP đã duyệt là visual reference; chi tiết trong mockup không tự
+  động bổ sung chức năng ngoài phạm vi đã duyệt.
+- Hỗ trợ desktop/mobile và các theme Light/Dark/System.
+- Không có Free Plan, Upgrade to Pro, pricing hay subscription.
+- Không tự mở rộng phạm vi ngoài roadmap.
+- Không làm ảnh hưởng chức năng MVP hiện tại.
