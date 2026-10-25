@@ -31,7 +31,7 @@ export function LandingPage() {
     <div data-landing className="min-h-dvh bg-surface text-ink">
       <a
         href="#main-content"
-        className="sr-only z-40 rounded-lg bg-surface px-4 py-2 font-medium text-primary shadow-card focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+        className="sr-only z-40 rounded-lg bg-surface px-4 py-2 font-medium text-primary shadow-card focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:px-4 focus:py-2"
       >
         Skip to content
       </a>
