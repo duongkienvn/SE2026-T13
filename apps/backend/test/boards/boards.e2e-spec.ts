@@ -143,7 +143,7 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
     users.findOne.mockImplementation(
       async ({ where }: { where: { id: string } }) =>
         [OWNER, MEMBER, OUTSIDER].includes(where.id)
-          ? { id: where.id, emailVerifiedAt: new Date() }
+          ? { id: where.id, authVersion: 0, emailVerifiedAt: new Date() }
           : null,
     );
     const findMember = async ({

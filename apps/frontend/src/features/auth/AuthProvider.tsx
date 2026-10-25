@@ -113,14 +113,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [queryClient],
   );
 
-  const signOut = useCallback(() => {
-    if (scopeRef.current !== scope) return;
-    if (accessToken) {
-      // Best effort: the token stays valid server-side until it expires either way.
-      logout(accessToken).catch(() => undefined);
-    }
-    endSession();
-  }, [scope, accessToken, endSession]);
+  const signOut = useCallback(
+    (options?: { notifyServer?: boolean }) => {
+      if (scopeRef.current !== scope) return;
+      if (accessToken && options?.notifyServer !== false) {
+        // Ordinary logout is stateless. Credential changes revoke JWTs separately
+        // and can skip this now-unauthorized best-effort request.
+        logout(accessToken).catch(() => undefined);
+      }
+      endSession();
+    },
+    [scope, accessToken, endSession],
+  );
 
   const { refetch } = currentUser;
   const retry = useCallback(() => {

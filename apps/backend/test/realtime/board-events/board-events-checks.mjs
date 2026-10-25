@@ -32,6 +32,7 @@ export async function seedBoardEvents(source) {
       email: `${name}@events.test`,
       displayName: name,
       passwordHash,
+      authVersion: 0,
       emailVerifiedAt: new Date(),
       avatarUrl: null,
     });

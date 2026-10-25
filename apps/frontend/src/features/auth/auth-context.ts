@@ -13,7 +13,7 @@ export interface AuthContextValue {
   /** Stores a fresh login and marks the session authenticated. */
   signIn: (response: LoginResponse) => void;
   /** Calls the logout API when possible, then always clears local session state. */
-  signOut: () => void;
+  signOut: (options?: { notifyServer?: boolean }) => void;
   /** Re-runs session verification after an `error` status. */
   retry: () => void;
   /**

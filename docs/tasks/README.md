@@ -33,6 +33,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 - [Email verification](backend/email-verification.md)
 - [Google Sign-In and account linking](backend/google-auth-account-linking.md)
 - [User preferences API and persistence](backend/user-preferences.md)
+- [Password recovery and account security](backend/password-recovery-security.md)
 - [Verification email layout](backend/verification-email-layout.md)
 - [Board management API](backend/board-management-api.md)
 - [Board archive management](backend/board-archive-management.md)
@@ -62,6 +63,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 - [Card comments UI](frontend/comments-ui.md)
 - [Activity History frontend](frontend/activity-history.md)
 - [Sidebar navigation and board creation UX](frontend/app-navigation-board-ux.md)
+- [Public landing page](frontend/public-landing-page.md)
 
 ## Quy ước
 

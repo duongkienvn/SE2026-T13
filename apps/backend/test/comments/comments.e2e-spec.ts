@@ -147,7 +147,7 @@ describe('Comments HTTP API with real JWT, validation and envelopes', () => {
   const users = {
     findOne: jest.fn(async ({ where }: { where: { id: string } }) =>
       [ID.owner, ID.member, ID.outsider].includes(where.id)
-        ? { id: where.id, emailVerifiedAt: new Date() }
+        ? { id: where.id, authVersion: 0, emailVerifiedAt: new Date() }
         : null,
     ),
   };

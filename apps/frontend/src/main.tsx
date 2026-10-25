@@ -4,8 +4,10 @@ import App from './App';
 import { AppProviders } from './app/AppProviders';
 import './style.css';
 import { captureVerificationLink } from './features/auth/verification-link';
+import { captureRecoveryLink } from './features/auth/recovery-link';
 
 captureVerificationLink();
+captureRecoveryLink();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

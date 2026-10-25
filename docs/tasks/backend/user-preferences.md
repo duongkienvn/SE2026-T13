@@ -197,6 +197,40 @@ build/integration run passed. These setup failures are recorded separately from
 the successful checks; full workspace regression also passed after the fix.
 No production/shared database, live Google OAuth or real email delivery was used.
 
+### Integration with main — 2026-10-25
+
+Integrated `origin/main` at `fb43cca` (password recovery/security and public landing
+page) after the seven P1-01 commits. Both documentation conflicts preserve the
+preferences and password recovery sections/index entries.
+
+Compatibility changes are confined to tests: preference HTTP fixtures include
+`authVersion: 0`; standalone preferences/Google harnesses register the real
+throttler options required by the new password-change guard. Database fixtures
+expect twelve entities and six migrations, including recovery's cascading token
+FK, and exercise rollback in the combined migration order. The preferences
+upgrade rehearsal also preserves accounts when recovery is already applied.
+Production authentication and migration implementations are unchanged by the
+conflict resolution.
+
+Verification of the merged tree:
+
+- `pnpm lint` and `pnpm build`: exit 0.
+- `pnpm test`: exit 0; 53 backend suites/537 tests, 69 frontend files/637 tests,
+  and 6 shared tests.
+- Focused preferences DTO/HTTP suites: exit 0, 45 tests.
+- Isolated PostgreSQL preferences, Google auth (14 checks), password security
+  (16 checks), and email verification (16 checks, including the foundation suite):
+  exit 0. Test containers are removed by the scripts; no shared/production
+  database or real mail/OAuth provider is used.
+- Merge-resolution/compatibility files pass targeted formatting and whitespace
+  checks. Full `pnpm format:check` still reports 241 existing files from the
+  combined branches; no unrelated formatting sweep is included.
+
+The first focused run exposed the missing auth-version fixture, and the first
+preferences database run exposed the standalone harness's missing throttler
+configuration. Both were corrected and their successful reruns are recorded
+above; security guards were not weakened to make the tests pass.
+
 ## Scope and decisions
 
 - Facts: contracts reviewed on `origin/main` at `cea6d1c`; dedicated branch
@@ -210,5 +244,5 @@ No production/shared database, live Google OAuth or real email delivery was used
 - Excluded: frontend/theme provider/localStorage, locale, notification preferences,
   security/session/token changes, workspace schema, Card date conversion.
 
-Before merge, refresh main and resolve conflicts with P1-06 explicitly. No commit,
-push, PR, merge or deploy is included in this handoff.
+Before merging this feature into main, refresh main and resolve conflicts with
+P1-06 explicitly. No push, PR, merge into main or deploy is included in this handoff.

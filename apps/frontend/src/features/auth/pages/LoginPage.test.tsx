@@ -44,7 +44,11 @@ describe('LoginPage', () => {
     );
     expect(screen.getByRole('link', { name: 'Create one' })).toBeTruthy();
     expect(screen.queryByText(/remember me/i)).toBeNull();
-    expect(screen.queryByText(/forgot password/i)).toBeNull();
+    expect(
+      screen
+        .getByRole('link', { name: 'Forgot password?' })
+        .getAttribute('href'),
+    ).toBe('/forgot-password');
   });
 
   it('toggles password visibility', () => {

@@ -21,6 +21,8 @@ export class User {
   @Column({ type: 'varchar' }) email!: string;
   @Column({ name: 'password_hash', type: 'varchar', nullable: true })
   passwordHash!: string | null;
+  @Column({ name: 'auth_version', type: 'integer', default: 0 })
+  authVersion = 0;
   @Column({ name: 'display_name', type: 'varchar' }) displayName!: string;
   @Column({ name: 'avatar_url', type: 'varchar', nullable: true }) avatarUrl!:
     string | null;

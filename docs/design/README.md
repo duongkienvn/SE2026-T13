@@ -13,13 +13,14 @@ Thư mục `screens/` tách hai loại ảnh có mục đích khác nhau:
 
 ## Approved reference screens
 
-| File                                                                       | Purpose                            |
-| -------------------------------------------------------------------------- | ---------------------------------- |
-| [`screens/reference/login.png`](screens/reference/login.png)               | Login screen                       |
-| [`screens/reference/boards.png`](screens/reference/boards.png)             | Boards list                        |
-| [`screens/reference/kanban-board.png`](screens/reference/kanban-board.png) | Board workspace                    |
-| [`screens/reference/card-detail.png`](screens/reference/card-detail.png)   | Card detail modal                  |
-| [`screens/reference/team-members.png`](screens/reference/team-members.png) | Board-member management appearance |
+| File                                                                             | Purpose                                             |
+| -------------------------------------------------------------------------------- | --------------------------------------------------- |
+| [`screens/reference/login.png`](screens/reference/login.png)                     | Login screen                                        |
+| [`screens/reference/boards.png`](screens/reference/boards.png)                   | Boards list                                         |
+| [`screens/reference/kanban-board.png`](screens/reference/kanban-board.png)       | Board workspace                                     |
+| [`screens/reference/card-detail.png`](screens/reference/card-detail.png)         | Card detail modal                                   |
+| [`screens/reference/team-members.png`](screens/reference/team-members.png)       | Board-member management appearance                  |
+| [`screens/reference/landing-page-v1.png`](screens/reference/landing-page-v1.png) | Public landing page V1 ([spec](landing-page-v1.md)) |
 
 Reference screens có một số thành phần nằm ngoài MVP. Guidelines mô tả cách
 giữ visual fidelity mà không tự ý mở rộng product scope.

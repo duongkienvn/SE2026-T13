@@ -29,10 +29,14 @@ export class UsersService {
         ['At least one profile field must be provided'],
       );
     }
-    const user = await this.findUser(userId);
-    if (input.displayName !== undefined) user.displayName = input.displayName;
-    if (input.avatarUrl !== undefined) user.avatarUrl = input.avatarUrl;
-    return toUserResponseDto(await this.users.save(user));
+    await this.findUser(userId);
+    // Never save a stale full User: concurrent credential changes must survive
+    // profile edits that started before the password/auth-version transaction.
+    const patch: Partial<Pick<User, 'displayName' | 'avatarUrl'>> = {};
+    if (input.displayName !== undefined) patch.displayName = input.displayName;
+    if (input.avatarUrl !== undefined) patch.avatarUrl = input.avatarUrl;
+    await this.users.update(userId, patch);
+    return toUserResponseDto(await this.findUser(userId));
   }
 
   private async findUser(userId: string): Promise<User> {

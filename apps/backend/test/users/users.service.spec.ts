@@ -26,7 +26,10 @@ describe('UsersService', () => {
     const user = userFixture();
     const repository = {
       findOne: jest.fn().mockResolvedValue(user),
-      save: jest.fn().mockResolvedValue(user),
+      update: jest.fn().mockImplementation((_id, patch) => {
+        Object.assign(user, patch);
+        return Promise.resolve({ affected: 1 });
+      }),
     };
     const module = await Test.createTestingModule({
       providers: [
@@ -45,6 +48,10 @@ describe('UsersService', () => {
     expect(result.displayName).toBe('Grace Hopper');
     expect(result.avatarUrl).toBeNull();
     expect(result).not.toHaveProperty('passwordHash');
+    expect(repository.update).toHaveBeenCalledWith(USER_ID, {
+      displayName: 'Grace Hopper',
+      avatarUrl: null,
+    });
   });
 
   it('rejects an empty profile patch', async () => {

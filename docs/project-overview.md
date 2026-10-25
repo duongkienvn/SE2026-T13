@@ -155,5 +155,5 @@ Issue → tạo branch từ `main` → implement hoặc viết tài liệu → c
 
 - **Đã có trong repository:** schema/migrations, shared contracts, UI/API cho các chức năng MVP nêu trên, GitHub Actions CI và production deployment/verification tooling. Xem [production runbook](deployment/production.md) và [CI/CD](deployment/cicd.md).
 - **Chưa có trong route/source hiện tại:** Workspace, Home Dashboard, My Tasks, notification center, settings/themes và các khả năng Post-MVP mới liệt kê trong roadmap. Profile và connected accounts cơ bản đã có, khác với bộ Account Settings được lên kế hoạch.
-- **Landing Page:** `/` vẫn dùng `RootRedirect` tới Login hoặc Boards. Không xem thiết kế landing page là tính năng đã release; theo dõi riêng [Issue #84](https://github.com/duongkienvn/SE2026-T13/issues/84).
+- **Landing Page:** `/` là public landing page cho cả guest và người đã đăng nhập (không còn `RootRedirect`); xem [task record](tasks/frontend/public-landing-page.md) và [Issue #84](https://github.com/duongkienvn/SE2026-T13/issues/84). Source có landing page không đồng nghĩa đã deploy production.
 - **Bước tiếp theo:** Phase 0 xác minh release/CI/deployment, regression và design handoff trước khi triển khai Post-MVP. Một tính năng có trong source không tự xác nhận deployment hoặc production QA đã hoàn tất.

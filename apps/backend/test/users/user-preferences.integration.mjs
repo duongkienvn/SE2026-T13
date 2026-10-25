@@ -12,6 +12,7 @@ require('reflect-metadata');
 const { DataSource } = require('typeorm');
 const { ConfigModule } = require('@nestjs/config');
 const { TypeOrmModule } = require('@nestjs/typeorm');
+const { ThrottlerModule } = require('@nestjs/throttler');
 const { Test } = require('@nestjs/testing');
 const { LoggerModule } = require('nestjs-pino');
 const { databaseOptions } = require('../../dist/database/database-options.js');
@@ -38,6 +39,9 @@ const {
 const {
   GoogleIdentity1792850400000: Google,
 } = require('../../dist/database/migrations/1792850400000-GoogleIdentity.js');
+const {
+  PasswordRecoverySecurity1792922400093: Recovery,
+} = require('../../dist/database/migrations/1792922400093-PasswordRecoverySecurity.js');
 
 const name = `kanvexa-preferences-test-${randomBytes(6).toString('hex')}`;
 const password = randomBytes(32).toString('hex');
@@ -94,7 +98,7 @@ try {
     try {
       source = await new DataSource({
         ...options,
-        migrations: [Initial, Email, Archive, Google],
+        migrations: [Initial, Email, Archive, Google, Recovery],
       }).initialize();
       break;
     } catch (error) {
@@ -174,6 +178,7 @@ try {
           load: [() => config],
         }),
         TypeOrmModule.forRoot(options),
+        ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
         LoggerModule.forRoot({ pinoHttp: { level: 'silent' } }),
         UsersModule,
       ],

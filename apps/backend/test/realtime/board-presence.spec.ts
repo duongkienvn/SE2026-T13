@@ -71,6 +71,7 @@ describe('BoardPresenceService', () => {
         data: {
           identity: {
             userId: id === 'forged' ? 'different' : id,
+            authVersion: 0,
             expiresAt: Date.now() + (id === 'expired' ? -1 : 60_000),
           },
           authorizedBoardIds: new Set(id === 'revoked' ? [] : [board]),
@@ -94,7 +95,11 @@ describe('BoardPresenceService', () => {
       id: 'a',
       connected: true,
       data: {
-        identity: { userId: 'a', expiresAt: Date.now() + 60_000 },
+        identity: {
+          userId: 'a',
+          authVersion: 0,
+          expiresAt: Date.now() + 60_000,
+        },
         authorizedBoardIds: new Set([A]),
       },
       emit: jest.fn(() => {

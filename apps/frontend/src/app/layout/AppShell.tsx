@@ -41,10 +41,12 @@ export function AppShell({
         />
         <div className="flex min-w-0 flex-1 flex-col">
           <AppHeader context={headerContext} actions={headerActions} />
+          {/* Contain absolute sr-only announcements in this scroller so their
+              static positions below long forms cannot grow the document. */}
           <main
             id="main-content"
             tabIndex={-1}
-            className="min-h-0 flex-1 overflow-auto focus:outline-none"
+            className="relative min-h-0 flex-1 overflow-auto focus:outline-none"
           >
             {children}
           </main>

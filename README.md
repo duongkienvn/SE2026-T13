@@ -183,7 +183,7 @@ Post-MVP planning approves **25 feature/workstream groups across six phases (0â€
 | 4     | Productivity & Collaboration       |
 | 5     | Views, Data & Polish               |
 
-Planned areas include workspaces and invitations, richer cards, Home Dashboard, My Tasks, global search, notifications, account settings, Light/Dark/System themes, exports, and Calendar/Table views. The current source still redirects `/` to authentication or boards; the public landing page is tracked separately in [Issue #84](https://github.com/duongkienvn/SE2026-T13/issues/84).
+Planned areas include workspaces and invitations, richer cards, Home Dashboard, My Tasks, global search, notifications, account settings, Light/Dark/System themes, exports, and Calendar/Table views. `/` is a public landing page for guests and signed-in users ([Issue #84](https://github.com/duongkienvn/SE2026-T13/issues/84), [task record](docs/tasks/frontend/public-landing-page.md)).
 
 Read the [roadmap](docs/roadmap/post-mvp.md), [Product & UX Blueprint](docs/design/product-ux-blueprint.md), [Post-MVP design guidelines](docs/design/design-guidelines.post-mvp.md), and [visual reference register](docs/design/post-mvp/visual-reference-register.md) before implementation. Approved mockups guide appearance; they do not expand scope. Preserve Kanvexa branding and the working MVP. Free plans, upgrades, pricing, and subscriptions are outside the approved scope.
 

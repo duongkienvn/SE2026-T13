@@ -62,13 +62,3 @@ export function PublicOnly() {
   }
   return <Outlet />;
 }
-
-export function RootRedirect() {
-  const { status } = useAuth();
-  if (status === 'loading') {
-    return <SessionCheckScreen />;
-  }
-  return (
-    <Navigate to={status === 'anonymous' ? '/login' : '/boards'} replace />
-  );
-}

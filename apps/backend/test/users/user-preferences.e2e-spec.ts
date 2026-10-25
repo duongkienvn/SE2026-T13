@@ -75,7 +75,11 @@ describe('preferences HTTP contract (real JWT, mocked preferences service)', () 
         {
           provide: 'UserRepository',
           useValue: {
-            findOne: async () => ({ id: A, emailVerifiedAt: new Date() }),
+            findOne: async () => ({
+              id: A,
+              authVersion: 0,
+              emailVerifiedAt: new Date(),
+            }),
           },
         },
         { provide: UserPreferencesService, useValue: preferences },

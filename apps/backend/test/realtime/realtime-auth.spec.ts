@@ -40,6 +40,7 @@ describe('RealtimeAuthService', () => {
   it('uses verified identity and disconnects at expiration, clearing the credential', async () => {
     authenticateAccessToken.mockResolvedValue({
       userId: 'verified',
+      authVersion: 0,
       expiresAt: Date.now() + 1000,
     });
     await service.authenticate(socket);
@@ -76,6 +77,7 @@ describe('RealtimeAuthService', () => {
   it('rejects tokens expiring during user lookup and rechecks time independently of timers', async () => {
     authenticateAccessToken.mockResolvedValue({
       userId: 'verified',
+      authVersion: 0,
       expiresAt: Date.now(),
     });
     await expect(service.authenticate(socket)).rejects.toThrow('Unauthorized');
@@ -85,6 +87,7 @@ describe('RealtimeAuthService', () => {
   it('cleans timers on disconnect and shutdown and handles long expiration', async () => {
     authenticateAccessToken.mockResolvedValue({
       userId: 'verified',
+      authVersion: 0,
       expiresAt: Date.now() + 3_000_000_000,
     });
     await service.authenticate(socket);
@@ -101,7 +104,11 @@ describe('RealtimeAuthService', () => {
 
   it('cleans grants and presence at expiration even if transport disconnect throws', async () => {
     const boardId = 'c6ba7134-97ef-4c1b-a342-001a982a7721';
-    socket.data.identity = { userId: 'verified', expiresAt: Date.now() + 1000 };
+    socket.data.identity = {
+      userId: 'verified',
+      authVersion: 0,
+      expiresAt: Date.now() + 1000,
+    };
     socket.data.authorizedBoardIds = new Set([boardId]);
     coordinator.presence.add(boardId, 'verified', socket.id);
     (socket.disconnect as jest.Mock).mockImplementation(() => {

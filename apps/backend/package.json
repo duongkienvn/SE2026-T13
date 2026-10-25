@@ -18,6 +18,7 @@
     "test:preferences:database": "pnpm build && node test/users/user-preferences.integration.mjs",
     "test:email-verification:database": "pnpm build && node test/auth/email-verification.integration.mjs",
     "test:google-auth:database": "pnpm build && node test/auth/google-auth.integration.mjs",
+    "test:password-security:database": "pnpm build && node test/auth/password-security.integration.mjs",
     "test:boards:database": "pnpm build && node test/boards/boards.integration.mjs",
     "test:board-members:database": "pnpm build && node test/board-members/board-members.integration.mjs",
     "test:columns:database": "pnpm build && node test/columns/columns.integration.mjs",

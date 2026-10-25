@@ -79,6 +79,7 @@ describe('BoardRoomService', () => {
     ).resolves.toMatchObject({ success: true });
     otherTab.data.identity = {
       userId: 'different-user',
+      authVersion: 0,
       expiresAt: Date.now() + 60_000,
     };
     await expect(

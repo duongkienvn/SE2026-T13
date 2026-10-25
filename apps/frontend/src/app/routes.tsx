@@ -4,12 +4,15 @@ import { ProfilePage } from '../features/auth/pages/ProfilePage';
 import { RegisterPage } from '../features/auth/pages/RegisterPage';
 import { CheckEmailPage } from '../features/auth/pages/CheckEmailPage';
 import { VerifyEmailPage } from '../features/auth/pages/VerifyEmailPage';
+import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage';
+import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage';
 import { BoardMembersPage } from '../features/board-members/pages/BoardMembersPage';
 import { BoardDetailPage } from '../features/boards/pages/BoardDetailPage';
 import { BoardsPage } from '../features/boards/pages/BoardsPage';
+import { LandingPage } from '../features/landing/pages/LandingPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { RouteErrorPage } from '../pages/RouteErrorPage';
-import { PublicOnly, RequireAuth, RootRedirect } from './guards';
+import { PublicOnly, RequireAuth } from './guards';
 import { AuthenticatedLayout } from './layout/AuthenticatedLayout';
 
 export const routes: RouteObject[] = [
@@ -17,9 +20,12 @@ export const routes: RouteObject[] = [
     // Catches render errors from every page below so no raw error screen is shown.
     errorElement: <RouteErrorPage />,
     children: [
-      { index: true, element: <RootRedirect /> },
+      // Public for everyone; never waits for the session check.
+      { index: true, element: <LandingPage /> },
       { path: 'check-email', element: <CheckEmailPage /> },
       { path: 'verify-email', element: <VerifyEmailPage /> },
+      { path: 'forgot-password', element: <ForgotPasswordPage /> },
+      { path: 'reset-password', element: <ResetPasswordPage /> },
       {
         element: <PublicOnly />,
         children: [

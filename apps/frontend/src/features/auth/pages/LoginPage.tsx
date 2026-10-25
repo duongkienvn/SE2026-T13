@@ -33,6 +33,9 @@ export function LoginPage() {
   const state = location.state as RedirectState | null;
   // Registration feedback is shown once; it must not reappear on reload or back.
   const [registeredEmail] = useState(state?.registeredEmail);
+  const [passwordUpdated, setPasswordUpdated] = useState(
+    state?.passwordUpdated,
+  );
   const [email, setEmail] = useState(registeredEmail ?? '');
   const [password, setPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState<
@@ -42,7 +45,10 @@ export function LoginPage() {
   const [needsVerification, setNeedsVerification] = useState(false);
 
   useEffect(() => {
-    if (!state?.registeredEmail) return;
+    if (!state?.registeredEmail && !state?.passwordUpdated) return;
+    // The protected-route logout redirect may mount Login before the explicit
+    // success navigation arrives. Capture that later state before clearing it.
+    if (state.passwordUpdated) setPasswordUpdated(true);
     const remaining: RedirectState = state.from ? { from: state.from } : {};
     const { pathname, search, hash } = location;
     navigate({ pathname, search, hash }, { replace: true, state: remaining });
@@ -115,6 +121,11 @@ export function LoginPage() {
         onSubmit={handleSubmit}
         className="mt-6 space-y-5 short:mt-4 short:space-y-3"
       >
+        {passwordUpdated && (
+          <Alert variant="success">
+            Password updated. Log in with your new password.
+          </Alert>
+        )}
         {formError && <Alert variant="error">{formError}</Alert>}
         {needsVerification && (
           <Link
@@ -150,6 +161,12 @@ export function LoginPage() {
           error={fieldErrors.password}
         />
 
+        <Link
+          to="/forgot-password"
+          className="block text-right text-sm font-semibold text-primary underline"
+        >
+          Forgot password?
+        </Link>
         <Button
           type="submit"
           size="lg"
