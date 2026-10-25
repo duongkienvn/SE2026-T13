@@ -85,15 +85,18 @@ export function ArchivedCardsDialog({
         onConfirm={() => {
           if (submitting.current) return;
           submitting.current = true;
-          restore.mutate(selected.id, {
-            onSuccess: (card) => {
-              setSelected(undefined);
-              setNotice(`Card “${card.title}” restored.`);
-            },
-            onSettled: () => {
+          void restore
+            .mutateAsync(selected.id)
+            .then(
+              (card) => {
+                setSelected(undefined);
+                setNotice(`Card “${card.title}” restored.`);
+              },
+              () => undefined,
+            )
+            .finally(() => {
               submitting.current = false;
-            },
-          });
+            });
         }}
       />
     );
@@ -174,6 +177,7 @@ export function ArchivedCardsDialog({
                   <Button
                     variant="secondary"
                     aria-label={`Restore ${card.title}`}
+                    disabled={restore.isPending}
                     onClick={() => {
                       restore.reset();
                       setSelected(card);
