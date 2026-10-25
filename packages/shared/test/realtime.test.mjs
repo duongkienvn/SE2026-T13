@@ -15,8 +15,10 @@ test('exports the separate presence contract in ESM and CommonJS', () => {
   );
 });
 
-test('exports exactly the fifteen reviewed business events in ESM and CommonJS', () => {
+test('exports exactly the seventeen reviewed business events in ESM and CommonJS', () => {
   assert.deepEqual(Object.values(RealtimeServerEvent), [
+    'board:archived',
+    'board:restored',
     'column:created',
     'column:updated',
     'column:moved',
