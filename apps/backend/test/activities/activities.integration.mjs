@@ -87,6 +87,7 @@ try {
       displayName: 'owner',
       passwordHash: 'integration-only-hash',
       avatarUrl: null,
+      emailVerifiedAt: new Date(),
     }),
   );
   const member = await users.save(
@@ -95,6 +96,7 @@ try {
       displayName: 'member',
       passwordHash: 'integration-only-hash',
       avatarUrl: null,
+      emailVerifiedAt: new Date(),
     }),
   );
   const actor = await users.save(
@@ -103,6 +105,7 @@ try {
       displayName: 'actor',
       passwordHash: 'integration-only-hash',
       avatarUrl: null,
+      emailVerifiedAt: new Date(),
     }),
   );
   const outsider = await users.save(
@@ -111,6 +114,7 @@ try {
       displayName: 'outsider',
       passwordHash: 'integration-only-hash',
       avatarUrl: null,
+      emailVerifiedAt: new Date(),
     }),
   );
 
@@ -256,6 +260,7 @@ try {
     members,
     authorization,
     writer,
+    events,
   );
   const columnRepository = source.getRepository(BoardColumn);
   const cardRepository = source.getRepository(Card);

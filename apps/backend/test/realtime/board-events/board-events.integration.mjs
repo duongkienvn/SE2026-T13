@@ -97,9 +97,9 @@ try {
   app = module.createNestApplication();
   configureHttpApplication(app);
   await app.listen(0, '127.0.0.1');
-  assert.equal(await runBoardEventChecks(app, source), 8);
+  assert.equal(await runBoardEventChecks(app, source), 9);
   pass(
-    'all fifteen REST -> Socket.IO contracts and security checks on migrated PostgreSQL',
+    'all seventeen REST -> Socket.IO contracts and security checks on migrated PostgreSQL',
   );
 
   // Independent transport suites get independent application lifetimes. This
@@ -173,7 +173,7 @@ try {
     clients.push(socket);
     received.set(socket, []);
     socket.onAny((event, payload) => {
-      if (/^(column|card|member):/.test(event))
+      if (/^(board|column|card|member):/.test(event))
         received.get(socket).push([event, payload]);
     });
     const ready = nextBoardEvent(socket, 'connect');
@@ -255,6 +255,40 @@ try {
     if (result.error) throw result.error;
     return result.value;
   };
+
+  for (const [event, path, beforeArchived, afterArchived, action] of [
+    ['board:archived', 'archive', false, true, 'BOARD_ARCHIVED'],
+    ['board:restored', 'restore', true, false, 'BOARD_RESTORED'],
+  ]) {
+    const pendingEvents = clients.map((socket) =>
+      nextBoardEvent(socket, event),
+    );
+    const response = await withCommitGate(
+      () => http('post', path),
+      async () => {
+        assert.equal(
+          (await boards.findOne({ where: { id: boardId } })).isArchived,
+          beforeArchived,
+        );
+        assert.equal(
+          (
+            await source.query(
+              'SELECT count(*)::int AS n FROM activities WHERE board_id = $1 AND action_type = $2',
+              [boardId, action],
+            )
+          )[0].n,
+          0,
+        );
+      },
+    );
+    assert.equal(response.body.data.isArchived, afterArchived);
+    for (const pendingEvent of pendingEvents) {
+      assert.deepEqual(await pendingEvent, { boardId });
+    }
+  }
+  pass(
+    'Board archive/restore state, audit and events become visible only after COMMIT',
+  );
 
   const firstEvents = clients.map((s) => nextBoardEvent(s, 'column:created'));
   const result = await withCommitGate(
@@ -585,7 +619,7 @@ try {
   pass(
     'real removal commit/eviction/broadcast/join race completes without deadlock or revoked-tab delivery despite double adapter failure',
   );
-  assert.equal(checks, 8);
+  assert.equal(checks, 9);
   console.log(
     `Board events PostgreSQL + Socket.IO: ${checks} groups PASS; isolated migrations and cleanup`,
   );

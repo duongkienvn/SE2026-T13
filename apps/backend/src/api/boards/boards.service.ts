@@ -22,6 +22,8 @@ import { ApplicationException } from '../../exceptions/application.exception';
 import { ErrorCode } from '../../common/dto/api-error';
 import { UpdateBoardDto } from './dto/update-board.dto';
 import { BoardAuthorizationService } from '../board-members/board-authorization.service';
+import { BoardEventPublisher } from '../../realtime/board-event-publisher.service';
+import { RealtimeServerEvent } from '@kanban/shared';
 
 @Injectable()
 export class BoardsService {
@@ -31,6 +33,7 @@ export class BoardsService {
     private readonly members: Repository<BoardMember>,
     private readonly authorization: BoardAuthorizationService,
     private readonly activities: ActivityWriterService,
+    private readonly events: BoardEventPublisher,
   ) {}
 
   async archive(userId: string, boardId: string): Promise<BoardResponseDto> {
@@ -53,6 +56,7 @@ export class BoardsService {
       });
       return toBoardResponseDto(saved, member.role);
     });
+    await this.events.publish(RealtimeServerEvent.BOARD_ARCHIVED, { boardId });
     return saved;
   }
 
@@ -83,6 +87,7 @@ export class BoardsService {
       });
       return toBoardResponseDto(saved, member.role);
     });
+    await this.events.publish(RealtimeServerEvent.BOARD_RESTORED, { boardId });
     return saved;
   }
 

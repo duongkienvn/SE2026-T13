@@ -7,12 +7,14 @@ import { Board } from './entities/board.entity';
 import { BoardsController } from './boards.controller';
 import { BoardsService } from './boards.service';
 import { ActivityWriterModule } from '../activities/activity-writer.module';
+import { RealtimeDeliveryModule } from '../../realtime/realtime-delivery.module';
 
 @Module({
   imports: [
     AuthModule,
     BoardMembersModule,
     ActivityWriterModule,
+    RealtimeDeliveryModule,
     TypeOrmModule.forFeature([Board, BoardMember]),
   ],
   controllers: [BoardsController],

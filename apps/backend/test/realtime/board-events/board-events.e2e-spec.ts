@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
 describe('Board business events through REST and real Socket.IO', () => {
-  it('delivers all fifteen minimal contracts with isolation, no-ops and revocation', () => {
+  it('delivers all seventeen minimal contracts with isolation, no-ops and revocation', () => {
     const output = execFileSync(
       process.execPath,
       [
@@ -13,9 +13,9 @@ describe('Board business events through REST and real Socket.IO', () => {
       {
         cwd: resolve(__dirname, '../../..'),
         encoding: 'utf8',
-        timeout: 60_000,
+        timeout: 100_000,
       },
     );
-    expect(output).toContain('8 groups PASS');
-  }, 65_000);
+    expect(output).toContain('9 groups PASS');
+  }, 105_000);
 });
