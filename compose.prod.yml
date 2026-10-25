@@ -58,6 +58,7 @@ services:
       SWAGGER_ENABLED: 'false'
       LOG_LEVEL: info
       JWT_SECRET: ${JWT_SECRET:?Set a random JWT_SECRET of at least 32 bytes}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       RESEND_API_KEY: ${RESEND_API_KEY:?Set RESEND_API_KEY outside the repository}
       MAIL_FROM: ${MAIL_FROM:?Set MAIL_FROM to the verified sender}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:?Set PUBLIC_APP_URL to the HTTPS application origin}
@@ -82,6 +83,7 @@ services:
       dockerfile: apps/frontend/Dockerfile
       args:
         VITE_API_BASE_URL: /api
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
     restart: unless-stopped
     stop_grace_period: 30s
     depends_on:

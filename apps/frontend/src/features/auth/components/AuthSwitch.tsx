@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router';
 import type { RedirectState } from '../../../app/redirect';
 
-/** "or" divider plus a link to the other auth page, as in login.png. */
+/** The page switch follows the shared Google section's method divider. */
 export function AuthSwitch({
   prompt,
   to,
@@ -16,22 +16,15 @@ export function AuthSwitch({
   const state: RedirectState | undefined = from ? { from } : undefined;
 
   return (
-    <>
-      <div className="my-4 flex items-center short:my-2.5 gap-4 text-sm text-muted">
-        <span className="h-px flex-1 bg-line" />
-        or
-        <span className="h-px flex-1 bg-line" />
-      </div>
-      <p className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line px-4 text-sm text-ink">
-        {prompt}
-        <Link
-          to={to}
-          state={state}
-          className="font-medium text-primary-hover underline underline-offset-2 hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
-        >
-          {action}
-        </Link>
-      </p>
-    </>
+    <p className="mt-5 flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line px-4 text-sm text-ink short:mt-4">
+      {prompt}
+      <Link
+        to={to}
+        state={state}
+        className="font-medium text-primary-hover underline underline-offset-2 hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
+      >
+        {action}
+      </Link>
+    </p>
   );
 }

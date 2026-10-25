@@ -90,6 +90,33 @@ Keep these prerequisites in place; CI/CD does not recreate infrastructure:
 
 ## Environment and secrets
 
+Google Sign-In (#79) is optional until the owner configures a Web OAuth client.
+Set `GOOGLE_CLIENT_ID` in `/etc/kanvexa/production.env` for the backend; set the
+matching public `VITE_GOOGLE_CLIENT_ID` repository variable for CD image builds.
+For an operator's local Docker build, Compose reads `VITE_GOOGLE_CLIENT_ID` from
+the selected env file. Runtime frontend env cannot alter the embedded client ID.
+Empty IDs disable Google while local authentication stays available; malformed
+nonempty backend IDs fail startup. Do not use an empty value as an approved
+Google rollout: verify both IDs and real popup behavior before approval.
+No Google client secret is used or required.
+
+The new Google identity migration preserves local password hashes, makes the
+existing password column nullable and adds an identity table. Existing release tooling stops app
+traffic, backs up, migrates explicitly, then starts the release. Keep this order.
+Down refuses if identities or passwordless accounts exist; after first use,
+prefer a compatible forward fix. Disabling Google configuration does not make an
+old application version compatible with passwordless users. Keep the new schema
+and rehearse a compatible application rollback; never delete accounts to force a
+revert. Follow [Google setup, migration and manual gates](../tasks/google-auth-account-linking.md)
+including off-instance backup/restore rehearsal before rollout.
+
+Caddy now serves `Cross-Origin-Opener-Policy: same-origin-allow-popups` and
+`Referrer-Policy: strict-origin-when-cross-origin` for GIS popup communication.
+There is no frontend CSP currently. If one is added, allow Google's documented
+GIS script/frame/connect/style endpoints without weakening unrelated directives.
+The backend must reach Google's HTTPS signing-certificate endpoint. No inbound
+OAuth redirect endpoint, additional exposed port or provider secret is added.
+
 K2 adds required backend mail configuration: `RESEND_API_KEY` (owner-managed
 server secret), `MAIL_FROM="Kanvexa <no-reply@kanvexa.tech>"`, and
 `PUBLIC_APP_URL=https://kanvexa.tech`. Add these to the protected external production

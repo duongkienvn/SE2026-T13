@@ -4,7 +4,7 @@
 
 Backend của project là một NestJS modular monolith theo hướng MVP. Mục tiêu của layer này là làm nơi duy nhất xử lý business logic, xác thực quyền, giao tiếp với database và phát sự kiện realtime sau khi thay đổi đã được persist thành công.
 
-Project hiện tại đã có Application Foundation, Authentication/User Profile MVP, Board/Board Member API, Column/Card Management APIs và realtime foundation F1. Tám TypeORM entities của MVP được đặt theo feature trong `apps/backend/src/api/`; các feature nghiệp vụ còn lại sẽ được bổ sung theo từng issue sau.
+Project hiện tại đã có Application Foundation, Authentication/User Profile MVP, Board/Board Member API, Column/Card Management APIs và realtime foundation F1. Tám domain entities cùng các auth entities `EmailVerificationToken` và `GoogleIdentity` được đặt theo feature trong `apps/backend/src/api/`; các feature nghiệp vụ còn lại sẽ được bổ sung theo từng issue sau.
 
 Backend không phải là nơi lưu trữ UI state; backend là source of truth cho dữ liệu nghiệp vụ và các thay đổi trạng thái board.
 
@@ -237,6 +237,12 @@ Các endpoint đã triển khai:
 
 - `POST /api/auth/register` trả `201`, tạo user với Argon2id và không phát token.
 - `POST /api/auth/login` trả `200` cùng `accessToken`, `tokenType`, `expiresIn` và public user DTO.
+- `POST /api/auth/google` xác minh Google ID token bằng Google SDK và trả cùng
+  Kanvexa JWT contract; `sub` được lưu trong `google_identities`, không auto-link
+  theo email. Google-only users có password hash NULL và local login từ chối an toàn.
+- `POST /api/auth/google/link` yêu cầu JWT + current password + Google credential
+  cùng email, trả 204; `GET /api/auth/linked-providers` chỉ trả trạng thái boolean.
+  Xem [security, transactions và rollout #79](../tasks/google-auth-account-linking.md).
 - `POST /api/auth/logout` là protected stateless endpoint trả `204`; server không revoke hoặc blacklist token.
 - `GET /api/users/me` và `PATCH /api/users/me` là protected profile endpoints; chỉ cập nhật user lấy từ JWT context.
 

@@ -82,6 +82,15 @@ Tuy nhiên, đây là hướng planning cho các feature tương lai, không ph�
 
 ## 3. State management model
 
+Google Sign-In (#79) dùng GIS script loader và official button chung cho Login,
+Register, Profile. GIS chỉ trả credential qua callback; backend đổi thành Kanvexa
+JWT rồi `AuthProvider.signIn()` quản lý redirect/cache/session như local login.
+Opaque button state, mount lifecycle và auth generation chặn callback cũ. Không
+lưu Google credential trong storage/router/query cache. Connected accounts query
+được scope theo session generation; link yêu cầu password reauthentication và
+không đổi JWT. `VITE_GOOGLE_CLIENT_ID` là public build config; cấu hình thiếu/lỗi
+không làm hỏng local form. Xem [contracts và verification](../tasks/google-auth-account-linking.md).
+
 ### Server state
 
 TanStack Query quản lý server state cho các dữ liệu đến từ backend:

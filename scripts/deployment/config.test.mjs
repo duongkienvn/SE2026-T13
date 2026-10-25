@@ -10,6 +10,8 @@ const env = {
   DATABASE_USER: 'configuration_test',
   DATABASE_PASSWORD: 'validation-only-not-a-deployment-password',
   JWT_SECRET: 'validation-only-not-a-deployment-jwt-secret',
+  GOOGLE_CLIENT_ID: '123456-infra.apps.googleusercontent.com',
+  VITE_GOOGLE_CLIENT_ID: '123456-infra.apps.googleusercontent.com',
   RESEND_API_KEY: 're_configuration_test_only',
   MAIL_FROM: 'Kanvexa <no-reply@kanvexa.tech>',
   PUBLIC_APP_URL: 'https://kanvexa.tech',
@@ -109,7 +111,16 @@ test('runtime, migrations, readiness and resource limits are explicit', () => {
     services.frontend.depends_on.backend.condition,
     'service_healthy',
   );
-  assert.deepEqual(services.frontend.build.args, { VITE_API_BASE_URL: '/api' });
+  assert.deepEqual(services.frontend.build.args, {
+    VITE_API_BASE_URL: '/api',
+    VITE_GOOGLE_CLIENT_ID: env.VITE_GOOGLE_CLIENT_ID,
+  });
+  assert.equal(
+    services.backend.environment.GOOGLE_CLIENT_ID,
+    env.GOOGLE_CLIENT_ID,
+  );
+  for (const name of ['frontend', 'postgres', 'migrate'])
+    assert.equal(services[name].environment?.GOOGLE_CLIENT_ID, undefined);
   assert.deepEqual(services.migrate.profiles, ['tools']);
   assert.equal(services.migrate.image, services.backend.image);
   assert.deepEqual(services.migrate.entrypoint, [
@@ -159,6 +170,30 @@ test('missing release tags or secrets fail before containers can start', () => {
     assert.notEqual(result.status, 0, `Missing ${name} must fail`);
     assert.match(result.stderr, new RegExp(name));
   }
+});
+
+test('OAuth configuration is public build data and optional backend runtime data', () => {
+  const dockerfile = readFileSync('apps/frontend/Dockerfile', 'utf8');
+  assert.deepEqual(
+    [...dockerfile.matchAll(/^ARG (\w+)/gm)].map((m) => m[1]),
+    ['VITE_API_BASE_URL', 'VITE_GOOGLE_CLIENT_ID'],
+  );
+  assert.match(dockerfile, /VITE_GOOGLE_CLIENT_ID="\$VITE_GOOGLE_CLIENT_ID"/);
+  assert.doesNotMatch(
+    dockerfile,
+    /JWT_SECRET|RESEND_API_KEY|GOOGLE_CLIENT_SECRET/,
+  );
+  const routes = readFileSync('infra/caddy/routes.caddy', 'utf8');
+  assert.match(routes, /Cross-Origin-Opener-Policy same-origin-allow-popups/);
+  assert.match(routes, /Referrer-Policy strict-origin-when-cross-origin/);
+  const disabled = JSON.parse(
+    execFileSync('docker', [...args, 'config', '--format', 'json'], {
+      env: { ...env, GOOGLE_CLIENT_ID: '', VITE_GOOGLE_CLIENT_ID: '' },
+      encoding: 'utf8',
+    }),
+  );
+  assert.equal(disabled.services.backend.environment.GOOGLE_CLIENT_ID, '');
+  assert.equal(disabled.services.frontend.build.args.VITE_GOOGLE_CLIENT_ID, '');
 });
 
 test('local HTTP override replaces every public binding without changing production HTTPS', () => {

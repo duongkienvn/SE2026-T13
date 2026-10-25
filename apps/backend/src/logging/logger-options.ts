@@ -21,6 +21,8 @@ export function loggerOptions(
           'password',
           '*.password',
           '*.token',
+          'credential',
+          '*.credential',
         ],
         censor: '[REDACTED]',
       },

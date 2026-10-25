@@ -74,7 +74,7 @@ export class AuthService {
     const user = await this.users.findOne({ where: { email: input.email } });
     const passwordHash = user?.passwordHash ?? DUMMY_PASSWORD_HASH;
     const validPassword = await argon2.verify(passwordHash, input.password);
-    if (!user || !validPassword) throw this.invalidCredentials();
+    if (!user?.passwordHash || !validPassword) throw this.invalidCredentials();
     if (!user.emailVerifiedAt) {
       throw new ApplicationException(
         HttpStatus.FORBIDDEN,
@@ -83,6 +83,17 @@ export class AuthService {
       );
     }
 
+    return this.issueLoginResponse(user);
+  }
+
+  async issueLoginResponse(user: User): Promise<LoginResponseDto> {
+    if (!user.emailVerifiedAt) {
+      throw new ApplicationException(
+        HttpStatus.FORBIDDEN,
+        ErrorCode.EMAIL_NOT_VERIFIED,
+        'Verify your email address before logging in.',
+      );
+    }
     const accessToken = await this.jwt.signAsync({ sub: user.id });
     return {
       accessToken,
@@ -90,6 +101,17 @@ export class AuthService {
       expiresIn: JWT_EXPIRES_IN_SECONDS,
       user: toUserResponseDto(user),
     };
+  }
+
+  async reauthenticate(userId: string, password: string): Promise<User> {
+    const user = await this.users.findOne({ where: { id: userId } });
+    const valid = await argon2.verify(
+      user?.passwordHash ?? DUMMY_PASSWORD_HASH,
+      password,
+    );
+    if (!user?.passwordHash || !user.emailVerifiedAt || !valid)
+      throw this.invalidCredentials();
+    return user;
   }
 
   async authenticateAccessToken(token: string): Promise<AuthenticatedUser> {
