@@ -134,7 +134,11 @@ async function inspectSchema() {
     'CARD',
     'COMMENT',
   ]);
-  assert.equal(enumValues('activities_action_type_enum').length, 15);
+  assert.deepEqual(enumValues('activities_action_type_enum').slice(-2), [
+    'BOARD_ARCHIVED',
+    'BOARD_RESTORED',
+  ]);
+  assert.equal(enumValues('activities_action_type_enum').length, 17);
 
   const columns =
     await source.query(`SELECT table_name, column_name, data_type, numeric_precision,
@@ -377,7 +381,7 @@ try {
       'users',
     ],
   );
-  assert.equal(source.migrations.length, 3);
+  assert.equal(source.migrations.length, 4);
 
   const originalDatabase = process.env.DATABASE_NAME;
   process.env.DATABASE_NAME = testDatabase;
@@ -389,7 +393,7 @@ try {
     try {
       const nestDataSource = app.get(DataSource);
       assert.equal(nestDataSource.entityMetadatas.length, 10);
-      assert.equal(nestDataSource.migrations.length, 3);
+      assert.equal(nestDataSource.migrations.length, 4);
       assert.equal(nestDataSource.options.poolSize, source.options.poolSize);
       assert.equal(
         nestDataSource.options.connectTimeoutMS,
@@ -403,7 +407,7 @@ try {
     process.env.DATABASE_NAME = originalDatabase;
   }
 
-  assert.equal((await source.runMigrations()).length, 3);
+  assert.equal((await source.runMigrations()).length, 4);
   const cliOutput = execFileSync(
     process.execPath,
     [
@@ -427,7 +431,7 @@ try {
       '-e',
       `const dataSource = require('./src/database/data-source.ts').default;
        dataSource.initialize().then(async () => {
-         if (dataSource.entityMetadatas.length !== 10 || dataSource.migrations.length !== 3) {
+         if (dataSource.entityMetadatas.length !== 10 || dataSource.migrations.length !== 4) {
            throw new Error('TypeScript DataSource discovery mismatch');
          }
          await dataSource.destroy();
@@ -445,20 +449,10 @@ try {
   console.log('Migration run and schema/behavior inspection: PASS');
 
   await source.undoLastMigration();
-  await source.undoLastMigration();
-  await source.undoLastMigration();
-  const remaining =
-    await source.query(`SELECT table_name FROM information_schema.tables
-    WHERE table_schema = 'public' AND table_name <> 'migrations'`);
-  assert.equal(remaining.length, 0);
-  const types = await source.query(`SELECT typname FROM pg_type WHERE typname IN
-    ('board_members_role_enum', 'activities_action_type_enum', 'activities_entity_type_enum')`);
-  assert.equal(types.length, 0);
-  console.log('Migration revert: PASS');
-
-  assert.equal((await source.runMigrations()).length, 3);
+  await assert.rejects(source.undoLastMigration(), /cannot be safely removed/);
+  assert.equal((await source.runMigrations()).length, 1);
   await inspectSchema();
-  console.log('Migration run again and schema inspection: PASS');
+  console.log('Irreversible enum migration guard: PASS');
 } finally {
   if (source?.isInitialized) await source.destroy();
   if (created) await admin.query(`DROP DATABASE "${testDatabase}"`);

@@ -167,6 +167,29 @@ describe('ActivitiesService', () => {
     ).resolves.toBeUndefined();
   });
 
+  it.each([
+    ActivityActionType.BOARD_ARCHIVED,
+    ActivityActionType.BOARD_RESTORED,
+  ])('accepts %s as a board action without metadata', async (actionType) => {
+    const h = harness();
+    const input = validRecord({
+      actionType,
+      entityType: ActivityEntityType.BOARD,
+      entityId: ID.board,
+      metadata: null,
+    });
+    await expect(
+      h.service.record(h.manager as unknown as EntityManager, input),
+    ).resolves.toBeUndefined();
+    await expect(
+      h.service.record(h.manager as unknown as EntityManager, {
+        ...input,
+        metadata: { previous: true },
+      }),
+    ).rejects.toBeInstanceOf(ActivityRecordValidationError);
+    expect(h.activityRepository.save).toHaveBeenCalledTimes(1);
+  });
+
   it('allows a null column anchor for an appended column move', async () => {
     const h = harness();
 
