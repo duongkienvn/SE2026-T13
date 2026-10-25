@@ -460,7 +460,11 @@ try {
 
   await source.undoLastMigration();
   await inspectSchema();
-  assert.equal((await source.runMigrations()).length, 1);
+  await source.undoLastMigration();
+  await source.undoLastMigration();
+  await source.undoLastMigration();
+  await assert.rejects(source.undoLastMigration(), /cannot be safely removed/);
+  assert.equal((await source.runMigrations()).length, 4);
   await inspectSchema();
   console.log(
     'Enum rollback retains existing values/history; idempotent reapply: PASS',
