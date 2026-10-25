@@ -132,7 +132,11 @@ export class AuthService {
     }
     const user = await this.users.findOne({ where: { id: claims.sub } });
     if (!user?.emailVerifiedAt) throw this.unauthorized();
-    return { userId: user.id, expiresAt: claims.exp * 1000 };
+    return {
+      userId: user.id,
+      authVersion: user.authVersion,
+      expiresAt: claims.exp * 1000,
+    };
   }
 
   private emailAlreadyExists(): ApplicationException {
