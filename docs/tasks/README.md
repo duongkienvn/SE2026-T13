@@ -32,6 +32,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 - [Registration password policy](backend/auth-registration-password-policy.md)
 - [Email verification](backend/email-verification.md)
 - [Google Sign-In and account linking](backend/google-auth-account-linking.md)
+- [User preferences API and persistence](backend/user-preferences.md)
 - [Verification email layout](backend/verification-email-layout.md)
 - [Board management API](backend/board-management-api.md)
 - [Board archive management](backend/board-archive-management.md)
