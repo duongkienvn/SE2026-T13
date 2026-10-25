@@ -18,6 +18,7 @@ Thumbs.db
 .vscode/
 .codex/
 .codegraph/
-.agents/
+.agents/*
+!.agents/skills/
 .omo/evidence/
 .pnpm-store/
