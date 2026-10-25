@@ -9,6 +9,7 @@ interface ConfirmDialogProps {
   confirmLabel: string;
   pendingLabel: string;
   pending: boolean;
+  confirmVariant?: 'primary' | 'danger';
   error?: string;
   onConfirm: () => void;
   onCancel: () => void;
@@ -22,6 +23,7 @@ export function ConfirmDialog({
   confirmLabel,
   pendingLabel,
   pending,
+  confirmVariant = 'danger',
   error,
   onConfirm,
   onCancel,
@@ -48,7 +50,7 @@ export function ConfirmDialog({
         >
           Cancel
         </Button>
-        <Button variant="danger" onClick={onConfirm} disabled={pending}>
+        <Button variant={confirmVariant} onClick={onConfirm} disabled={pending}>
           {pending ? pendingLabel : confirmLabel}
         </Button>
       </div>

@@ -25,7 +25,7 @@ export function ArchiveBoardDialog({
     <ConfirmDialog
       open={open}
       title={`Archive “${board.name}”?`}
-      description="The board will disappear from the boards list for every member. Its data is kept, but archived boards can’t be restored yet."
+      description="The board will move to Archived for every member. Its data is kept, and the owner can restore it later."
       confirmLabel="Archive board"
       pendingLabel="Archiving…"
       pending={archive.isPending}

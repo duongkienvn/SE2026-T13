@@ -7,18 +7,19 @@ import {
   createBoard,
   getBoard,
   listAllBoards,
+  restoreBoard,
   updateBoard,
 } from './api';
 import { boardKeys } from './query-keys';
 import type { Board, CreateBoardRequest, UpdateBoardRequest } from './types';
 
 /** Every board the user belongs to; the page searches and paginates them. */
-export function useBoards() {
+export function useBoards(status: 'active' | 'archived' = 'active') {
   const { runAuthorized } = useAuth();
   return useQuery({
-    queryKey: boardKeys.lists(),
+    queryKey: boardKeys.list(status),
     queryFn: ({ signal }) =>
-      runAuthorized((token) => listAllBoards(token, signal)),
+      runAuthorized((token) => listAllBoards(token, signal, status)),
     retry: retryUnlessClientError,
   });
 }
@@ -86,5 +87,17 @@ export function useArchiveBoard(boardId: string) {
       return queryClient.invalidateQueries({ queryKey: boardKeys.lists() });
     },
     onError: refreshIfArchived,
+  });
+}
+
+export function useRestoreBoard(boardId: string) {
+  const { runAuthorized } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => runAuthorized((token) => restoreBoard(token, boardId)),
+    onSuccess: (board: Board) => {
+      queryClient.setQueryData(boardKeys.detail(board.id), board);
+      return queryClient.invalidateQueries({ queryKey: boardKeys.lists() });
+    },
   });
 }
