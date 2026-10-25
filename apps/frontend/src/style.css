@@ -50,3 +50,10 @@
     @apply bg-frame font-sans text-ink antialiased;
   }
 }
+
+/* Only the public landing page scrolls the document to in-page anchors. */
+@media (prefers-reduced-motion: no-preference) {
+  html:has([data-landing]) {
+    scroll-behavior: smooth;
+  }
+}

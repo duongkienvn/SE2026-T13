@@ -61,6 +61,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 - [Card comments UI](frontend/comments-ui.md)
 - [Activity History frontend](frontend/activity-history.md)
 - [Sidebar navigation and board creation UX](frontend/app-navigation-board-ux.md)
+- [Public landing page](frontend/public-landing-page.md)
 
 ## Quy ước
 
