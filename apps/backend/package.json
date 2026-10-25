@@ -15,6 +15,7 @@
     "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/database/data-source.ts",
     "migration:show": "typeorm-ts-node-commonjs migration:show -d src/database/data-source.ts",
     "test:database": "pnpm build && node test/database/database-foundation.integration.mjs",
+    "test:preferences:database": "pnpm build && node test/users/user-preferences.integration.mjs",
     "test:email-verification:database": "pnpm build && node test/auth/email-verification.integration.mjs",
     "test:google-auth:database": "pnpm build && node test/auth/google-auth.integration.mjs",
     "test:password-security:database": "pnpm build && node test/auth/password-security.integration.mjs",

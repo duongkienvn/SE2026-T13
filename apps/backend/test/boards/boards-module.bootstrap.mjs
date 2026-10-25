@@ -133,6 +133,8 @@ try {
   assert.equal(broadcaster.auth, gateway.auth);
   assert.equal(gateway.auth.coordinator, coordinator);
   for (const [method, path] of [
+    ['get', '/api/users/me/preferences'],
+    ['patch', '/api/users/me/preferences'],
     ['post', '/api/boards'],
     ['get', '/api/boards'],
     ['get', '/api/boards/c6ba7134-97ef-4c1b-a342-001a982a7721'],

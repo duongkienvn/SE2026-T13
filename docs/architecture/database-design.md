@@ -96,6 +96,20 @@ không âm thầm xóa identity khi xóa user. Auth entities không làm thay đ
 board/card. Migration `1792850400000-GoogleIdentity` giữ hash hiện có; down khóa
 bảng và từ chối nếu còn identity hoặc NULL password. Xem [transaction và rollback](../tasks/backend/google-auth-account-linking.md).
 
+### User preferences extension (P1-01)
+
+`user_preferences` stores account appearance/display choices separately from
+profile and authentication. `user_id` is the UUID primary key and one-to-one FK to
+`users.id` (`NO ACTION`, matching the current safe account deletion policy).
+`theme`, `date_format` and `week_starts_on` are non-null varchar fields with CHECK
+constraints; `time_zone` is non-null `varchar(100)` validated as an IANA name by
+the API. Defaults are `system`, `YYYY-MM-DD`, `monday` and `UTC`, respectively.
+`created_at`/`updated_at` use `timestamptz`. Missing rows read as defaults without
+backfill; writes lock the parent User row in a transaction to preserve concurrent
+partial updates. Migration `1792886400000-UserPreferences` only adds the table;
+down refuses populated data under a table lock. See the
+[API, concurrency tests and rollout/rollback](../tasks/backend/user-preferences.md).
+
 ### Password recovery extension (#93)
 
 Migration `1792922400093-PasswordRecoverySecurity` adds `users.auth_version` and

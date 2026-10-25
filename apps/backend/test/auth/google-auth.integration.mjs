@@ -13,6 +13,7 @@ require('reflect-metadata');
 const { DataSource } = require('typeorm');
 const { ConfigModule } = require('@nestjs/config');
 const { TypeOrmModule } = require('@nestjs/typeorm');
+const { ThrottlerModule } = require('@nestjs/throttler');
 const { Test } = require('@nestjs/testing');
 const { LoggerModule } = require('nestjs-pino');
 const argon2 = require('argon2');
@@ -39,6 +40,9 @@ const {
 const {
   EmailVerification1792843200000: Email,
 } = require('../../dist/database/migrations/1792843200000-EmailVerification.js');
+const {
+  BoardArchiveActivity1792843200001: Archive,
+} = require('../../dist/database/migrations/1792843200001-BoardArchiveActivity.js');
 const { User } = require('../../dist/api/users/entities/user.entity.js');
 
 const name = `kanvexa-google-test-${randomBytes(6).toString('hex')}`;
@@ -129,7 +133,7 @@ try {
     try {
       source = await new DataSource({
         ...options,
-        migrations: [Initial, Email],
+        migrations: [Initial, Email, Archive],
       }).initialize();
       break;
     } catch {
@@ -150,7 +154,7 @@ try {
   );
   await source.destroy();
   source = await new DataSource(options).initialize();
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 3);
   assert.equal(
     (
       await source.query('SELECT password_hash FROM users WHERE id=$1', [
@@ -159,6 +163,8 @@ try {
     )[0].password_hash,
     hash,
   );
+  await source.undoLastMigration();
+  await source.undoLastMigration();
   await source.undoLastMigration();
   assert.equal(
     (
@@ -184,6 +190,8 @@ try {
   const [passwordless] =
     await source.query(`INSERT INTO users(email,password_hash,display_name)
     VALUES('rollback-guard@example.com',NULL,'Rollback guard') RETURNING id`);
+  await source.undoLastMigration();
+  await source.undoLastMigration();
   await assert.rejects(
     source.undoLastMigration(),
     /Cannot revert Google identity/,
@@ -194,6 +202,7 @@ try {
     0,
   );
   await source.query('DELETE FROM users WHERE id=$1', [passwordless.id]);
+  await source.runMigrations();
   check(
     'rollback refuses NULL passwords even when the identity table is empty',
   );
@@ -208,6 +217,7 @@ try {
         load: [() => config],
       }),
       TypeOrmModule.forRoot(options),
+      ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
       LoggerModule.forRoot({ pinoHttp: { level: 'silent' } }),
       AuthModule,
       UsersModule,
@@ -542,6 +552,8 @@ try {
     source.query('DELETE FROM users WHERE id=$1', [first.user.id]),
     (e) => e.code === '23503',
   );
+  await source.undoLastMigration();
+  await source.undoLastMigration();
   await assert.rejects(
     source.undoLastMigration(),
     /Cannot revert Google identity/,
@@ -562,7 +574,7 @@ try {
       ])
     ).length,
   );
-  assert.equal((await source.runMigrations()).length, 0);
+  assert.equal((await source.runMigrations()).length, 2);
   check(
     'FK prevents silent identity deletion; rollback refuses without losing users/identities/business data',
   );
