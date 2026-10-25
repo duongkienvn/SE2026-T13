@@ -38,7 +38,9 @@ describe('create board', () => {
       'POST /boards': ok(created, 201),
     });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'New Board' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create board' }),
+    );
     const dialog = screen.getByRole('dialog', { name: 'Create a new board' });
     const name = within(dialog).getByLabelText('Board name');
     expect(document.activeElement).toBe(name);
@@ -66,6 +68,10 @@ describe('create board', () => {
       description: null,
     });
     expect(await screen.findByRole('link', { name: 'Roadmap' })).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'New Board' })).toHaveLength(
+      1,
+    );
+    expect(screen.queryByRole('button', { name: 'Create board' })).toBeNull();
   });
 
   it('rejects names over 120 characters before sending', async () => {
@@ -96,7 +102,9 @@ describe('create board', () => {
       ]),
     });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'New Board' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create board' }),
+    );
     const dialog = screen.getByRole('dialog');
     fireEvent.change(within(dialog).getByLabelText('Board name'), {
       target: { value: 'Fine name' },
@@ -113,12 +121,10 @@ describe('create board', () => {
     expect(screen.getByRole('dialog')).toBeTruthy();
   });
 
-  it('offers creation from the empty state and the dashed tile', async () => {
+  it('offers creation from the header when boards exist', async () => {
     openBoards({ [LIST]: okPage([makeBoard()]) });
 
-    fireEvent.click(
-      await screen.findByRole('button', { name: /Create a new board/ }),
-    );
+    fireEvent.click(await screen.findByRole('button', { name: 'New Board' }));
     expect(
       screen.getByRole('dialog', { name: 'Create a new board' }),
     ).toBeTruthy();

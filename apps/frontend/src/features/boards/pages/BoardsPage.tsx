@@ -18,7 +18,7 @@ import { usePageParam } from '../../../hooks/usePageParam';
 import { usePageTitle } from '../../../hooks/usePageTitle';
 import { paginate } from '../../../lib/pagination';
 import { ArchiveBoardDialog } from '../components/ArchiveBoardDialog';
-import { BoardCard, CreateBoardTile } from '../components/BoardCard';
+import { BoardCard } from '../components/BoardCard';
 import {
   CreateBoardDialog,
   EditBoardDialog,
@@ -30,8 +30,6 @@ import type { Board } from '../types';
 export interface BoardsLocationState {
   notice?: string;
 }
-
-const CREATE_TILE = 'create' as const;
 
 function matches(board: Board, query: string): boolean {
   const text = `${board.name} ${board.description ?? ''}`.toLowerCase();
@@ -73,11 +71,7 @@ export function BoardsPage() {
   const visible = query
     ? loaded.filter((board) => matches(board, query))
     : loaded;
-  // The dashed "create" tile follows the last board, except in search results.
-  const tiles: (Board | typeof CREATE_TILE)[] = query
-    ? visible
-    : [...visible, CREATE_TILE];
-  const shown = paginate(tiles, page, fit.pageSize);
+  const shown = paginate(visible, page, fit.pageSize);
 
   const openCreate = () => {
     setNotice(undefined);
@@ -94,22 +88,26 @@ export function BoardsPage() {
         title="Boards"
         description="Organize your work with Kanban boards for different projects and teams."
         actions={
-          <>
-            {/* Keep the box while a query is active, so it can always be cleared. */}
-            {(loaded.length > 0 || search) && (
-              <SearchField
-                label="Search boards"
-                placeholder="Search boards..."
-                value={search}
-                onChange={changeSearch}
-                className="w-full sm:w-[280px]"
-              />
-            )}
-            <Button onClick={openCreate}>
-              <PlusIcon aria-hidden="true" className="size-4.5" />
-              New Board
-            </Button>
-          </>
+          loaded.length > 0 || search ? (
+            <>
+              {/* Keep the box while a query is active, so it can always be cleared. */}
+              {(loaded.length > 0 || search) && (
+                <SearchField
+                  label="Search boards"
+                  placeholder="Search boards..."
+                  value={search}
+                  onChange={changeSearch}
+                  className="w-full sm:w-[280px]"
+                />
+              )}
+              {loaded.length > 0 && (
+                <Button onClick={openCreate}>
+                  <PlusIcon aria-hidden="true" className="size-4.5" />
+                  New Board
+                </Button>
+              )}
+            </>
+          ) : undefined
         }
       />
 
@@ -148,30 +146,24 @@ export function BoardsPage() {
               gridTemplateColumns: `repeat(${fit.columns}, minmax(0, 1fr))`,
             }}
           >
-            {shown.items.map((tile) =>
-              tile === CREATE_TILE ? (
-                <li key="create" data-fit-row className="flex">
-                  <CreateBoardTile onClick={openCreate} />
-                </li>
-              ) : (
-                <li key={tile.id} data-fit-row className="flex">
-                  <BoardCard
-                    board={tile}
-                    // UI hint only: the backend enforces OWNER-only actions.
-                    onEdit={
-                      tile.currentUserRole === BoardRole.OWNER
-                        ? () => setEditing(tile)
-                        : undefined
-                    }
-                    onArchive={
-                      tile.currentUserRole === BoardRole.OWNER
-                        ? () => setArchiving(tile)
-                        : undefined
-                    }
-                  />
-                </li>
-              ),
-            )}
+            {shown.items.map((board) => (
+              <li key={board.id} data-fit-row className="flex">
+                <BoardCard
+                  board={board}
+                  // UI hint only: the backend enforces OWNER-only actions.
+                  onEdit={
+                    board.currentUserRole === BoardRole.OWNER
+                      ? () => setEditing(board)
+                      : undefined
+                  }
+                  onArchive={
+                    board.currentUserRole === BoardRole.OWNER
+                      ? () => setArchiving(board)
+                      : undefined
+                  }
+                />
+              </li>
+            ))}
           </ul>
         )}
       </div>

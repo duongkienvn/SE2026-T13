@@ -54,6 +54,10 @@ describe('BoardsPage', () => {
       .closest('article')!;
     expect(within(marketingCard).getByText('Member')).toBeTruthy();
     expect(within(marketingCard).getByText('No description')).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'New Board' })).toHaveLength(
+      1,
+    );
+    expect(screen.queryByRole('button', { name: /Create.*board/i })).toBeNull();
   });
 
   it('highlights Boards in the sidebar', async () => {
@@ -78,6 +82,10 @@ describe('BoardsPage', () => {
       await screen.findByRole('heading', { name: 'No boards yet' }),
     ).toBeTruthy();
     expect(screen.queryByRole('searchbox')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'New Board' })).toBeNull();
+    expect(
+      screen.getAllByRole('button', { name: 'Create board' }),
+    ).toHaveLength(1);
   });
 
   it('shows an error with retry', async () => {
@@ -96,8 +104,14 @@ describe('BoardsPage', () => {
         name: "We couldn't load your boards",
       }),
     ).toBeTruthy();
+    expect(
+      screen.queryByRole('button', { name: /New Board|Create.*board/i }),
+    ).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByRole('link', { name: 'Recovered' })).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'New Board' })).toHaveLength(
+      1,
+    );
   });
 
   it('filters loaded boards by name or description', async () => {
@@ -120,11 +134,18 @@ describe('BoardsPage', () => {
     fireEvent.change(search, { target: { value: 'FEEDBACK' } });
     expect(screen.getByRole('link', { name: 'Design Team' })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Q3 Planning' })).toBeNull();
+    expect(screen.getAllByRole('button', { name: 'New Board' })).toHaveLength(
+      1,
+    );
 
     fireEvent.change(search, { target: { value: 'nothing like this' } });
     expect(
       screen.getByRole('heading', { name: 'No matching boards' }),
     ).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'New Board' })).toHaveLength(
+      1,
+    );
+    expect(screen.queryByRole('button', { name: /Create.*board/i })).toBeNull();
   });
 
   it('loads every page from the API before showing the boards', async () => {
@@ -190,10 +211,13 @@ describe('BoardsPage', () => {
     expect(await screen.findByRole('link', { name: 'Item 13' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Item 14' })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Item 01' })).toBeNull();
-    // The create tile follows the last board.
+    // Pagination contains only boards; creation stays in the header.
     expect(
-      screen.getByRole('button', { name: /Create a new board/ }),
-    ).toBeTruthy();
+      screen.queryByRole('button', { name: /Create a new board/ }),
+    ).toBeNull();
+    expect(screen.getAllByRole('button', { name: 'New Board' })).toHaveLength(
+      1,
+    );
     expect(router.state.location.search).toBe('?page=2');
     expect(
       (
