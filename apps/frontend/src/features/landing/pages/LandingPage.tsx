@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { LandingHeader } from '../components/LandingHeader';
+import { LandingHero } from '../components/LandingHero';
 import { landingContainer, landingSection } from '../components/layout';
 import { LANDING_TITLE } from '../sections';
 import { useLandingSession } from '../useLandingSession';
@@ -32,11 +33,7 @@ export function LandingPage() {
       </a>
       <LandingHeader session={session} />
       <main id="main-content" tabIndex={-1} className="outline-none">
-        <section className={`${landingContainer} py-16`}>
-          <h1 className="text-5xl font-bold tracking-tight">
-            Organize work. <span className="text-primary">Move together.</span>
-          </h1>
-        </section>
+        <LandingHero session={session} />
         <section
           id="features"
           aria-labelledby="features-title"

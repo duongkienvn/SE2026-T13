@@ -41,6 +41,46 @@ describe('LandingPage', () => {
     ).toBeNull();
   });
 
+  it('points the hero actions at sign-up and the features section', () => {
+    mockApi({});
+    renderApp('/');
+
+    const hero = screen
+      .getByRole('heading', { level: 1 })
+      .closest('section') as HTMLElement;
+    expect(
+      within(hero)
+        .getByRole('link', { name: 'Get started' })
+        .getAttribute('href'),
+    ).toBe('/register');
+    expect(
+      within(hero)
+        .getByRole('link', { name: 'Learn more' })
+        .getAttribute('href'),
+    ).toBe('#features');
+    expect(
+      within(hero).getByRole('img', { name: /Preview of a Kanvexa board/ }),
+    ).toBeTruthy();
+  });
+
+  it('sends signed-in users from the hero to their boards', async () => {
+    storeSession();
+    mockApi({ 'GET /users/me': ok(testUser) });
+    renderApp('/');
+
+    const hero = screen
+      .getByRole('heading', { level: 1 })
+      .closest('section') as HTMLElement;
+    expect(
+      (
+        await within(hero).findByRole('link', { name: 'Go to your boards' })
+      ).getAttribute('href'),
+    ).toBe('/boards');
+    expect(
+      within(hero).queryByRole('link', { name: 'Get started' }),
+    ).toBeNull();
+  });
+
   it('links the three header anchors to three distinct sections', () => {
     mockApi({});
     renderApp('/');

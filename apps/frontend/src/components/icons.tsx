@@ -288,3 +288,46 @@ export function CloseIcon(props: IconProps) {
     </StrokeSvg>
   );
 }
+
+export function ArrowRightIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M5 12h14m-6-6 6 6-6 6" />
+    </StrokeSvg>
+  );
+}
+
+export function ArrowDownIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M12 5v14m-6-6 6 6 6-6" />
+    </StrokeSvg>
+  );
+}
+
+export function BoltIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M13 2.5 4.5 13.5H12l-1 8 8.5-11H12z" />
+    </StrokeSvg>
+  );
+}
+
+export function ShieldCheckIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.3 7.5 9.5 4.3-1.2 7.5-4.9 7.5-9.5V6z" />
+      <path d="m9 12 2.2 2.2L15.5 10" />
+    </StrokeSvg>
+  );
+}
+
+export function TeamIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3 19.5c.4-3.3 2.9-5.5 6-5.5s5.6 2.2 6 5.5" />
+      <path d="M15.5 4.9a3.2 3.2 0 0 1 0 6.2M17.5 14.3c1.9.7 3.2 2.6 3.5 5.2" />
+    </StrokeSvg>
+  );
+}
