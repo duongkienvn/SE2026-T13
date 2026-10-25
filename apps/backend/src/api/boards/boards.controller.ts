@@ -31,7 +31,7 @@ import {
 import { SerializeResponse } from '../../decorators/response.decorators';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { BoardResponseDto } from './dto/board-response.dto';
-import { PageQueryDto } from '../../common/dto/page-query.dto';
+import { ListBoardsDto } from './dto/list-boards.dto';
 import { PaginatedResponse } from '../../common/dto/paginated-response';
 import { ApiQuery } from '@nestjs/swagger';
 import { UpdateBoardDto } from './dto/update-board.dto';
@@ -59,6 +59,24 @@ export class BoardsController {
     @Param('boardId', ParseUUIDPipe) boardId: string,
   ): Promise<BoardResponseDto> {
     return this.boardsService.archive(user.userId, boardId);
+  }
+
+  @Post(':boardId/restore')
+  @HttpCode(HttpStatus.OK)
+  @SerializeResponse(BoardResponseDto)
+  @ResponseMessage('Board restored')
+  @ApiBearerToken()
+  @ApiParam({ name: 'boardId', format: 'uuid' })
+  @ApiSuccess({
+    type: BoardResponseDto,
+    summary: 'Restore an archived board as OWNER',
+  })
+  @ApiCommonErrors([400, 401, 403, 404, 409, 429, 500])
+  restore(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+  ): Promise<BoardResponseDto> {
+    return this.boardsService.restore(user.userId, boardId);
   }
 
   @Patch(':boardId')
@@ -106,13 +124,19 @@ export class BoardsController {
   @SerializeResponse(BoardResponseDto)
   @ApiBearerToken()
   @ApiPaginated(BoardResponseDto, {
-    summary: 'List active boards for the authenticated member',
+    summary: 'List active or archived boards for the authenticated member',
   })
   @ApiQuery({
     name: 'page',
     required: false,
     type: Number,
     schema: { minimum: 1, default: 1 },
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['active', 'archived'],
+    schema: { default: 'active' },
   })
   @ApiQuery({
     name: 'limit',
@@ -123,7 +147,7 @@ export class BoardsController {
   @ApiCommonErrors([400, 401, 429, 500])
   list(
     @CurrentUser() user: AuthenticatedUser,
-    @Query() query: PageQueryDto,
+    @Query() query: ListBoardsDto,
   ): Promise<PaginatedResponse<BoardResponseDto>> {
     return this.boardsService.list(user.userId, query);
   }
