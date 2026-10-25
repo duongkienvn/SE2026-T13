@@ -19,11 +19,12 @@ apps/frontend/src/
 ├── app/
 │   ├── AppProviders.tsx      # QueryClientProvider + AuthProvider
 │   ├── routes.tsx            # React Router routes, root errorElement
-│   ├── guards.tsx            # RequireAuth / PublicOnly / RootRedirect
+│   ├── guards.tsx            # RequireAuth / PublicOnly
 │   ├── redirect.ts           # post-login redirect an toàn
 │   └── layout/               # AppShell, Sidebar, AppHeader, AuthenticatedLayout
 ├── features/
 │   ├── auth/                 # api, session, AuthProvider, pages, components
+│   ├── landing/              # public landing page at `/` (header, sections, coded previews)
 │   ├── boards/               # api, query keys + hooks, Boards list / Board detail pages
 │   └── board-members/        # api, hooks, membership rules, Board Members page
 ├── pages/                    # NotFoundPage, RouteErrorPage
