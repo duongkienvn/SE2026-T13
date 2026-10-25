@@ -88,6 +88,16 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       }
     }
 
+    // JSON scalars can be rejected by Express before preference DTO validation.
+    if (
+      statusCode === HttpStatus.BAD_REQUEST &&
+      request.method === 'PATCH' &&
+      /\/users\/me\/preferences\/?$/.test(request.path)
+    ) {
+      code = ErrorCode.VALIDATION_FAILED;
+      message = 'Validation failed';
+    }
+
     const requestId = typeof request.id === 'string' ? request.id : undefined;
     if (statusCode >= 500) {
       const exceptionType =

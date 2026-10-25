@@ -42,6 +42,11 @@ describe('preferences HTTP contract (real JWT, mocked preferences service)', () 
       userId: A,
       passwordHash: 'private',
     }),
+    update: jest.fn().mockResolvedValue({
+      ...DEFAULT_USER_PREFERENCES,
+      theme: 'dark',
+      createdAt: new Date(),
+    }),
   };
 
   beforeAll(async () => {
@@ -111,7 +116,66 @@ describe('preferences HTTP contract (real JWT, mocked preferences service)', () 
     );
   });
 
-  it.each(['get'] as const)(
+  it('serializes only four public fields on update', async () => {
+    const result = await request(app.getHttpServer())
+      .patch(path)
+      .auth(token, { type: 'bearer' })
+      .send({ theme: 'dark' })
+      .expect(200);
+    expect(preferences.update).toHaveBeenCalledWith(A, { theme: 'dark' });
+    expect(result.body.data).toEqual({
+      ...DEFAULT_USER_PREFERENCES,
+      theme: 'dark',
+    });
+  });
+
+  it.each([
+    {},
+    { theme: null },
+    { theme: 'Dark' },
+    { timeZone: 'Fake/Zone' },
+    { weekStartsOn: [] },
+    { theme: 'dark', userId: B },
+    [],
+  ])(
+    'returns VALIDATION_FAILED without calling persistence for %j',
+    async (body) => {
+      const result = await request(app.getHttpServer())
+        .patch(path)
+        .auth(token, { type: 'bearer' })
+        .send(body)
+        .expect(400);
+      expect(result.body.code).toBe('VALIDATION_FAILED');
+      expect(preferences.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it('returns VALIDATION_FAILED for a JSON null body', async () => {
+    const result = await request(app.getHttpServer())
+      .patch(path)
+      .auth(token, { type: 'bearer' })
+      .set('Content-Type', 'application/json')
+      .send('null')
+      .expect(400);
+    expect(result.body.code).toBe('VALIDATION_FAILED');
+    expect(preferences.update).not.toHaveBeenCalled();
+  });
+
+  it.each(['__proto__', 'constructor', 'prototype'])(
+    'rejects the raw unknown key %s before persistence',
+    async (key) => {
+      const result = await request(app.getHttpServer())
+        .patch(path)
+        .auth(token, { type: 'bearer' })
+        .set('Content-Type', 'application/json')
+        .send(JSON.stringify({ theme: 'dark', [key]: { unexpected: true } }))
+        .expect(400);
+      expect(result.body.code).toBe('VALIDATION_FAILED');
+      expect(preferences.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['get', 'patch'] as const)(
     'rejects missing, malformed and expired JWT for %s',
     async (method) => {
       const http = request(app.getHttpServer());
@@ -120,15 +184,25 @@ describe('preferences HTTP contract (real JWT, mocked preferences service)', () 
       const expired = await jwt.signAsync({ sub: A }, { expiresIn: -1 });
       await http[method](path).auth(expired, { type: 'bearer' }).expect(401);
       expect(preferences.get).not.toHaveBeenCalled();
+      expect(preferences.update).not.toHaveBeenCalled();
     },
   );
 
-  it('documents the protected read route and all four response fields', () => {
+  it('requires authentication before checking raw body keys', async () => {
+    await request(app.getHttpServer())
+      .patch(path)
+      .send({ theme: 'dark', constructor: { unexpected: true } })
+      .expect(401);
+    expect(preferences.update).not.toHaveBeenCalled();
+  });
+
+  it('documents both JWT protected routes and all four response fields', () => {
     const document = SwaggerModule.createDocument(
       app,
       new DocumentBuilder().addBearerAuth().build(),
     );
     expect(document.paths[path].get?.security).toEqual([{ bearer: [] }]);
+    expect(document.paths[path].patch?.security).toEqual([{ bearer: [] }]);
     expect(
       document.components?.schemas?.UserPreferencesResponseDto,
     ).toMatchObject({

@@ -7,10 +7,11 @@ import { UsersService } from './users.service';
 import { UserPreferences } from './entities/user-preferences.entity';
 import { UserPreferencesController } from './user-preferences.controller';
 import { UserPreferencesService } from './user-preferences.service';
+import { UserPreferencesBodyGuard } from './user-preferences-body.guard';
 
 @Module({
   imports: [AuthModule, TypeOrmModule.forFeature([User, UserPreferences])],
   controllers: [UsersController, UserPreferencesController],
-  providers: [UsersService, UserPreferencesService],
+  providers: [UsersService, UserPreferencesService, UserPreferencesBodyGuard],
 })
 export class UsersModule {}
