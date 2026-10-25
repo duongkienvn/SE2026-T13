@@ -96,6 +96,107 @@ Frontend should save through PATCH, use the returned complete object, and reload
 through GET after a new login. No preference data is added to profile/login
 responses, and there are no new realtime events.
 
+## Persistence and concurrent requests
+
+`UsersModule` registers a separate preferences controller/service and
+`Repository<UserPreferences>`; existing profile/auth services are unchanged.
+`user_preferences.user_id` is both the UUID primary key and a one-to-one FK to
+`users.id`. PostgreSQL CHECK constraints enforce the finite theme/date/week values;
+timezone validity is checked at the HTTP boundary, with a `varchar(100)` column.
+Timestamps use `timestamptz`.
+
+PATCH opens a transaction and locks the existing User row with `FOR UPDATE`
+before reading preferences. This also serializes the first two saves when no
+preference row exists. It merges only supplied fields, saves with the transaction's
+repository, and returns after commit. Requests for different users lock different
+rows. Repeated identical saves use TypeORM's unchanged-entity behavior. GET is
+read-only and can observe either committed state during an overlapping PATCH.
+
+FK deletion uses `NO ACTION`, matching the current account/Google identity policy.
+Future account deletion must explicitly handle saved preferences; it must not
+silently cascade data away.
+
+## Migration and rollout/rollback
+
+New migration: `1792886400000-UserPreferences`. Up only creates the new empty
+table and constraints; no existing data is changed and no backfill is needed.
+Entity and migration discovery use the existing globs. `synchronize: false` and
+`migrationsRun: false` remain unchanged.
+
+Down runs inside TypeORM's migration transaction, acquires an `ACCESS EXCLUSIVE`
+lock, and refuses to drop a populated table. The lock closes the check/drop race.
+An empty table can be reverted and recreated. Keep transactional migration mode;
+do not invoke down outside a transaction or disable its safety guard.
+
+No production or shared database migration is part of this task. For a future
+production rollout:
+
+1. Review the migration and rollback guard, take a verified backup and rehearse
+   restore on an isolated snapshot; confirm a separately approved deployment.
+2. Apply the additive migration explicitly before deploying the new backend.
+3. Smoke-test defaults and a saved PATCH with an authorized test account.
+4. For application rollback, retain the new table so preferences survive. Only
+   use schema down if empty. For populated tables prefer roll-forward or an
+   explicitly reviewed export/restore plan; never delete rows to bypass the guard.
+
+## Verification
+
+Focused tests:
+
+```sh
+pnpm --filter @kanban/backend test --runTestsByPath test/users/user-preferences.dto.spec.ts test/users/user-preferences.e2e-spec.ts
+pnpm --filter @kanban/backend test:preferences:database
+```
+
+The database script builds the backend, creates a randomly named disposable
+PostgreSQL 16 container with a random password and ephemeral localhost port,
+does not load `.env`, and removes the container in `finally`. Docker must be
+running; the first run may pull the pinned PostgreSQL image. It checks fresh and
+populated migrations, preservation of users/hashes/Google identities/boards,
+empty rollback/rerun, populated rollback refusal, schema drift, defaults without
+insertion, invalid input without insertion, first-save and existing-row concurrent
+PATCH, uniqueness/FK/CHECK constraints, response serialization, JWT isolation,
+profile regression, a new JWT and a new Nest application instance.
+
+Existing foundation, email-verification and Google-auth database fixtures account
+for the extra table/migration and rollback order. Their scripts continue to use
+isolated databases/containers. Full workspace checks are `pnpm lint`, `pnpm test`,
+`pnpm build`, `pnpm format:check`, and `git diff --check`.
+
+### Executed results — 2026-10-25
+
+| Command/check                                                    | Exit | Result                                                                                                         |
+| ---------------------------------------------------------------- | ---- | -------------------------------------------------------------------------------------------------------------- |
+| Targeted preference DTO and HTTP Jest suites                     | 0    | 45 tests passed                                                                                                |
+| `pnpm lint`                                                      | 0    | Workspace lint passed                                                                                          |
+| `pnpm test`                                                      | 0    | Backend: 49 suites/499 tests; frontend: 66 files/608 tests; shared: 6 tests                                    |
+| `pnpm build`                                                     | 0    | All workspace packages built                                                                                   |
+| `pnpm --filter @kanban/backend test:preferences:database`        | 0    | Disposable PostgreSQL migration/persistence/concurrency/HTTP/restart checks passed                             |
+| `pnpm --filter @kanban/backend test:google-auth:database`        | 0    | 14 PostgreSQL/auth checks passed; Google verifier mocked                                                       |
+| `pnpm --filter @kanban/backend test:email-verification:database` | 0    | 16 PostgreSQL/HTTP/Socket.IO checks passed; mail transport fake                                                |
+| `pnpm --filter @kanban/backend test:database`                    | 0    | Ran against an additional disposable container; schema, pagination and rollback checks passed                  |
+| `pnpm format:check`                                              | 1    | 185 unchanged files have existing formatting issues; left outside this task                                    |
+| Prettier check over every changed/new file                       | 0    | All task files pass                                                                                            |
+| `git diff --check`                                               | 0    | No whitespace errors                                                                                           |
+| Skill's supplemental Bun TypeScript audit                        | 1    | Checker requires TypeScript 7 unstable APIs; repository uses TypeScript 5. No dependency/toolchain change made |
+
+Environment: Windows, Node `22.12.0`, pnpm `10.18.3`, Docker `27.5.1`, disposable
+`postgres:16.15-alpine3.24`. Node is below the repository's required `>=22.13.0`;
+commands emitted an engine warning. Build also reports the existing frontend
+bundle-size warning, and TypeORM/pg tests emit runtime/deprecation warnings.
+Initial sandbox attempts hit Jest cache permissions and localhost connection
+restrictions; reruns with approved local test access passed. HTTP tests first
+exposed empty-array/null validation gaps, then passed after the scoped fixes.
+Final review also exposed reserved-key filtering before DTO validation. Three
+HTTP regressions first failed with 200, then passed after the PATCH-only raw-key
+guard was added. PostgreSQL regressions confirm rejected requests neither insert
+a new row nor alter saved preferences; a fourth HTTP test confirms JWT runs first.
+During final verification one integration attempt failed on an empty Docker port
+mapping, and another overlapped a build clearing `dist`. The subsequent sequential
+build/integration run passed. These setup failures are recorded separately from
+the successful checks; full workspace regression also passed after the fix.
+No production/shared database, live Google OAuth or real email delivery was used.
+
 ## Scope and decisions
 
 - Facts: contracts reviewed on `origin/main` at `cea6d1c`; dedicated branch
