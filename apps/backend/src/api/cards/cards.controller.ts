@@ -48,7 +48,8 @@ export class CardsController {
   @SerializeResponse(CardResponseDto)
   @ApiBearerToken()
   @ApiPaginated(CardResponseDto, {
-    summary: 'List active cards; archived boards remain readable',
+    summary:
+      'List active (default) or archived cards; archived boards remain readable',
   })
   @ApiQuery({
     name: 'page',
@@ -63,6 +64,12 @@ export class CardsController {
     schema: { minimum: 1, maximum: 100, default: 20 },
   })
   @ApiQuery({ name: 'columnId', required: false, type: String, format: 'uuid' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['active', 'archived'],
+    description: 'Default active; archived ordered by archivedAt DESC, id DESC',
+  })
   @ApiCommonErrors()
   list(
     @CurrentUser() user: AuthenticatedUser,
@@ -142,6 +149,26 @@ export class CardsController {
     @Param('cardId', ParseUUIDPipe) cardId: string,
   ): Promise<CardResponseDto> {
     return this.cards.archive(user.userId, boardId, cardId);
+  }
+
+  @Post(':cardId/restore')
+  @HttpCode(HttpStatus.OK)
+  @SerializeResponse(CardResponseDto)
+  @ResponseMessage('Card restored')
+  @ApiBearerToken()
+  @ApiParam({ name: 'cardId', format: 'uuid' })
+  @ApiSuccess({
+    type: CardResponseDto,
+    summary:
+      'Restore an archived card to the end of its original column on an active board',
+  })
+  @ApiCommonErrors()
+  restore(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+    @Param('cardId', ParseUUIDPipe) cardId: string,
+  ): Promise<CardResponseDto> {
+    return this.cards.restore(user.userId, boardId, cardId);
   }
 
   @Patch(':cardId/move')

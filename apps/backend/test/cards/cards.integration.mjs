@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import process from 'node:process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath, URL } from 'node:url';
+import { checkCardRestore } from './cards-restore-checks.mjs';
 
 const require = createRequire(import.meta.url);
 require('reflect-metadata');
@@ -128,6 +129,8 @@ try {
         email: `${name}@cards.test`,
         displayName: name,
         passwordHash,
+        emailVerifiedAt: new Date(),
+        authVersion: 0,
         avatarUrl: null,
       }),
     );
@@ -625,7 +628,9 @@ try {
     )
   ).body;
   assert.equal(secondPage.data[0].title, 'Second page');
-  const memberToken = await app.get(JwtService).signAsync({ sub: member.id });
+  const memberToken = await app
+    .get(JwtService)
+    .signAsync({ sub: member.id, authVersion: 0 });
   await request(app.getHttpServer())
     .get(path)
     .set('Authorization', `Bearer ${memberToken}`)
@@ -643,6 +648,22 @@ try {
     'real AppModule/REST login/Card HTTP and joined-assignee pagination match persisted SQL ordering',
   );
 
+  await checkCardRestore({
+    source,
+    service,
+    owner,
+    member,
+    outsider,
+    board,
+    foreign,
+    column: httpColumn,
+    api,
+    request,
+    server: app.getHttpServer(),
+  });
+  pass(
+    'archived REST filters, stable paging, permissions, concurrent restore, preserved relations, dense rebalance and archived Board',
+  );
   await boards.update(board.id, { isArchived: true, archivedAt: new Date() });
   await api('get', path).expect(200);
   await api('get', `${path}/${httpCard.id}`).expect(200);

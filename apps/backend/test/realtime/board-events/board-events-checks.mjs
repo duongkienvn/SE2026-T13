@@ -429,8 +429,32 @@ export async function runBoardEventChecks(app, source) {
         .isArchived,
       true,
     );
+    await mutation(
+      'card:restored',
+      'post',
+      `${ids.a}/cards/${card.id}/restore`,
+      undefined,
+      200,
+      cardPayload,
+    );
+    assert.equal(
+      (await source.getRepository('Card').findOne({ where: { id: card.id } }))
+        .isArchived,
+      false,
+    );
+    await silent(() =>
+      http('post', `${ids.a}/cards/${card.id}/restore`, undefined, 409),
+    );
+    await mutation(
+      'card:archived',
+      'post',
+      `${ids.a}/cards/${card.id}/archive`,
+      undefined,
+      200,
+      cardPayload,
+    );
     pass(
-      'all five Card events, both assignment operations, persisted move source and no-op suppression',
+      'all six Card events, both assignment operations, persisted move source and no-op suppression',
     );
     pass(
       'all three Comment events are ID-only, isolated and suppress no-ops and denied writes',
@@ -730,7 +754,7 @@ export async function runBoardEventChecks(app, source) {
     }
     assert.deepEqual([...seen].sort(), [...events].sort());
     pass(
-      'false/throwing delivery cannot change committed HTTP success; all seventeen contracts observed exactly',
+      'false/throwing delivery cannot change committed HTTP success; all eighteen contracts observed exactly',
     );
     void unjoined;
     return checks;

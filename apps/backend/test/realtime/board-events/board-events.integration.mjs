@@ -99,7 +99,7 @@ try {
   await app.listen(0, '127.0.0.1');
   assert.equal(await runBoardEventChecks(app, source), 9);
   pass(
-    'all seventeen REST -> Socket.IO contracts and security checks on migrated PostgreSQL',
+    'all eighteen REST -> Socket.IO contracts and security checks on migrated PostgreSQL',
   );
 
   // Independent transport suites get independent application lifetimes. This
@@ -404,6 +404,68 @@ try {
     'actual SQL writes followed by commit failure fully roll back Card/Column changes without events',
   );
 
+  await http('post', `cards/${card.id}/archive`);
+  await flush();
+  const activityCount = () =>
+    source
+      .getRepository('Activity')
+      .countBy({ entityId: card.id, actionType: 'CARD_RESTORED' });
+  const restoreBefore = snapshot();
+  await withCommitGate(
+    () => http('post', `cards/${card.id}/restore`, undefined, 500),
+    async () => {
+      assert.equal(
+        (await cards.findOneByOrFail({ id: card.id })).isArchived,
+        true,
+      );
+      assert.equal(await activityCount(), 0);
+    },
+    true,
+  );
+  await flush();
+  assert.deepEqual(snapshot(), restoreBefore);
+  assert.equal(await activityCount(), 0);
+  const restoreEvents = clients.map((s) => nextBoardEvent(s, 'card:restored'));
+  const restore = http('post', `cards/${card.id}/restore`).then(
+    (r) => r.status,
+  );
+  const competing = request(app.getHttpServer())
+    .post(`/api/boards/${boardId}/cards/${card.id}/restore`)
+    .auth(tokens.member, { type: 'bearer' })
+    .then((r) => r.status);
+  assert.deepEqual(
+    (await Promise.all([restore, competing])).sort(),
+    [200, 409],
+  );
+  for (const event of await Promise.all(restoreEvents))
+    assert.deepEqual(event, {
+      boardId,
+      cardId: card.id,
+      columnId: destination.id,
+    });
+  await flush();
+  assert.equal(await activityCount(), 1);
+  for (const [index, socket] of clients.entries())
+    assert.equal(received.get(socket).length, restoreBefore[index] + 1);
+  await http('post', `cards/${card.id}/archive`);
+  await flush();
+  broadcaster.emitToBoard = async () => {
+    throw new Error('injected restore delivery failure');
+  };
+  try {
+    await http('post', `cards/${card.id}/restore`);
+    assert.equal(
+      (await cards.findOneByOrFail({ id: card.id })).isArchived,
+      false,
+    );
+    assert.equal(await activityCount(), 2);
+  } finally {
+    broadcaster.emitToBoard = originalBroadcast;
+  }
+  pass(
+    'Card restore commit rollback is silent; competing restores write one activity/event per room tab; failed delivery preserves HTTP success',
+  );
+
   const assignment = await source
     .getRepository('CardAssignee')
     .save({ cardId: card.id, userId: ids.member, assignedById: ids.owner });
@@ -619,7 +681,7 @@ try {
   pass(
     'real removal commit/eviction/broadcast/join race completes without deadlock or revoked-tab delivery despite double adapter failure',
   );
-  assert.equal(checks, 9);
+  assert.equal(checks, 10);
   console.log(
     `Board events PostgreSQL + Socket.IO: ${checks} groups PASS; isolated migrations and cleanup`,
   );
