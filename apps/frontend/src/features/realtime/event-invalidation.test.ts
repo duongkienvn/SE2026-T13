@@ -56,8 +56,10 @@ const cardEvent = { boardId: BOARD, cardId: CARD, columnId: 'column-1' };
 const member = { boardId: BOARD, userId: 'user-1' };
 
 describe('BOARD_EVENTS', () => {
-  it('lists the 15 business events of the shared contract', () => {
+  it('lists the 17 business events of the shared contract', () => {
     expect([...BOARD_EVENTS].sort()).toEqual([
+      'board:archived',
+      'board:restored',
       'card:archived',
       'card:assignees-changed',
       'card:created',
@@ -78,6 +80,35 @@ describe('BOARD_EVENTS', () => {
 });
 
 describe('invalidationTargets', () => {
+  it.each(['board:archived', 'board:restored'] as const)(
+    '%s refreshes board detail and both list scopes',
+    async (event) => {
+      const client = new QueryClient();
+      client.setQueryData(boardKeys.detail(BOARD), {});
+      client.setQueryData(boardKeys.columns(BOARD), {});
+      client.setQueryData(boardKeys.list('active'), {});
+      client.setQueryData(boardKeys.list('archived'), {});
+      client.setQueryData(boardKeys.detail(OTHER), {});
+      for (const target of invalidationTargets(event, { boardId: BOARD })) {
+        await client.invalidateQueries(target);
+      }
+      expect(client.getQueryState(boardKeys.detail(BOARD))?.isInvalidated).toBe(
+        true,
+      );
+      expect(
+        client.getQueryState(boardKeys.list('active'))?.isInvalidated,
+      ).toBe(true);
+      expect(
+        client.getQueryState(boardKeys.list('archived'))?.isInvalidated,
+      ).toBe(true);
+      expect(
+        client.getQueryState(boardKeys.columns(BOARD))?.isInvalidated,
+      ).toBe(false);
+      expect(client.getQueryState(boardKeys.detail(OTHER))?.isInvalidated).toBe(
+        false,
+      );
+    },
+  );
   it.each([
     'column:created',
     'column:updated',
@@ -186,6 +217,7 @@ describe('boardResyncTargets', () => {
       'cards',
       'card',
       'otherCard',
+      'boardList',
       'commentsPage1',
       'commentsPage2',
       'otherCardComments',

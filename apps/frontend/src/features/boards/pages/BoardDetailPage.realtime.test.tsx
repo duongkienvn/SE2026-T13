@@ -74,7 +74,7 @@ describe('BoardDetailPage realtime', () => {
     ).toBeTruthy();
   });
 
-  it('keeps presence on archived boards while all mutation controls remain unavailable', async () => {
+  it('keeps presence on archived boards while edit controls remain unavailable', async () => {
     const { main, socket } = await openLiveBoard({
       [BOARD]: ok({ ...board, isArchived: true }),
     });
@@ -89,10 +89,29 @@ describe('BoardDetailPage realtime', () => {
     ).toBeTruthy();
     expect(main.getByRole('link', { name: 'Members' })).toBeTruthy();
     expect(
-      main.queryByRole('button', { name: 'Actions for Launch' }),
-    ).toBeNull();
+      main.getByRole('button', { name: 'Actions for Launch' }),
+    ).toBeTruthy();
     expect(main.queryByRole('button', { name: 'Add column' })).toBeNull();
     expect(main.getByText(/This board is archived/)).toBeTruthy();
+  });
+
+  it('switches between read-only and active after board events without reload', async () => {
+    const archived = {
+      ...board,
+      isArchived: true,
+      archivedAt: new Date().toISOString(),
+    };
+    const { main, socket } = await openLiveBoard({
+      [BOARD]: sequence(ok(board), ok(board), ok(archived), ok(board)),
+    });
+    act(() => socket.push('board:archived', { boardId: board.id }));
+    expect(await main.findByText(/This board is archived/)).toBeTruthy();
+    expect(main.queryByRole('button', { name: 'Add column' })).toBeNull();
+    act(() => socket.push('board:restored', { boardId: board.id }));
+    await waitFor(() =>
+      expect(main.queryByText(/This board is archived/)).toBeNull(),
+    );
+    expect(main.getByRole('button', { name: 'Add column' })).toBeTruthy();
   });
 
   it("shows another user's new card without a reload", async () => {

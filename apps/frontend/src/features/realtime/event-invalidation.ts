@@ -57,6 +57,9 @@ export function invalidationTargets<E extends BoardEventName>(
 ): InvalidationTarget[] {
   const { boardId } = payload;
   switch (event) {
+    case 'board:archived':
+    case 'board:restored':
+      return [boardDetail(boardId), boardList()];
     case 'column:created':
     case 'column:updated':
     case 'column:moved':
@@ -100,5 +103,5 @@ export function invalidationTargets<E extends BoardEventName>(
  * board refetches all of it to catch up on what was missed.
  */
 export function boardResyncTargets(boardId: string): InvalidationTarget[] {
-  return [{ queryKey: boardKeys.detail(boardId) }];
+  return [{ queryKey: boardKeys.detail(boardId) }, boardList()];
 }
