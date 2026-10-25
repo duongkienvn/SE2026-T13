@@ -33,6 +33,7 @@ Tài liệu task được chia theo phần chịu trách nhiệm để dễ tìm
 - [Realtime frontend synchronization](frontend/realtime-frontend.md)
 - [Board presence frontend](frontend/board-presence.md)
 - [Activity History frontend](frontend/activity-history.md)
+- [Sidebar navigation and board creation UX](frontend/app-navigation-board-ux.md)
 
 ## Quy ước
 

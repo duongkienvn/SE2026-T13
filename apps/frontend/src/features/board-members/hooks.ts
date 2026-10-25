@@ -11,13 +11,14 @@ import {
 } from './api';
 import type { AddMemberRequest, UpdateMemberRoleRequest } from './types';
 
-export function useBoardMembers(boardId: string) {
+export function useBoardMembers(boardId: string, { enabled = true } = {}) {
   const { runAuthorized } = useAuth();
   return useQuery({
     queryKey: boardKeys.members(boardId),
     queryFn: ({ signal }) =>
       runAuthorized((token) => listAllMembers(token, boardId, signal)),
     retry: retryUnlessClientError,
+    enabled,
   });
 }
 

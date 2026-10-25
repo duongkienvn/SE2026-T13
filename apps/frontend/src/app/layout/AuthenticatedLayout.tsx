@@ -6,6 +6,7 @@ import {
   useNavigate,
 } from 'react-router';
 import { UserMenu } from '../../features/auth/components/UserMenu';
+import { useBoardMembers } from '../../features/board-members/hooks';
 import { useBoard } from '../../features/boards/hooks';
 import { isBoardUnavailable } from '../../features/boards/pages/BoardDetailPage';
 import { AppShell } from './AppShell';
@@ -23,11 +24,14 @@ export function AuthenticatedLayout() {
   const boardId = useMatches().at(-1)?.params.boardId;
   // Shares the board page's cached query; nothing is shown until it loads.
   const board = useBoard(boardId ?? '', { enabled: !!boardId });
+  // Observe the page's existing member query without issuing another request.
+  // A member-list refusal can arrive before the board's next refresh.
+  const members = useBoardMembers(boardId ?? '', { enabled: false });
+  const unavailable =
+    (board.isError && isBoardUnavailable(board.error)) ||
+    (members.isError && isBoardUnavailable(members.error));
   // Hide a cached name once access to the board is lost.
-  const boardName =
-    board.isError && isBoardUnavailable(board.error)
-      ? undefined
-      : board.data?.name;
+  const boardName = unavailable ? undefined : board.data?.name;
 
   const resolve = (item: NavItem): NavItem => {
     // Board-scoped items (e.g. members) only work inside a board.
@@ -38,9 +42,7 @@ export function AuthenticatedLayout() {
       ? { ...item, path, onSelect: () => navigate(path) }
       : { ...item, path: undefined };
   };
-  const hasBoardAccess =
-    Boolean(boardId && board.data) &&
-    !(board.isError && isBoardUnavailable(board.error));
+  const hasBoardAccess = Boolean(boardId && board.data) && !unavailable;
   const primary = primaryNavItems
     .filter((item) => !item.boardPath || hasBoardAccess)
     .map(resolve);

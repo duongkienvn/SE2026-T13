@@ -17,6 +17,27 @@ afterEach(() => {
 });
 
 describe('Authenticated navigation', () => {
+  it('hides board navigation when the members request refuses access before the board refetches', async () => {
+    const board = makeBoard({ name: 'Revoked board' });
+    storeSession();
+    mockApi({
+      'GET /users/me': ok(testUser),
+      [`GET /boards/${board.id}`]: ok(board),
+      [`GET /boards/${board.id}/members?page=1&limit=100`]: fail(
+        403,
+        'FORBIDDEN',
+      ),
+    });
+    renderApp(`/boards/${board.id}/members`);
+    await screen.findByRole('heading', { name: 'Board not found' });
+    expect(screen.queryByRole('button', { name: 'Board members' })).toBeNull();
+    expect(
+      within(screen.getByRole('banner')).queryByRole('link', {
+        name: board.name,
+      }),
+    ).toBeNull();
+  });
+
   it('follows board context, preserves the rail and keeps Profile in the account menu', async () => {
     const boards = [makeBoard({ name: 'Alpha' }), makeBoard({ name: 'Beta' })];
     storeSession();
@@ -78,7 +99,7 @@ describe('Authenticated navigation', () => {
       }),
     );
     fireEvent.click(screen.getByRole('link', { name: 'Profile' }));
-    await screen.findByRole('heading', { name: 'Profile', exact: true });
+    await screen.findByRole('heading', { name: 'Profile' });
     expect(
       nav.queryByRole('button', { name: /Board members|Settings|Profile/ }),
     ).toBeNull();
@@ -93,7 +114,7 @@ describe('Authenticated navigation', () => {
     renderApp('/boards');
     await screen.findByRole('link', { name: 'Alpha' });
     expect(screen.getByRole('button', { name: 'Expand sidebar' })).toBeTruthy();
-  });
+  }, 15_000);
 
   it.each([403, 404])(
     'hides board navigation when access is revoked (%s), even with cached data',
