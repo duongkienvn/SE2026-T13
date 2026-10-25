@@ -15,18 +15,18 @@
 - Typography: Inter with consistent system fallback.
 - Existing tokens, sampled from current `apps/frontend/src/style.css` at baseline:
 
-| Token | Value | Use |
-|---|---|---|
-| `--color-primary` | `#615CF7` | Primary controls, focus/selected affordances |
-| `--color-primary-hover` | `#4F49E6` | Primary button hover |
-| `--color-primary-soft` | `#F0F2FE` | Selected navigation or accent backgrounds |
-| `--color-app` | `#F7F7F9` | App content canvas |
-| `--color-surface` | `#FFFFFF` | Cards/dialogs/light surfaces |
-| `--color-ink` | `#172038` | Body/headings |
-| `--color-muted` | `#626A83` | Secondary labels |
-| `--color-line` | `#E4E8F1` | Hairline borders/dividers |
-| `--color-danger` | `#D1343A` | Warnings/destructive actions |
-| `--color-success` | `#16803C` | Confirmed success |
+| Token                   | Value     | Use                                          |
+| ----------------------- | --------- | -------------------------------------------- |
+| `--color-primary`       | `#615CF7` | Primary controls, focus/selected affordances |
+| `--color-primary-hover` | `#4F49E6` | Primary button hover                         |
+| `--color-primary-soft`  | `#F0F2FE` | Selected navigation or accent backgrounds    |
+| `--color-app`           | `#F7F7F9` | App content canvas                           |
+| `--color-surface`       | `#FFFFFF` | Cards/dialogs/light surfaces                 |
+| `--color-ink`           | `#172038` | Body/headings                                |
+| `--color-muted`         | `#626A83` | Secondary labels                             |
+| `--color-line`          | `#E4E8F1` | Hairline borders/dividers                    |
+| `--color-danger`        | `#D1343A` | Warnings/destructive actions                 |
+| `--color-success`       | `#16803C` | Confirmed success                            |
 
 The **mockups sometimes skew toward vivid blue**; implementation must normalize to approved Kanvexa indigo tokens. Where source guidelines and screenshots disagree on colors, prefer current approved brand tokens and verify contrast. Do not paste hard-coded screenshot colors into many components.
 

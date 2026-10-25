@@ -24,20 +24,20 @@ Authenticated application frame for every Post-MVP page: brand/header, navigatio
 
 ## 4. Interaction and persistence
 
-| Action/state | Behavior |
-|---|---|
-| Sidebar expand/collapse | User-controlled, restore prior preference without layout flash |
-| Workspace group expand/collapse | Independent remembered state when feasible; available workspaces only |
-| Header search | Opens accessible, keyboard-first search palette once CX-04 exists |
-| Bell | Popover with unread state; full page via `/notifications`, once CX-01 exists |
-| Avatar | Profile, Account Settings, Logout; no payment/account-plan items |
-| Inaccessible Workspace/Board | Remove stale protected titles/links from shell, invalidate data |
-| Unimplemented new feature | No fake clickable link, no generic 'coming soon' masquerading as functionality |
-| Offline/realtime disconnect | Show consistent non-blocking state and safe reconnect behavior |
+| Action/state                    | Behavior                                                                       |
+| ------------------------------- | ------------------------------------------------------------------------------ |
+| Sidebar expand/collapse         | User-controlled, restore prior preference without layout flash                 |
+| Workspace group expand/collapse | Independent remembered state when feasible; available workspaces only          |
+| Header search                   | Opens accessible, keyboard-first search palette once CX-04 exists              |
+| Bell                            | Popover with unread state; full page via `/notifications`, once CX-01 exists   |
+| Avatar                          | Profile, Account Settings, Logout; no payment/account-plan items               |
+| Inaccessible Workspace/Board    | Remove stale protected titles/links from shell, invalidate data                |
+| Unimplemented new feature       | No fake clickable link, no generic 'coming soon' masquerading as functionality |
+| Offline/realtime disconnect     | Show consistent non-blocking state and safe reconnect behavior                 |
 
 ## 5. Explicit exclusions
 
-The reference collage depicts an upsell area and `Free Plan` badges; **these are categorically removed on every breakpoint and theme**. The freed area remains whitespace or reserved for meaningful user navigation, *not* another promotion. Keep official Kanvexa logo rather than stylized mockup artwork. Do not add Billing, Pricing or Pro links.
+The reference collage depicts an upsell area and `Free Plan` badges; **these are categorically removed on every breakpoint and theme**. The freed area remains whitespace or reserved for meaningful user navigation, _not_ another promotion. Keep official Kanvexa logo rather than stylized mockup artwork. Do not add Billing, Pricing or Pro links.
 
 ## 6. Acceptance checks
 

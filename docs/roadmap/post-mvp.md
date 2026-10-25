@@ -10,57 +10,57 @@ Feature group != GitHub issue; each group can require several vertical, reviewab
 
 ### A. Workspace — 4
 
-| ID | Group | Functional scope | Acceptance highlights |
-|---|---|---|---|
-| WS-01 | Workspace Management | Personal/team workspaces; create, rename, describe, icon, leave; one workspace per board; move board with safe permissions | Per-user ownership, no orphan boards, migration-safe |
-| WS-02 | Members & Invitations | Workspace ADMIN/MEMBER; role changes, guest access via board membership, pending email invitations and accept/revoke/expire flows | Invitee verification, one-use tokens, no privilege escalation |
-| WS-03 | Workspace Settings | General, permissions, member/invite policy, danger zone | Admin-only changes, no deletion with remaining boards/adminless workspace |
-| WS-04 | Workspace Overview | Workspace pages for overview, boards, members, settings; counts and recent boards based on accessible data | No leaking hidden private boards or member-only data |
+| ID    | Group                 | Functional scope                                                                                                                  | Acceptance highlights                                                     |
+| ----- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| WS-01 | Workspace Management  | Personal/team workspaces; create, rename, describe, icon, leave; one workspace per board; move board with safe permissions        | Per-user ownership, no orphan boards, migration-safe                      |
+| WS-02 | Members & Invitations | Workspace ADMIN/MEMBER; role changes, guest access via board membership, pending email invitations and accept/revoke/expire flows | Invitee verification, one-use tokens, no privilege escalation             |
+| WS-03 | Workspace Settings    | General, permissions, member/invite policy, danger zone                                                                           | Admin-only changes, no deletion with remaining boards/adminless workspace |
+| WS-04 | Workspace Overview    | Workspace pages for overview, boards, members, settings; counts and recent boards based on accessible data                        | No leaking hidden private boards or member-only data                      |
 
 ### B. Board — 4
 
-| ID | Group | Functional scope | Acceptance highlights |
-|---|---|---|---|
-| BD-01 | Board Customization | Color/photo backgrounds, selection/preview, theme contrast, per-board persistence | Stable responsive UX and readable content |
+| ID    | Group                          | Functional scope                                                                                            | Acceptance highlights                                           |
+| ----- | ------------------------------ | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| BD-01 | Board Customization            | Color/photo backgrounds, selection/preview, theme contrast, per-board persistence                           | Stable responsive UX and readable content                       |
 | BD-02 | Board Visibility & Permissions | PRIVATE (default), WORKSPACE_VISIBLE (workspace read-only unless board member); owner/member rules retained | REST/Socket.IO/server queries honor policy; no anonymous access |
-| BD-03 | Board Settings | Board General, Permissions, Members, Danger Zone; board menu as entry point | Rights checked server side, archived handling |
-| BD-04 | Board Discovery | Star/favorite, recently viewed, search/sort boards, active/archived filtering | User-specific favorites, no access leaks |
+| BD-03 | Board Settings                 | Board General, Permissions, Members, Danger Zone; board menu as entry point                                 | Rights checked server side, archived handling                   |
+| BD-04 | Board Discovery                | Star/favorite, recently viewed, search/sort boards, active/archived filtering                               | User-specific favorites, no access leaks                        |
 
 ### C. Card — 7
 
-| ID | Group | Functional scope | Acceptance highlights |
-|---|---|---|---|
-| CD-01 | Checklists | Multiple checklists, items, reorder, toggle completion and computed progress | Atomic item updates, concurrency/realtime, readable progress |
-| CD-02 | Labels | Workspace/board-aware labels with names/colors; assign multiple to card | Scoped uniqueness/rights, efficient filtering |
-| CD-03 | Attachments | URL and secure file/preview attachments; quotas and ownership, optional object storage | Signed/authorized access, file validation, no public leakage |
-| CD-04 | Advanced Dates | Start date, due date/time, timezone correct presentation and due status | UTC persistence, IANA TZ handling, DST-safe display |
-| CD-05 | Archive/Restore | Browse archived cards, restore when board active, preserve associations | No data loss, ordering/invariants, permission checks |
-| CD-06 | Card Quick Actions & Deep Links | Duplicate card (explicit copy rules); copy/share permalink; `/boards/:boardId/cards/:cardId` direct open | Refresh/back/forward, route guard, no cross-board leakage |
-| CD-07 | Card Search & Filtering | Board-local search/filter by text, member, label, date and supported state | Query parameters, stable column order, clear/reset filters |
+| ID    | Group                           | Functional scope                                                                                         | Acceptance highlights                                        |
+| ----- | ------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| CD-01 | Checklists                      | Multiple checklists, items, reorder, toggle completion and computed progress                             | Atomic item updates, concurrency/realtime, readable progress |
+| CD-02 | Labels                          | Workspace/board-aware labels with names/colors; assign multiple to card                                  | Scoped uniqueness/rights, efficient filtering                |
+| CD-03 | Attachments                     | URL and secure file/preview attachments; quotas and ownership, optional object storage                   | Signed/authorized access, file validation, no public leakage |
+| CD-04 | Advanced Dates                  | Start date, due date/time, timezone correct presentation and due status                                  | UTC persistence, IANA TZ handling, DST-safe display          |
+| CD-05 | Archive/Restore                 | Browse archived cards, restore when board active, preserve associations                                  | No data loss, ordering/invariants, permission checks         |
+| CD-06 | Card Quick Actions & Deep Links | Duplicate card (explicit copy rules); copy/share permalink; `/boards/:boardId/cards/:cardId` direct open | Refresh/back/forward, route guard, no cross-board leakage    |
+| CD-07 | Card Search & Filtering         | Board-local search/filter by text, member, label, date and supported state                               | Query parameters, stable column order, clear/reset filters   |
 
 ### D. Collaboration & Productivity — 4
 
-| ID | Group | Functional scope | Acceptance highlights |
-|---|---|---|---|
+| ID    | Group                    | Functional scope                                                                                           | Acceptance highlights                                                     |
+| ----- | ------------------------ | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | CX-01 | Notifications & Mentions | In-app center, unread/read, assign/mention/invite/due events, user opt-outs, selective email notifications | Per-recipient records, no spam, direct card links, realtime + persistence |
-| CX-02 | My Tasks | Assigned cards across authorized boards, overdue/upcoming/later/no due date, filters/sorting | Never guess completion from `Done` column name; no archive in active list |
-| CX-03 | Home Dashboard | Up Next, summary, starred and recently viewed boards | User-specific authorized data; no speculative analytics |
-| CX-04 | Global Search | Search across authorized workspaces/boards/cards with Ctrl/Cmd+K command palette | Auth-first filtering, debouncing/pagination, deep-link targets |
+| CX-02 | My Tasks                 | Assigned cards across authorized boards, overdue/upcoming/later/no due date, filters/sorting               | Never guess completion from `Done` column name; no archive in active list |
+| CX-03 | Home Dashboard           | Up Next, summary, starred and recently viewed boards                                                       | User-specific authorized data; no speculative analytics                   |
+| CX-04 | Global Search            | Search across authorized workspaces/boards/cards with Ctrl/Cmd+K command palette                           | Auth-first filtering, debouncing/pagination, deep-link targets            |
 
 ### E. Account & Application Settings — 3
 
-| ID | Group | Functional scope | Acceptance highlights |
-|---|---|---|---|
+| ID    | Group                         | Functional scope                                                                                                                        | Acceptance highlights                                                             |
+| ----- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | AC-01 | Security & Account Management | Password reset/change/set (Google-only), verified email change, account data/deletion, session/devices when backed by server revocation | Re-auth, anti-enumeration, expiry/single-use, ownership and data-retention policy |
-| AC-02 | Appearance | Light/Dark/Match System preferences across app | Contrast/accessibility, avoids theme flash, remembers preference |
-| AC-03 | Preferences | Language (once translations exist), IANA timezone, date format, first day of week, notification preferences | Accessible defaults, reliable persistence, security emails unaffected |
+| AC-02 | Appearance                    | Light/Dark/Match System preferences across app                                                                                          | Contrast/accessibility, avoids theme flash, remembers preference                  |
+| AC-03 | Preferences                   | Language (once translations exist), IANA timezone, date format, first day of week, notification preferences                             | Accessible defaults, reliable persistence, security emails unaffected             |
 
 ### F. Data, Views & Experience — 3
 
-| ID | Group | Functional scope | Acceptance highlights |
-|---|---|---|---|
-| DX-01 | Data Export | Authorized Board export to JSON/CSV; account data export handled in account/security flow | No cross-tenant data, safe spreadsheet escaping, full/clear schema |
-| DX-02 | Additional Views | Calendar View and Table View over same Card source of truth | Permission-consistent, no duplicate data model or drifting state |
+| ID    | Group                    | Functional scope                                                                                                          | Acceptance highlights                                              |
+| ----- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| DX-01 | Data Export              | Authorized Board export to JSON/CSV; account data export handled in account/security flow                                 | No cross-tenant data, safe spreadsheet escaping, full/clear schema |
+| DX-02 | Additional Views         | Calendar View and Table View over same Card source of truth                                                               | Permission-consistent, no duplicate data model or drifting state   |
 | DX-03 | Productivity & UX Polish | Shortcuts, accessible interactions, mobile/tablet, empty/loading/error/offline states, onboarding guidance and regression | Keyboard, screen readers, WCAG AA aim, responsiveness, performance |
 
 **Scope clarifications:** Board Templates explicitly excluded. Card Templates, independent Priority, Stickers, Recurrence, Bulk Actions, Card Mirroring, Automation Engine, Enterprise billing and full Public Boards are not approved workstreams. Covers are optional visual enhancement only if specifically scoped and approved. Checklist-item assignees, dedicated completion state and multi-board Card mirroring are **not** implicit.
@@ -73,14 +73,14 @@ On 2026-10-25, PR #85 was merged; public landing-page Issue #84 was still open w
 
 ## 3. Approved implementation phases
 
-| Phase | Goal | Expected workstreams / outputs | Exit criteria |
-|---|---|---|---|
-| 0 — MVP Stabilization & Design Handoff | Confirm stable MVP and implementation-ready design | Regression, pending landing-page closure, CI, backups, visual specs, auth/schema reviews | Release checklist passed; UX specs accepted; security/migration plan reviewed |
-| 1 — Application & Account Foundation | Reusable navigation/account infrastructure | App Shell V2, tokens/theme, settings framework, AC-01 first security flows, AC-03 foundations, Card permalink, Card restore | Auth regression green, user preferences stable, deep links work, card restore consistent |
-| 2 — Workspace & Access Control | Safe multi-workspace domain model | WS-01..04, BD-02 foundations, invite/guest model, Personal Workspace migration, permission matrix | No data loss; access/security matrix proven in REST/Socket.IO; migration rehearsal |
-| 3 — Board & Card Enhancements | Rich task management | BD-01/03/04, CD-01/02/03/04/07, complete CD-05/06 UI and Board/Card V2 | APIs/UI/realtime aligned; file security validated; no board/card regressions |
-| 4 — Productivity & Collaboration | Personalized cross-board productivity | CX-01..04, Home, My Tasks, global search, mentions, notifications | Cross-board filtering ACL-safe; notifications accurate; no unsupported task-complete semantics |
-| 5 — Views, Data & Polish | Complete unified experience | DX-01..03, Calendar/Table, advanced account lifecycle/security tasks, accessibility/performance audit | Export privacy validated, responsive/E2E tests green, rollout/runbook complete |
+| Phase                                  | Goal                                               | Expected workstreams / outputs                                                                                              | Exit criteria                                                                                  |
+| -------------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| 0 — MVP Stabilization & Design Handoff | Confirm stable MVP and implementation-ready design | Regression, pending landing-page closure, CI, backups, visual specs, auth/schema reviews                                    | Release checklist passed; UX specs accepted; security/migration plan reviewed                  |
+| 1 — Application & Account Foundation   | Reusable navigation/account infrastructure         | App Shell V2, tokens/theme, settings framework, AC-01 first security flows, AC-03 foundations, Card permalink, Card restore | Auth regression green, user preferences stable, deep links work, card restore consistent       |
+| 2 — Workspace & Access Control         | Safe multi-workspace domain model                  | WS-01..04, BD-02 foundations, invite/guest model, Personal Workspace migration, permission matrix                           | No data loss; access/security matrix proven in REST/Socket.IO; migration rehearsal             |
+| 3 — Board & Card Enhancements          | Rich task management                               | BD-01/03/04, CD-01/02/03/04/07, complete CD-05/06 UI and Board/Card V2                                                      | APIs/UI/realtime aligned; file security validated; no board/card regressions                   |
+| 4 — Productivity & Collaboration       | Personalized cross-board productivity              | CX-01..04, Home, My Tasks, global search, mentions, notifications                                                           | Cross-board filtering ACL-safe; notifications accurate; no unsupported task-complete semantics |
+| 5 — Views, Data & Polish               | Complete unified experience                        | DX-01..03, Calendar/Table, advanced account lifecycle/security tasks, accessibility/performance audit                       | Export privacy validated, responsive/E2E tests green, rollout/runbook complete                 |
 
 **Dependency nuance:** IDs are ownership buckets, not rigid sequential release gates. A safe independent card feature can ship earlier; a feature crossing workspace authorization cannot bypass Phase 2's access model. Cross-phase work must cite prerequisites explicitly.
 
@@ -123,7 +123,7 @@ Key decisions:
 
 Every feature issue/PR must document:
 
-- Requirement ID(s), scope and *explicit non-goals*, backend/frontend/DB/shared contract impact, UI references.
+- Requirement ID(s), scope and _explicit non-goals_, backend/frontend/DB/shared contract impact, UI references.
 - Actor/permissions, happy path, empty/loading/error/permission-loss/archived states, mobile and keyboard behavior.
 - Acceptance criteria precise enough to test, API contract/schema/migration plan as applicable.
 - Unit/integration/E2E/security tests proportionate to risk; real database tests for migrations/concurrency; REST/Socket.IO permission tests.
@@ -157,5 +157,5 @@ Public/anonymous Boards; Card/Board Templates; Custom Fields; Recurring Cards; d
 
 1. Confirm MVP release state, pending landing page Issue #84, deployment and data backup.
 2. Check Post-MVP design consistency and agree any minor visual token refinements with team.
-3. Write *Phase 0* issues and technical RFCs for workspace migration/ACL and auth/session model.
+3. Write _Phase 0_ issues and technical RFCs for workspace migration/ACL and auth/session model.
 4. Approve phased issues and begin implementation only after explicit authorization.

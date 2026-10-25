@@ -76,14 +76,14 @@ Public landing: / (per existing approved K3 design).
 
 ### Permission matrix (proposed baseline)
 
-| Actor/context | PRIVATE Board read | WORKSPACE_VISIBLE Board read | Edit card/column/comment | Board settings/owner ops | Workspace settings |
-|---|---|---|---|---|---|
-| Board OWNER | Yes | Yes | Yes when active | Yes subject to legacy creator/last-owner rules | Only if Workspace ADMIN |
-| Board MEMBER | Yes | Yes | Yes when active | Limited; owner-only ops not allowed | Only if Workspace ADMIN |
-| Workspace ADMIN, **not** Board member | **No** | Yes, read-only | No | No privileged Board operations by default | Yes |
-| Workspace MEMBER, **not** Board member | No | Yes, read-only | No | No | No |
-| Board Guest with Board membership | Yes | Yes | Yes, per Board role when active | Per Board role | No |
-| Unrelated or unauthenticated user | No | No | No | No | No |
+| Actor/context                          | PRIVATE Board read | WORKSPACE_VISIBLE Board read | Edit card/column/comment        | Board settings/owner ops                       | Workspace settings      |
+| -------------------------------------- | ------------------ | ---------------------------- | ------------------------------- | ---------------------------------------------- | ----------------------- |
+| Board OWNER                            | Yes                | Yes                          | Yes when active                 | Yes subject to legacy creator/last-owner rules | Only if Workspace ADMIN |
+| Board MEMBER                           | Yes                | Yes                          | Yes when active                 | Limited; owner-only ops not allowed            | Only if Workspace ADMIN |
+| Workspace ADMIN, **not** Board member  | **No**             | Yes, read-only               | No                              | No privileged Board operations by default      | Yes                     |
+| Workspace MEMBER, **not** Board member | No                 | Yes, read-only               | No                              | No                                             | No                      |
+| Board Guest with Board membership      | Yes                | Yes                          | Yes, per Board role when active | Per Board role                                 | No                      |
+| Unrelated or unauthenticated user      | No                 | No                           | No                              | No                                             | No                      |
 
 **Extra access rules:** Archived Board is read-only to anyone otherwise authorized; only permitted Board OWNER can restore. Archived Card is read-only until authorized restore on active Board. Workspace-visible read-only users cannot comment, assign, move, drag, change checklist or mutate attachments. Aggregate/search/notifications/export must use the same authoritative access policy. Existing OWNER/MEMBER behavior must not be silently widened.
 
