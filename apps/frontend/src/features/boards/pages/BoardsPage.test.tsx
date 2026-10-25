@@ -6,7 +6,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { makeBoard, okPage } from '../../../test/board-fixtures';
 import {
   fail,
@@ -21,7 +21,46 @@ import { renderApp } from '../../../test/render';
 const PAGE_1 = 'GET /boards?page=1&limit=100';
 const PAGE_2 = 'GET /boards?page=2&limit=100';
 
-afterEach(() => focusManager.setFocused(undefined));
+afterEach(() => {
+  focusManager.setFocused(undefined);
+  vi.restoreAllMocks();
+  localStorage.removeItem('kanvexa.sidebar.expanded');
+});
+
+/** Control actual geometry/ResizeObserver; keep the real useFitGrid hook. */
+function gridLayout({ width = 300, height = 300, rowHeight = 136 } = {}) {
+  const size = { width, height, rowHeight };
+  const observers = new Set<() => void>();
+  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(
+    () => size.width,
+  );
+  vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(
+    () => size.height,
+  );
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+    function (this: HTMLElement) {
+      return {
+        height: 'fitRow' in this.dataset ? size.rowHeight : 0,
+      } as DOMRect;
+    },
+  );
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      constructor(private readonly callback: () => void) {}
+      observe() {
+        observers.add(this.callback);
+      }
+      disconnect() {
+        observers.delete(this.callback);
+      }
+    },
+  );
+  return {
+    size,
+    measure: () => act(() => observers.forEach((callback) => callback())),
+  };
+}
 
 function openBoards(
   handlers: Record<string, MockResponse | (() => MockResponse)>,
@@ -33,6 +72,118 @@ function openBoards(
 }
 
 describe('BoardsPage', () => {
+  it.each(['synchronous', 'deferred'])(
+    'preserves cached page 5 on Back with %s measurement (fallback 12, actual 2)',
+    async (timing) => {
+      const layout = gridLayout();
+      const boards = fourteenBoards();
+      const selected = boards[8];
+      let listReads = 0;
+      let finishRefresh!: (response: MockResponse) => void;
+      const refresh = new Promise<MockResponse>((resolve) => {
+        finishRefresh = resolve;
+      });
+      storeSession();
+      mockApi({
+        'GET /users/me': ok(testUser),
+        [PAGE_1]: () => (++listReads === 1 ? okPage(boards) : refresh),
+        [`GET /boards/${selected.id}`]: ok(selected),
+        ...Object.fromEntries(
+          ['columns', 'cards', 'members'].map((resource) => [
+            `GET /boards/${selected.id}/${resource}?page=1&limit=100`,
+            okPage([]),
+          ]),
+        ),
+      });
+      const { router } = renderApp('/boards?view=grid');
+      fireEvent.click(await screen.findByRole('button', { name: 'Page 5' }));
+      fireEvent.click(await screen.findByRole('link', { name: 'Item 09' }));
+      await screen.findByRole('heading', { name: 'Item 09' });
+
+      // Remount with cached data; the initial render still uses the fallback.
+      if (timing === 'deferred') layout.size.width = 0;
+      await act(() => router.navigate(-1));
+      expect(router.state.location.search).toBe('?view=grid&page=5');
+      expect(listReads).toBe(2);
+      if (timing === 'deferred') {
+        // Fallback 4 x 3 = 12 temporarily renders the last two of fourteen boards.
+        expect(screen.getByRole('link', { name: 'Item 14' })).toBeTruthy();
+        expect(screen.queryByRole('link', { name: 'Item 09' })).toBeNull();
+
+        // Width alone must not unlock URL clamping while row height is unknown.
+        layout.size.width = 300;
+        layout.size.rowHeight = 0;
+        layout.measure();
+        expect(router.state.location.search).toBe('?view=grid&page=5');
+        layout.size.rowHeight = 136;
+        layout.measure();
+      }
+      expect(screen.getByRole('link', { name: 'Item 09' })).toBeTruthy();
+      expect(screen.getByRole('link', { name: 'Item 10' })).toBeTruthy();
+      expect(router.state.location.search).toBe('?view=grid&page=5');
+      expect(
+        screen
+          .getByRole('button', { name: 'Page 5' })
+          .getAttribute('aria-current'),
+      ).toBe('page');
+      await act(async () => {
+        finishRefresh(okPage(boards));
+        await refresh;
+      });
+      expect(router.state.location.search).toBe('?view=grid&page=5');
+    },
+  );
+
+  it('waits for row measurement before clamping an invalid page, and keeps unrelated parameters', async () => {
+    const layout = gridLayout({ rowHeight: 0 });
+    storeSession();
+    mockApi({
+      'GET /users/me': ok(testUser),
+      [PAGE_1]: okPage(fourteenBoards()),
+    });
+    const { router } = renderApp('/boards?page=99&view=grid');
+    await screen.findByRole('link', { name: 'Item 14' });
+    expect(router.state.location.search).toBe('?page=99&view=grid');
+    layout.size.rowHeight = 136;
+    layout.measure();
+    await waitFor(() =>
+      expect(router.state.location.search).toBe('?page=7&view=grid'),
+    );
+    expect(screen.getByRole('link', { name: 'Item 13' })).toBeTruthy();
+  });
+
+  it('normalizes an empty loaded list without waiting for a row that does not exist', async () => {
+    storeSession();
+    mockApi({ 'GET /users/me': ok(testUser), [PAGE_1]: okPage([]) });
+    const { router } = renderApp('/boards?page=5&view=grid');
+    await screen.findByRole('heading', { name: 'No boards yet' });
+    await waitFor(() =>
+      expect(router.state.location.search).toBe('?view=grid'),
+    );
+    expect(
+      screen.queryByRole('navigation', { name: 'Boards pages' }),
+    ).toBeNull();
+  });
+
+  it('uses measured capacity when sidebar toggles change the available width', async () => {
+    // Two rows: expanded has one column; collapsed has two columns.
+    const layout = gridLayout();
+    const { router } = openBoards({ [PAGE_1]: okPage(fourteenBoards()) });
+    fireEvent.click(await screen.findByRole('button', { name: 'Page 5' }));
+    await screen.findByRole('link', { name: 'Item 09' });
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+    layout.size.width = 600;
+    layout.measure();
+    await waitFor(() => expect(router.state.location.search).toBe('?page=4'));
+    expect(screen.getByRole('link', { name: 'Item 13' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Expand sidebar' }));
+    layout.size.width = 300;
+    layout.measure();
+    expect(router.state.location.search).toBe('?page=4');
+    expect(screen.getByRole('link', { name: 'Item 07' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Page 7' })).toBeTruthy();
+  });
+
   it('keeps creation hidden and preserves the requested page throughout initial loading', async () => {
     let finish!: (response: MockResponse) => void;
     const response = new Promise<MockResponse>((resolve) => {
@@ -58,8 +209,9 @@ describe('BoardsPage', () => {
   });
 
   it('clamps after boards disappear and returns to the single empty-state action', async () => {
+    gridLayout({ width: 900, height: 600 });
     let count = 13;
-    openBoards({
+    const { router } = openBoards({
       [PAGE_1]: () =>
         okPage(
           Array.from({ length: count }, (_, i) =>
@@ -77,6 +229,7 @@ describe('BoardsPage', () => {
       });
     refocus();
     await screen.findByRole('link', { name: 'Project 1' });
+    await waitFor(() => expect(router.state.location.search).toBe(''));
     expect(
       screen.queryByRole('navigation', { name: 'Boards pages' }),
     ).toBeNull();
@@ -334,6 +487,7 @@ describe('BoardsPage', () => {
   });
 
   it('opens the page from the URL and clamps it to the last page', async () => {
+    gridLayout({ width: 900, height: 600 });
     storeSession();
     mockApi({
       'GET /users/me': ok(testUser),

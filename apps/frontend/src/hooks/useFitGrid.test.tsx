@@ -8,7 +8,9 @@ function Probe(options: FitGridOptions) {
     <div ref={fit.ref}>
       <div data-fit-fixed />
       <div data-fit-row />
-      <output>{`${fit.rows}x${fit.columns}=${fit.pageSize}`}</output>
+      <output
+        data-measured={fit.isMeasured}
+      >{`${fit.rows}x${fit.columns}=${fit.pageSize}`}</output>
     </div>
   );
 }
@@ -70,6 +72,52 @@ describe('useFitGrid', () => {
   it('uses the fallback until the layout can be measured', () => {
     render(<Probe fallbackRows={4} maxColumns={3} minColumnWidth={280} />);
     expect(screen.getByRole('status').textContent).toBe('4x3=12');
+    expect(screen.getByRole('status').getAttribute('data-measured')).toBe(
+      'false',
+    );
+  });
+
+  it('requires a row height, even when container width is known and the final size equals the fallback', () => {
+    stubLayout({ width: 900, height: 400 });
+    let rowHeight = 0;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      function (this: HTMLElement) {
+        return { height: 'fitRow' in this.dataset ? rowHeight : 0 } as DOMRect;
+      },
+    );
+    const view = render(
+      <Probe fallbackRows={4} maxColumns={3} minColumnWidth={280} />,
+    );
+    expect(screen.getByRole('status').textContent).toBe('4x3=12');
+    expect(screen.getByRole('status').getAttribute('data-measured')).toBe(
+      'false',
+    );
+    rowHeight = 100;
+    view.rerender(
+      <Probe fallbackRows={4} maxColumns={3} minColumnWidth={280} />,
+    );
+    expect(screen.getByRole('status').textContent).toBe('4x3=12');
+    expect(screen.getByRole('status').getAttribute('data-measured')).toBe(
+      'true',
+    );
+    rowHeight = 0;
+    view.rerender(
+      <Probe fallbackRows={4} maxColumns={3} minColumnWidth={280} />,
+    );
+    expect(screen.getByRole('status').getAttribute('data-measured')).toBe(
+      'false',
+    );
+  });
+
+  it.each([
+    { width: 0, height: 400 },
+    { width: 900, height: 0 },
+  ])('does not complete measurement with a zero-size container: %o', (size) => {
+    stubLayout(size);
+    render(<Probe fallbackRows={4} maxColumns={3} minColumnWidth={280} />);
+    expect(screen.getByRole('status').getAttribute('data-measured')).toBe(
+      'false',
+    );
   });
 
   it('counts the rows that fit below the fixed parts', () => {
@@ -77,6 +125,9 @@ describe('useFitGrid', () => {
     render(<Probe fallbackRows={1} />);
     // (500 - 50 header) / 100 per row = 4 rows.
     expect(screen.getByRole('status').textContent).toBe('4x1=4');
+    expect(screen.getByRole('status').getAttribute('data-measured')).toBe(
+      'true',
+    );
   });
 
   it('accounts for gaps, reserved space and column width', () => {

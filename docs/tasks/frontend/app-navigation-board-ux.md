@@ -63,8 +63,10 @@ Archive/Edit controls and OWNER/MEMBER behavior are retained.
 
 `CREATE_TILE` and its only component consumer were removed. `paginate` receives
 the filtered Board array directly. Out-of-range pages are reflected back into
-`?page=` only after data loads, preserving unrelated query parameters. Initial
-loading does not discard a requested page. Search still returns to page 1.
+`?page=` only after data loads and the grid measures its container and row
+height, preserving unrelated query parameters. Empty results can normalize to
+page 1 without a row. Initial loading and fallback layout do not discard a
+requested page. Search still returns to page 1.
 
 `useFitGrid` already observes the content container with ResizeObserver. Its
 production implementation needed no change: sidebar width changes trigger a
@@ -87,6 +89,55 @@ All source/test paths below are under `apps/frontend/src/`:
   `docs/design/screens/implementation/app-navigation-board-ux/`, linked below.
 
 ## Automated verification
+
+### PR #85: completed grid measurement before URL normalization
+
+The P2 review identified a cached-list Back navigation race: the initial
+4-row/3-column fallback gives 12 boards per page. For 14 cached boards, it
+incorrectly normalizes a valid `?page=5` to page 2 before the actual two-board
+capacity is measured. A layout-effect update does not cancel a passive effect
+captured by the earlier render.
+
+`useFitGrid` now exposes the additive `isMeasured` result. It becomes true only
+after reading a nonzero container width/height and row height, including when
+the measured capacity happens to equal the fallback. Width-only measurements
+remain incomplete. Unmeasurable containers/rows clear the flag. Other consumers
+keep the existing rows, columns, pageSize and ref behavior.
+
+BoardsPage waits for loaded data and this completed measurement before
+normalizing a nonempty result. A genuinely empty loaded/filter result can
+normalize to page 1 without waiting for a nonexistent row. There are no timers
+or special page sizes in the production fix.
+
+Regression tests use the real hook with controlled geometry/ResizeObserver:
+cached list → board → Back to page 5, both synchronous and deferred measurement;
+fallback 12 → measured 2; partial width-only measurement; invalid page 99 → 7;
+empty data; preserved unrelated query parameters; and capacity changes while
+toggling the sidebar. Existing jsdom tests that expect URL normalization now
+provide actual row/container geometry rather than treating fallback as measured.
+
+Follow-up verification on 25 October 2026:
+
+- Before the fix, the cached Back regression failed with `?page=2` instead of
+  `?page=5`; the incomplete-measurement invalid-page regression also failed.
+- Targeted hook/BoardsPage/BoardManagement/BoardMembersPage: **65 tests passed**.
+- `pnpm lint`, `pnpm build`, changed-file Prettier with `--end-of-line auto`
+  and `git diff --check`: passed. Existing build warnings remain.
+- `pnpm test`: **588 frontend tests passed, 3 unchanged auth tests failed**
+  (the ProfilePage status query and two RegisterPage status queries described
+  below); shared tests passed. No auth tests/configuration were changed.
+- `pnpm format:check`: reported **469 files** in the current checkout, including
+  files outside this follow-up. Unrelated formatting review feedback on the
+  landing-page design documentation was left outside this pagination fix.
+- Chrome with synthetic APIs and 14 boards: at 390×700, page 5 shows boards
+  9–10 and survives opening a board then browser Back; instrumented history
+  recorded no replacement URL. Page 99 normalizes to 7 with `view=grid` intact.
+  At 1040×600, collapsing the sidebar changes capacity from 4 to 6 and clamps
+  page 4 to page 3. Inspected screenshots had no main overflow; console checks
+  after navigation were clean. This verifies browser rendering/history with
+  fixture data, not backend authentication end-to-end behavior.
+
+### Initial Issue #81 verification
 
 Executed on Windows on 25 October 2026:
 

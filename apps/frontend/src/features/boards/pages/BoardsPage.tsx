@@ -74,10 +74,14 @@ export function BoardsPage() {
   const shown = paginate(visible, page, fit.pageSize);
 
   // Keep the URL in sync when data or available grid space removes a page.
-  // Do not clamp against the empty placeholder before the first load finishes.
+  // Cached data may arrive before the grid measures its rows. A fallback page
+  // size can hide valid saved pages, so only normalize after a complete measure.
+  // Empty results need no row measurement to know that only page 1 exists.
   useEffect(() => {
-    if (boards.data && page !== shown.page) setPage(shown.page);
-  }, [boards.data, page, shown.page, setPage]);
+    if (boards.data === undefined || (visible.length > 0 && !fit.isMeasured))
+      return;
+    if (page !== shown.page) setPage(shown.page);
+  }, [boards.data, fit.isMeasured, visible.length, page, shown.page, setPage]);
 
   const openCreate = () => {
     setNotice(undefined);
