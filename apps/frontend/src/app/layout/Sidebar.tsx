@@ -1,7 +1,8 @@
-import { useId, useState } from 'react';
+import { useId } from 'react';
 import { BrandLogo } from '../../components/Brand';
 import { ChevronRightIcon } from '../../components/icons';
 import type { NavItem } from './navigation';
+import { useSidebarPreference } from './useSidebarPreference';
 
 interface SidebarProps {
   primaryItems: NavItem[];
@@ -14,7 +15,7 @@ export function Sidebar({
   secondaryItems,
   activeItemId,
 }: SidebarProps) {
-  const [expanded, setExpanded] = useState(true);
+  const { expanded, desktop, toggle } = useSidebarPreference();
   const itemsId = useId();
   return (
     <nav
@@ -32,11 +33,18 @@ export function Sidebar({
       <button
         type="button"
         aria-label={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
-        title={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
+        title={
+          !desktop
+            ? 'Sidebar stays compact on narrow screens'
+            : expanded
+              ? 'Collapse sidebar'
+              : 'Expand sidebar'
+        }
         aria-expanded={expanded}
         aria-controls={itemsId}
-        onClick={() => setExpanded((value) => !value)}
-        className="mx-1 my-2 flex min-h-10 shrink-0 items-center justify-center gap-3 rounded-lg text-sm text-muted hover:bg-app hover:text-ink focus-visible:outline-2 focus-visible:outline-primary"
+        disabled={!desktop}
+        onClick={toggle}
+        className="mx-1 my-2 flex min-h-10 shrink-0 items-center justify-center gap-3 rounded-lg text-sm text-muted enabled:hover:bg-app enabled:hover:text-ink focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50"
       >
         <ChevronRightIcon
           className={`size-5 shrink-0 ${expanded ? 'rotate-180' : ''}`}
