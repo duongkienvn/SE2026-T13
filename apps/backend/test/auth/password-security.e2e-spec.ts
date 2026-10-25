@@ -27,12 +27,19 @@ describe('password security HTTP validation and throttling', () => {
         { provide: PasswordSecurityService, useValue: security },
         {
           provide: AuthService,
-          useValue: { authenticateAccessToken: jest.fn() },
+          useValue: {
+            authenticateAccessToken: jest.fn(async (token: string) => ({
+              userId: token === 'other' ? 'other' : 'user',
+              authVersion: 0,
+              expiresAt: Date.now() + 60_000,
+            })),
+          },
         },
         { provide: APP_GUARD, useClass: HttpThrottlerGuard },
       ],
     }).compile();
     app = module.createNestApplication();
+    app.getHttpAdapter().getInstance().set('trust proxy', 1);
     app.useGlobalPipes(createValidationPipe());
     app.useGlobalFilters(
       new GlobalExceptionFilter({ error: jest.fn() } as unknown as Logger),
@@ -83,5 +90,27 @@ describe('password security HTTP validation and throttling', () => {
       .send({ email: 'invalid' })
       .expect(429);
     expect(security.send).not.toHaveBeenCalled();
+  });
+  it('limits authenticated password guesses by account across different IPs', async () => {
+    for (let i = 0; i < 5; i++)
+      await request(app.getHttpServer())
+        .post('/auth/change-password')
+        .set('Authorization', 'Bearer user')
+        .set('X-Forwarded-For', `192.0.2.${i + 1}`)
+        .send({ currentPassword: 'old', newPassword: 'weak' })
+        .expect(400);
+    await request(app.getHttpServer())
+      .post('/auth/change-password')
+      .set('Authorization', 'Bearer user')
+      .set('X-Forwarded-For', '192.0.2.10')
+      .send({ currentPassword: 'old', newPassword: 'weak' })
+      .expect(429);
+    await request(app.getHttpServer())
+      .post('/auth/change-password')
+      .set('Authorization', 'Bearer other')
+      .set('X-Forwarded-For', '192.0.2.11')
+      .send({ currentPassword: 'old', newPassword: 'weak' })
+      .expect(400);
+    expect(security.change).not.toHaveBeenCalled();
   });
 });

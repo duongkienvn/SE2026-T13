@@ -59,6 +59,7 @@ describe('AccountSecurity', () => {
     await screen.findByRole('heading', { name: 'Welcome back' });
     expect(await screen.findByText(/Password updated/)).toBeTruthy();
     expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(calls.some((call) => call.path === '/auth/logout')).toBe(false);
     expect(
       calls.find((call) => call.path === '/auth/change-password'),
     ).toMatchObject({

@@ -17,6 +17,7 @@ import {
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { AuthenticatedUser } from './constants/auth.constants';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { PasswordChangeThrottlerGuard } from './guards/password-change-throttler.guard';
 
 export const RECOVERY_ACKNOWLEDGEMENT =
   'If this email is eligible, a recovery link may arrive. Delivery may be delayed or unavailable; try again after 60 seconds.';
@@ -68,7 +69,7 @@ export class PasswordSecurityController {
 
   @Post('change-password')
   @HttpCode(204)
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PasswordChangeThrottlerGuard)
   @Throttle({ default: { limit: 5, ttl: 300_000 } })
   @ApiBearerToken()
   @ApiNoContent({

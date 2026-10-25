@@ -54,6 +54,7 @@ describe('board-members HTTP contract', () => {
     email: 'member@example.com',
     displayName: 'Member',
     avatarUrl: null,
+    authVersion: 0,
     emailVerifiedAt: new Date(),
     createdAt: new Date('2026-10-13T00:00:00Z'),
     updatedAt: new Date('2026-10-13T00:00:00Z'),
@@ -140,7 +141,7 @@ describe('board-members HTTP contract', () => {
       async ({ where }: { where: { id?: string; email?: string } }) => {
         if (where.email === memberUser.email) return memberUser;
         return where.id && [OWNER, MEMBER, OUTSIDER].includes(where.id)
-          ? { id: where.id, emailVerifiedAt: new Date() }
+          ? { id: where.id, authVersion: 0, emailVerifiedAt: new Date() }
           : null;
       },
     );

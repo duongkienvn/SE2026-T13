@@ -41,7 +41,7 @@ export function ResetPasswordPage() {
               replace: true,
               state: { passwordUpdated: true },
             });
-            if (status !== 'anonymous') signOut();
+            if (status !== 'anonymous') signOut({ notifyServer: false });
           }}
         />
       ) : (

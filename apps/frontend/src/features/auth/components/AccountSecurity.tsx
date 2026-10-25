@@ -64,7 +64,7 @@ export function AccountSecurity() {
               if (!scope.isCurrent()) return;
               // Settle RequireAuth's logout redirect before replacing it with
               // one-time confirmation; otherwise its effect can overwrite state.
-              flushSync(() => signOut());
+              flushSync(() => signOut({ notifyServer: false }));
               navigate('/login', {
                 replace: true,
                 state: { passwordUpdated: true },

@@ -47,7 +47,7 @@ describe('RegisterPage', () => {
     expect(within(list).getAllByText('Not met:')).toHaveLength(2);
     fireEvent.change(password, { target: { value: 'ABC1234!' } });
     expect(within(list).getAllByText('Met:')).toHaveLength(4);
-    expect(screen.getByRole('status').textContent).toContain('4 of 4');
+    expect(screen.getByText(/4 of 4 password requirements met/)).toBeTruthy();
     fireEvent.change(password, { target: { value: '' } });
     expect(within(list).getAllByRole('listitem')).toHaveLength(4);
     expect(within(list).getAllByText('Not met:')).toHaveLength(4);
@@ -91,9 +91,7 @@ describe('RegisterPage', () => {
     });
     expect(screen.getByText('Maximum 128 characters')).toBeTruthy();
     expect(screen.getByText('129/128')).toBeTruthy();
-    expect(screen.getByRole('status').textContent).toContain(
-      'Password exceeds 128 characters.',
-    );
+    expect(screen.getByText(/Password exceeds 128 characters\./)).toBeTruthy();
   });
 
   it('blocks a confirmation mismatch even when the password satisfies every requirement', () => {
