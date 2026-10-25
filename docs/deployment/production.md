@@ -107,7 +107,7 @@ Down refuses if identities or passwordless accounts exist; after first use,
 prefer a compatible forward fix. Disabling Google configuration does not make an
 old application version compatible with passwordless users. Keep the new schema
 and rehearse a compatible application rollback; never delete accounts to force a
-revert. Follow [Google setup, migration and manual gates](../tasks/google-auth-account-linking.md)
+revert. Follow [Google setup, migration and manual gates](../tasks/backend/google-auth-account-linking.md)
 including off-instance backup/restore rehearsal before rollout.
 
 Caddy now serves `Cross-Origin-Opener-Policy: same-origin-allow-popups` and
@@ -123,7 +123,7 @@ server secret), `MAIL_FROM="Kanvexa <no-reply@kanvexa.tech>"`, and
 env before approving the K2 release; never put them in Vite variables/build args or
 GitHub logs. Production validates them at startup and uses Resend HTTPS, without
 an SMTP fallback. The migration tool does not consume the mail credentials.
-See [K2 rollout and recovery](../tasks/email-verification.md) for backfill, backup,
+See [K2 rollout and recovery](../tasks/backend/email-verification.md) for backfill, backup,
 dry-run and real-inbox verification. No real email is sent by automated tests.
 
 Development `.env` and `docker-compose.yml` remain unchanged. Always explicitly

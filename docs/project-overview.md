@@ -13,7 +13,7 @@ Xây dựng ứng dụng Kanban cộng tác theo thời gian thực: nhiều th�
 - Đăng ký, đăng nhập, đăng xuất.
 - Google Sign-In thuộc MVP (#79), dùng chung Kanvexa JWT; liên kết tài khoản
   password hiện có phải qua password reauthentication tường minh. Không tự gộp
-  theo email; xem [Google authentication](tasks/google-auth-account-linking.md).
+  theo email; xem [Google authentication](tasks/backend/google-auth-account-linking.md).
 - Xem và cập nhật thông tin profile cơ bản.
 
 ### Board và thành viên

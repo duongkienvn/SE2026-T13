@@ -21,7 +21,7 @@ ASCII `A–Z`, một chữ số ASCII `0–9` và một punctuation/symbol Unico
 bắt buộc chữ thường; whitespace được phép nhưng không tính là ký tự đặc biệt.
 Chỉ registration mới áp dụng policy này. Login của tài khoản cũ giữ nguyên;
 không thay đổi password hash hoặc vô hiệu hóa tài khoản có mật khẩu yếu hơn.
-Xem [registration password policy](../auth-registration-password-policy.md)
+Xem [registration password policy](auth-registration-password-policy.md)
 cho chi tiết validation và verification.
 
 Login giới hạn 10 requests/60 giây/IP; register giới hạn 5 requests/300 giây/IP. Rate limit là in-memory theo process và không dùng `X-Forwarded-For` khi server chưa cấu hình trusted proxy.

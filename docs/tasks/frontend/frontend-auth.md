@@ -27,7 +27,7 @@ qua `aria-describedby`. Show/hide và Confirm Password giữ nguyên.
 
 Chỉ password đăng ký mới áp dụng policy; không bắt buộc chữ thường và không
 trim/normalize password. Login vẫn chấp nhận password cũ. Chi tiết và kết quả
-verification tại [task record](../auth-registration-password-policy.md).
+verification tại [task record](../backend/auth-registration-password-policy.md).
 
 ## Quyết định về session và bảo mật
 

@@ -93,7 +93,7 @@ Trong các bảng dưới đây, `Không` ở cột Nullable nghĩa là `NOT NUL
 giữ quan hệ một user–một Google identity. FK `user_id → users.id` dùng NO ACTION,
 không âm thầm xóa identity khi xóa user. Auth entities không làm thay đổi quan hệ
 board/card. Migration `1792850400000-GoogleIdentity` giữ hash hiện có; down khóa
-bảng và từ chối nếu còn identity hoặc NULL password. Xem [transaction và rollback](../tasks/google-auth-account-linking.md).
+bảng và từ chối nếu còn identity hoặc NULL password. Xem [transaction và rollback](../tasks/backend/google-auth-account-linking.md).
 
 ### `boards`
 
