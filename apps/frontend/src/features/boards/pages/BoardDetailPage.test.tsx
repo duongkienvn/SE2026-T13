@@ -97,7 +97,7 @@ describe('BoardDetailPage', () => {
     expect(router.state.location.pathname).toBe(`/boards/${board.id}/members`);
   });
 
-  it('keeps Board members disabled outside a board', async () => {
+  it('hides Board members outside a board', async () => {
     storeSession();
     mockApi({
       'GET /users/me': ok(testUser),
@@ -107,10 +107,8 @@ describe('BoardDetailPage', () => {
 
     const nav = await screen.findByRole('navigation', { name: 'Primary' });
     expect(
-      within(nav)
-        .getByRole('button', { name: 'Board members (coming soon)' })
-        .getAttribute('aria-disabled'),
-    ).toBe('true');
+      within(nav).queryByRole('button', { name: /Board members/ }),
+    ).toBeNull();
   });
 
   it('offers edit and archive to owners only', async () => {

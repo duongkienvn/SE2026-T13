@@ -38,7 +38,12 @@ export function AuthenticatedLayout() {
       ? { ...item, path, onSelect: () => navigate(path) }
       : { ...item, path: undefined };
   };
-  const primary = primaryNavItems.map(resolve);
+  const hasBoardAccess =
+    Boolean(boardId && board.data) &&
+    !(board.isError && isBoardUnavailable(board.error));
+  const primary = primaryNavItems
+    .filter((item) => !item.boardPath || hasBoardAccess)
+    .map(resolve);
   const secondary = secondaryNavItems.map(resolve);
 
   // Most specific match wins: /boards/1/members highlights Members, not Boards.

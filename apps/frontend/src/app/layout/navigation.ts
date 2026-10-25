@@ -1,10 +1,5 @@
 import type { ComponentType } from 'react';
-import {
-  FolderIcon,
-  SettingsIcon,
-  UsersIcon,
-  type IconProps,
-} from '../../components/icons';
+import { FolderIcon, UsersIcon, type IconProps } from '../../components/icons';
 
 export interface NavItem {
   id: string;
@@ -28,11 +23,5 @@ export const primaryNavItems: NavItem[] = [
   },
 ];
 
-export const secondaryNavItems: NavItem[] = [
-  {
-    id: 'settings',
-    label: 'Profile settings',
-    icon: SettingsIcon,
-    path: '/profile',
-  },
-];
+// Profile remains available from the header account menu.
+export const secondaryNavItems: NavItem[] = [];
