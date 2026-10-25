@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
+import { ClosingCta } from '../components/ClosingCta';
 import { FeaturesSection } from '../components/FeaturesSection';
 import { HowItWorksSection } from '../components/HowItWorksSection';
+import { LandingFooter } from '../components/LandingFooter';
 import { LandingHeader } from '../components/LandingHeader';
 import { LandingHero } from '../components/LandingHero';
 import { WhyKanvexaSection } from '../components/WhyKanvexaSection';
@@ -39,7 +41,9 @@ export function LandingPage() {
         <FeaturesSection />
         <HowItWorksSection />
         <WhyKanvexaSection />
+        <ClosingCta session={session} />
       </main>
+      <LandingFooter session={session} />
     </div>
   );
 }

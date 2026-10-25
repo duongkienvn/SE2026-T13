@@ -129,6 +129,62 @@ describe('LandingPage', () => {
     expect(document.body.textContent).not.toMatch(/invit/i);
   });
 
+  it('ends with a sign-up call to action and a footer of real links', () => {
+    mockApi({});
+    renderApp('/');
+
+    const cta = screen
+      .getByRole('heading', { name: 'Ready to work better together?' })
+      .closest('section') as HTMLElement;
+    expect(
+      within(cta)
+        .getByRole('link', { name: 'Get started' })
+        .getAttribute('href'),
+    ).toBe('/register');
+    expect(
+      within(cta).getByRole('link', { name: 'Log in' }).getAttribute('href'),
+    ).toBe('/login');
+
+    const footer = within(screen.getByRole('contentinfo'));
+    expect(
+      footer.getAllByRole('link').map((link) => link.getAttribute('href')),
+    ).toEqual([
+      '#features',
+      '#how-it-works',
+      '#why-kanvexa',
+      '/login',
+      '/register',
+      'https://github.com/duongkienvn/SE2026-T13',
+    ]);
+    const github = footer.getByRole('link', { name: /GitHub/ });
+    expect(github.getAttribute('target')).toBe('_blank');
+    expect(github.getAttribute('rel')).toBe('noopener noreferrer');
+  });
+
+  it('points the closing call to action and footer at Boards once signed in', async () => {
+    storeSession();
+    mockApi({ 'GET /users/me': ok(testUser) });
+    renderApp('/');
+
+    const cta = (
+      await screen.findByRole('heading', {
+        name: 'Ready to work better together?',
+      })
+    ).closest('section') as HTMLElement;
+    expect(
+      (
+        await within(cta).findByRole('link', { name: 'Go to your boards' })
+      ).getAttribute('href'),
+    ).toBe('/boards');
+    expect(within(cta).queryByRole('link', { name: 'Log in' })).toBeNull();
+
+    const footer = within(screen.getByRole('contentinfo'));
+    expect(
+      footer.getByRole('link', { name: 'Your boards' }).getAttribute('href'),
+    ).toBe('/boards');
+    expect(footer.queryByRole('link', { name: 'Sign up' })).toBeNull();
+  });
+
   it('links the three header anchors to three distinct sections', () => {
     mockApi({});
     renderApp('/');
