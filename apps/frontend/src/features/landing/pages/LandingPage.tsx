@@ -3,7 +3,7 @@ import { FeaturesSection } from '../components/FeaturesSection';
 import { HowItWorksSection } from '../components/HowItWorksSection';
 import { LandingHeader } from '../components/LandingHeader';
 import { LandingHero } from '../components/LandingHero';
-import { landingContainer, landingSection } from '../components/layout';
+import { WhyKanvexaSection } from '../components/WhyKanvexaSection';
 import { LANDING_TITLE } from '../sections';
 import { useLandingSession } from '../useLandingSession';
 
@@ -38,15 +38,7 @@ export function LandingPage() {
         <LandingHero session={session} />
         <FeaturesSection />
         <HowItWorksSection />
-        <section
-          id="why-kanvexa"
-          aria-labelledby="why-kanvexa-title"
-          className={`${landingSection} ${landingContainer} py-16`}
-        >
-          <h2 id="why-kanvexa-title" className="text-3xl font-bold">
-            A better way to manage your work
-          </h2>
-        </section>
+        <WhyKanvexaSection />
       </main>
     </div>
   );

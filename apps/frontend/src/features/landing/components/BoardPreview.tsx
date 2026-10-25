@@ -31,9 +31,9 @@ const COLUMNS: PreviewColumn[] = [
         title: 'Design landing page',
         description: 'Hero, features and a clear call to action.',
         due: 'Nov 4',
-        assignees: ['AL'],
+        assignees: ['AM'],
       },
-      { title: 'Plan Q1 roadmap', due: 'Nov 12', assignees: ['GH', 'AT'] },
+      { title: 'Plan Q1 roadmap', due: 'Nov 12', assignees: ['SL', 'JK'] },
     ],
   },
   {
@@ -43,11 +43,11 @@ const COLUMNS: PreviewColumn[] = [
         title: 'Build board UI',
         description: 'Columns, cards and drag and drop.',
         due: 'Oct 30',
-        assignees: ['GH'],
+        assignees: ['SL'],
       },
       {
         title: 'Real-time board sync',
-        assignees: ['AT', 'AL'],
+        assignees: ['JK', 'AM'],
       },
     ],
   },
@@ -55,11 +55,11 @@ const COLUMNS: PreviewColumn[] = [
     name: 'Done',
     wideOnly: true,
     cards: [
-      { title: 'Set up database', due: 'Oct 21', assignees: ['AT'] },
+      { title: 'Set up database', due: 'Oct 21', assignees: ['JK'] },
       {
         title: 'Write documentation',
         description: 'Setup guide for the team.',
-        assignees: ['AL', 'GH'],
+        assignees: ['AM', 'SL'],
       },
     ],
   },
@@ -144,7 +144,7 @@ export function BoardPreview({ className = '' }: { className?: string }) {
             </p>
             <div className="ml-auto flex items-center gap-1.5">
               <span className="mr-1 hidden -space-x-0.5 sm:flex">
-                {['AL', 'GH', 'AT'].map((initials, index) => (
+                {['AM', 'SL', 'JK'].map((initials, index) => (
                   <Initials
                     key={initials}
                     value={initials}

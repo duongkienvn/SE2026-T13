@@ -358,3 +358,21 @@ export function LayersIcon(props: IconProps) {
     </StrokeSvg>
   );
 }
+
+export function TrendIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M4 20h16M7 16v-4M12 16V8M17 16V5" />
+    </StrokeSvg>
+  );
+}
+
+export function TargetIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="4.5" />
+      <circle cx="12" cy="12" r="0.8" fill="currentColor" />
+    </StrokeSvg>
+  );
+}

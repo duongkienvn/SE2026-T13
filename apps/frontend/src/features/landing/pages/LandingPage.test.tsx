@@ -110,6 +110,25 @@ describe('LandingPage', () => {
     ]);
   });
 
+  it('makes the product showcase the Why Kanvexa section', () => {
+    mockApi({});
+    renderApp('/');
+
+    const why = within(document.getElementById('why-kanvexa')!);
+    expect(why.getByRole('heading', { level: 2 }).textContent).toBe(
+      'A better way to manage your work',
+    );
+    expect(why.getByRole('img', { name: /boards list/ })).toBeTruthy();
+    expect(why.getAllByRole('heading', { level: 3 })).toHaveLength(4);
+  });
+
+  it('never promises invitations, which Kanvexa does not send', () => {
+    mockApi({});
+    renderApp('/');
+
+    expect(document.body.textContent).not.toMatch(/invit/i);
+  });
+
   it('links the three header anchors to three distinct sections', () => {
     mockApi({});
     renderApp('/');
