@@ -4,7 +4,7 @@ import App from './App';
 import { AppProviders } from './app/AppProviders';
 
 describe('App', () => {
-  it('opens the login page for a signed-out visitor', async () => {
+  it('opens the landing page for a signed-out visitor', async () => {
     render(
       <AppProviders>
         <App />
@@ -12,7 +12,7 @@ describe('App', () => {
     );
 
     expect(
-      await screen.findByRole('heading', { name: 'Welcome back' }),
+      await screen.findByRole('heading', { level: 1, name: /Organize work/ }),
     ).toBeTruthy();
   });
 });

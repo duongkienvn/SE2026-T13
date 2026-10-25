@@ -23,9 +23,15 @@ describe('auth routing and session restore', () => {
     expect(calls).toHaveLength(0);
   });
 
-  it('sends the root path to login or boards depending on the session', async () => {
+  it('keeps everyone on the public landing page at the root path', async () => {
+    storeSession();
+    mockApi({ 'GET /users/me': ok(testUser) });
     const { router } = renderApp('/');
-    await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
+
+    expect(
+      await screen.findByRole('link', { name: 'Go to Boards' }),
+    ).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/');
   });
 
   it('restores a stored session through GET /users/me before rendering', async () => {

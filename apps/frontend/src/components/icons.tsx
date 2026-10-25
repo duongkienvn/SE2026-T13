@@ -272,3 +272,19 @@ export function BriefcaseIcon(props: IconProps) {
     </Svg>
   );
 }
+
+export function MenuIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </StrokeSvg>
+  );
+}
+
+export function CloseIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="m6 6 12 12M18 6 6 18" />
+    </StrokeSvg>
+  );
+}
