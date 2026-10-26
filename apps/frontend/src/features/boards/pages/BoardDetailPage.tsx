@@ -1,5 +1,6 @@
 import { BoardRole } from '@kanban/shared';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router';
 import { ActionMenu } from '../../../components/ActionMenu';
 import { Alert } from '../../../components/Alert';
@@ -24,13 +25,14 @@ import { KanbanBoard } from '../components/KanbanBoard';
 import { BoardIcon } from '../components/BoardIcon';
 import { EditBoardDialog } from '../components/BoardFormDialog';
 import { RoleChip } from '../components/RoleChip';
-import { useBoard } from '../hooks';
+import { useVerifiedBoard } from '../useVerifiedBoard';
+import { revokeBoardAccess } from '../revoke-board-access';
 import type { BoardsLocationState } from './BoardsPage';
 import { ArchivedCardsDialog } from '../../cards/components/ArchivedCardsDialog';
 
 /** 403 and 404 both mean "not available to you"; never reveal which. */
 export function isBoardUnavailable(error: unknown): boolean {
-  return isApiError(error) && (error.status === 403 || error.status === 404);
+  return isApiError(error) && [400, 403, 404].includes(error.status);
 }
 
 export function ArchivedBoardNotice() {
@@ -58,10 +60,11 @@ export function BoardUnavailable() {
 export function BoardDetailPage() {
   const { boardId = '' } = useParams();
   const navigate = useNavigate();
-  const board = useBoard(boardId);
+  const { board, verified } = useVerifiedBoard(boardId);
+  const client = useQueryClient();
   const unavailable = board.isError && isBoardUnavailable(board.error);
   const realtime = useBoardRealtime(boardId, {
-    enabled: board.data !== undefined && !unavailable,
+    enabled: verified && board.data !== undefined && !unavailable,
   });
   const [editing, setEditing] = useState(false);
   const [archiving, setArchiving] = useState(false);
@@ -69,9 +72,16 @@ export function BoardDetailPage() {
   const [showingArchivedCards, setShowingArchivedCards] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [notice, setNotice] = useState<string>();
-  usePageTitle(board.data?.name ?? 'Board');
+  const checkingAccess = !verified && !board.isError;
+  usePageTitle(
+    !unavailable && verified ? (board.data?.name ?? 'Board') : 'Board',
+  );
+  useEffect(() => {
+    if (!unavailable) return;
+    revokeBoardAccess(client, boardId);
+  }, [unavailable, client, boardId]);
 
-  if (board.isPending) {
+  if (board.isPending || checkingAccess) {
     return (
       <PageContainer>
         <LoadingState label="Loading board…" />
@@ -88,7 +98,7 @@ export function BoardDetailPage() {
   }
   // Any other failed background refresh keeps the board on screen (and open
   // dialogs intact).
-  if (board.isError && !board.data) {
+  if (board.isError && (!board.data || !verified)) {
     return (
       <PageContainer>
         <ErrorState
