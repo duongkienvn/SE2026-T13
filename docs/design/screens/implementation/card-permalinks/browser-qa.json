@@ -1,0 +1,356 @@
+{
+  "scope": "Real Chromium, real app and route tree; REST fixtures plus real Socket.IO client/test-server transport for revocation; production AppModule socket isolation is tested separately, no live database claimed.",
+  "captures": [
+    {
+      "file": "detail-375.png",
+      "geometry": {
+        "viewport": 375,
+        "documentWidth": 375,
+        "dialogs": [
+          {
+            "x": 0,
+            "y": 0,
+            "width": 375,
+            "height": 900,
+            "scrollWidth": 375,
+            "clientWidth": 375
+          }
+        ]
+      }
+    },
+    {
+      "file": "copy-fallback-375.png",
+      "geometry": {
+        "viewport": 375,
+        "documentWidth": 375,
+        "dialogs": [
+          {
+            "x": 0,
+            "y": 0,
+            "width": 375,
+            "height": 900,
+            "scrollWidth": 375,
+            "clientWidth": 375
+          }
+        ]
+      }
+    },
+    {
+      "file": "archived-375.png",
+      "geometry": {
+        "viewport": 375,
+        "documentWidth": 375,
+        "dialogs": [
+          {
+            "x": 0,
+            "y": 0,
+            "width": 375,
+            "height": 900,
+            "scrollWidth": 375,
+            "clientWidth": 375
+          }
+        ]
+      }
+    },
+    {
+      "file": "unavailable-375.png",
+      "geometry": {
+        "viewport": 375,
+        "documentWidth": 375,
+        "dialogs": []
+      }
+    },
+    {
+      "file": "retry-375.png",
+      "geometry": {
+        "viewport": 375,
+        "documentWidth": 375,
+        "dialogs": [
+          {
+            "x": 0,
+            "y": 0,
+            "width": 375,
+            "height": 900,
+            "scrollWidth": 375,
+            "clientWidth": 375
+          }
+        ]
+      }
+    },
+    {
+      "file": "initial-error-draft-375.png",
+      "geometry": {
+        "viewport": 375,
+        "documentWidth": 375,
+        "dialogs": [
+          {
+            "x": 0,
+            "y": 0,
+            "width": 375,
+            "height": 900,
+            "scrollWidth": 375,
+            "clientWidth": 375
+          }
+        ]
+      }
+    },
+    {
+      "file": "revoked-375.png",
+      "geometry": {
+        "viewport": 375,
+        "documentWidth": 375,
+        "dialogs": []
+      }
+    },
+    {
+      "file": "detail-768.png",
+      "geometry": {
+        "viewport": 768,
+        "documentWidth": 768,
+        "dialogs": [
+          {
+            "x": 16,
+            "y": 16,
+            "width": 736,
+            "height": 868,
+            "scrollWidth": 736,
+            "clientWidth": 736
+          }
+        ]
+      }
+    },
+    {
+      "file": "copy-fallback-768.png",
+      "geometry": {
+        "viewport": 768,
+        "documentWidth": 768,
+        "dialogs": [
+          {
+            "x": 16,
+            "y": 16,
+            "width": 736,
+            "height": 868,
+            "scrollWidth": 736,
+            "clientWidth": 736
+          }
+        ]
+      }
+    },
+    {
+      "file": "archived-768.png",
+      "geometry": {
+        "viewport": 768,
+        "documentWidth": 768,
+        "dialogs": [
+          {
+            "x": 16,
+            "y": 65.25,
+            "width": 736,
+            "height": 769.5,
+            "scrollWidth": 736,
+            "clientWidth": 736
+          }
+        ]
+      }
+    },
+    {
+      "file": "unavailable-768.png",
+      "geometry": {
+        "viewport": 768,
+        "documentWidth": 768,
+        "dialogs": []
+      }
+    },
+    {
+      "file": "retry-768.png",
+      "geometry": {
+        "viewport": 768,
+        "documentWidth": 768,
+        "dialogs": [
+          {
+            "x": 16,
+            "y": 349,
+            "width": 736,
+            "height": 202,
+            "scrollWidth": 736,
+            "clientWidth": 736
+          }
+        ]
+      }
+    },
+    {
+      "file": "initial-error-draft-768.png",
+      "geometry": {
+        "viewport": 768,
+        "documentWidth": 768,
+        "dialogs": [
+          {
+            "x": 16,
+            "y": 16,
+            "width": 736,
+            "height": 868,
+            "scrollWidth": 736,
+            "clientWidth": 736
+          }
+        ]
+      }
+    },
+    {
+      "file": "revoked-768.png",
+      "geometry": {
+        "viewport": 768,
+        "documentWidth": 768,
+        "dialogs": []
+      }
+    },
+    {
+      "file": "detail-1280.png",
+      "geometry": {
+        "viewport": 1280,
+        "documentWidth": 1280,
+        "dialogs": [
+          {
+            "x": 192,
+            "y": 16,
+            "width": 896,
+            "height": 868,
+            "scrollWidth": 896,
+            "clientWidth": 896
+          }
+        ]
+      }
+    },
+    {
+      "file": "copy-fallback-1280.png",
+      "geometry": {
+        "viewport": 1280,
+        "documentWidth": 1280,
+        "dialogs": [
+          {
+            "x": 192,
+            "y": 16,
+            "width": 896,
+            "height": 868,
+            "scrollWidth": 896,
+            "clientWidth": 896
+          }
+        ]
+      }
+    },
+    {
+      "file": "archived-1280.png",
+      "geometry": {
+        "viewport": 1280,
+        "documentWidth": 1280,
+        "dialogs": [
+          {
+            "x": 192,
+            "y": 65.25,
+            "width": 896,
+            "height": 769.5,
+            "scrollWidth": 896,
+            "clientWidth": 896
+          }
+        ]
+      }
+    },
+    {
+      "file": "unavailable-1280.png",
+      "geometry": {
+        "viewport": 1280,
+        "documentWidth": 1280,
+        "dialogs": []
+      }
+    },
+    {
+      "file": "retry-1280.png",
+      "geometry": {
+        "viewport": 1280,
+        "documentWidth": 1280,
+        "dialogs": [
+          {
+            "x": 192,
+            "y": 349,
+            "width": 896,
+            "height": 202,
+            "scrollWidth": 896,
+            "clientWidth": 896
+          }
+        ]
+      }
+    },
+    {
+      "file": "initial-error-draft-1280.png",
+      "geometry": {
+        "viewport": 1280,
+        "documentWidth": 1280,
+        "dialogs": [
+          {
+            "x": 192,
+            "y": 16,
+            "width": 896,
+            "height": 868,
+            "scrollWidth": 896,
+            "clientWidth": 896
+          }
+        ]
+      }
+    },
+    {
+      "file": "revoked-1280.png",
+      "geometry": {
+        "viewport": 1280,
+        "documentWidth": 1280,
+        "dialogs": []
+      }
+    }
+  ],
+  "checks": [
+    {
+      "width": 375,
+      "passed": [
+        "click canonical route",
+        "Back/Forward/filter/focus/nonzero horizontal scroll",
+        "Escape/dirty draft confirmation",
+        "clipboard denied selectable fallback",
+        "direct/reload/close fallback",
+        "archived read-only",
+        "board denial no names",
+        "network retry recovery",
+        "initial GET 503 preserves draft through retry",
+        "real Socket.IO revocation hides data while REST fails"
+      ]
+    },
+    {
+      "width": 768,
+      "passed": [
+        "click canonical route",
+        "Back/Forward/filter/focus/nonzero horizontal scroll",
+        "Escape/dirty draft confirmation",
+        "clipboard denied selectable fallback",
+        "direct/reload/close fallback",
+        "archived read-only",
+        "board denial no names",
+        "network retry recovery",
+        "initial GET 503 preserves draft through retry",
+        "real Socket.IO revocation hides data while REST fails"
+      ]
+    },
+    {
+      "width": 1280,
+      "passed": [
+        "click canonical route",
+        "Back/Forward/filter/focus/nonzero horizontal scroll",
+        "Escape/dirty draft confirmation",
+        "clipboard denied selectable fallback",
+        "direct/reload/close fallback",
+        "archived read-only",
+        "board denial no names",
+        "network retry recovery",
+        "initial GET 503 preserves draft through retry",
+        "real Socket.IO revocation hides data while REST fails"
+      ]
+    }
+  ],
+  "errors": []
+}

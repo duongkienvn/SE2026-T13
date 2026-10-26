@@ -1,0 +1,12 @@
+{
+  "scope": "Real Chromium process close/relaunch using a persistent profile, --restore-last-session, application route tree through Vite dev server and local fixture REST/Socket.IO server requiring the synthetic bearer token; no live database.",
+  "browser": "Chrome/151.0.7922.34",
+  "viewport": 1280,
+  "passed": [
+    "browser process close and relaunch restores Card tab and session",
+    "restored session rechecks auth and Board before Card",
+    "Close after restart uses safe Board fallback",
+    "missing session redirects to login and returns to canonical Card after login"
+  ],
+  "errors": []
+}
