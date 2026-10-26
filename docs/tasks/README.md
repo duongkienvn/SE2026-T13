@@ -59,6 +59,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 - [Frontend compact layout](frontend/frontend-compact-layout.md)
 - [Boards and board members frontend](frontend/boards-frontend.md)
 - [Kanban board UI](frontend/kanban-board-ui.md)
+- [Card permalinks and route-linked detail](frontend/card-permalinks.md)
 - [Realtime frontend synchronization](frontend/realtime-frontend.md)
 - [Board presence frontend](frontend/board-presence.md)
 - [Card comments UI](frontend/comments-ui.md)
