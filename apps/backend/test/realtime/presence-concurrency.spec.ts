@@ -167,7 +167,10 @@ describe('Presence lifecycle concurrency', () => {
     await removal;
     await expect(rejoin).resolves.toMatchObject({ code: 'NOT_FOUND' });
     expect(state(owner).at(-1).userIds).toEqual(['owner']);
-    expect(state(member)).toHaveLength(1);
+    expect(state(member)).toEqual([
+      { boardId: A, userIds: ['member', 'owner'] },
+      { boardId: A, userId: 'member' },
+    ]);
     expect(presence.snapshot(A).userIds).toEqual(['owner']);
   });
 
