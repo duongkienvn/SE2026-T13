@@ -1,4 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
+import { isApiError } from '../../lib/api-client';
+import { BOARD_ACCESS_REVOKED } from '../boards/revoke-board-access';
 import type { InvalidationTarget } from './event-invalidation';
 
 export interface InvalidationQueue {
@@ -35,7 +37,16 @@ export function createInvalidationQueue(
     }
     const targets = [...pending.values()];
     pending.clear();
-    for (const target of targets) void queryClient.invalidateQueries(target);
+    for (const target of targets) {
+      const key = target.queryKey;
+      const error =
+        key?.[0] === 'boards' && key[1] === 'detail'
+          ? queryClient.getQueryState(key.slice(0, 3))?.error
+          : undefined;
+      // A queued refresh must not undo a server-confirmed revocation.
+      if (isApiError(error) && error.code === BOARD_ACCESS_REVOKED) continue;
+      void queryClient.invalidateQueries(target);
+    }
   };
 
   return {

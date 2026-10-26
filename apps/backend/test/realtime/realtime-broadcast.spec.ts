@@ -90,6 +90,12 @@ describe('RealtimeBroadcastService', () => {
       await coordinator.run(BOARD, () =>
         coordinator.evictUser(BOARD, 'revoked'),
       );
+      expect(revoked.emit).toHaveBeenCalledTimes(1);
+      expect(revoked.emit).toHaveBeenCalledWith('member:removed', {
+        boardId: BOARD,
+        userId: 'revoked',
+      });
+      revoked.emit.mockClear();
       expect(revoked.rooms.has(`board:${BOARD}`)).toBe(true);
       await expect(
         service.emitToBoard(BOARD.toUpperCase(), 'test:board', { sequence: 1 }),

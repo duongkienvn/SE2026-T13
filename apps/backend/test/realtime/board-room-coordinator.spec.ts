@@ -8,6 +8,7 @@ describe('BoardRoomCoordinator', () => {
     const makeSocket = (userId: string) => ({
       data: { identity: { userId }, authorizedBoardIds: new Set(['a', 'b']) },
       rooms: new Set(['board:a', 'board:b']),
+      emit: jest.fn(),
       leave: jest.fn(),
       disconnect: jest.fn(),
     });
@@ -23,7 +24,23 @@ describe('BoardRoomCoordinator', () => {
         ]),
       },
     } as unknown as RealtimeServer;
+    first.emit.mockImplementation(() => {
+      expect(first.data.authorizedBoardIds.has('a')).toBe(false);
+      expect(second.data.authorizedBoardIds.has('a')).toBe(false);
+    });
     await coordinator.evictUser('a', 'revoked');
+    expect(first.emit).toHaveBeenCalledWith('member:removed', {
+      boardId: 'a',
+      userId: 'revoked',
+    });
+    expect(second.emit).toHaveBeenCalledWith('member:removed', {
+      boardId: 'a',
+      userId: 'revoked',
+    });
+    expect(other.emit).not.toHaveBeenCalled();
+    expect(first.emit.mock.invocationCallOrder[0]).toBeLessThan(
+      first.leave.mock.invocationCallOrder[0],
+    );
     expect(first.leave).toHaveBeenCalledWith('board:a');
     expect(second.leave).toHaveBeenCalledWith('board:a');
     expect(other.leave).not.toHaveBeenCalled();
@@ -37,6 +54,13 @@ describe('BoardRoomCoordinator', () => {
         coordinator.evictUser('a', 'revoked'),
       ).resolves.toBeUndefined();
       expect(first.disconnect).toHaveBeenCalledWith(true);
+      first.emit.mockImplementationOnce(() => {
+        throw new Error('notification failed');
+      });
+      await expect(
+        coordinator.evictUser('a', 'revoked'),
+      ).resolves.toBeUndefined();
+      expect(second.emit).toHaveBeenCalledTimes(3);
       expect(log).toHaveBeenCalledWith(
         'Board room eviction failed; disconnecting socket',
       );
@@ -51,6 +75,7 @@ describe('BoardRoomCoordinator', () => {
         identity: { userId: 'revoked' },
         authorizedBoardIds: new Set(['a', 'b']),
       },
+      emit: jest.fn(),
       leave: jest.fn(),
       disconnect: jest.fn(),
     });

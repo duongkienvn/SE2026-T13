@@ -270,3 +270,22 @@ on module singleton ownership, commit boundaries and revocation ordering.
 
 Final Issue #40 completion still requires separately authorized PR, CI, automated
 and human review, and merge. This task stops at the local branch.
+
+## P1-03 follow-up: direct revocation notification
+
+The earlier milestone above excluded removed users from every room publication.
+P1-03 adds one explicit exception without changing event names or payloads:
+after commit and after all affected receive grants have been removed,
+BoardRoomCoordinator sends `member:removed` directly to the removed user's own
+sockets, before adapter leave/disconnect work. This notice contains only the
+Board ID and their own User ID; no Board/Card/private fields are delivered.
+The regular room publication still reaches only remaining authorized members.
+All later board business events continue to exclude revoked recipients, even
+when physical rooms remain stale after adapter/disconnect failures.
+
+The frontend handles this notification before normal invalidation, rejects
+notifications retained from an old auth generation, clears protected caches,
+and keeps a generic denial even when REST is unavailable. Queue refreshes cannot
+revive the removed data. See the [permalink task record](../frontend/card-permalinks.md)
+for regression tests and browser evidence. Real Socket.IO AppModule tests cover
+notification delivery to every removed tab and continued isolation afterward.

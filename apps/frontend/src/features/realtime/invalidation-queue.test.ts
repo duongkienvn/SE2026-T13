@@ -1,5 +1,6 @@
 import { QueryClient } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { revokeBoardAccess } from '../boards/revoke-board-access';
 import { boardKeys } from '../boards/query-keys';
 import { createInvalidationQueue } from './invalidation-queue';
 
@@ -21,6 +22,20 @@ afterEach(() => {
 });
 
 describe('createInvalidationQueue', () => {
+  it('cannot refetch a revoked board from invalidations queued before or after removal', async () => {
+    queryClient.setQueryData(boardKeys.detail(BOARD), {
+      name: 'Private board',
+    });
+    const queue = createInvalidationQueue(queryClient, 100);
+    queue.add([cards]);
+    revokeBoardAccess(queryClient, BOARD);
+    queue.add([columns, { queryKey: boardKeys.detail(BOARD), exact: true }]);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(invalidateQueries).not.toHaveBeenCalled();
+    expect(queryClient.getQueryData(boardKeys.detail(BOARD))).toBeUndefined();
+    queue.dispose();
+  });
+
   it('refetches each query once for a burst of events', async () => {
     const queue = createInvalidationQueue(queryClient, 100);
 

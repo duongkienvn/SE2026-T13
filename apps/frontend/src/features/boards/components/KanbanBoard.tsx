@@ -12,6 +12,7 @@ import { useBoardMembers } from '../../board-members/hooks';
 import type { MemberUser } from '../../board-members/types';
 import { CardDetailDialog } from '../../cards/components/CardDetailDialog';
 import { useCards } from '../../cards/hooks';
+import { useCardRoute } from '../../cards/useCardRoute';
 import type { Card } from '../../cards/types';
 import { groupCardsByColumn } from '../../cards/ordering';
 import {
@@ -34,11 +35,11 @@ interface KanbanBoardProps {
 type OpenDialog =
   | { kind: 'create-column' }
   | { kind: 'rename-column'; column: Column }
-  | { kind: 'delete-column'; column: Column }
-  | { kind: 'card'; cardId: string };
+  | { kind: 'delete-column'; column: Column };
 
 /** The board's columns and active cards, side by side. */
 export function KanbanBoard({ boardId, readOnly }: KanbanBoardProps) {
+  const { cardId, openCard, closeCard } = useCardRoute(boardId);
   const columns = useColumns(boardId);
   const cards = useCards(boardId);
   // Only for assignee names and avatars: the board still shows without them.
@@ -80,11 +81,7 @@ export function KanbanBoard({ boardId, readOnly }: KanbanBoardProps) {
         onDelete: (column) => setDialog({ kind: 'delete-column', column }),
       };
   const openCreateColumn = () => setDialog({ kind: 'create-column' });
-  const openCard = (card: Card) => setDialog({ kind: 'card', cardId: card.id });
-  const openedCard =
-    dialog?.kind === 'card'
-      ? cards.data?.find((card) => card.id === dialog.cardId)
-      : undefined;
+  const openedCard = cards.data?.find((card) => card.id === cardId);
 
   let content;
   if (columns.isPending || cards.isPending) {
@@ -123,7 +120,7 @@ export function KanbanBoard({ boardId, readOnly }: KanbanBoardProps) {
         groups={groups}
         members={membersById}
         actions={columnActions}
-        onOpenCard={openCard}
+        onOpenCard={(card: Card) => openCard(card.id)}
         trailing={
           !readOnly && (
             <button
@@ -152,10 +149,11 @@ export function KanbanBoard({ boardId, readOnly }: KanbanBoardProps) {
       {dialog?.kind === 'delete-column' && (
         <DeleteColumnDialog column={dialog.column} open onClose={closeDialog} />
       )}
-      {dialog?.kind === 'card' && (
+      {cardId && (
         <CardDetailDialog
+          key={`${boardId}:${cardId}`}
           boardId={boardId}
-          cardId={dialog.cardId}
+          cardId={cardId}
           initialCard={openedCard}
           columnName={
             columns.data?.find((column) => column.id === openedCard?.columnId)
@@ -163,7 +161,7 @@ export function KanbanBoard({ boardId, readOnly }: KanbanBoardProps) {
           }
           members={members.data ?? []}
           boardReadOnly={readOnly}
-          onClose={closeDialog}
+          onClose={closeCard}
         />
       )}
     </>

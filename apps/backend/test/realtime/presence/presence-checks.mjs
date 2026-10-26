@@ -320,6 +320,9 @@ export async function runPresenceChecks(app, source, databaseMode) {
     owner.on('member:removed', recordRemoval);
     const removalSnapshot = nextBoardEvent(owner, 'presence:sync');
     const removalEvent = nextBoardEvent(owner, 'member:removed');
+    const revocations = [member, tab].map((client) =>
+      nextBoardEvent(client, 'member:removed'),
+    );
     try {
       for (const { socket, leave } of originals.slice(0, 2)) {
         socket.leave = async (room) => {
@@ -348,6 +351,9 @@ export async function runPresenceChecks(app, source, databaseMode) {
         boardId: ids.a,
         userId: ids.member,
       });
+      for (const notice of await Promise.all(revocations)) {
+        assert.deepEqual(notice, { boardId: ids.a, userId: ids.member });
+      }
       await flush();
       assert.deepEqual(ordering, ['presence', 'removed']);
       assert.deepEqual(

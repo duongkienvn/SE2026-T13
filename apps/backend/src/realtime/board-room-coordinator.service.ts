@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
+import { RealtimeServerEvent } from '@kanban/shared';
 import {
   boardRoom,
   type RealtimeServer,
@@ -53,6 +54,11 @@ export class BoardRoomCoordinator implements OnApplicationShutdown {
     this.syncPresence(canonicalId);
     for (const socket of sockets) {
       try {
+        // Only the removed user's own revocation bypasses the room grant.
+        socket.emit(RealtimeServerEvent.MEMBER_REMOVED, {
+          boardId: canonicalId,
+          userId,
+        });
         await socket.leave(room);
       } catch {
         this.logger.error('Board room eviction failed; disconnecting socket');

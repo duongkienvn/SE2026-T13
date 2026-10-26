@@ -663,8 +663,11 @@ try {
       columnId: columnResult.body.data.id,
     });
     await flush();
-    for (let i = 1; i < clients.length; i++)
-      assert.equal(received.get(clients[i]).length, beforeRace[i]);
+    for (let i = 1; i < clients.length; i++) {
+      assert.deepEqual(received.get(clients[i]).slice(beforeRace[i]), [
+        ['member:removed', { boardId, userId: ids.member }],
+      ]);
+    }
     for (const socket of memberSockets) {
       assert.equal(socket.data.authorizedBoardIds.has(boardId), false);
       assert.equal(socket.rooms.has(`board:${boardId}`), true);

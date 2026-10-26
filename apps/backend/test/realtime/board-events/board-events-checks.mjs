@@ -577,7 +577,7 @@ export async function runBoardEventChecks(app, source) {
         throw new Error('injected disconnect failure');
       };
     }
-    recipients = [owner];
+    recipients = [owner, member, tab];
     let activeCard;
     try {
       await mutation(
@@ -588,6 +588,7 @@ export async function runBoardEventChecks(app, source) {
         204,
         { boardId: ids.a, userId: ids.member },
       );
+      recipients = [owner];
       for (const s of serverSockets) {
         assert.equal(s.data.authorizedBoardIds.has(ids.a), false);
         assert.equal(s.rooms.has(`board:${ids.a}`), true); // deliberately stale physical room

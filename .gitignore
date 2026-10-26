@@ -20,5 +20,6 @@ Thumbs.db
 .codegraph/
 .agents/*
 !.agents/skills/
+.agents/skills/*
 .omo/evidence/
 .pnpm-store/

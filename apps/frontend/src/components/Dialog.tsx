@@ -17,6 +17,7 @@ interface DialogProps {
   dismissible?: boolean;
   /** `wide` fits a two-column layout such as the card detail. */
   size?: 'default' | 'wide';
+  fullscreenOnMobile?: boolean;
 }
 
 const FOCUSABLE =
@@ -34,6 +35,7 @@ export function Dialog({
   children,
   dismissible = true,
   size = 'default',
+  fullscreenOnMobile = false,
 }: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -94,7 +96,9 @@ export function Dialog({
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center ${fullscreenOnMobile ? 'sm:p-4' : 'p-4'}`}
+    >
       <div
         aria-hidden="true"
         data-dialog-backdrop
@@ -108,9 +112,9 @@ export function Dialog({
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
-        className={`relative max-h-[calc(100dvh-2rem)] w-full ${
+        className={`relative w-full ${fullscreenOnMobile ? 'h-dvh max-h-dvh rounded-none sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl' : 'max-h-[calc(100dvh-2rem)] rounded-2xl'} ${
           size === 'wide' ? 'max-w-4xl' : 'max-w-lg'
-        } overflow-y-auto rounded-2xl bg-surface p-5 shadow-frame focus:outline-none sm:p-6`}
+        } overflow-y-auto bg-surface p-5 shadow-frame focus:outline-none sm:p-6`}
       >
         <h2
           id={titleId}
