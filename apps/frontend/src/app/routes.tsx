@@ -40,7 +40,11 @@ export const routes: RouteObject[] = [
             element: <AuthenticatedLayout />,
             children: [
               { path: 'boards', element: <BoardsPage /> },
-              { path: 'boards/:boardId', element: <BoardDetailPage /> },
+              {
+                path: 'boards/:boardId',
+                element: <BoardDetailPage />,
+                children: [{ path: 'cards/:cardId', element: null }],
+              },
               {
                 path: 'boards/:boardId/members',
                 element: <BoardMembersPage />,
