@@ -58,7 +58,7 @@ export function Pagination({
                 onClick={() => onChange(number)}
                 className={`${itemClass} ${
                   number === page
-                    ? 'bg-primary text-white shadow-card'
+                    ? 'bg-primary-solid text-white shadow-card'
                     : 'text-ink hover:bg-surface'
                 }`}
               >

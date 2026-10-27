@@ -43,7 +43,7 @@ export function Dialog({
       <div
         aria-hidden="true"
         data-dialog-backdrop
-        className="absolute inset-0 bg-ink/40"
+        className="absolute inset-0 bg-overlay/40"
         onClick={() => dismissible && onClose()}
       />
       <div
