@@ -39,7 +39,7 @@ export function HowItWorksSection() {
     <section
       id="how-it-works"
       aria-labelledby="how-it-works-title"
-      className={`${landingSection} bg-[#f8f8ff] py-16 lg:py-20`}
+      className={`${landingSection} bg-[#f8f8ff] py-16 dark:bg-[#0c1020] lg:py-20`}
     >
       <div className={landingContainer}>
         <SectionIntro
@@ -57,7 +57,7 @@ export function HowItWorksSection() {
               className="flex items-start gap-4 md:flex-col md:items-stretch md:gap-5"
             >
               <div aria-hidden="true" className="flex items-center">
-                <span className="relative grid size-12 shrink-0 place-items-center rounded-2xl bg-primary text-white shadow-[0_10px_24px_-10px_rgb(97_92_247/0.8)]">
+                <span className="relative grid size-12 shrink-0 place-items-center rounded-2xl bg-primary-solid text-white shadow-[0_10px_24px_-10px_rgb(97_92_247/0.8)]">
                   <Icon className="size-6" />
                   <span className="absolute -top-2 -right-2 grid size-5 place-items-center rounded-full bg-surface text-[11px] font-bold text-primary ring-1 ring-line">
                     {index + 1}

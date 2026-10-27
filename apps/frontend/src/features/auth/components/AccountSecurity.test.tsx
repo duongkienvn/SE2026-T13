@@ -54,7 +54,7 @@ describe('AccountSecurity', () => {
       ...handlers(),
       'POST /auth/change-password': { status: 204 },
     });
-    renderApp('/profile');
+    renderApp('/settings/security');
     await fillChange();
     await screen.findByRole('heading', { name: 'Welcome back' });
     expect(await screen.findByText(/Password updated/)).toBeTruthy();
@@ -76,7 +76,7 @@ describe('AccountSecurity', () => {
           ? fail(403, 'CURRENT_PASSWORD_INCORRECT')
           : { status: 204 },
     });
-    renderApp('/profile');
+    renderApp('/settings/security');
     await fillChange('wrong');
     await screen.findByText('Could not confirm your current password.');
     expect(sessionStorage.getItem('kanban.session')).not.toBeNull();
@@ -86,7 +86,7 @@ describe('AccountSecurity', () => {
   it('rejects a reused password before sending', async () => {
     storeSession();
     const calls = mockApi(handlers());
-    renderApp('/profile');
+    renderApp('/settings/security');
     await fillChange('OldPass123!', 'OldPass123!');
     expect(
       screen.getByText(
@@ -100,7 +100,7 @@ describe('AccountSecurity', () => {
   it('routes Google-only accounts through verified-email recovery without a current-password field', async () => {
     storeSession();
     mockApi(handlers(false));
-    renderApp('/profile');
+    renderApp('/settings/security');
     await screen.findByText(/To set a password, request a recovery link/);
     expect(screen.queryByLabelText('Current password')).toBeNull();
     fireEvent.click(
@@ -122,7 +122,7 @@ describe('AccountSecurity', () => {
       });
       const client = new QueryClient();
       const router = createMemoryRouter(routes, {
-        initialEntries: ['/profile'],
+        initialEntries: ['/settings/security'],
       });
       let auth!: AuthContextValue;
       function Probe() {
@@ -155,7 +155,7 @@ describe('AccountSecurity', () => {
         resolve(status === 204 ? { status } : fail(status, 'UNAUTHORIZED'));
       });
       expect(auth.user?.id).toBe(other.id);
-      expect(router.state.location.pathname).toBe('/profile');
+      expect(router.state.location.pathname).toBe('/settings/security');
       expect(sessionStorage.getItem('kanban.session')).toContain('new-session');
       expect(screen.queryByText(/Password updated/)).toBeNull();
     },

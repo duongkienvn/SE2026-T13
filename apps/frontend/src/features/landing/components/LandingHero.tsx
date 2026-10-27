@@ -47,7 +47,7 @@ export function LandingHero({ session }: { session: LandingSession }) {
   return (
     <section
       aria-labelledby="hero-title"
-      className="relative isolate overflow-hidden bg-linear-to-b from-[#f4f4ff] to-surface"
+      className="relative isolate overflow-hidden bg-linear-to-b from-[#f4f4ff] to-surface dark:from-[#141833]"
     >
       <div
         aria-hidden="true"

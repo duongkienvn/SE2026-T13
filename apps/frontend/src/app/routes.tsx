@@ -10,6 +10,15 @@ import { BoardMembersPage } from '../features/board-members/pages/BoardMembersPa
 import { BoardDetailPage } from '../features/boards/pages/BoardDetailPage';
 import { BoardsPage } from '../features/boards/pages/BoardsPage';
 import { LandingPage } from '../features/landing/pages/LandingPage';
+import {
+  SettingsIndex,
+  SettingsLayout,
+} from '../features/settings/components/SettingsLayout';
+import { AppearancePage } from '../features/settings/pages/AppearancePage';
+import { ConnectedAccountsPage } from '../features/settings/pages/ConnectedAccountsPage';
+import { PreferencesPage } from '../features/settings/pages/PreferencesPage';
+import { ProfileRedirect } from '../features/settings/pages/ProfileRedirect';
+import { SecuritySettingsPage } from '../features/settings/pages/SecuritySettingsPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { RouteErrorPage } from '../pages/RouteErrorPage';
 import { PublicOnly, RequireAuth } from './guards';
@@ -49,7 +58,23 @@ export const routes: RouteObject[] = [
                 path: 'boards/:boardId/members',
                 element: <BoardMembersPage />,
               },
-              { path: 'profile', element: <ProfilePage /> },
+              {
+                path: 'settings',
+                element: <SettingsLayout />,
+                children: [
+                  { index: true, element: <SettingsIndex /> },
+                  { path: 'profile', element: <ProfilePage /> },
+                  { path: 'appearance', element: <AppearancePage /> },
+                  { path: 'preferences', element: <PreferencesPage /> },
+                  { path: 'security', element: <SecuritySettingsPage /> },
+                  {
+                    path: 'connected-accounts',
+                    element: <ConnectedAccountsPage />,
+                  },
+                ],
+              },
+              // Old bookmarks and links from before Settings (#92).
+              { path: 'profile', element: <ProfileRedirect /> },
             ],
           },
         ],

@@ -7,8 +7,12 @@ import { landingContainer } from './layout';
 /** Decorative initials, not real customers. */
 const AVATARS = [
   { initials: 'AM', className: 'bg-primary-soft text-primary' },
-  { initials: 'SL', className: 'bg-[#e7f6ee] text-success' },
-  { initials: 'JK', className: 'bg-[#fdeedd] text-[#b45309]' },
+  { initials: 'SL', className: 'bg-[#e7f6ee] text-success dark:bg-[#123222]' },
+  {
+    initials: 'JK',
+    className:
+      'bg-[#fdeedd] text-[#b45309] dark:bg-[#3a2814] dark:text-[#f0a35e]',
+  },
 ];
 
 function Illustration() {
@@ -50,7 +54,7 @@ export function ClosingCta({ session }: { session: LandingSession }) {
   return (
     <section aria-labelledby="cta-title" className="pb-16 lg:pb-20">
       <div className={landingContainer}>
-        <div className="flex items-center justify-between gap-10 rounded-3xl border border-[#e3e3fb] bg-linear-to-br from-[#f3f3ff] via-[#efeffe] to-[#e5e6fd] px-6 py-10 sm:px-10 lg:px-12 lg:py-12">
+        <div className="flex items-center justify-between gap-10 rounded-3xl border border-[#e3e3fb] bg-linear-to-br from-[#f3f3ff] via-[#efeffe] to-[#e5e6fd] dark:border-line dark:from-[#1a1f3a] dark:via-[#1b2040] dark:to-[#232856] px-6 py-10 sm:px-10 lg:px-12 lg:py-12">
           <div>
             <p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">
               {member ? 'Welcome back' : 'Get started'}
@@ -60,7 +64,9 @@ export function ClosingCta({ session }: { session: LandingSession }) {
               className="mt-3 text-3xl leading-tight font-bold tracking-tight text-ink sm:text-[40px]"
             >
               Ready to work better{' '}
-              <span className="text-[#3f3aa8]">together?</span>
+              <span className="text-[#3f3aa8] dark:text-[#a9a5ff]">
+                together?
+              </span>
             </h2>
             <p className="mt-3 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
               {member

@@ -3,6 +3,9 @@
 /* Short laptop viewports: tighten vertical spacing so screens fit without scrolling. */
 @custom-variant short (@media (max-height: 640px));
 
+/* `<html data-theme>` is set by the boot script in index.html and ThemeSync. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
 /*
  * Design tokens sampled from docs/design/screens/. The mapping to the
  * provisional palette is recorded in docs/design/design-guidelines.md;
@@ -17,6 +20,9 @@
   --color-primary-strong: #6058f9;
   --color-primary-hover: #4f49e6;
   --color-primary-soft: #f0f2fe;
+  /* Fills under white text; `primary` is for text, borders and focus rings. */
+  --color-primary-solid: #615cf7;
+  --color-primary-solid-hover: #4f49e6;
   --color-brand: #6466fa;
   --color-brand-soft: #9294fc;
 
@@ -28,7 +34,10 @@
   --color-muted: #626a83;
   --color-line: #e4e8f1;
   --color-danger: #d1343a;
+  --color-danger-solid: #d1343a;
   --color-success: #16803c;
+  /* Modal and drawer backdrops stay dark in both themes. */
+  --color-overlay: #172038;
 
   /* Authentication screens (login.png). */
   --color-auth-backdrop: #e6e8f9;
@@ -37,6 +46,46 @@
 
   --shadow-card: 0 1px 2px rgb(23 32 56 / 0.04), 0 1px 3px rgb(23 32 56 / 0.06);
   --shadow-frame: 0 10px 40px rgb(23 32 56 / 0.1);
+}
+
+/*
+ * Dark theme: the same semantic tokens, re-pointed. Indigo fills keep #615cf7;
+ * `primary` text is lightened to stay readable (>= 4.5:1) on dark surfaces.
+ */
+:root {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-primary: #8f8bff;
+  --color-primary-strong: #9d99ff;
+  --color-primary-hover: #aeabff;
+  --color-primary-soft: #242650;
+  --color-primary-solid: #615cf7;
+  --color-primary-solid-hover: #524cec;
+  --color-brand: #7c7efb;
+  --color-brand-soft: #4d4fa8;
+
+  --color-app: #0e1322;
+  --color-surface: #161c2e;
+  --color-frame: #080b14;
+
+  --color-ink: #e7e9f3;
+  --color-muted: #9ba3bb;
+  --color-line: #2b3350;
+  --color-danger: #f2777b;
+  --color-danger-solid: #c8363c;
+  --color-success: #4ccb7f;
+  --color-overlay: #03050b;
+
+  --color-auth-backdrop: #0b0f1c;
+  --color-auth-panel-from: #1a1f3a;
+  --color-auth-panel-to: #232856;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 1px 3px rgb(0 0 0 / 0.35);
+  --shadow-frame: 0 10px 40px rgb(0 0 0 / 0.45);
 }
 
 @layer base {

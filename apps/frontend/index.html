@@ -40,6 +40,47 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
     />
     <title>Kanvexa · Collaborative Kanban boards</title>
+    <!--
+      Theme boot (see src/features/settings/theme.ts): paint in the cached theme
+      only when it belongs to the signed-in user (token subject); otherwise follow
+      the OS. ThemeSync takes over once the app has loaded.
+    -->
+    <script id="theme-boot">
+      (function () {
+        var theme = 'system';
+        try {
+          var session = JSON.parse(
+            sessionStorage.getItem('kanban.session') || 'null',
+          );
+          var cached = JSON.parse(
+            localStorage.getItem('kanvexa.theme') || 'null',
+          );
+          if (
+            session &&
+            typeof session.accessToken === 'string' &&
+            session.expiresAt > Date.now() &&
+            cached &&
+            /^(light|dark|system)$/.test(cached.theme)
+          ) {
+            var payload = session.accessToken
+              .split('.')[1]
+              .replace(/-/g, '+')
+              .replace(/_/g, '/');
+            if (JSON.parse(atob(payload)).sub === cached.userId)
+              theme = cached.theme;
+          }
+        } catch (error) {
+          theme = 'system';
+        }
+        if (theme === 'system')
+          theme =
+            window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light';
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

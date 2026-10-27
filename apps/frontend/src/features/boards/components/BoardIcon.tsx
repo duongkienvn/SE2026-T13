@@ -14,11 +14,31 @@ import {
  * Purely decorative: it carries no meaning.
  */
 const TILE_STYLES: { icon: ComponentType<IconProps>; className: string }[] = [
-  { icon: MonitorIcon, className: 'bg-[#edebfe] text-[#4f46e5]' },
-  { icon: MegaphoneIcon, className: 'bg-[#e0edfd] text-[#1d6fd8]' },
-  { icon: UsersIcon, className: 'bg-[#ebf8ed] text-[#4a9a45]' },
-  { icon: BarChartIcon, className: 'bg-[#fcf6e4] text-[#e5a502]' },
-  { icon: BriefcaseIcon, className: 'bg-[#fce7e8] text-[#dc2626]' },
+  {
+    icon: MonitorIcon,
+    className:
+      'bg-[#edebfe] text-[#4f46e5] dark:bg-[#2a2860] dark:text-[#a9a5ff]',
+  },
+  {
+    icon: MegaphoneIcon,
+    className:
+      'bg-[#e0edfd] text-[#1d6fd8] dark:bg-[#172e4f] dark:text-[#7cb4f5]',
+  },
+  {
+    icon: UsersIcon,
+    className:
+      'bg-[#ebf8ed] text-[#4a9a45] dark:bg-[#17361d] dark:text-[#7fcf85]',
+  },
+  {
+    icon: BarChartIcon,
+    className:
+      'bg-[#fcf6e4] text-[#e5a502] dark:bg-[#3a2f10] dark:text-[#f2c94c]',
+  },
+  {
+    icon: BriefcaseIcon,
+    className:
+      'bg-[#fce7e8] text-[#dc2626] dark:bg-[#3e1c20] dark:text-[#f48a8a]',
+  },
 ];
 
 export function boardTileIndex(boardId: string): number {

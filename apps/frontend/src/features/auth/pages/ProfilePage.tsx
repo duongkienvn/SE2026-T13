@@ -2,16 +2,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
+import { UnsavedChangesGuard } from '../../../components/UnsavedChangesGuard';
 import { MailIcon, UserIcon } from '../../../components/icons';
-import { PageContainer } from '../../../components/PageContainer';
 import { PageHeader } from '../../../components/PageHeader';
 import { TextField } from '../../../components/TextField';
 import { updateCurrentUser } from '../api';
 import { currentUserQueryKey } from '../AuthProvider';
 import { useAuthSession, type AuthSessionScope } from '../auth-session-context';
 import { UserAvatar } from '../components/UserAvatar';
-import { ConnectedAccounts } from '../components/ConnectedAccounts';
-import { AccountSecurity } from '../components/AccountSecurity';
 import { toFormErrors } from '../../../lib/form-errors';
 import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
 import { usePageTitle } from '../../../hooks/usePageTitle';
@@ -118,7 +116,7 @@ function ProfileForm({ user }: { user: User }) {
   };
 
   return (
-    <PageContainer>
+    <>
       <PageHeader
         title="Profile"
         description="Manage how you appear to other members of your boards."
@@ -200,8 +198,10 @@ function ProfileForm({ user }: { user: User }) {
           </div>
         </div>
       </form>
-      <ConnectedAccounts />
-      <AccountSecurity />
-    </PageContainer>
+      <UnsavedChangesGuard
+        when={isDirty && !mutation.isPending}
+        description="Your profile edits have not been saved."
+      />
+    </>
   );
 }

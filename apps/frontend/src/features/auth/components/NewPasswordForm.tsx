@@ -19,10 +19,13 @@ type Field = keyof typeof labels;
 /** Shared by public recovery and the authenticated Security section. */
 export function NewPasswordForm({
   requireCurrent = false,
+  pairNewFields = false,
   submit,
   onSuccess,
 }: {
   requireCurrent?: boolean;
+  /** New and Confirm side by side from `lg`, so a desktop section fits without scrolling. */
+  pairNewFields?: boolean;
   submit: (newPassword: string, currentPassword: string) => Promise<void>;
   onSuccess: () => void;
 }) {
@@ -133,26 +136,40 @@ export function NewPasswordForm({
           disabled={pending || invalidToken}
         />
       )}
-      <PasswordField
-        label="New password"
-        name="newPassword"
-        autoComplete="new-password"
-        value={values.newPassword}
-        onChange={update('newPassword')}
-        error={errors.newPassword}
-        aria-describedby={requirementsId}
-        disabled={pending || invalidToken}
-      />
-      <PasswordRequirements id={requirementsId} password={values.newPassword} />
-      <PasswordField
-        label="Confirm password"
-        name="confirmPassword"
-        autoComplete="new-password"
-        value={values.confirmPassword}
-        onChange={update('confirmPassword')}
-        error={errors.confirmPassword}
-        disabled={pending || invalidToken}
-      />
+      {/* Paired: New and Confirm share a row from lg, rules span below; DOM order is unchanged. */}
+      <div
+        className={
+          pairNewFields ? 'grid items-start gap-4 lg:grid-cols-2' : 'space-y-4'
+        }
+      >
+        <PasswordField
+          label="New password"
+          name="newPassword"
+          autoComplete="new-password"
+          value={values.newPassword}
+          onChange={update('newPassword')}
+          error={errors.newPassword}
+          aria-describedby={requirementsId}
+          disabled={pending || invalidToken}
+        />
+        <div className={pairNewFields ? 'lg:col-span-2 lg:row-start-2' : ''}>
+          <PasswordRequirements
+            id={requirementsId}
+            password={values.newPassword}
+          />
+        </div>
+        <div className={pairNewFields ? 'lg:col-start-2 lg:row-start-1' : ''}>
+          <PasswordField
+            label="Confirm password"
+            name="confirmPassword"
+            autoComplete="new-password"
+            value={values.confirmPassword}
+            onChange={update('confirmPassword')}
+            error={errors.confirmPassword}
+            disabled={pending || invalidToken}
+          />
+        </div>
+      </div>
       <Button
         type="submit"
         disabled={pending || invalidToken}
