@@ -145,7 +145,9 @@ describe('BoardDetailPage', () => {
       ).toBe('/boards');
       // No empty board-name slot (or stray divider) in the header.
       const header = screen.getByRole('banner');
-      expect(within(header).queryAllByRole('link')).toHaveLength(0);
+      expect(
+        within(header).queryByRole('navigation', { name: 'Breadcrumb' }),
+      ).toBeNull();
       expect(header.querySelector('.bg-line')).toBeNull();
     },
   );

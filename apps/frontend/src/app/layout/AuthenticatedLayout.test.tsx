@@ -147,8 +147,10 @@ describe('Authenticated navigation', () => {
       renderApp(`/boards/${board.id}`);
       await screen.findByRole('heading', { name: 'Board not found' });
       expect(
-        within(screen.getByRole('banner')).queryAllByRole('link'),
-      ).toHaveLength(0);
+        within(screen.getByRole('banner')).queryByRole('navigation', {
+          name: 'Breadcrumb',
+        }),
+      ).toBeNull();
       expect(screen.getByRole('link', { name: 'Boards' })).toBeTruthy();
     },
   );

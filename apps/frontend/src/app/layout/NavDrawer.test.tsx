@@ -90,10 +90,14 @@ describe('Navigation drawer', () => {
     expect(document.body.style.overflow).toBe('hidden');
 
     const logout = within(drawer).getByRole('button', { name: 'Log out' });
+    const brand = within(drawer).getByRole('link', {
+      name: 'Kanvexa landing page',
+    });
+    brand.focus();
     fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
     expect(document.activeElement).toBe(logout);
     fireEvent.keyDown(document, { key: 'Tab' });
-    expect(document.activeElement).toBe(close);
+    expect(document.activeElement).toBe(brand);
   });
 
   it.each([

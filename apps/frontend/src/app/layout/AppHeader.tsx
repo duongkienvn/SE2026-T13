@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router';
 import { BrandLogo } from '../../components/Brand';
 import { BellIcon, MenuIcon, SearchIcon } from '../../components/icons';
 import { SoonBadge } from './SoonBadge';
@@ -33,7 +34,14 @@ export function AppHeader({ context, actions, navigation }: AppHeaderProps) {
         </button>
       )}
       {/* Phones have no rail, so the brand moves into the header. */}
-      <BrandLogo className="size-8 md:hidden" />
+      <Link
+        to="/"
+        aria-label="Kanvexa landing page"
+        title="Kanvexa landing page"
+        className="flex min-h-11 shrink-0 items-center rounded-lg transition-colors hover:bg-app active:bg-primary-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:hidden"
+      >
+        <BrandLogo decorative className="size-8" />
+      </Link>
       {context && (
         <div className="flex min-w-0 items-center text-sm font-medium text-ink">
           {context}

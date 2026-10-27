@@ -24,10 +24,10 @@ describe('AppShell', () => {
     // Only phones (no rail) show the logo in the header.
     const headerLogos = header.querySelectorAll('img');
     expect(headerLogos).toHaveLength(1);
-    expect(headerLogos[0].className).toContain('md:hidden');
-    const logo = within(
-      screen.getByRole('navigation', { name: 'Primary' }),
-    ).getByRole('img', { name: 'Kanvexa' });
+    expect(headerLogos[0].parentElement?.className).toContain('md:hidden');
+    const logo = within(screen.getByRole('navigation', { name: 'Primary' }))
+      .getByRole('link', { name: 'Kanvexa landing page' })
+      .querySelector('img')!;
     expect(logo.getAttribute('src')).toBe('/branding/kanvexa-logo-v1.png');
     expect(within(header).getByText('Sprint board')).toBeTruthy();
     expect(
@@ -50,7 +50,11 @@ describe('AppShell', () => {
     expect(within(header).getByText('Notifications, coming soon')).toBeTruthy();
     expect(within(header).queryByRole('searchbox')).toBeNull();
     expect(within(header).queryByRole('textbox')).toBeNull();
-    expect(within(header).queryAllByRole('link')).toHaveLength(0);
+    expect(
+      within(header)
+        .getByRole('link', { name: 'Kanvexa landing page' })
+        .getAttribute('href'),
+    ).toBe('/');
     // Only the drawer opener and the real account action are interactive;
     // no unread count or shortcut.
     expect(
