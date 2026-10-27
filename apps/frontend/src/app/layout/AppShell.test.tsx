@@ -19,8 +19,8 @@ describe('AppShell', () => {
     );
 
     const header = screen.getByRole('banner');
-    expect(within(header).getByText('Kanvexa')).toBeTruthy();
-    expect(within(header).queryByText('Kanban')).toBeNull();
+    // The brand lives once, in the sidebar; the header carries page context.
+    expect(within(header).queryByText(/Kanvexa|Kanban/)).toBeNull();
     // Check the DOM too: a decorative duplicate has alt="" and is excluded
     // from accessible image queries.
     expect(header.querySelector('img')).toBeNull();
@@ -35,6 +35,29 @@ describe('AppShell', () => {
     expect(
       within(screen.getByRole('main')).getByText('Page body'),
     ).toBeTruthy();
+  });
+
+  it('reserves Search and Notifications slots without fake behavior', () => {
+    renderInRouter(
+      <AppShell headerActions={<button type="button">Account</button>}>
+        <p>Page body</p>
+      </AppShell>,
+    );
+
+    const header = screen.getByRole('banner');
+    expect(within(header).getByText('Search, coming soon')).toBeTruthy();
+    expect(within(header).getByText('Notifications, coming soon')).toBeTruthy();
+    expect(within(header).queryByRole('searchbox')).toBeNull();
+    expect(within(header).queryByRole('textbox')).toBeNull();
+    expect(within(header).queryAllByRole('link')).toHaveLength(0);
+    // Only the real account action is interactive; no unread count or shortcut.
+    expect(
+      within(header)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Account']);
+    expect(header.querySelector('[tabindex], input, kbd')).toBeNull();
+    expect(header.textContent).not.toMatch(/\d|ctrl|⌘/i);
   });
 
   it('highlights the active navigation item', () => {

@@ -1,4 +1,5 @@
 import { Link, Outlet, useLocation, useMatches } from 'react-router';
+import { ChevronRightIcon } from '../../components/icons';
 import { UserMenu } from '../../features/auth/components/UserMenu';
 import { useBoardMembers } from '../../features/board-members/hooks';
 import { useVerifiedBoard } from '../../features/boards/useVerifiedBoard';
@@ -29,12 +30,29 @@ export function AuthenticatedLayout() {
       headerContext={
         boardId &&
         boardName && (
-          <Link
-            to={`/boards/${boardId}`}
-            className="truncate hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
-          >
-            {boardName}
-          </Link>
+          <nav aria-label="Breadcrumb" className="min-w-0">
+            <ol className="flex min-w-0 items-center gap-2">
+              <li className="hidden shrink-0 sm:block">
+                <Link
+                  to="/boards"
+                  className="text-muted hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
+                >
+                  Boards
+                </Link>
+              </li>
+              <li aria-hidden="true" className="hidden text-muted sm:block">
+                <ChevronRightIcon className="size-4" />
+              </li>
+              <li className="min-w-0">
+                <Link
+                  to={`/boards/${boardId}`}
+                  className="block truncate hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
+                >
+                  {boardName}
+                </Link>
+              </li>
+            </ol>
+          </nav>
         )
       }
       headerActions={<UserMenu />}

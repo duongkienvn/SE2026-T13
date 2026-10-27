@@ -67,9 +67,15 @@ describe('Authenticated navigation', () => {
     });
     expect(boardsLink().getAttribute('aria-current')).toBe('page');
     await act(() => view.router.navigate(`/boards/${boards[1].id}/members`));
-    await within(screen.getByRole('banner')).findByRole('link', {
-      name: 'Beta',
-    });
+    const breadcrumb = within(
+      await within(screen.getByRole('banner')).findByRole('navigation', {
+        name: 'Breadcrumb',
+      }),
+    );
+    await breadcrumb.findByRole('link', { name: 'Beta' });
+    expect(
+      breadcrumb.getByRole('link', { name: 'Boards' }).getAttribute('href'),
+    ).toBe('/boards');
     expect(boardsLink().getAttribute('aria-current')).toBe('page');
     expect(nav.getByRole('button', { name: 'Expand sidebar' })).toBeTruthy();
     fireEvent.click(

@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { BrandLogo } from '../../components/Brand';
 import { ChevronRightIcon, LayersIcon } from '../../components/icons';
 import type { NavGroup, NavItem } from './navigation';
+import { SoonBadge } from './SoonBadge';
 import { useSidebarPreference } from './useSidebarPreference';
 
 interface SidebarProps {
@@ -105,17 +106,6 @@ function WorkspaceSwitcherSlot({ expanded }: { expanded: boolean }) {
         <span className="block truncate text-xs text-muted">Coming soon</span>
       </span>
     </div>
-  );
-}
-
-function SoonBadge() {
-  return (
-    <span
-      aria-hidden="true"
-      className="shrink-0 rounded-full bg-app px-1.5 py-0.5 text-[11px] font-medium text-muted"
-    >
-      Soon
-    </span>
   );
 }
 
