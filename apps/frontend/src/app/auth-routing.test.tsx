@@ -64,7 +64,7 @@ describe('auth routing and session restore', () => {
       await screen.findByRole('heading', { name: 'Welcome back' }),
     ).toBeTruthy();
     expect(router.state.location.pathname).toBe('/login');
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
   });
 
   it('skips the request for an expired stored token', async () => {
@@ -96,7 +96,7 @@ describe('auth routing and session restore', () => {
     expect(
       await screen.findByText("We couldn't verify your session"),
     ).toBeTruthy();
-    expect(sessionStorage.getItem('kanban.session')).not.toBeNull();
+    expect(localStorage.getItem('kanban.session')).not.toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     // Retrying shows progress instead of leaving the error screen untouched.
@@ -130,7 +130,7 @@ describe('auth routing and session restore', () => {
       }),
     ).toBeTruthy();
     expect(
-      JSON.parse(sessionStorage.getItem('kanban.session')!).accessToken,
+      JSON.parse(localStorage.getItem('kanban.session')!).accessToken,
     ).toBe('test-access-token');
   });
 

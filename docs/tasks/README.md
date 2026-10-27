@@ -54,6 +54,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 - [Frontend application foundation](frontend/frontend-foundation.md)
 - [Kanvexa branding](frontend/kanvexa-branding.md)
 - [Frontend authentication](frontend/frontend-auth.md)
+- [Cross-tab authentication](frontend/cross-tab-authentication.md)
 - [Authentication integration with the real backend](frontend/frontend-auth-integration.md)
 - [Google Sign-In UI polish](frontend/google-sign-in-ui-polish.md)
 - [Frontend compact layout](frontend/frontend-compact-layout.md)

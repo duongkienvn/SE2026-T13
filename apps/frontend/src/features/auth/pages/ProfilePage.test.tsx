@@ -114,7 +114,7 @@ describe('ProfilePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
   });
 });
 
@@ -138,7 +138,7 @@ describe('logout', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
     const logoutCall = calls.find((call) => call.path === '/auth/logout')!;
     expect(logoutCall.headers.Authorization).toBe('Bearer profile-token');
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
   });
 
   it('still logs out locally when the logout API fails', async () => {
@@ -149,7 +149,7 @@ describe('logout', () => {
     await logOut();
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
   });
 
   it('does not show the previous account after switching users', async () => {

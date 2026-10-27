@@ -22,7 +22,7 @@ describe('session lifecycle', () => {
     });
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
   });
 
   it('keeps long-lived sessions without exceeding the setTimeout limit', async () => {
@@ -37,7 +37,7 @@ describe('session lifecycle', () => {
     const delays = setTimeoutSpy.mock.calls.map(([, delay]) => delay ?? 0);
     expect(Math.max(...delays)).toBeLessThanOrEqual(2_147_483_647);
     expect(router.state.location.pathname).toBe('/boards');
-    expect(sessionStorage.getItem('kanban.session')).not.toBeNull();
+    expect(localStorage.getItem('kanban.session')).not.toBeNull();
   });
 
   it('still shows the login form while a stored session cannot be verified', async () => {
@@ -70,6 +70,6 @@ describe('session lifecycle', () => {
       'Could not reach the server',
     );
     expect(router.state.location.pathname).toBe('/login');
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
   });
 });

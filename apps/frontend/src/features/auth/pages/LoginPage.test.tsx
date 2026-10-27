@@ -100,7 +100,7 @@ describe('LoginPage', () => {
       password: 'correct-horse',
     });
     expect(
-      JSON.parse(sessionStorage.getItem('kanban.session')!).accessToken,
+      JSON.parse(localStorage.getItem('kanban.session')!).accessToken,
     ).toBe('test-access-token');
     expect(
       screen.getByRole('button', {
@@ -125,7 +125,7 @@ describe('LoginPage', () => {
       'Incorrect email or password.',
     );
     expect(router.state.location.pathname).toBe('/login');
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
   });
 
   it('asks the user to wait when rate limited', async () => {
@@ -146,7 +146,7 @@ describe('LoginPage', () => {
     expect((await screen.findByRole('alert')).textContent).toContain(
       'Verify your email',
     );
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
     fireEvent.click(
       screen.getByRole('link', { name: 'Resend verification email' }),
     );

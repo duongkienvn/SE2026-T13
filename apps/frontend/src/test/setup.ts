@@ -18,5 +18,6 @@ afterEach(() => {
   createdSockets.length = 0;
   vi.unstubAllGlobals();
   sessionStorage.clear();
+  localStorage.removeItem('kanban.session');
   document.title = '';
 });

@@ -85,8 +85,8 @@ describe('Profile connected accounts', () => {
       headers: { Authorization: 'Bearer existing-jwt' },
       body: { credential: 'google-id-token', password: 'legacy-password' },
     });
-    expect(sessionStorage.getItem('kanban.session')).toContain('existing-jwt');
-    expect(sessionStorage.getItem('kanban.session')).not.toContain(
+    expect(localStorage.getItem('kanban.session')).toContain('existing-jwt');
+    expect(localStorage.getItem('kanban.session')).not.toContain(
       'legacy-password',
     );
     expect(screen.queryByLabelText('Current password')).toBeNull();
@@ -122,7 +122,7 @@ describe('Profile connected accounts', () => {
     expect(
       (screen.getByLabelText('Current password') as HTMLInputElement).value,
     ).toBe('');
-    expect(sessionStorage.getItem('kanban.session')).toContain('existing-jwt');
+    expect(localStorage.getItem('kanban.session')).toContain('existing-jwt');
   });
 
   it('shows Google-only status without a useless password form', async () => {
@@ -199,7 +199,7 @@ describe('Profile connected accounts', () => {
       await result;
     });
     expect(screen.queryByText(/You can now sign in/)).toBeNull();
-    expect(sessionStorage.getItem('kanban.session')).toContain('new-user-jwt');
+    expect(localStorage.getItem('kanban.session')).toContain('new-user-jwt');
     expect(view.client.getQueryData(['auth', 'linked-providers', 1])).toEqual({
       googleLinked: false,
       hasPassword: true,

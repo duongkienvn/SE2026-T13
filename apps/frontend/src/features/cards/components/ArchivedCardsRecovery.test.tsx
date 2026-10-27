@@ -158,7 +158,7 @@ describe('archived card restore recovery', () => {
         name: 'Archived cards unavailable',
       }),
     ).toBeTruthy();
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
     expect(screen.queryByText('Recovery card')).toBeNull();
   });
 });

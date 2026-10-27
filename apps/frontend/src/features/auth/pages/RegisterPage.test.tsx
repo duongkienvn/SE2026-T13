@@ -163,10 +163,10 @@ describe('RegisterPage', () => {
     const { router } = renderApp('/register');
     fillRegister(validInput);
     await screen.findByRole('heading', { name: 'Check your email' });
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
     await router.navigate(`/verify-email?token=${token}`);
     await screen.findByText('Email verified. You can now log in to Kanvexa.');
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
     fireEvent.click(screen.getByRole('link', { name: 'Back to login' }));
     await screen.findByRole('heading', { name: 'Welcome back' });
     fireEvent.change(screen.getByLabelText('Email address'), {
@@ -222,7 +222,7 @@ describe('RegisterPage', () => {
       password: 'Kanvexa@2026',
     });
     expect(calls[0].body).not.toHaveProperty('confirmPassword');
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
     expect(
       screen.queryByText('Account created. Log in to continue.'),
     ).toBeNull();
@@ -282,7 +282,7 @@ describe('RegisterPage', () => {
     expect(
       (screen.getByLabelText('Email address') as HTMLInputElement).value,
     ).toBe('ada@example.com');
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
   });
 
   it('treats a generic 409 conflict as a duplicate email', async () => {

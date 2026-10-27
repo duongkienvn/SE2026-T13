@@ -75,8 +75,9 @@ reset keeps its layout.
   else this user's cache, else OS; while the session is still being confirmed it
   keeps the boot result. `system` tracks OS changes live; an explicit choice
   ignores them. It writes the cache per user and clears it when a signed-in session
-  ends. Known first-load trade-off: a new tab has no session (sessionStorage), so it
-  follows the OS until sign-in.
+  ends. [Cross-tab authentication](cross-tab-authentication.md) supersedes the original
+  per-tab storage limitation: new tabs use the unexpired localStorage session for
+  boot. A later account switch returns to the OS theme while verification is pending.
 
 ## Preferences data layer
 

@@ -27,7 +27,7 @@ describe('App Shell brand navigation', () => {
         removeEventListener: () => undefined,
       }));
       storeSession();
-      const session = sessionStorage.getItem('kanban.session');
+      const session = localStorage.getItem('kanban.session');
       const calls = mockApi({
         'GET /users/me': ok(testUser),
         'GET /boards?page=1&limit=100': okPage([]),
@@ -78,7 +78,7 @@ describe('App Shell brand navigation', () => {
         const boards = await screen.findByRole('link', {
           name: 'Go to Boards',
         });
-        expect(sessionStorage.getItem('kanban.session')).toBe(session);
+        expect(localStorage.getItem('kanban.session')).toBe(session);
         expect(clear).not.toHaveBeenCalled();
         expect(removeQueries).not.toHaveBeenCalled();
         expect(screen.queryByRole('dialog')).toBeNull();

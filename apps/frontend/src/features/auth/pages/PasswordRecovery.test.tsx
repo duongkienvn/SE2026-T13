@@ -76,7 +76,7 @@ describe('password recovery routes', () => {
     expect(window.location.search).toBe('');
     expect(window.location.hash).toBe('');
     expect(readIncomingRecoveryToken()).toBe(token);
-    expect(sessionStorage.length).toBe(0);
+    expect(localStorage.getItem('kanban.session')).toBeNull();
     expect(localStorage.length).toBe(0);
     clearIncomingRecoveryToken();
     window.history.replaceState(null, '', '/');
@@ -109,7 +109,7 @@ describe('password recovery routes', () => {
       path: '/auth/reset-password',
       body: { token, newPassword: 'NewPass123!' },
     });
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
   });
   it('shows a safe expired/replayed error and recovery guidance without success', async () => {
     mockApi({

@@ -50,7 +50,7 @@
         var theme = 'system';
         try {
           var session = JSON.parse(
-            sessionStorage.getItem('kanban.session') || 'null',
+            localStorage.getItem('kanban.session') || 'null',
           );
           var cached = JSON.parse(
             localStorage.getItem('kanvexa.theme') || 'null',
@@ -58,6 +58,8 @@
           if (
             session &&
             typeof session.accessToken === 'string' &&
+            typeof session.expiresAt === 'number' &&
+            Number.isFinite(session.expiresAt) &&
             session.expiresAt > Date.now() &&
             cached &&
             /^(light|dark|system)$/.test(cached.theme)

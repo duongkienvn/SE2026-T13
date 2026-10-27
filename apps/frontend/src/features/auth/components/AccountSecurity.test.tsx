@@ -58,7 +58,7 @@ describe('AccountSecurity', () => {
     await fillChange();
     await screen.findByRole('heading', { name: 'Welcome back' });
     expect(await screen.findByText(/Password updated/)).toBeTruthy();
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
     expect(calls.some((call) => call.path === '/auth/logout')).toBe(false);
     expect(
       calls.find((call) => call.path === '/auth/change-password'),
@@ -79,7 +79,7 @@ describe('AccountSecurity', () => {
     renderApp('/settings/security');
     await fillChange('wrong');
     await screen.findByText('Could not confirm your current password.');
-    expect(sessionStorage.getItem('kanban.session')).not.toBeNull();
+    expect(localStorage.getItem('kanban.session')).not.toBeNull();
     await fillChange();
     await screen.findByRole('heading', { name: 'Welcome back' });
   });
@@ -156,7 +156,7 @@ describe('AccountSecurity', () => {
       });
       expect(auth.user?.id).toBe(other.id);
       expect(router.state.location.pathname).toBe('/settings/security');
-      expect(sessionStorage.getItem('kanban.session')).toContain('new-session');
+      expect(localStorage.getItem('kanban.session')).toContain('new-session');
       expect(screen.queryByText(/Password updated/)).toBeNull();
     },
   );

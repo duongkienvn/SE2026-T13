@@ -155,4 +155,39 @@ describe('ThemeSync', () => {
     await waitFor(() => expect(theme()).toBe('light'));
     expect(cache()).toBeNull();
   });
+
+  it('drops the previous theme while a cross-tab account switch is being verified', async () => {
+    stubColorScheme(false);
+    storeSession('a');
+    let resolveUser!: (response: MockResponse) => void;
+    const userB = { ...testUser, id: 'user-b', email: 'b@example.com' };
+    mockApi({
+      'GET /users/me': (request) =>
+        request.headers.Authorization === 'Bearer a'
+          ? ok(testUser)
+          : new Promise<MockResponse>((resolve) => {
+              resolveUser = resolve;
+            }),
+      [`GET ${PATH}`]: (request) =>
+        request.headers.Authorization === 'Bearer a'
+          ? ok(prefs('dark'))
+          : new Promise<MockResponse>(() => undefined),
+    });
+    renderApp();
+    await waitFor(() => expect(theme()).toBe('dark'));
+    storeSession('b');
+    act(() =>
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: 'kanban.session',
+          storageArea: localStorage,
+        }),
+      ),
+    );
+    expect(auth.status).toBe('loading');
+    expect(theme()).toBe('light');
+    await act(async () => resolveUser(ok(userB)));
+    await waitFor(() => expect(auth.user?.id).toBe('user-b'));
+    expect(theme()).toBe('light');
+  });
 });
