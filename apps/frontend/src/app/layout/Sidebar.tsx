@@ -23,12 +23,19 @@ export function Sidebar({ groups, activeItemId }: SidebarProps) {
       <div
         className={`flex h-14 shrink-0 items-center gap-2 md:h-15 ${expanded ? 'px-4' : 'justify-center'}`}
       >
-        <BrandLogo className="size-9" />
-        {expanded && (
-          <span className="text-lg font-semibold tracking-tight text-ink">
-            Kanvexa
-          </span>
-        )}
+        <Link
+          to="/"
+          aria-label="Kanvexa landing page"
+          title="Kanvexa landing page"
+          className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg transition-colors hover:bg-app active:bg-primary-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+          <BrandLogo decorative className="size-9" />
+          {expanded && (
+            <span className="text-lg font-semibold tracking-tight text-ink">
+              Kanvexa
+            </span>
+          )}
+        </Link>
       </div>
       <div
         id={itemsId}

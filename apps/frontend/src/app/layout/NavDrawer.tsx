@@ -1,5 +1,6 @@
 import { useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { Link } from 'react-router';
 import { BrandLogo } from '../../components/Brand';
 import { CloseIcon } from '../../components/icons';
 import { useModalFocus } from '../../hooks/useModalFocus';
@@ -52,13 +53,22 @@ export function NavDrawer({
         className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col bg-surface shadow-frame focus:outline-none motion-safe:animate-[drawer-in_180ms_ease-out]"
       >
         <div className="flex h-14 shrink-0 items-center gap-2 pr-2 pl-4">
-          <BrandLogo className="size-9" />
-          <span className="text-lg font-semibold tracking-tight text-ink">
-            Kanvexa
-          </span>
+          <Link
+            to="/"
+            aria-label="Kanvexa landing page"
+            title="Kanvexa landing page"
+            onClick={onClose}
+            className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg transition-colors hover:bg-app active:bg-primary-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            <BrandLogo decorative className="size-9" />
+            <span className="text-lg font-semibold tracking-tight text-ink">
+              Kanvexa
+            </span>
+          </Link>
           <button
             type="button"
             aria-label="Close navigation"
+            data-autofocus
             onClick={onClose}
             className="ml-auto grid size-11 place-items-center rounded-lg text-muted hover:bg-app hover:text-ink focus-visible:outline-2 focus-visible:outline-primary"
           >
