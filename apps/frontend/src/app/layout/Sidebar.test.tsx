@@ -1,6 +1,8 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { FolderIcon, SettingsIcon } from '../../components/icons';
+import { FolderIcon, StarIcon } from '../../components/icons';
+import type { NavGroup } from './navigation';
 import { Sidebar } from './Sidebar';
 
 afterEach(() => {
@@ -8,12 +10,34 @@ afterEach(() => {
   localStorage.removeItem('kanvexa.sidebar.expanded');
 });
 
-function renderSidebar() {
+const groups: NavGroup[] = [
+  {
+    id: 'personal',
+    label: 'Personal',
+    items: [
+      {
+        id: 'boards',
+        label: 'Boards',
+        icon: FolderIcon,
+        availability: 'available',
+        path: '/boards',
+      },
+      { id: 'starred', label: 'Starred', icon: StarIcon, availability: 'soon' },
+    ],
+  },
+  {
+    id: 'workspaces',
+    label: 'Workspaces',
+    emptyText: 'Workspaces are coming soon.',
+    items: [],
+  },
+];
+
+function renderSidebar(activeItemId?: string) {
   return render(
-    <Sidebar
-      primaryItems={[{ id: 'boards', label: 'Boards', icon: FolderIcon }]}
-      secondaryItems={[]}
-    />,
+    <MemoryRouter>
+      <Sidebar groups={groups} activeItemId={activeItemId} />
+    </MemoryRouter>,
   );
 }
 
@@ -87,68 +111,48 @@ describe('Sidebar', () => {
     ).toBeTruthy();
   });
 
-  it('shows labels on desktop and toggles the labelled rail', () => {
-    render(
-      <Sidebar
-        primaryItems={[{ id: 'boards', label: 'Boards', icon: FolderIcon }]}
-        secondaryItems={[]}
-        activeItemId="boards"
-      />,
-    );
+  it('renders labelled groups with the empty workspace state', () => {
+    renderSidebar();
+    expect(screen.getByRole('group', { name: 'Personal' })).toBeTruthy();
+    const workspaces = screen.getByRole('group', { name: 'Workspaces' });
+    expect(
+      within(workspaces).getByText('Workspaces are coming soon.'),
+    ).toBeTruthy();
+  });
+
+  it('renders available items as links with route-aware active state', () => {
+    renderSidebar('boards');
+    const boards = screen.getByRole('link', { name: 'Boards' });
+    expect(boards.getAttribute('href')).toBe('/boards');
+    expect(boards.getAttribute('aria-current')).toBe('page');
+  });
+
+  it('renders coming-soon items as unfocusable status text, never as controls', () => {
+    renderSidebar();
+    const nav = screen.getByRole('navigation', { name: 'Primary' });
+    expect(within(nav).queryByRole('link', { name: /Starred/ })).toBeNull();
+    expect(within(nav).queryByRole('button', { name: /Starred/ })).toBeNull();
+    const starred = within(nav).getByText('Starred').closest('li')!;
+    expect(starred.textContent).toContain('Soon');
+    expect(starred.textContent).toContain('coming soon');
+    expect(starred.querySelector('a, button, [tabindex]')).toBeNull();
+    expect(starred.title).toBe('Starred — coming soon');
+  });
+
+  it('keeps accessible names for icon-only items when collapsed', () => {
+    renderSidebar('boards');
     const toggle = screen.getByRole('button', { name: 'Collapse sidebar' });
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
     expect(
       document.getElementById(toggle.getAttribute('aria-controls')!),
     ).toBeTruthy();
-    expect(screen.getByText('Boards')).toBeTruthy();
     fireEvent.click(toggle);
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    expect(screen.queryByText('Boards')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Boards' }).title).toBe('Boards');
-    fireEvent.click(screen.getByRole('button', { name: 'Expand sidebar' }));
-    expect(screen.getByText('Boards')).toBeTruthy();
-    expect(screen.getByRole('navigation').querySelectorAll('ul')).toHaveLength(
-      1,
-    );
-  });
-
-  it('never marks the current page as coming soon', () => {
-    render(
-      <Sidebar
-        primaryItems={[{ id: 'boards', label: 'Boards', icon: FolderIcon }]}
-        secondaryItems={[]}
-        activeItemId="boards"
-      />,
-    );
-
-    const boards = screen.getByRole('button', { name: 'Boards' });
+    const boards = screen.getByRole('link', { name: 'Boards' });
+    expect(boards.title).toBe('Boards');
     expect(boards.getAttribute('aria-current')).toBe('page');
-    expect(boards.getAttribute('aria-disabled')).toBeNull();
-  });
-
-  it('enables items with a handler and highlights the active item', () => {
-    const onSelect = vi.fn();
-    render(
-      <Sidebar
-        primaryItems={[
-          { id: 'boards', label: 'Boards', icon: FolderIcon, onSelect },
-        ]}
-        secondaryItems={[
-          { id: 'settings', label: 'Settings', icon: SettingsIcon },
-        ]}
-        activeItemId="boards"
-      />,
-    );
-
-    const boards = screen.getByRole('button', { name: 'Boards' });
-    expect(boards.getAttribute('aria-current')).toBe('page');
-    expect(boards.getAttribute('aria-disabled')).toBeNull();
-    fireEvent.click(boards);
-    expect(onSelect).toHaveBeenCalledOnce();
-
-    const settings = screen.getByRole('button', {
-      name: 'Settings (coming soon)',
-    });
-    expect(settings.getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByText('Starred, coming soon')).toBeTruthy();
+    expect(screen.queryByText('Workspaces are coming soon.')).toBeNull();
+    expect(screen.getByRole('group', { name: 'Workspaces' })).toBeTruthy();
   });
 });

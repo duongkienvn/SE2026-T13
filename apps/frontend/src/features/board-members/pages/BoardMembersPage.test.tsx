@@ -130,21 +130,17 @@ describe('BoardMembersPage (as OWNER)', () => {
     expect(document.title).toBe('Members · Design Team · Kanvexa');
   });
 
-  it('highlights Board members in the sidebar', async () => {
+  it('keeps Boards active in the sidebar, since members are board-contextual', async () => {
     openMembers(board, [me]);
     const nav = await screen.findByRole('navigation', { name: 'Primary' });
     await waitFor(() =>
       expect(
         within(nav)
-          .getByRole('button', { name: 'Board members' })
+          .getByRole('link', { name: 'Boards' })
           .getAttribute('aria-current'),
       ).toBe('page'),
     );
-    expect(
-      within(nav)
-        .getByRole('button', { name: 'Boards' })
-        .getAttribute('aria-current'),
-    ).toBeNull();
+    expect(within(nav).queryByRole('link', { name: /members/i })).toBeNull();
   });
 
   it('adds a registered user by email and refreshes the list', async () => {

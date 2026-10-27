@@ -1,16 +1,11 @@
 import type { ReactNode } from 'react';
 import { AppHeader } from './AppHeader';
-import {
-  primaryNavItems as defaultPrimaryNavItems,
-  secondaryNavItems as defaultSecondaryNavItems,
-  type NavItem,
-} from './navigation';
+import { navGroups as defaultNavGroups, type NavGroup } from './navigation';
 import { Sidebar } from './Sidebar';
 
 interface AppShellProps {
   children: ReactNode;
-  primaryNavItems?: NavItem[];
-  secondaryNavItems?: NavItem[];
+  navGroups?: NavGroup[];
   activeNavItemId?: string;
   headerContext?: ReactNode;
   headerActions?: ReactNode;
@@ -19,8 +14,7 @@ interface AppShellProps {
 /** Authenticated application frame: lavender outer frame, side rail, top header and scrollable content. */
 export function AppShell({
   children,
-  primaryNavItems = defaultPrimaryNavItems,
-  secondaryNavItems = defaultSecondaryNavItems,
+  navGroups = defaultNavGroups,
   activeNavItemId,
   headerContext,
   headerActions,
@@ -34,11 +28,7 @@ export function AppShell({
         Skip to content
       </a>
       <div className="flex h-full overflow-hidden bg-app md:rounded-2xl md:shadow-frame">
-        <Sidebar
-          primaryItems={primaryNavItems}
-          secondaryItems={secondaryNavItems}
-          activeItemId={activeNavItemId}
-        />
+        <Sidebar groups={navGroups} activeItemId={activeNavItemId} />
         <div className="flex min-w-0 flex-1 flex-col">
           <AppHeader context={headerContext} actions={headerActions} />
           {/* Contain absolute sr-only announcements in this scroller so their

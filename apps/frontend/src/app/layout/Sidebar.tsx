@@ -1,20 +1,16 @@
 import { useId } from 'react';
+import { Link } from 'react-router';
 import { BrandLogo } from '../../components/Brand';
 import { ChevronRightIcon } from '../../components/icons';
-import type { NavItem } from './navigation';
+import type { NavGroup, NavItem } from './navigation';
 import { useSidebarPreference } from './useSidebarPreference';
 
 interface SidebarProps {
-  primaryItems: NavItem[];
-  secondaryItems: NavItem[];
+  groups: NavGroup[];
   activeItemId?: string;
 }
 
-export function Sidebar({
-  primaryItems,
-  secondaryItems,
-  activeItemId,
-}: SidebarProps) {
+export function Sidebar({ groups, activeItemId }: SidebarProps) {
   const { expanded, desktop, toggle } = useSidebarPreference();
   const itemsId = useId();
   return (
@@ -55,30 +51,53 @@ export function Sidebar({
         id={itemsId}
         className="flex min-h-0 flex-1 flex-col overflow-y-auto"
       >
-        <ul className="flex flex-col">
-          {primaryItems.map((item) => (
-            <SidebarItem
-              key={item.id}
-              item={item}
-              active={item.id === activeItemId}
-              expanded={expanded}
-            />
-          ))}
-        </ul>
-        {secondaryItems.length > 0 && (
-          <ul className="mt-auto mb-3 flex flex-col">
-            {secondaryItems.map((item) => (
-              <SidebarItem
-                key={item.id}
-                item={item}
-                active={item.id === activeItemId}
-                expanded={expanded}
-              />
-            ))}
-          </ul>
-        )}
+        {groups.map((group) => (
+          <SidebarGroup
+            key={group.id}
+            group={group}
+            activeItemId={activeItemId}
+            expanded={expanded}
+          />
+        ))}
       </div>
     </nav>
+  );
+}
+
+interface SidebarGroupProps {
+  group: NavGroup;
+  activeItemId?: string;
+  expanded: boolean;
+}
+
+function SidebarGroup({ group, activeItemId, expanded }: SidebarGroupProps) {
+  const headingId = useId();
+  return (
+    <div role="group" aria-labelledby={headingId} className="flex flex-col">
+      <h2
+        id={headingId}
+        className={
+          expanded
+            ? 'px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted uppercase'
+            : 'sr-only'
+        }
+      >
+        {group.label}
+      </h2>
+      {expanded && group.emptyText && (
+        <p className="px-5 py-1 text-xs text-muted">{group.emptyText}</p>
+      )}
+      <ul className="flex flex-col">
+        {group.items.map((item) => (
+          <SidebarItem
+            key={item.id}
+            item={item}
+            active={item.id === activeItemId}
+            expanded={expanded}
+          />
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -89,29 +108,48 @@ interface SidebarItemProps {
 }
 
 function SidebarItem({ item, active, expanded }: SidebarItemProps) {
-  const { icon: Icon, label, onSelect } = item;
-  // The current page is never "coming soon", even before its handler is wired.
-  const available = active || Boolean(onSelect);
-  const stateClasses = active
-    ? 'bg-primary-soft text-primary shadow-[inset_-3px_0_0_var(--color-primary)]'
-    : available
-      ? 'text-muted hover:bg-app hover:text-ink'
-      : 'cursor-not-allowed text-muted';
+  const { icon: Icon, label } = item;
+  const layout = `flex min-h-12 w-full items-center gap-3 py-3 ${expanded ? 'px-5 text-left' : 'justify-center'}`;
+
+  if (item.availability === 'soon') {
+    // Not focusable: an unfinished feature must not be a keyboard dead end.
+    return (
+      <li
+        title={`${label} — coming soon`}
+        className={`${layout} cursor-default text-muted/70`}
+      >
+        <Icon className="size-5 shrink-0" />
+        {expanded ? (
+          <>
+            <span className="text-sm font-medium">{label}</span>
+            <span className="ml-auto rounded-full bg-app px-2 py-0.5 text-[11px] font-medium text-muted">
+              Soon
+            </span>
+            <span className="sr-only">, coming soon</span>
+          </>
+        ) : (
+          <span className="sr-only">{label}, coming soon</span>
+        )}
+      </li>
+    );
+  }
 
   return (
     <li>
-      <button
-        type="button"
-        aria-label={available ? label : `${label} (coming soon)`}
+      <Link
+        to={item.path}
+        aria-label={expanded ? undefined : label}
         aria-current={active ? 'page' : undefined}
-        aria-disabled={available ? undefined : true}
-        title={available ? label : `${label} — coming soon`}
-        onClick={onSelect}
-        className={`flex min-h-12 w-full items-center gap-3 py-3 transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary ${expanded ? 'px-5 text-left' : 'justify-center'} ${stateClasses}`}
+        title={expanded ? undefined : label}
+        className={`${layout} transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary ${
+          active
+            ? 'bg-primary-soft text-primary shadow-[inset_-3px_0_0_var(--color-primary)]'
+            : 'text-muted hover:bg-app hover:text-ink'
+        }`}
       >
         <Icon className="size-5 shrink-0" />
         {expanded && <span className="text-sm font-medium">{label}</span>}
-      </button>
+      </Link>
     </li>
   );
 }

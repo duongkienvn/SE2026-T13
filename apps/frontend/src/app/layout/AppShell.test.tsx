@@ -1,10 +1,15 @@
 import { render, screen, within } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { AppShell } from './AppShell';
 
+const renderInRouter = (ui: ReactElement) =>
+  render(<MemoryRouter>{ui}</MemoryRouter>);
+
 describe('AppShell', () => {
   it('renders header slots and page content', () => {
-    render(
+    renderInRouter(
       <AppShell
         headerContext={<span>Sprint board</span>}
         headerActions={<button type="button">Account</button>}
@@ -33,7 +38,7 @@ describe('AppShell', () => {
   });
 
   it('highlights the active navigation item', () => {
-    render(
+    renderInRouter(
       <AppShell activeNavItemId="boards">
         <p>Page body</p>
       </AppShell>,
@@ -42,13 +47,13 @@ describe('AppShell', () => {
     const nav = screen.getByRole('navigation', { name: 'Primary' });
     expect(
       within(nav)
-        .getByRole('button', { name: 'Boards' })
+        .getByRole('link', { name: 'Boards' })
         .getAttribute('aria-current'),
     ).toBe('page');
   });
 
   it('offers a skip link to the main content', () => {
-    render(
+    renderInRouter(
       <AppShell>
         <p>Page body</p>
       </AppShell>,
