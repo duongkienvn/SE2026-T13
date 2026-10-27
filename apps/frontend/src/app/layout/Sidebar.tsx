@@ -1,7 +1,7 @@
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { BrandLogo } from '../../components/Brand';
-import { ChevronRightIcon, LayersIcon } from '../../components/icons';
+import { LayersIcon, PanelLeftIcon } from '../../components/icons';
 import type { NavGroup, NavItem } from './navigation';
 import { SoonBadge } from './SoonBadge';
 import { useSidebarPreference } from './useSidebarPreference';
@@ -9,11 +9,25 @@ import { useSidebarPreference } from './useSidebarPreference';
 interface SidebarProps {
   groups: NavGroup[];
   activeItemId?: string;
+  footer?: (expanded: boolean) => ReactNode;
 }
 
-export function Sidebar({ groups, activeItemId }: SidebarProps) {
+export function Sidebar({ groups, activeItemId, footer }: SidebarProps) {
   const { expanded, desktop, toggle } = useSidebarPreference();
   const itemsId = useId();
+  const toggleButton = desktop && (
+    <button
+      type="button"
+      aria-label={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
+      title={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
+      aria-expanded={expanded}
+      aria-controls={itemsId}
+      onClick={toggle}
+      className="grid size-11 shrink-0 place-items-center rounded-lg text-muted hover:bg-app hover:text-ink focus-visible:outline-2 focus-visible:outline-primary"
+    >
+      <PanelLeftIcon className="size-5" />
+    </button>
+  );
   return (
     <nav
       aria-label="Primary"
@@ -21,7 +35,7 @@ export function Sidebar({ groups, activeItemId }: SidebarProps) {
       className={`hidden shrink-0 flex-col border-r border-line bg-surface md:flex ${expanded ? 'w-64' : 'w-16'}`}
     >
       <div
-        className={`flex h-14 shrink-0 items-center gap-2 md:h-15 ${expanded ? 'px-4' : 'justify-center'}`}
+        className={`flex shrink-0 items-center gap-2 ${expanded ? 'h-14 px-4 md:h-15' : desktop ? 'flex-col py-2' : 'h-14 justify-center md:h-15'}`}
       >
         <Link
           to="/"
@@ -36,6 +50,9 @@ export function Sidebar({ groups, activeItemId }: SidebarProps) {
             </span>
           )}
         </Link>
+        {desktop && (
+          <div className={expanded ? 'ml-auto' : ''}>{toggleButton}</div>
+        )}
       </div>
       <div
         id={itemsId}
@@ -47,25 +64,11 @@ export function Sidebar({ groups, activeItemId }: SidebarProps) {
           expanded={expanded}
         />
       </div>
-      {/* Tablet rails stay compact; the header menu opens the full drawer. */}
-      {desktop && (
+      {footer && (
         <div
           className={`shrink-0 border-t border-line py-2 ${expanded ? 'px-3' : 'px-2'}`}
         >
-          <button
-            type="button"
-            aria-label={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
-            title={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
-            aria-expanded={expanded}
-            aria-controls={itemsId}
-            onClick={toggle}
-            className={`flex min-h-10 w-full items-center gap-3 rounded-lg text-sm text-muted hover:bg-app hover:text-ink focus-visible:outline-2 focus-visible:outline-primary ${expanded ? 'px-3' : 'justify-center'}`}
-          >
-            <ChevronRightIcon
-              className={`size-5 shrink-0 ${expanded ? 'rotate-180' : ''}`}
-            />
-            {expanded && <span>Collapse sidebar</span>}
-          </button>
+          {footer(expanded)}
         </div>
       )}
     </nav>

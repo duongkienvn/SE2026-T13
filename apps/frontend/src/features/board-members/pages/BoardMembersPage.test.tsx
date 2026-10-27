@@ -500,7 +500,9 @@ describe('BoardMembersPage edge cases', () => {
 
     const search = screen.getByRole('searchbox', { name: 'Search members' });
     fireEvent.change(search, { target: { value: '' } });
-    expect(await screen.findByText(testUser.displayName)).toBeTruthy();
+    expect(
+      await within(screen.getByRole('main')).findByText(testUser.displayName),
+    ).toBeTruthy();
   });
 
   it('switches to read-only when the board was archived meanwhile', async () => {
