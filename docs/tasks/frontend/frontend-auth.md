@@ -31,7 +31,8 @@ verification tại [task record](../backend/auth-registration-password-policy.md
 
 ## Quyết định về session và bảo mật
 
-- Access token chỉ lưu trong `sessionStorage`, không lưu trong `localStorage`.
+- Ban đầu access token chỉ lưu trong `sessionStorage`. [Issue #101](cross-tab-authentication.md)
+  thay bằng `localStorage` để đồng bộ cùng origin, giữ expiry cố định và xác minh server.
 - Dữ liệu user cũ được xóa khi session đổi hoặc token bị backend từ chối.
 - Redirect sau login chỉ nhận đường dẫn nội bộ để tránh open redirect.
 - Logout luôn xóa session phía client kể cả request logout thất bại.

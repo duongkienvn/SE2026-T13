@@ -108,12 +108,12 @@ export function loginResponse(user: User = testUser): LoginResponse {
   };
 }
 
-/** Pre-populates sessionStorage as if the user had logged in earlier in this tab. */
+/** Pre-populates localStorage as if the user had logged in earlier in this tab. */
 export function storeSession(
   accessToken = 'stored-token',
   expiresInMs = 60_000,
 ) {
-  sessionStorage.setItem(
+  localStorage.setItem(
     'kanban.session',
     JSON.stringify({ accessToken, expiresAt: Date.now() + expiresInMs }),
   );

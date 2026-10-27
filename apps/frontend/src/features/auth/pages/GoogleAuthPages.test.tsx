@@ -81,10 +81,10 @@ describe('Google login and registration', () => {
       expect(calls.find((call) => call.path === '/auth/google')?.body).toEqual({
         credential: 'google-sensitive-id-token',
       });
-      expect(sessionStorage.getItem('kanban.session')).toContain(
+      expect(localStorage.getItem('kanban.session')).toContain(
         'test-access-token',
       );
-      expect(JSON.stringify(sessionStorage)).not.toContain(
+      expect(JSON.stringify(localStorage)).not.toContain(
         'google-sensitive-id-token',
       );
       expect(JSON.stringify(localStorage)).not.toContain(
@@ -126,7 +126,7 @@ describe('Google login and registration', () => {
     expect((await screen.findByRole('alert')).textContent).toContain(
       'Connected accounts',
     );
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
     expect(screen.getByRole('button', { name: 'Create account' })).toBeTruthy();
   });
   it.each(['EMAIL_NOT_VERIFIED', 'MAIL_DELIVERY_UNAVAILABLE'])(
@@ -147,7 +147,7 @@ describe('Google login and registration', () => {
       );
       expect(router.state.location.pathname).toBe('/check-email');
       expect(router.state.location.state).toEqual({ from: '/profile' });
-      expect(sessionStorage.getItem('kanban.session')).toBeNull();
+      expect(localStorage.getItem('kanban.session')).toBeNull();
     },
   );
   it('keeps local login usable after a Google API error', async () => {
@@ -191,7 +191,7 @@ describe('Google login and registration', () => {
       await response;
     });
     expect(router.state.location.pathname).toBe('/register');
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
   });
   it('does not let a late Google response overwrite a newer password login', async () => {
     const google = installGoogle();
@@ -225,7 +225,7 @@ describe('Google login and registration', () => {
       finish(ok(loginResponse()));
       await response;
     });
-    expect(sessionStorage.getItem('kanban.session')).toContain(
+    expect(localStorage.getItem('kanban.session')).toContain(
       'new-local-session',
     );
   });

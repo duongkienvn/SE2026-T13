@@ -16,7 +16,7 @@ function boot() {
 }
 
 function storeSession(accessToken: string, expiresAt = Date.now() + 60_000) {
-  sessionStorage.setItem(
+  localStorage.setItem(
     'kanban.session',
     JSON.stringify({ accessToken, expiresAt }),
   );

@@ -460,7 +460,7 @@ describe('BoardMembersPage errors', () => {
     });
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
   });
 
   it('shows "Board not found" when access is denied', async () => {

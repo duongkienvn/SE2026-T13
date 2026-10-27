@@ -119,6 +119,36 @@ afterEach(() => {
 });
 
 describe('auth session isolation', () => {
+  it.each([ok(oldProfile), fail(401, 'UNAUTHORIZED')])(
+    'isolates a pending PATCH across an incoming account switch (%j)',
+    async (result) => {
+      const { view, settle } = await pendingPatch();
+      mockApi({
+        'GET /users/me': ok(otherUser),
+        'GET /auth/linked-providers': ok({
+          hasPassword: true,
+          googleLinked: true,
+        }),
+      });
+      storeSession('b-token');
+      act(() =>
+        window.dispatchEvent(
+          new StorageEvent('storage', {
+            key: 'kanban.session',
+            storageArea: localStorage,
+          }),
+        ),
+      );
+      await screen.findByRole('heading', { name: 'Profile' });
+      await waitFor(() => expect(view.auth.user).toEqual(otherUser));
+      const writes = vi.spyOn(view.client, 'setQueryData');
+      await settle(result);
+      expectUser(view);
+      expect(writes).not.toHaveBeenCalled();
+      expect(localStorage.getItem('kanban.session')).toContain('b-token');
+    },
+  );
+
   it('applies a PATCH to the cache and form in the same session', async () => {
     const { view, settle, calls } = await pendingPatch();
     const generation = view.scope.generation;
@@ -162,7 +192,7 @@ describe('auth session isolation', () => {
       expect(writes).not.toHaveBeenCalled();
       expect(screen.queryByRole('alert')).toBeNull();
       expect(
-        JSON.parse(sessionStorage.getItem('kanban.session')!).accessToken,
+        JSON.parse(localStorage.getItem('kanban.session')!).accessToken,
       ).toBe('b-token');
     },
   );
@@ -176,7 +206,7 @@ describe('auth session isolation', () => {
       expect(view.auth.status).toBe('anonymous');
       expect(view.auth.user).toBeNull();
       expect(view.client.getQueryData(currentUserQueryKey)).toBeUndefined();
-      expect(sessionStorage.getItem('kanban.session')).toBeNull();
+      expect(localStorage.getItem('kanban.session')).toBeNull();
       expect(screen.queryByText(oldProfile.displayName)).toBeNull();
     },
   );

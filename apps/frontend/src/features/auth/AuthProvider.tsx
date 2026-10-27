@@ -15,7 +15,14 @@ import {
   type AuthStatus,
 } from './auth-context';
 import { AuthSessionContext } from './auth-session-context';
-import { clearSession, readSession, saveSession } from './session';
+import {
+  clearSession,
+  readSessionSnapshot,
+  readStoredSessionValue,
+  saveSession,
+  SESSION_STORAGE_KEY,
+  type SessionSnapshot,
+} from './session';
 import type { LoginResponse } from './types';
 
 export const currentUserQueryKey = ['auth', 'current-user'] as const;
@@ -27,10 +34,18 @@ function isUnauthorized(error: unknown): boolean {
   return isApiError(error) && error.status === 401;
 }
 
+function storageUnchanged(previous: string | null | undefined): boolean {
+  const current = readStoredSessionValue();
+  // Storage failures must not disable a same-tab in-memory login.
+  return (
+    current === undefined || previous === undefined || current === previous
+  );
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [scope, setScope] = useState(() => ({
-    session: readSession(),
+    ...readSessionSnapshot(),
     generation: 0,
   }));
   // Updated synchronously at session boundaries, before React can render again.
@@ -38,19 +53,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { session, generation } = scope;
   const accessToken = session?.accessToken ?? null;
 
+  const applySession = useCallback(
+    (snapshot: SessionSnapshot, verifiedUser?: LoginResponse['user']) => {
+      const next = {
+        ...snapshot,
+        generation: scopeRef.current.generation + 1,
+      };
+      scopeRef.current = next;
+      // Drop all protected queries/mutations before exposing a different session.
+      queryClient.clear();
+      if (verifiedUser)
+        queryClient.setQueryData(currentUserQueryKey, verifiedUser);
+      setScope(next);
+    },
+    [queryClient],
+  );
+
   const endSession = useCallback(() => {
-    const next = { session: null, generation: scopeRef.current.generation + 1 };
-    scopeRef.current = next;
-    clearSession();
-    setScope(next);
-    // Drop every cached query so no private data outlives the session.
-    queryClient.clear();
-  }, [queryClient]);
+    // An old tab's expiry/401 must not delete a newer shared login.
+    if (!storageUnchanged(scopeRef.current.storedValue)) return;
+    applySession(clearSession());
+  }, [applySession]);
 
   const isCurrent = useCallback(
     () =>
       scopeRef.current === scope &&
-      (!session || Date.now() < session.expiresAt),
+      (!session || Date.now() < session.expiresAt) &&
+      storageUnchanged(scope.storedValue),
     [scope, session],
   );
 
@@ -82,12 +111,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     staleTime: 5 * 60 * 1000,
   });
 
+  useEffect(() => {
+    const synchronize = () => {
+      if (readStoredSessionValue() === undefined) return;
+      // Read the latest value, not a possibly superseded event.newValue.
+      const snapshot = readSessionSnapshot();
+      if (snapshot.storedValue !== scopeRef.current.storedValue) {
+        applySession(snapshot);
+      }
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== null && event.key !== SESSION_STORAGE_KEY) return;
+      try {
+        if (event.storageArea && event.storageArea !== window.localStorage)
+          return;
+      } catch {
+        return;
+      }
+      synchronize();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') synchronize();
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('focus', synchronize);
+    window.addEventListener('pageshow', synchronize);
+    document.addEventListener('visibilitychange', onVisible);
+    // Cover a change between initialization and listener installation.
+    synchronize();
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('focus', synchronize);
+      window.removeEventListener('pageshow', synchronize);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [applySession]);
+
   // The token has a fixed lifetime and no refresh flow: end the session when it expires.
   useEffect(() => {
     if (!session) return;
     let timeout: ReturnType<typeof setTimeout>;
     const checkExpiry = () => {
-      if (scopeRef.current !== scope) return;
+      if (scopeRef.current !== scope || !storageUnchanged(scope.storedValue))
+        return;
       const remaining = session.expiresAt - Date.now();
       if (remaining <= 0) endSession();
       else
@@ -100,22 +166,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(
     (response: LoginResponse) => {
       const stored = saveSession(response.accessToken, response.expiresIn);
-      const next = {
-        session: stored,
-        generation: scopeRef.current.generation + 1,
-      };
-      scopeRef.current = next;
-      // Never let a previous (possibly unverified) session's cache reach the new user.
-      queryClient.clear();
-      queryClient.setQueryData(currentUserQueryKey, response.user);
-      setScope(next);
+      applySession(stored, response.user);
     },
-    [queryClient],
+    [applySession],
   );
 
   const signOut = useCallback(
     (options?: { notifyServer?: boolean }) => {
-      if (scopeRef.current !== scope) return;
+      if (scopeRef.current !== scope || !storageUnchanged(scope.storedValue))
+        return;
       if (accessToken && options?.notifyServer !== false) {
         // Ordinary logout is stateless. Credential changes revoke JWTs separately
         // and can skip this now-unauthorized best-effort request.

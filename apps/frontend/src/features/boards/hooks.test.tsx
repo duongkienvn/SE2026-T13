@@ -147,7 +147,7 @@ describe('board hooks', () => {
     const { result } = renderHook(() => useBoard(board.id), { wrapper });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
   });
 
   it('rejects list responses without pagination meta', async () => {

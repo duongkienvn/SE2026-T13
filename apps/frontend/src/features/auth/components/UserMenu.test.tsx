@@ -121,7 +121,7 @@ describe('UserMenu', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Log out' }));
     await screen.findByRole('heading', { name: 'Welcome back' });
     expect(router.state.location.pathname).toBe('/login');
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
     expect(screen.queryByRole('group', { name: 'Account actions' })).toBeNull();
     expect(calls.filter((call) => call.path === '/auth/logout')).toHaveLength(
       1,

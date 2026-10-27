@@ -32,7 +32,7 @@ describe('email verification pages', () => {
       calls.filter((call) => call.path === '/auth/verify-email'),
     ).toHaveLength(1);
     expect(calls[0].body).toEqual({ token });
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
     expect(screen.getByRole('link', { name: 'Back to login' })).toBeTruthy();
   });
 
@@ -73,7 +73,7 @@ describe('email verification pages', () => {
     );
     expect(calls).toHaveLength(1);
     expect(router.state.location.search).toBe('');
-    expect(Object.values(sessionStorage).join()).not.toContain(token);
+    expect(Object.values(localStorage).join()).not.toContain(token);
     expect(Object.values(localStorage).join()).not.toContain(token);
   });
 

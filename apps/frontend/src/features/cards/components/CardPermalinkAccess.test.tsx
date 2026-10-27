@@ -190,7 +190,7 @@ describe('card permalink access and synchronization', () => {
     );
     await screen.findByRole('heading', { name: 'Welcome back' });
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(sessionStorage.getItem('kanban.session')).toBeNull();
+    expect(localStorage.getItem('kanban.session')).toBeNull();
   });
   it('ignores a queued revocation from the previous session after another user signs in', async () => {
     const nextUser = {

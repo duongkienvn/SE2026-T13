@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useAuth } from '../auth/useAuth';
+import { useAuthSession } from '../auth/auth-session-context';
 import { usePreferences } from './hooks';
 import {
   applyTheme,
@@ -18,6 +19,7 @@ import type { ThemePreference } from './types';
  */
 export function ThemeSync() {
   const { status, user } = useAuth();
+  const { generation } = useAuthSession();
   const { data } = usePreferences();
   const systemDark = useMediaQuery(DARK_QUERY);
   const userId = user?.id ?? null;
@@ -30,7 +32,10 @@ export function ThemeSync() {
 
   useEffect(() => {
     if (preference) applyTheme(resolveTheme(preference, systemDark));
-  }, [preference, systemDark]);
+    // Preserve first-paint boot only on initial load. A different unverified
+    // session must not keep displaying the previous account's theme.
+    else if (generation > 0) applyTheme(resolveTheme('system', systemDark));
+  }, [preference, systemDark, generation]);
 
   useEffect(() => {
     if (userId && saved) writeCachedTheme(userId, saved);
