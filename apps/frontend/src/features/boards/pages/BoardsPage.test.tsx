@@ -379,7 +379,7 @@ describe('BoardsPage', () => {
     await waitFor(() =>
       expect(
         within(nav)
-          .getByRole('button', { name: 'Boards' })
+          .getByRole('link', { name: 'Boards' })
           .getAttribute('aria-current'),
       ).toBe('page'),
     );

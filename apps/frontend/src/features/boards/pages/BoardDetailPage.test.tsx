@@ -76,7 +76,7 @@ describe('BoardDetailPage', () => {
     expect(document.title).toBe('Product Development · Kanvexa');
   });
 
-  it('shows the board name in the header and enables Board members in the sidebar', async () => {
+  it('shows the board name in the header and opens Members from the board page', async () => {
     const board = makeBoard({ name: 'Design Team' });
     const { router } = openBoard(board);
 
@@ -88,16 +88,15 @@ describe('BoardDetailPage', () => {
     const nav = screen.getByRole('navigation', { name: 'Primary' });
     expect(
       within(nav)
-        .getByRole('button', { name: 'Boards' })
+        .getByRole('link', { name: 'Boards' })
         .getAttribute('aria-current'),
     ).toBe('page');
-    const members = within(nav).getByRole('button', { name: 'Board members' });
-    expect(members.getAttribute('aria-disabled')).toBeNull();
-    fireEvent.click(members);
+    expect(within(nav).queryByRole('link', { name: /members/i })).toBeNull();
+    fireEvent.click(screen.getByRole('link', { name: 'Members' }));
     expect(router.state.location.pathname).toBe(`/boards/${board.id}/members`);
   });
 
-  it('hides Board members outside a board', async () => {
+  it('keeps board-scoped links out of the global sidebar', async () => {
     storeSession();
     mockApi({
       'GET /users/me': ok(testUser),
@@ -106,9 +105,7 @@ describe('BoardDetailPage', () => {
     renderApp('/boards');
 
     const nav = await screen.findByRole('navigation', { name: 'Primary' });
-    expect(
-      within(nav).queryByRole('button', { name: /Board members/ }),
-    ).toBeNull();
+    expect(within(nav).queryByRole('link', { name: /members/i })).toBeNull();
   });
 
   it('offers edit and archive to owners only', async () => {

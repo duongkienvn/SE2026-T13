@@ -1,30 +1,42 @@
-import type { ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
+import { useLocation } from 'react-router';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { AppHeader } from './AppHeader';
-import {
-  primaryNavItems as defaultPrimaryNavItems,
-  secondaryNavItems as defaultSecondaryNavItems,
-  type NavItem,
-} from './navigation';
+import { navGroups as defaultNavGroups, type NavGroup } from './navigation';
+import { NavDrawer } from './NavDrawer';
 import { Sidebar } from './Sidebar';
 
 interface AppShellProps {
   children: ReactNode;
-  primaryNavItems?: NavItem[];
-  secondaryNavItems?: NavItem[];
+  navGroups?: NavGroup[];
   activeNavItemId?: string;
   headerContext?: ReactNode;
   headerActions?: ReactNode;
+  /** Account actions at the bottom of the mobile navigation drawer. */
+  drawerFooter?: ReactNode;
 }
 
 /** Authenticated application frame: lavender outer frame, side rail, top header and scrollable content. */
 export function AppShell({
   children,
-  primaryNavItems = defaultPrimaryNavItems,
-  secondaryNavItems = defaultSecondaryNavItems,
+  navGroups = defaultNavGroups,
   activeNavItemId,
   headerContext,
   headerActions,
+  drawerFooter,
 }: AppShellProps) {
+  const desktop = useMediaQuery('(min-width: 1024px)', true);
+  const { key: locationKey } = useLocation();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [openedAt, setOpenedAt] = useState(locationKey);
+  // Any navigation (link, back/forward) closes the drawer, and it only
+  // exists below the desktop breakpoint.
+  if (drawerOpen && (openedAt !== locationKey || desktop)) {
+    setDrawerOpen(false);
+  }
+  const drawerId = useId();
+  const showDrawer = drawerOpen && !desktop;
+
   return (
     <div className="h-dvh bg-frame md:p-3">
       <a
@@ -34,13 +46,20 @@ export function AppShell({
         Skip to content
       </a>
       <div className="flex h-full overflow-hidden bg-app md:rounded-2xl md:shadow-frame">
-        <Sidebar
-          primaryItems={primaryNavItems}
-          secondaryItems={secondaryNavItems}
-          activeItemId={activeNavItemId}
-        />
+        <Sidebar groups={navGroups} activeItemId={activeNavItemId} />
         <div className="flex min-w-0 flex-1 flex-col">
-          <AppHeader context={headerContext} actions={headerActions} />
+          <AppHeader
+            context={headerContext}
+            actions={headerActions}
+            navigation={{
+              controls: drawerId,
+              expanded: showDrawer,
+              onOpen: () => {
+                setOpenedAt(locationKey);
+                setDrawerOpen(true);
+              },
+            }}
+          />
           {/* Contain absolute sr-only announcements in this scroller so their
               static positions below long forms cannot grow the document. */}
           <main
@@ -52,6 +71,14 @@ export function AppShell({
           </main>
         </div>
       </div>
+      <NavDrawer
+        id={drawerId}
+        open={showDrawer}
+        onClose={() => setDrawerOpen(false)}
+        groups={navGroups}
+        activeItemId={activeNavItemId}
+        footer={drawerFooter}
+      />
     </div>
   );
 }

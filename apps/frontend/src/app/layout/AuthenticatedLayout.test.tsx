@@ -1,12 +1,6 @@
 import { focusManager } from '@tanstack/react-query';
-import {
-  act,
-  fireEvent,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { act, fireEvent, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { makeBoard, okPage } from '../../test/board-fixtures';
 import { fail, mockApi, ok, storeSession, testUser } from '../../test/mock-api';
 import { renderApp } from '../../test/render';
@@ -14,6 +8,7 @@ import { renderApp } from '../../test/render';
 afterEach(() => {
   focusManager.setFocused(undefined);
   localStorage.removeItem('kanvexa.sidebar.expanded');
+  vi.unstubAllGlobals();
 });
 
 describe('Authenticated navigation', () => {
@@ -30,7 +25,6 @@ describe('Authenticated navigation', () => {
     });
     renderApp(`/boards/${board.id}/members`);
     await screen.findByRole('heading', { name: 'Board not found' });
-    expect(screen.queryByRole('button', { name: 'Board members' })).toBeNull();
     expect(
       within(screen.getByRole('banner')).queryByRole('link', {
         name: board.name,
@@ -38,7 +32,7 @@ describe('Authenticated navigation', () => {
     ).toBeNull();
   });
 
-  it('follows board context, preserves the rail and keeps Profile in the account menu', async () => {
+  it('keeps Boards active across board routes, preserves the rail and keeps Profile in the account menu', async () => {
     const boards = [makeBoard({ name: 'Alpha' }), makeBoard({ name: 'Beta' })];
     storeSession();
     mockApi({
@@ -61,37 +55,29 @@ describe('Authenticated navigation', () => {
     const view = renderApp('/boards');
     await screen.findByRole('link', { name: 'Alpha' });
     const nav = within(screen.getByRole('navigation', { name: 'Primary' }));
+    const boardsLink = () => nav.getByRole('link', { name: 'Boards' });
+    // Board-scoped and account destinations stay out of the global sidebar.
     expect(
-      nav.queryByRole('button', { name: /Board members|Settings|Profile/ }),
+      nav.queryByRole('link', { name: /Board members|Settings|Profile/ }),
     ).toBeNull();
+    expect(boardsLink().getAttribute('aria-current')).toBe('page');
     fireEvent.click(nav.getByRole('button', { name: 'Collapse sidebar' }));
     fireEvent.click(screen.getByRole('link', { name: 'Alpha' }));
-    await nav.findByRole('button', { name: 'Board members' });
-    expect(
-      nav.getByRole('button', { name: 'Boards' }).getAttribute('aria-current'),
-    ).toBe('page');
-    fireEvent.click(nav.getByRole('button', { name: 'Board members' }));
-    await waitFor(() =>
-      expect(view.router.state.location.pathname).toBe(
-        `/boards/${boards[0].id}/members`,
-      ),
-    );
-    expect(
-      nav
-        .getByRole('button', { name: 'Board members' })
-        .getAttribute('aria-current'),
-    ).toBe('page');
-    expect(
-      nav.getByRole('button', { name: 'Boards' }).getAttribute('aria-current'),
-    ).toBeNull();
-    await act(() => view.router.navigate(`/boards/${boards[1].id}`));
     await within(screen.getByRole('banner')).findByRole('link', {
-      name: 'Beta',
+      name: 'Alpha',
     });
-    fireEvent.click(nav.getByRole('button', { name: 'Board members' }));
-    expect(view.router.state.location.pathname).toBe(
-      `/boards/${boards[1].id}/members`,
+    expect(boardsLink().getAttribute('aria-current')).toBe('page');
+    await act(() => view.router.navigate(`/boards/${boards[1].id}/members`));
+    const breadcrumb = within(
+      await within(screen.getByRole('banner')).findByRole('navigation', {
+        name: 'Breadcrumb',
+      }),
     );
+    await breadcrumb.findByRole('link', { name: 'Beta' });
+    expect(
+      breadcrumb.getByRole('link', { name: 'Boards' }).getAttribute('href'),
+    ).toBe('/boards');
+    expect(boardsLink().getAttribute('aria-current')).toBe('page');
     expect(nav.getByRole('button', { name: 'Expand sidebar' })).toBeTruthy();
     fireEvent.click(
       screen.getByRole('button', {
@@ -100,14 +86,12 @@ describe('Authenticated navigation', () => {
     );
     fireEvent.click(screen.getByRole('link', { name: 'Profile' }));
     await screen.findByRole('heading', { name: 'Profile' });
-    expect(
-      nav.queryByRole('button', { name: /Board members|Settings|Profile/ }),
-    ).toBeNull();
+    expect(boardsLink().getAttribute('aria-current')).toBeNull();
     expect(
       screen.getByRole('heading', { name: 'Connected accounts' }),
     ).toBeTruthy();
     expect(nav.getByRole('button', { name: 'Expand sidebar' })).toBeTruthy();
-    fireEvent.click(nav.getByRole('button', { name: 'Boards' }));
+    fireEvent.click(boardsLink());
     await screen.findByRole('link', { name: 'Alpha' });
     expect(view.router.state.location.pathname).toBe('/boards');
     view.unmount();
@@ -134,16 +118,15 @@ describe('Authenticated navigation', () => {
         ),
       });
       renderApp(`/boards/${board.id}`);
-      await screen.findByRole('button', { name: 'Board members' });
+      await within(await screen.findByRole('banner')).findByRole('link', {
+        name: board.name,
+      });
       revoked = true;
       act(() => {
         focusManager.setFocused(false);
         focusManager.setFocused(true);
       });
       await screen.findByRole('heading', { name: 'Board not found' });
-      expect(
-        screen.queryByRole('button', { name: 'Board members' }),
-      ).toBeNull();
       expect(
         within(screen.getByRole('banner')).queryByRole('link', {
           name: board.name,
@@ -153,7 +136,7 @@ describe('Authenticated navigation', () => {
   );
 
   it.each([403, 404])(
-    'does not expose Members before a failed initial board load (%s)',
+    'does not expose board context before a failed initial board load (%s)',
     async (status) => {
       const board = makeBoard();
       storeSession();
@@ -164,9 +147,42 @@ describe('Authenticated navigation', () => {
       renderApp(`/boards/${board.id}`);
       await screen.findByRole('heading', { name: 'Board not found' });
       expect(
-        screen.queryByRole('button', { name: /Board members/ }),
-      ).toBeNull();
-      expect(screen.getByRole('button', { name: 'Boards' })).toBeTruthy();
+        within(screen.getByRole('banner')).queryAllByRole('link'),
+      ).toHaveLength(0);
+      expect(screen.getByRole('link', { name: 'Boards' })).toBeTruthy();
     },
   );
+
+  it('offers Profile and Log out from the mobile navigation drawer', async () => {
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    storeSession();
+    mockApi({
+      'GET /users/me': ok(testUser),
+      'GET /auth/linked-providers': ok({
+        googleLinked: false,
+        hasPassword: true,
+      }),
+      'GET /boards?page=1&limit=100': okPage([]),
+      'POST /auth/logout': ok(null),
+    });
+    const view = renderApp('/boards');
+    const open = await screen.findByRole('button', { name: 'Open navigation' });
+    fireEvent.click(open);
+    let drawer = screen.getByRole('dialog', { name: 'Navigation menu' });
+    expect(within(drawer).getByText(testUser.email)).toBeTruthy();
+    fireEvent.click(within(drawer).getByRole('link', { name: 'Profile' }));
+    await screen.findByRole('heading', { name: 'Profile' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open navigation' }));
+    drawer = screen.getByRole('dialog', { name: 'Navigation menu' });
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Log out' }));
+    await screen.findByRole('heading', { name: /sign in|log in|welcome/i });
+    expect(view.router.state.location.pathname).toBe('/login');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
 });

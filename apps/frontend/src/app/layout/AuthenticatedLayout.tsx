@@ -1,24 +1,15 @@
-import {
-  Link,
-  Outlet,
-  useLocation,
-  useMatches,
-  useNavigate,
-} from 'react-router';
+import { Link, Outlet, useLocation, useMatches } from 'react-router';
+import { ChevronRightIcon } from '../../components/icons';
+import { AccountLinks } from '../../features/auth/components/AccountLinks';
 import { UserMenu } from '../../features/auth/components/UserMenu';
 import { useBoardMembers } from '../../features/board-members/hooks';
 import { useVerifiedBoard } from '../../features/boards/useVerifiedBoard';
 import { isBoardUnavailable } from '../../features/boards/pages/BoardDetailPage';
 import { AppShell } from './AppShell';
-import { primaryNavItems, secondaryNavItems, type NavItem } from './navigation';
+import { findActiveNavItemId, navGroups } from './navigation';
 
-function matchesPath(path: string, pathname: string): boolean {
-  return pathname === path || pathname.startsWith(`${path}/`);
-}
-
-/** Application shell for signed-in routes, with routable navigation and the user menu. */
+/** Application shell for signed-in routes, with App Shell V2 navigation, board context and the user menu. */
 export function AuthenticatedLayout() {
-  const navigate = useNavigate();
   const { pathname } = useLocation();
   // The deepest match carries every route param, e.g. `boardId` on board pages.
   const boardId = useMatches().at(-1)?.params.boardId;
@@ -33,44 +24,40 @@ export function AuthenticatedLayout() {
   // Hide a cached name once access to the board is lost.
   const boardName = unavailable || !verified ? undefined : board.data?.name;
 
-  const resolve = (item: NavItem): NavItem => {
-    // Board-scoped items (e.g. members) only work inside a board.
-    const path = item.boardPath
-      ? boardId && item.boardPath(boardId)
-      : item.path;
-    return path
-      ? { ...item, path, onSelect: () => navigate(path) }
-      : { ...item, path: undefined };
-  };
-  const hasBoardAccess =
-    Boolean(boardId && board.data) && verified && !unavailable;
-  const primary = primaryNavItems
-    .filter((item) => !item.boardPath || hasBoardAccess)
-    .map(resolve);
-  const secondary = secondaryNavItems.map(resolve);
-
-  // Most specific match wins: /boards/1/members highlights Members, not Boards.
-  const activeItem = [...primary, ...secondary]
-    .filter((item) => item.path && matchesPath(item.path, pathname))
-    .sort((a, b) => b.path!.length - a.path!.length)[0];
-
   return (
     <AppShell
-      primaryNavItems={primary}
-      secondaryNavItems={secondary}
-      activeNavItemId={activeItem?.id}
+      navGroups={navGroups}
+      activeNavItemId={findActiveNavItemId(navGroups, pathname)}
       headerContext={
         boardId &&
         boardName && (
-          <Link
-            to={`/boards/${boardId}`}
-            className="truncate hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
-          >
-            {boardName}
-          </Link>
+          <nav aria-label="Breadcrumb" className="min-w-0">
+            <ol className="flex min-w-0 items-center gap-2">
+              <li className="hidden shrink-0 sm:block">
+                <Link
+                  to="/boards"
+                  className="text-muted hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
+                >
+                  Boards
+                </Link>
+              </li>
+              <li aria-hidden="true" className="hidden text-muted sm:block">
+                <ChevronRightIcon className="size-4" />
+              </li>
+              <li className="min-w-0">
+                <Link
+                  to={`/boards/${boardId}`}
+                  className="block truncate hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
+                >
+                  {boardName}
+                </Link>
+              </li>
+            </ol>
+          </nav>
         )
       }
       headerActions={<UserMenu />}
+      drawerFooter={<AccountLinks />}
     >
       <Outlet />
     </AppShell>

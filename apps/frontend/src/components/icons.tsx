@@ -377,6 +377,40 @@ export function TargetIcon(props: IconProps) {
   );
 }
 
+export function HomeIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15V15h-6v5.5H5.5A1.5 1.5 0 0 1 4 19z" />
+    </StrokeSvg>
+  );
+}
+
+export function CheckSquareIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <path d="m8.5 12 2.5 2.5 4.5-5" />
+    </StrokeSvg>
+  );
+}
+
+export function StarIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="m12 3.8 2.5 5.1 5.6.8-4 4 .9 5.6-5-2.7-5 2.7.9-5.6-4-4 5.6-.8z" />
+    </StrokeSvg>
+  );
+}
+
+export function BellIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z" />
+      <path d="M10 20.5a2 2 0 0 0 4 0" />
+    </StrokeSvg>
+  );
+}
+
 export function GitHubIcon(props: IconProps) {
   return (
     <Svg {...props}>
