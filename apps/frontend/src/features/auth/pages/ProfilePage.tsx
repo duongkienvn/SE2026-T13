@@ -126,10 +126,9 @@ function ProfileForm({ user }: { user: User }) {
         ref={formRef}
         noValidate
         onSubmit={handleSubmit}
-        className="mt-6 grid max-w-4xl gap-6 rounded-xl border border-line bg-surface p-5 shadow-card md:grid-cols-[200px_1fr] md:p-6"
+        className="mt-6 max-w-2xl space-y-6 rounded-xl border border-line bg-surface p-5 shadow-card md:p-6"
       >
-        {/* Identity on the left, editable fields on the right, so the page fits without scrolling. */}
-        <div className="flex min-w-0 items-center gap-4 md:flex-col md:items-start md:border-r md:border-line md:pr-6">
+        <div className="flex min-w-0 items-center gap-4 border-b border-line pb-6">
           <UserAvatar
             user={{
               displayName: displayName.trim() || user.displayName,
@@ -152,7 +151,7 @@ function ProfileForm({ user }: { user: User }) {
             )}
             {formError && <Alert variant="error">{formError}</Alert>}
 
-            <div className="grid items-start gap-4 lg:grid-cols-2">
+            <div className="space-y-4">
               <TextField
                 label="Email address"
                 type="email"

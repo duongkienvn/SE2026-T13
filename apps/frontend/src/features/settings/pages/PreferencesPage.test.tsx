@@ -129,8 +129,12 @@ describe('PreferencesPage', () => {
     setup(() => ok(saved));
     await waitFor(() => expect(timeZone().value).toBe('UTC'));
     fireEvent.click(radio(/DD\/MM\/YYYY/));
+    fireEvent.change(timeZone(), { target: { value: 'Asia/Tokyo' } });
+    fireEvent.click(radio('Sunday'));
     const preview = screen.getByText('Preview').parentElement;
-    expect(preview?.textContent).toMatch(/Today is \d{2}\/\d{2}\/\d{4} in UTC/);
-    expect(preview?.textContent).toContain('Weeks start on Monday');
+    expect(preview?.textContent).toMatch(
+      /Today is \d{2}\/\d{2}\/\d{4} in Asia\/Tokyo/,
+    );
+    expect(preview?.textContent).toContain('Weeks start on Sunday');
   });
 });

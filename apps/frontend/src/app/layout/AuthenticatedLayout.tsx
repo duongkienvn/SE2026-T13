@@ -2,6 +2,8 @@ import { Link, Outlet, useLocation, useMatches } from 'react-router';
 import { ChevronRightIcon } from '../../components/icons';
 import { AccountLinks } from '../../features/auth/components/AccountLinks';
 import { UserMenu } from '../../features/auth/components/UserMenu';
+import { UserAvatar } from '../../features/auth/components/UserAvatar';
+import { useAuth } from '../../features/auth/useAuth';
 import { useBoardMembers } from '../../features/board-members/hooks';
 import { useVerifiedBoard } from '../../features/boards/useVerifiedBoard';
 import { isBoardUnavailable } from '../../features/boards/pages/BoardDetailPage';
@@ -10,6 +12,7 @@ import { findActiveNavItemId, navGroups } from './navigation';
 
 /** Application shell for signed-in routes, with App Shell V2 navigation, board context and the user menu. */
 export function AuthenticatedLayout() {
+  const { user } = useAuth();
   const { pathname } = useLocation();
   // The deepest match carries every route param, e.g. `boardId` on board pages.
   const boardId = useMatches().at(-1)?.params.boardId;
@@ -56,7 +59,16 @@ export function AuthenticatedLayout() {
           </nav>
         )
       }
-      headerActions={<UserMenu />}
+      headerActions={
+        user && (
+          <span role="img" aria-label={`Signed in as ${user.displayName}`}>
+            <UserAvatar user={user} className="size-9 text-sm" />
+          </span>
+        )
+      }
+      sidebarFooter={(expanded) => (
+        <UserMenu key={String(expanded)} expanded={expanded} />
+      )}
       drawerFooter={<AccountLinks />}
     >
       <Outlet />

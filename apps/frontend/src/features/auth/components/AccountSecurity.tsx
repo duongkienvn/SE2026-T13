@@ -23,13 +23,8 @@ export function AccountSecurity() {
   return (
     <section
       aria-labelledby="account-security-heading"
-      className={`mt-6 max-w-4xl rounded-xl border border-line bg-surface p-5 shadow-card md:p-6 ${
-        hasPassword
-          ? 'lg:grid lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)] lg:gap-x-8'
-          : ''
-      }`}
+      className="mt-6 max-w-2xl rounded-xl border border-line bg-surface p-5 shadow-card md:p-6"
     >
-      {/* From lg the intro and recovery link sit beside the form, so the section fits. */}
       <div className="min-w-0">
         <h2
           id="account-security-heading"
@@ -68,38 +63,35 @@ export function AccountSecurity() {
             email. Your Google connection stays available.
           </p>
         )}
-        {providers.data && (
-          <Link
-            className="mt-5 inline-block text-sm font-semibold text-primary underline"
-            to="/forgot-password"
-          >
-            {providers.data.hasPassword
-              ? 'Recover a forgotten password'
-              : 'Set password via email'}
-          </Link>
-        )}
       </div>
       {hasPassword && (
-        <div className="max-w-md lg:max-w-none [&>form]:lg:mt-0">
-          <NewPasswordForm
-            key={scope.generation}
-            requireCurrent
-            pairNewFields
-            submit={(next, current) =>
-              runAuthorized((token) => changePassword(token, current, next))
-            }
-            onSuccess={() => {
-              if (!scope.isCurrent()) return;
-              // Settle RequireAuth's logout redirect before replacing it with
-              // one-time confirmation; otherwise its effect can overwrite state.
-              flushSync(() => signOut({ notifyServer: false }));
-              navigate('/login', {
-                replace: true,
-                state: { passwordUpdated: true },
-              });
-            }}
-          />
-        </div>
+        <NewPasswordForm
+          key={scope.generation}
+          requireCurrent
+          submit={(next, current) =>
+            runAuthorized((token) => changePassword(token, current, next))
+          }
+          onSuccess={() => {
+            if (!scope.isCurrent()) return;
+            // Settle RequireAuth's logout redirect before replacing it with
+            // one-time confirmation; otherwise its effect can overwrite state.
+            flushSync(() => signOut({ notifyServer: false }));
+            navigate('/login', {
+              replace: true,
+              state: { passwordUpdated: true },
+            });
+          }}
+        />
+      )}
+      {providers.data && (
+        <Link
+          className="mt-5 inline-block text-sm font-semibold text-primary underline focus-visible:outline-2 focus-visible:outline-primary"
+          to="/forgot-password"
+        >
+          {providers.data.hasPassword
+            ? 'Recover a forgotten password'
+            : 'Set password via email'}
+        </Link>
       )}
     </section>
   );

@@ -19,13 +19,10 @@ type Field = keyof typeof labels;
 /** Shared by public recovery and the authenticated Security section. */
 export function NewPasswordForm({
   requireCurrent = false,
-  pairNewFields = false,
   submit,
   onSuccess,
 }: {
   requireCurrent?: boolean;
-  /** New and Confirm side by side from `lg`, so a desktop section fits without scrolling. */
-  pairNewFields?: boolean;
   submit: (newPassword: string, currentPassword: string) => Promise<void>;
   onSuccess: () => void;
 }) {
@@ -136,12 +133,7 @@ export function NewPasswordForm({
           disabled={pending || invalidToken}
         />
       )}
-      {/* Paired: New and Confirm share a row from lg, rules span below; DOM order is unchanged. */}
-      <div
-        className={
-          pairNewFields ? 'grid items-start gap-4 lg:grid-cols-2' : 'space-y-4'
-        }
-      >
+      <div className="space-y-4">
         <PasswordField
           label="New password"
           name="newPassword"
@@ -152,13 +144,13 @@ export function NewPasswordForm({
           aria-describedby={requirementsId}
           disabled={pending || invalidToken}
         />
-        <div className={pairNewFields ? 'lg:col-span-2 lg:row-start-2' : ''}>
+        <div>
           <PasswordRequirements
             id={requirementsId}
             password={values.newPassword}
           />
         </div>
-        <div className={pairNewFields ? 'lg:col-start-2 lg:row-start-1' : ''}>
+        <div>
           <PasswordField
             label="Confirm password"
             name="confirmPassword"

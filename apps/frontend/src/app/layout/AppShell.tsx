@@ -12,6 +12,7 @@ interface AppShellProps {
   activeNavItemId?: string;
   headerContext?: ReactNode;
   headerActions?: ReactNode;
+  sidebarFooter?: (expanded: boolean) => ReactNode;
   /** Account actions at the bottom of the mobile navigation drawer. */
   drawerFooter?: ReactNode;
 }
@@ -23,6 +24,7 @@ export function AppShell({
   activeNavItemId,
   headerContext,
   headerActions,
+  sidebarFooter,
   drawerFooter,
 }: AppShellProps) {
   const desktop = useMediaQuery('(min-width: 1024px)', true);
@@ -46,7 +48,11 @@ export function AppShell({
         Skip to content
       </a>
       <div className="flex h-full overflow-hidden bg-app md:rounded-2xl md:shadow-frame">
-        <Sidebar groups={navGroups} activeItemId={activeNavItemId} />
+        <Sidebar
+          groups={navGroups}
+          activeItemId={activeNavItemId}
+          footer={sidebarFooter}
+        />
         <div className="flex min-w-0 flex-1 flex-col">
           <AppHeader
             context={headerContext}

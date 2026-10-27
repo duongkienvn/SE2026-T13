@@ -30,7 +30,7 @@ const FIELD_LABELS = {
 type Field = keyof typeof FIELD_LABELS;
 
 const cardClass =
-  'max-w-4xl rounded-xl border border-line bg-surface p-5 shadow-card md:p-6';
+  'max-w-2xl rounded-xl border border-line bg-surface p-5 shadow-card md:p-6';
 
 /** Only fields that differ from the saved preferences; `{}` means unchanged. */
 function buildPatch(saved: Draft, draft: Draft): UpdatePreferencesRequest {
@@ -124,14 +124,25 @@ function PreferencesForm({ saved }: { saved: UserPreferences }) {
   };
 
   return (
-    <form noValidate onSubmit={handleSubmit} className={`mt-6 ${cardClass}`}>
+    <form
+      noValidate
+      onSubmit={handleSubmit}
+      aria-labelledby="regional-preferences-heading"
+      className={`mt-6 ${cardClass}`}
+    >
+      <h2
+        id="regional-preferences-heading"
+        className="mb-5 text-lg font-semibold text-ink"
+      >
+        Regional preferences
+      </h2>
       <div className="space-y-4">
         {savedNotice && !isDirty && (
           <Alert variant="success">Preferences saved.</Alert>
         )}
         {formError && <Alert variant="error">{formError}</Alert>}
 
-        <div className="grid gap-x-8 gap-y-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div className="space-y-5">
           <div>
             <label
               htmlFor="preferences-time-zone"
@@ -179,18 +190,6 @@ function PreferencesForm({ saved }: { saved: UserPreferences }) {
           </div>
 
           <ChoiceGroup
-            legend="Week starts on"
-            name="weekStartsOn"
-            value={draft.weekStartsOn}
-            options={WEEK_STARTS.map((value) => ({
-              value,
-              label: WEEK_START_LABELS[value],
-            }))}
-            onChange={(value) => change('weekStartsOn', value)}
-            error={fieldErrors.weekStartsOn}
-          />
-
-          <ChoiceGroup
             legend="Date format"
             name="dateFormat"
             value={draft.dateFormat}
@@ -201,6 +200,18 @@ function PreferencesForm({ saved }: { saved: UserPreferences }) {
             }))}
             onChange={(value) => change('dateFormat', value)}
             error={fieldErrors.dateFormat}
+          />
+
+          <ChoiceGroup
+            legend="Week starts on"
+            name="weekStartsOn"
+            value={draft.weekStartsOn}
+            options={WEEK_STARTS.map((value) => ({
+              value,
+              label: WEEK_START_LABELS[value],
+            }))}
+            onChange={(value) => change('weekStartsOn', value)}
+            error={fieldErrors.weekStartsOn}
           />
 
           <div className="rounded-lg border border-line bg-app px-4 py-3 text-sm">
@@ -269,7 +280,7 @@ function ChoiceGroup<T extends string>({
     <fieldset aria-invalid={error ? true : undefined}>
       <legend className="text-sm font-medium text-ink">{legend}</legend>
       <div
-        className={`mt-1.5 grid gap-2 ${options.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}
+        className={`mt-1.5 grid gap-2 ${options.length === 3 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'}`}
       >
         {options.map((option) => {
           const selected = option.value === value;

@@ -153,8 +153,16 @@ describe('Sidebar', () => {
     expect(
       document.getElementById(toggle.getAttribute('aria-controls')!),
     ).toBeTruthy();
+    toggle.focus();
     fireEvent.click(toggle);
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(toggle);
+    expect(toggle.closest('a')).toBeNull();
+    expect(
+      screen
+        .getByRole('link', { name: 'Kanvexa landing page' })
+        .getAttribute('href'),
+    ).toBe('/');
     const boards = screen.getByRole('link', { name: 'Boards' });
     expect(boards.title).toBe('Boards');
     expect(boards.getAttribute('aria-current')).toBe('page');
