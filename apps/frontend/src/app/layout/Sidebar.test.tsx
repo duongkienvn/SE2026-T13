@@ -139,6 +139,17 @@ describe('Sidebar', () => {
     expect(starred.title).toBe('Starred — coming soon');
   });
 
+  it('reserves the workspace switcher slot without inventing a workspace or plan', () => {
+    renderSidebar();
+    const nav = screen.getByRole('navigation', { name: 'Primary' });
+    const slot = within(nav)
+      .getByText('Coming soon')
+      .closest<HTMLElement>('[title]')!;
+    expect(slot.title).toBe('Workspace switcher — coming soon');
+    expect(slot.querySelector('a, button, [tabindex]')).toBeNull();
+    expect(nav.textContent).not.toMatch(/free plan|pro|upgrade|pricing/i);
+  });
+
   it('keeps accessible names for icon-only items when collapsed', () => {
     renderSidebar('boards');
     const toggle = screen.getByRole('button', { name: 'Collapse sidebar' });
