@@ -26,7 +26,7 @@ COPY --from=build --chown=node:node /workspace/apps/backend/dist ./dist
 COPY --from=build --chown=node:node /workspace/apps/backend/package.json ./package.json
 USER node
 # Verify the actual native addon and workspace CommonJS export in the final stage.
-RUN node -e "require('argon2'); require('pg'); require('@kanban/shared'); require('typeorm'); require.resolve('typeorm/cli.js')"
+RUN node -e "require('argon2'); require('pg'); require('@kanban/shared'); require('typeorm'); require.resolve('typeorm/cli.js'); require('sharp')({create:{width:16,height:16,channels:3,background:'red'}}).webp().toBuffer().catch(()=>process.exit(1))"
 EXPOSE 3000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
     CMD node -e "fetch('http://127.0.0.1:3000/health/ready',{signal:AbortSignal.timeout(2500)}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"

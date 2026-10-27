@@ -12,9 +12,9 @@
 
 ## 2. Profile and Connected Accounts
 
-- Current MVP profile fields: display name, avatar URL, read-only email. Account management later supports verified email change with secure new-email flow.
+- Profile fields: display name, read-only email and the native photo picker approved by #103. Account management later supports verified email change with secure new-email flow.
 - Google linked accounts use actual provider status and identity guardrails. Do not enable Google disconnect if it could lock user out and no secure replacement login exists.
-- Mockup's `Bio`, `Change Avatar` upload and `Remove` controls are **not** automatically approved as features. Present existing avatar URL flow unless new requirements signed off.
+- #103 explicitly approves Select/Change photo, local preview, upload and Remove photo with verified private storage. It replaces the Avatar URL text field, preserving legacy images. `Bio` remains excluded. See [implementation and boundaries](../../../tasks/backend/profile-avatar-upload.md).
 
 ## 3. Appearance and Preferences
 
@@ -50,7 +50,7 @@
 ## 7. Explicit screenshot exceptions
 
 - Security mockup shows `Sessions`/per-device Log out; these require auth service support, not just UI.
-- Profile mockup shows new Bio/avatar upload actions; not current approved core requirements.
+- Profile mockup's Bio remains excluded; avatar upload/removal is separately approved by #103.
 - Mobile screenshot shows bottom tabs; the App Navigation V2 drawer remains canonical unless redesigned later.
 - Names, dates, statistics, avatars and emails are illustration placeholders.
 - No `Free Plan`, `Pro`, pricing, subscription or promotional widgets.

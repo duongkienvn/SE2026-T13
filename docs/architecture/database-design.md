@@ -82,10 +82,22 @@ Trong các bảng dưới đây, `Không` ở cột Nullable nghĩa là `NOT NUL
 | `password_hash`     | `varchar`       | Có       | Argon2id cho local account; NULL cho Google-only (#79).                 |
 | `auth_version`      | `integer`       | Không    | Default 0; atomic increment on password reset/change (#93).             |
 | `display_name`      | `varchar`       | Không    | Tên hiển thị.                                                           |
-| `avatar_url`        | `varchar`       | Có       | URL ảnh đại diện nếu có.                                                |
+| `avatar_url`        | `varchar`       | Có       | Legacy external HTTPS avatar; preserved until upload/removal (#103).    |
+| `avatar_object_key` | `varchar`       | Có       | Stable private object key in the owning User namespace; unique (#103).  |
+| `avatar_revision`   | `integer`       | Không    | Default 0, nonnegative; serializes photo replace/remove (#103).         |
 | `email_verified_at` | `timestamptz`   | Có       | K2 verification gate; Google authority chỉ áp dụng lúc tạo account mới. |
 | `created_at`        | `timestamptz`   | Không    | Thời điểm tạo.                                                          |
 | `updated_at`        | `timestamptz`   | Không    | Thời điểm cập nhật.                                                     |
+
+### Private avatar extension (#103)
+
+`avatar_uploads` persists each owner-bound UUID intent, generated pending/active
+keys, expected MIME/byte size, base avatar revision, state, creation/expiry and
+next cleanup time. User FK uses NO ACTION; keys are unique. CHECKs bound bytes,
+MIME, revision, state and expiry. User row locks precede intent locks; storage IO
+stays outside transactions. No signed URL, raw filename or image bytes are stored
+in PostgreSQL. Migration is additive and preserves `avatar_url`; down refuses
+while private avatar pointers exist. See [API, failure recovery and rollback](../tasks/backend/profile-avatar-upload.md).
 
 ### Auth identity extension (#79)
 

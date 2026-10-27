@@ -56,6 +56,7 @@ async function inspectSchema() {
     tables.map((row) => row.table_name),
     [
       'activities',
+      'avatar_uploads',
       'board_columns',
       'board_members',
       'boards',
@@ -99,7 +100,7 @@ async function inspectSchema() {
   for (const [name, behavior] of Object.entries(deletes)) {
     assert.equal(byName.get(name)?.confdeltype, behavior, name);
   }
-  assert.equal(constraints.filter((row) => row.contype === 'f').length, 18);
+  assert.equal(constraints.filter((row) => row.contype === 'f').length, 19);
   for (const row of constraints.filter(
     (row) => row.contype === 'f' && !(row.conname in deletes),
   )) {
@@ -168,6 +169,11 @@ async function inspectSchema() {
       continue;
     }
     assert.equal(column(table, 'id')?.data_type, 'uuid');
+    if (table === 'avatar_uploads') {
+      // The authenticated service generates the UUID before signing the intent.
+      assert.equal(column(table, 'id')?.column_default, null);
+      continue;
+    }
     assert.match(
       column(table, 'id')?.column_default ?? '',
       /gen_random_uuid\(\)/,
@@ -373,11 +379,12 @@ try {
   assert.equal(source.options.logging, false);
   assert.equal(source.options.synchronize, false);
   assert.equal(source.options.migrationsRun, false);
-  assert.equal(source.entityMetadatas.length, 12);
+  assert.equal(source.entityMetadatas.length, 13);
   assert.deepEqual(
     source.entityMetadatas.map((entity) => entity.tableName).sort(),
     [
       'activities',
+      'avatar_uploads',
       'board_columns',
       'board_members',
       'boards',
@@ -391,7 +398,7 @@ try {
       'users',
     ],
   );
-  assert.equal(source.migrations.length, 7);
+  assert.equal(source.migrations.length, 8);
 
   const originalDatabase = process.env.DATABASE_NAME;
   process.env.DATABASE_NAME = testDatabase;
@@ -402,8 +409,8 @@ try {
     });
     try {
       const nestDataSource = app.get(DataSource);
-      assert.equal(nestDataSource.entityMetadatas.length, 12);
-      assert.equal(nestDataSource.migrations.length, 7);
+      assert.equal(nestDataSource.entityMetadatas.length, 13);
+      assert.equal(nestDataSource.migrations.length, 8);
       assert.equal(nestDataSource.options.poolSize, source.options.poolSize);
       assert.equal(
         nestDataSource.options.connectTimeoutMS,
@@ -417,7 +424,7 @@ try {
     process.env.DATABASE_NAME = originalDatabase;
   }
 
-  assert.equal((await source.runMigrations()).length, 7);
+  assert.equal((await source.runMigrations()).length, 8);
   const cliOutput = execFileSync(
     process.execPath,
     [
@@ -441,7 +448,7 @@ try {
       '-e',
       `const dataSource = require('./src/database/data-source.ts').default;
        dataSource.initialize().then(async () => {
-         if (dataSource.entityMetadatas.length !== 12 || dataSource.migrations.length !== 7) {
+         if (dataSource.entityMetadatas.length !== 13 || dataSource.migrations.length !== 8) {
            throw new Error('TypeScript DataSource discovery mismatch');
          }
          await dataSource.destroy();
@@ -459,12 +466,20 @@ try {
   console.log('Migration run and schema/behavior inspection: PASS');
 
   await source.undoLastMigration();
-  await inspectSchema();
+  assert.equal(
+    (
+      await source.query(
+        `SELECT count(*)::int AS n FROM information_schema.columns WHERE table_name='users' AND column_name='avatar_object_key'`,
+      )
+    )[0].n,
+    0,
+  );
+  await source.undoLastMigration();
   await source.undoLastMigration();
   await source.undoLastMigration();
   await source.undoLastMigration();
   await assert.rejects(source.undoLastMigration(), /cannot be safely removed/);
-  assert.equal((await source.runMigrations()).length, 4);
+  assert.equal((await source.runMigrations()).length, 5);
   await inspectSchema();
   console.log(
     'Enum rollback retains existing values/history; idempotent reapply: PASS',

@@ -2,6 +2,7 @@ import { RealtimeServerEvent, type RealtimeServerEvents } from '@kanban/shared';
 import type { InvalidateQueryFilters } from '@tanstack/react-query';
 import { boardKeys } from '../boards/query-keys';
 import { commentKeys } from '../comments/query-keys';
+import { avatarKeys } from '../auth/avatar-query-keys';
 
 export type BoardEventName = keyof RealtimeServerEvents;
 export type BoardEventPayload<E extends BoardEventName> = Parameters<
@@ -90,6 +91,7 @@ export function invalidationTargets<E extends BoardEventName>(
     case 'member:removed':
       // Removing a member also drops them from every card they were assigned.
       return [
+        { queryKey: avatarKeys.all },
         members(boardId),
         boardDetail(boardId),
         boardList(),

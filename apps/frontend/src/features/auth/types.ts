@@ -9,6 +9,7 @@ export interface User {
   email: string;
   displayName: string;
   avatarUrl: string | null;
+  avatarRevision?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -34,5 +35,4 @@ export interface LoginResponse {
 
 export interface UpdateProfileRequest {
   displayName?: string;
-  avatarUrl?: string | null;
 }

@@ -16,6 +16,7 @@
     "migration:show": "typeorm-ts-node-commonjs migration:show -d src/database/data-source.ts",
     "test:database": "pnpm build && node test/database/database-foundation.integration.mjs",
     "test:preferences:database": "pnpm build && node test/users/user-preferences.integration.mjs",
+    "test:avatars:database": "pnpm build && node test/users/avatar.integration.mjs",
     "test:email-verification:database": "pnpm build && node test/auth/email-verification.integration.mjs",
     "test:google-auth:database": "pnpm build && node test/auth/google-auth.integration.mjs",
     "test:password-security:database": "pnpm build && node test/auth/password-security.integration.mjs",
@@ -30,6 +31,8 @@
     "test:board-events:database": "node -r ts-node/register test/realtime/board-events/board-events.integration.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1157.0",
+    "@aws-sdk/s3-presigned-post": "^3.1157.0",
     "@kanban/shared": "workspace:*",
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^4.0.0",
@@ -54,6 +57,7 @@
     "reflect-metadata": "^0.2.0",
     "resend": "^6.34.1",
     "rxjs": "^7.0.0",
+    "sharp": "^0.35.5",
     "socket.io": "^4.0.0",
     "typeorm": "^0.3.0"
   },
@@ -62,6 +66,7 @@
     "@nestjs/testing": "^11.0.0",
     "@types/express": "^5.0.6",
     "@types/jest": "^29.0.0",
+    "@types/multer": "^2.3.0",
     "@types/node": "^22.0.0",
     "@types/supertest": "^6.0.0",
     "jest": "^29.0.0",

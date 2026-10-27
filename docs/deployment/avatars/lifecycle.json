@@ -1,0 +1,11 @@
+{
+  "Rules": [
+    {
+      "ID": "ExpireUnverifiedAvatarUploads",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "avatars/v1/pending/" },
+      "Expiration": { "Days": 1 },
+      "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 1 }
+    }
+  ]
+}

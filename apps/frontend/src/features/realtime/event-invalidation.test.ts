@@ -2,6 +2,7 @@ import { QueryClient, type QueryKey } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
 import { boardKeys } from '../boards/query-keys';
 import { commentKeys } from '../comments/query-keys';
+import { avatarKeys } from '../auth/avatar-query-keys';
 import {
   BOARD_EVENTS,
   boardResyncTargets,
@@ -32,6 +33,8 @@ const cached = {
   commentsPage2: commentKeys.page(BOARD, CARD, 2),
   otherCardComments: commentKeys.page(BOARD, OTHER_CARD, 1),
   otherBoardComments: commentKeys.page(OTHER, CARD, 1),
+  avatar: avatarKeys.image(0, '/users/user-1/avatar/asset-1'),
+  newerAvatar: avatarKeys.image(1, '/users/user-1/avatar/asset-2'),
 } satisfies Record<string, QueryKey>;
 type CachedQuery = keyof typeof cached;
 
@@ -176,7 +179,7 @@ describe('invalidationTargets', () => {
     ]);
   });
 
-  it('member:removed also refreshes every card, for their assignees', async () => {
+  it('member:removed also refreshes every card and cached avatar permissions', async () => {
     expect(await hit('member:removed', member)).toEqual([
       'board',
       'members',
@@ -189,6 +192,8 @@ describe('invalidationTargets', () => {
       'commentsPage1',
       'commentsPage2',
       'otherCardComments',
+      'avatar',
+      'newerAvatar',
     ]);
   });
 

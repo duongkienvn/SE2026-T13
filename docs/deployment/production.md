@@ -90,6 +90,11 @@ Keep these prerequisites in place; CI/CD does not recreate infrastructure:
 
 ## Environment and secrets
 
+Private profile photo uploads require separate manual AWS preparation. Follow
+[private avatar IAM/CORS/IMDSv2, rollout and rollback](private-avatars.md).
+The storage driver defaults to disabled; no bucket or role configuration is
+performed by the application or release tooling.
+
 Google Sign-In (#79) is optional until the owner configures a Web OAuth client.
 Set `GOOGLE_CLIENT_ID` in `/etc/kanvexa/production.env` for the backend; set the
 matching public `VITE_GOOGLE_CLIENT_ID` repository variable for CD image builds.

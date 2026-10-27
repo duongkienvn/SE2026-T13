@@ -63,6 +63,10 @@ services:
       MAIL_FROM: ${MAIL_FROM:?Set MAIL_FROM to the verified sender}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:?Set PUBLIC_APP_URL to the HTTPS application origin}
       TRUST_PROXY_HOPS: '1'
+      AVATAR_STORAGE_DRIVER: ${AVATAR_STORAGE_DRIVER:-disabled}
+      AVATAR_S3_BUCKET: ${AVATAR_S3_BUCKET:-}
+      AVATAR_S3_REGION: ${AVATAR_S3_REGION:-ap-southeast-1}
+      AVATAR_S3_PREFIX: ${AVATAR_S3_PREFIX:-avatars/v1}
     depends_on:
       postgres:
         condition: service_healthy

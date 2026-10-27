@@ -8,9 +8,14 @@ import { UserPreferences } from './entities/user-preferences.entity';
 import { UserPreferencesController } from './user-preferences.controller';
 import { UserPreferencesService } from './user-preferences.service';
 import { UserPreferencesBodyGuard } from './user-preferences-body.guard';
+import { AvatarModule } from './avatars/avatar.module';
 
 @Module({
-  imports: [AuthModule, TypeOrmModule.forFeature([User, UserPreferences])],
+  imports: [
+    AuthModule,
+    AvatarModule,
+    TypeOrmModule.forFeature([User, UserPreferences]),
+  ],
   controllers: [UsersController, UserPreferencesController],
   providers: [UsersService, UserPreferencesService, UserPreferencesBodyGuard],
 })
