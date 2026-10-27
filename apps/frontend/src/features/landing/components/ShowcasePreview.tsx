@@ -14,8 +14,8 @@ import {
 
 // Tile and role colors mirror BoardIcon and RoleChip at miniature size.
 const ROLE = {
-  Owner: 'bg-[#ebeafe] text-[#4840ee]',
-  Member: 'bg-[#e4edfe] text-[#1458c9]',
+  Owner: 'bg-[#ebeafe] text-[#4840ee] dark:bg-[#2a2860] dark:text-[#b3afff]',
+  Member: 'bg-[#e4edfe] text-[#1458c9] dark:bg-[#172e4f] dark:text-[#8bbcf7]',
 };
 
 const BOARDS: {
@@ -32,7 +32,7 @@ const BOARDS: {
     updated: '2 hours ago',
     description: 'Plan and track product work.',
     Icon: MonitorIcon,
-    tile: 'bg-[#edebfe] text-[#4f46e5]',
+    tile: 'bg-[#edebfe] text-[#4f46e5] dark:bg-[#2a2860] dark:text-[#a9a5ff]',
   },
   {
     name: 'Marketing',
@@ -40,7 +40,7 @@ const BOARDS: {
     updated: 'yesterday',
     description: 'Campaigns across all channels.',
     Icon: MegaphoneIcon,
-    tile: 'bg-[#e0edfd] text-[#1d6fd8]',
+    tile: 'bg-[#e0edfd] text-[#1d6fd8] dark:bg-[#172e4f] dark:text-[#7cb4f5]',
   },
   {
     name: 'Design Team',
@@ -48,7 +48,7 @@ const BOARDS: {
     updated: '3 days ago',
     description: 'Requests and upcoming work.',
     Icon: UsersIcon,
-    tile: 'bg-[#ebf8ed] text-[#4a9a45]',
+    tile: 'bg-[#ebf8ed] text-[#4a9a45] dark:bg-[#17361d] dark:text-[#7fcf85]',
   },
   {
     name: 'Q1 Planning',
@@ -56,7 +56,7 @@ const BOARDS: {
     updated: 'last week',
     description: 'Goals and key results.',
     Icon: BarChartIcon,
-    tile: 'bg-[#fcf6e4] text-[#e5a502]',
+    tile: 'bg-[#fcf6e4] text-[#e5a502] dark:bg-[#3a2f10] dark:text-[#f2c94c]',
   },
 ];
 
@@ -143,7 +143,7 @@ export function ShowcasePreview() {
               <SearchIcon className="size-2.5" />
               Search boards…
             </span>
-            <span className="flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-[9px] font-medium text-white">
+            <span className="flex items-center gap-1 rounded-md bg-primary-solid px-2 py-1 text-[9px] font-medium text-white">
               <PlusIcon className="size-2.5" />
               New Board
             </span>

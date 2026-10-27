@@ -67,8 +67,8 @@ const COLUMNS: PreviewColumn[] = [
 
 const PRESENCE = [
   'bg-primary-soft text-primary',
-  'bg-[#e7f6ee] text-success',
-  'bg-[#fdeedd] text-[#b45309]',
+  'bg-[#e7f6ee] text-success dark:bg-[#123222]',
+  'bg-[#fdeedd] text-[#b45309] dark:bg-[#3a2814] dark:text-[#f0a35e]',
 ];
 
 function Initials({ value, className }: { value: string; className: string }) {
@@ -167,7 +167,7 @@ export function BoardPreview({ className = '' }: { className?: string }) {
             {COLUMNS.map((column) => (
               <div
                 key={column.name}
-                className={`flex-col gap-2 rounded-xl bg-[#eceef6] p-2 ${column.wideOnly ? 'hidden sm:flex' : 'flex'}`}
+                className={`flex-col gap-2 rounded-xl bg-[#eceef6] p-2 dark:bg-[#1c2238] ${column.wideOnly ? 'hidden sm:flex' : 'flex'}`}
               >
                 <p className="px-0.5 text-[11px] font-semibold text-ink">
                   {column.name}{' '}
