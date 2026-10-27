@@ -32,7 +32,7 @@ describe('Authenticated navigation', () => {
     ).toBeNull();
   });
 
-  it('keeps Boards active across board routes, preserves the rail and keeps Profile in the account menu', async () => {
+  it('keeps Boards active across board routes, preserves the rail and opens Settings from the account menu', async () => {
     const boards = [makeBoard({ name: 'Alpha' }), makeBoard({ name: 'Beta' })];
     storeSession();
     mockApi({
@@ -84,12 +84,14 @@ describe('Authenticated navigation', () => {
         name: `Account menu for ${testUser.displayName}`,
       }),
     );
-    fireEvent.click(screen.getByRole('link', { name: 'Profile' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Settings' }));
     await screen.findByRole('heading', { name: 'Profile' });
     expect(boardsLink().getAttribute('aria-current')).toBeNull();
     expect(
-      screen.getByRole('heading', { name: 'Connected accounts' }),
-    ).toBeTruthy();
+      within(screen.getByRole('navigation', { name: 'Settings' }))
+        .getByRole('link', { name: 'Profile' })
+        .getAttribute('aria-current'),
+    ).toBe('page');
     expect(nav.getByRole('button', { name: 'Expand sidebar' })).toBeTruthy();
     fireEvent.click(boardsLink());
     await screen.findByRole('link', { name: 'Alpha' });
@@ -153,7 +155,7 @@ describe('Authenticated navigation', () => {
     },
   );
 
-  it('offers Profile and Log out from the mobile navigation drawer', async () => {
+  it('offers Settings and Log out from the mobile navigation drawer', async () => {
     vi.stubGlobal('matchMedia', () => ({
       matches: false,
       addEventListener: () => undefined,
@@ -174,8 +176,8 @@ describe('Authenticated navigation', () => {
     fireEvent.click(open);
     let drawer = screen.getByRole('dialog', { name: 'Navigation menu' });
     expect(within(drawer).getByText(testUser.email)).toBeTruthy();
-    fireEvent.click(within(drawer).getByRole('link', { name: 'Profile' }));
-    await screen.findByRole('heading', { name: 'Profile' });
+    fireEvent.click(within(drawer).getByRole('link', { name: 'Settings' }));
+    await screen.findByRole('heading', { name: 'Settings' });
     expect(screen.queryByRole('dialog')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Open navigation' }));

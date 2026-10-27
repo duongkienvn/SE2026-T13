@@ -5,7 +5,7 @@ import { UserAvatar } from './UserAvatar';
 const rowClassName =
   'flex min-h-11 w-full items-center rounded-lg px-3 text-left text-[15px] text-ink hover:bg-app focus-visible:outline-2 focus-visible:outline-primary';
 
-/** Signed-in identity with Profile and Log out, for the mobile navigation drawer. */
+/** Signed-in identity with Settings and Log out, for the mobile navigation drawer. */
 export function AccountLinks() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -28,8 +28,8 @@ export function AccountLinks() {
           <p className="truncate text-xs text-muted">{user.email}</p>
         </div>
       </div>
-      <Link to="/profile" className={rowClassName}>
-        Profile
+      <Link to="/settings" className={rowClassName}>
+        Settings
       </Link>
       <button type="button" onClick={handleLogout} className={rowClassName}>
         Log out

@@ -1,17 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { useBlocker } from 'react-router';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
+import { Dialog } from '../../../components/Dialog';
 import { MailIcon, UserIcon } from '../../../components/icons';
-import { PageContainer } from '../../../components/PageContainer';
 import { PageHeader } from '../../../components/PageHeader';
 import { TextField } from '../../../components/TextField';
 import { updateCurrentUser } from '../api';
 import { currentUserQueryKey } from '../AuthProvider';
 import { useAuthSession, type AuthSessionScope } from '../auth-session-context';
 import { UserAvatar } from '../components/UserAvatar';
-import { ConnectedAccounts } from '../components/ConnectedAccounts';
-import { AccountSecurity } from '../components/AccountSecurity';
 import { toFormErrors } from '../../../lib/form-errors';
 import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
 import { usePageTitle } from '../../../hooks/usePageTitle';
@@ -94,6 +93,20 @@ function ProfileForm({ user }: { user: User }) {
 
   const patch = buildPatch(user, displayName, avatarUrl);
   const isDirty = Object.keys(patch).length > 0;
+  const guarded = isDirty && !mutation.isPending;
+
+  // Ask before a Settings link or Back drops unsaved edits. Logout and session
+  // expiry unmount this form (and its blocker) through RequireAuth instead.
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      guarded && currentLocation.pathname !== nextLocation.pathname,
+  );
+  useEffect(() => {
+    if (!guarded) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [guarded]);
   const previewUrl = validateAvatarUrl(avatarUrl)
     ? null
     : avatarUrl.trim() || null;
@@ -118,7 +131,7 @@ function ProfileForm({ user }: { user: User }) {
   };
 
   return (
-    <PageContainer>
+    <>
       <PageHeader
         title="Profile"
         description="Manage how you appear to other members of your boards."
@@ -200,8 +213,21 @@ function ProfileForm({ user }: { user: User }) {
           </div>
         </div>
       </form>
-      <ConnectedAccounts />
-      <AccountSecurity />
-    </PageContainer>
+      <Dialog
+        open={blocker.state === 'blocked'}
+        onClose={() => blocker.reset?.()}
+        title="Discard unsaved changes?"
+        description="Your profile edits have not been saved."
+      >
+        <div className="flex justify-end gap-3">
+          <Button variant="secondary" onClick={() => blocker.reset?.()}>
+            Keep editing
+          </Button>
+          <Button variant="danger" onClick={() => blocker.proceed?.()}>
+            Discard changes
+          </Button>
+        </div>
+      </Dialog>
+    </>
   );
 }

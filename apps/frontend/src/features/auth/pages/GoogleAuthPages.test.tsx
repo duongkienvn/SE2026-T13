@@ -112,7 +112,8 @@ describe('Google login and registration', () => {
     expect(
       await screen.findByRole('heading', { name: 'Profile' }),
     ).toBeTruthy();
-    expect(router.state.location.pathname).toBe('/profile');
+    // The pre-Settings `/profile` bookmark lands on its new home.
+    expect(router.state.location.pathname).toBe('/settings/profile');
   });
   it('explains explicit linking without issuing/storing a session', async () => {
     const google = installGoogle();
