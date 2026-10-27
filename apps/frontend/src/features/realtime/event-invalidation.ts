@@ -90,6 +90,7 @@ export function invalidationTargets<E extends BoardEventName>(
     case 'member:removed':
       // Removing a member also drops them from every card they were assigned.
       return [
+        { queryKey: ['avatar'] },
         members(boardId),
         boardDetail(boardId),
         boardList(),

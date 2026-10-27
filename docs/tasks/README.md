@@ -33,6 +33,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 - [Email verification](backend/email-verification.md)
 - [Google Sign-In and account linking](backend/google-auth-account-linking.md)
 - [User preferences API and persistence](backend/user-preferences.md)
+- [Private profile avatar uploads](backend/profile-avatar-upload.md)
 - [Password recovery and account security](backend/password-recovery-security.md)
 - [Verification email layout](backend/verification-email-layout.md)
 - [Board management API](backend/board-management-api.md)

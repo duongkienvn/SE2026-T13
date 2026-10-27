@@ -9,35 +9,24 @@ import { TextField } from '../../../components/TextField';
 import { updateCurrentUser } from '../api';
 import { currentUserQueryKey } from '../AuthProvider';
 import { useAuthSession, type AuthSessionScope } from '../auth-session-context';
-import { UserAvatar } from '../components/UserAvatar';
+import { AvatarEditor } from '../components/AvatarEditor';
 import { toFormErrors } from '../../../lib/form-errors';
 import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
 import { usePageTitle } from '../../../hooks/usePageTitle';
 import type { UpdateProfileRequest, User } from '../types';
 import { useAuth } from '../useAuth';
-import {
-  hasErrors,
-  validateAvatarUrl,
-  validateDisplayName,
-} from '../validation';
+import { hasErrors, validateDisplayName } from '../validation';
 
 const FIELD_LABELS = {
   displayName: 'Display name',
-  avatarUrl: 'Avatar URL',
 };
 type Field = keyof typeof FIELD_LABELS;
 
 /** Only fields that differ from the saved profile; `{}` means nothing changed. */
-function buildPatch(
-  user: User,
-  displayName: string,
-  avatarUrl: string,
-): UpdateProfileRequest {
+function buildPatch(user: User, displayName: string): UpdateProfileRequest {
   const patch: UpdateProfileRequest = {};
   const name = displayName.trim();
-  const avatar = avatarUrl.trim() || null;
   if (name !== user.displayName) patch.displayName = name;
-  if (avatar !== user.avatarUrl) patch.avatarUrl = avatar;
   return patch;
 }
 
@@ -55,7 +44,8 @@ function ProfileForm({ user }: { user: User }) {
   const scope = useAuthSession();
   const queryClient = useQueryClient();
   const [displayName, setDisplayName] = useState(user.displayName);
-  const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl ?? '');
+  const [photoDirty, setPhotoDirty] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<Field, string>>
   >({});
@@ -74,11 +64,16 @@ function ProfileForm({ user }: { user: User }) {
         throw new Error('Session changed before request.');
       return runAuthorized((token) => updateCurrentUser(token, patch));
     },
-    onSuccess: (updated, { scope }) => {
+    onSuccess: async (updated, { scope }) => {
       if (!scope.isCurrent()) return;
-      queryClient.setQueryData(currentUserQueryKey, updated);
+      await queryClient.cancelQueries({ queryKey: currentUserQueryKey });
+      if (!scope.isCurrent()) return;
+      queryClient.setQueryData<User>(currentUserQueryKey, (current) =>
+        current?.id === updated.id
+          ? { ...current, displayName: updated.displayName }
+          : current,
+      );
       setDisplayName(updated.displayName);
-      setAvatarUrl(updated.avatarUrl ?? '');
       setSaved(true);
     },
     onError: (error, { scope }) => {
@@ -90,11 +85,8 @@ function ProfileForm({ user }: { user: User }) {
     },
   });
 
-  const patch = buildPatch(user, displayName, avatarUrl);
+  const patch = buildPatch(user, displayName);
   const isDirty = Object.keys(patch).length > 0;
-  const previewUrl = validateAvatarUrl(avatarUrl)
-    ? null
-    : avatarUrl.trim() || null;
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -102,7 +94,6 @@ function ProfileForm({ user }: { user: User }) {
 
     const errors = {
       displayName: validateDisplayName(displayName),
-      avatarUrl: validateAvatarUrl(avatarUrl),
     };
     setFieldErrors(errors);
     setFormError(undefined);
@@ -128,21 +119,11 @@ function ProfileForm({ user }: { user: User }) {
         onSubmit={handleSubmit}
         className="mt-6 max-w-2xl space-y-6 rounded-xl border border-line bg-surface p-5 shadow-card md:p-6"
       >
-        <div className="flex min-w-0 items-center gap-4 border-b border-line pb-6">
-          <UserAvatar
-            user={{
-              displayName: displayName.trim() || user.displayName,
-              avatarUrl: previewUrl,
-            }}
-            className="size-16 text-xl md:size-20 md:text-2xl"
-          />
-          <div className="min-w-0 max-w-full">
-            <p className="truncate text-base font-semibold text-ink">
-              {user.displayName}
-            </p>
-            <p className="truncate text-sm text-muted">{user.email}</p>
-          </div>
-        </div>
+        <AvatarEditor
+          user={user}
+          onDirtyChange={setPhotoDirty}
+          onBusyChange={setPhotoBusy}
+        />
 
         <div className="min-w-0">
           <div className="space-y-4">
@@ -174,20 +155,6 @@ function ProfileForm({ user }: { user: User }) {
                 error={fieldErrors.displayName}
               />
             </div>
-            <TextField
-              label="Avatar URL"
-              name="avatarUrl"
-              type="url"
-              inputMode="url"
-              placeholder="https://example.com/avatar.png"
-              hint="Optional. Leave empty to use your initials."
-              value={avatarUrl}
-              onChange={(event) => {
-                setAvatarUrl(event.target.value);
-                setSaved(false);
-              }}
-              error={fieldErrors.avatarUrl}
-            />
           </div>
 
           <div className="mt-5 flex justify-end">
@@ -198,7 +165,7 @@ function ProfileForm({ user }: { user: User }) {
         </div>
       </form>
       <UnsavedChangesGuard
-        when={isDirty && !mutation.isPending}
+        when={(isDirty && !mutation.isPending) || (photoDirty && !photoBusy)}
         description="Your profile edits have not been saved."
       />
     </>

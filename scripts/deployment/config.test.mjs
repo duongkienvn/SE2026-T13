@@ -223,3 +223,58 @@ test('local HTTP override replaces every public binding without changing product
   assert.match(production, /^kanvexa\.tech\s*\{/);
   assert.doesNotMatch(production, /auto_https off|http:\/\//);
 });
+
+test('private avatars keep credentials out of frontend and policies scoped to private object prefixes', () => {
+  const bucket = 'kanvexa-avatars-prod-338534047400-ap-southeast-1-an';
+  const { services } = JSON.parse(
+    execFileSync(
+      'docker',
+      [...args, '--profile', 'tools', 'config', '--format', 'json'],
+      {
+        env: {
+          ...env,
+          AVATAR_STORAGE_DRIVER: 's3',
+          AVATAR_S3_BUCKET: bucket,
+          AVATAR_S3_REGION: 'ap-southeast-1',
+          AVATAR_S3_PREFIX: 'avatars/v1',
+        },
+        encoding: 'utf8',
+      },
+    ),
+  );
+  assert.equal(services.backend.environment.AVATAR_STORAGE_DRIVER, 's3');
+  assert.equal(services.backend.environment.AVATAR_S3_BUCKET, bucket);
+  for (const name of ['frontend', 'migrate', 'postgres']) {
+    assert.equal(services[name].environment?.AVATAR_S3_BUCKET, undefined);
+    assert.equal(services[name].environment?.AWS_ACCESS_KEY_ID, undefined);
+  }
+  assert.equal(services.backend.environment.AWS_ACCESS_KEY_ID, undefined);
+  const read = (file) =>
+    JSON.parse(readFileSync(`docs/deployment/avatars/${file}.json`, 'utf8'));
+  const [grant] = read('role-policy').Statement;
+  assert.equal(grant.Effect, 'Allow');
+  assert.deepEqual(grant.Action.sort(), [
+    's3:DeleteObject',
+    's3:GetObject',
+    's3:PutObject',
+  ]);
+  assert.deepEqual(
+    grant.Resource,
+    ['pending', 'active'].map(
+      (part) => `arn:aws:s3:::${bucket}/avatars/v1/${part}/*`,
+    ),
+  );
+  const [cors] = read('cors');
+  assert.deepEqual(cors.AllowedMethods, ['POST']);
+  assert.deepEqual(cors.AllowedOrigins, [
+    'https://kanvexa.tech',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+  ]);
+  const [lifecycle] = read('lifecycle').Rules;
+  assert.equal(lifecycle.Filter.Prefix, 'avatars/v1/pending/');
+  assert.equal(lifecycle.Expiration.Days, 1);
+  const [tls] = read('tls-bucket-policy').Statement;
+  assert.equal(tls.Effect, 'Deny');
+  assert.deepEqual(tls.Condition, { Bool: { 'aws:SecureTransport': 'false' } });
+});

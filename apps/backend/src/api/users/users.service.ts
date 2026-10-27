@@ -21,7 +21,7 @@ export class UsersService {
     userId: string,
     input: UpdateUserProfileDto,
   ): Promise<UserResponseDto> {
-    if (input.displayName === undefined && input.avatarUrl === undefined) {
+    if (input.displayName === undefined) {
       throw new ApplicationException(
         HttpStatus.BAD_REQUEST,
         ErrorCode.VALIDATION_FAILED,
@@ -32,9 +32,8 @@ export class UsersService {
     await this.findUser(userId);
     // Never save a stale full User: concurrent credential changes must survive
     // profile edits that started before the password/auth-version transaction.
-    const patch: Partial<Pick<User, 'displayName' | 'avatarUrl'>> = {};
+    const patch: Partial<Pick<User, 'displayName'>> = {};
     if (input.displayName !== undefined) patch.displayName = input.displayName;
-    if (input.avatarUrl !== undefined) patch.avatarUrl = input.avatarUrl;
     await this.users.update(userId, patch);
     return toUserResponseDto(await this.findUser(userId));
   }

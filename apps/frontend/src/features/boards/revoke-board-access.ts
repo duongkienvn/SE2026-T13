@@ -6,6 +6,8 @@ export const BOARD_ACCESS_REVOKED = 'BOARD_ACCESS_REVOKED';
 
 /** Keep a denial tombstone so mounted observers cannot revive protected data. */
 export function revokeBoardAccess(client: QueryClient, boardId: string) {
+  // A shared Board may have been the only permission to read another avatar.
+  void client.resetQueries({ queryKey: ['avatar'] });
   const key = boardKeys.detail(boardId);
   void client.cancelQueries({ queryKey: key });
   client.removeQueries({

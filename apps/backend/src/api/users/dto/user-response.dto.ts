@@ -21,6 +21,10 @@ export class UserResponseDto {
   avatarUrl!: string | null;
 
   @Expose()
+  @ApiProperty({ minimum: 0 })
+  avatarRevision!: number;
+
+  @Expose()
   @ApiProperty({ format: 'date-time' })
   createdAt!: string;
 
@@ -34,7 +38,13 @@ export function toUserResponseDto(user: User): UserResponseDto {
     id: user.id,
     email: user.email,
     displayName: user.displayName,
-    avatarUrl: user.avatarUrl,
+    avatarUrl: user.avatarObjectKey
+      ? `/users/${user.id}/avatar/${user.avatarObjectKey
+          .split('/')
+          .at(-1)!
+          .replace(/\.webp$/, '')}`
+      : user.avatarUrl,
+    avatarRevision: user.avatarRevision ?? 0,
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
   });

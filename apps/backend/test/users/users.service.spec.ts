@@ -41,7 +41,6 @@ describe('UsersService', () => {
 
     const result = await service.updateCurrentUser(USER_ID, {
       displayName: 'Grace Hopper',
-      avatarUrl: null,
     });
 
     expect(repository.findOne).toHaveBeenCalledWith({ where: { id: USER_ID } });
@@ -50,7 +49,6 @@ describe('UsersService', () => {
     expect(result).not.toHaveProperty('passwordHash');
     expect(repository.update).toHaveBeenCalledWith(USER_ID, {
       displayName: 'Grace Hopper',
-      avatarUrl: null,
     });
   });
 

@@ -1,9 +1,14 @@
+import {
+  validateAvatarEnvironment,
+  type AvatarEnvironment,
+} from '../api/users/avatars/avatar.config';
+
 export type AppEnvironment = 'development' | 'test' | 'production';
 export type MailTransport = 'fake' | 'resend';
 export type LogLevel =
   'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
 
-export interface EnvironmentConfig {
+export interface EnvironmentConfig extends AvatarEnvironment {
   NODE_ENV: AppEnvironment;
   API_PORT: number;
   API_PREFIX: string;
@@ -193,6 +198,7 @@ export function validateEnvironment(
   }
 
   return {
+    ...validateAvatarEnvironment({ ...input, NODE_ENV: nodeEnv }),
     MAIL_TRANSPORT: mailTransport,
     RESEND_API_KEY: resendKey,
     MAIL_FROM: mailFrom,

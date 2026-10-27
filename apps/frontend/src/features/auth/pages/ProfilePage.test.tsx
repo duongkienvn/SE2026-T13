@@ -86,20 +86,13 @@ describe('ProfilePage', () => {
     ).toBeTruthy();
   });
 
-  it('requires an HTTPS avatar URL and sends null to clear it', async () => {
-    const { calls } = await openProfile({
-      'PATCH /users/me': ok({ ...testUser, avatarUrl: null }),
-    });
-    const avatar = screen.getByLabelText('Avatar URL');
-
-    fireEvent.change(avatar, {
-      target: { value: 'http://insecure.example/a.png' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    expect(
-      screen.getByText('Enter a valid HTTPS image URL, or leave it empty.'),
-    ).toBeTruthy();
-    expect(document.activeElement).toBe(avatar);
+  it('offers a native photo picker without an avatar URL field', async () => {
+    const { calls } = await openProfile();
+    expect(screen.queryByLabelText('Avatar URL')).toBeNull();
+    expect(screen.getByLabelText('Photo file').getAttribute('type')).toBe(
+      'file',
+    );
+    expect(screen.getByRole('button', { name: 'Select photo' })).toBeTruthy();
     expect(calls.some((call) => call.method === 'PATCH')).toBe(false);
   });
 
