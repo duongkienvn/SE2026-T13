@@ -89,6 +89,71 @@ const select = (
 const photo = () => screen.getByRole('region', { name: 'Profile photo' });
 
 describe('profile photo workflow', () => {
+  it.each(['upload', 'verify', 'remove'] as const)(
+    'guards navigation and tab close during photo %s until it settles',
+    async (phase) => {
+      const pending = deferred<MockResponse>();
+      const endpoint =
+        phase === 'upload'
+          ? target.upload.url
+          : phase === 'verify'
+            ? `/users/me/avatar/uploads/${uploadId}/complete`
+            : '/users/me/avatar';
+      const { router } = await open(
+        {
+          [`${phase === 'remove' ? 'DELETE' : 'POST'} ${endpoint}`]: () =>
+            pending.promise,
+        },
+        phase === 'remove'
+          ? { ...testUser, avatarUrl: 'https://images.example.test/old.jpg' }
+          : testUser,
+      );
+      if (phase !== 'remove') select();
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: phase === 'remove' ? 'Remove photo' : 'Upload photo',
+        }),
+      );
+      await waitFor(() =>
+        expect(
+          vi
+            .mocked(fetch)
+            .mock.calls.some(([input]) => String(input).endsWith(endpoint)),
+        ).toBe(true),
+      );
+      const signal = vi
+        .mocked(fetch)
+        .mock.calls.find(([input]) => String(input).endsWith(endpoint))![1]!
+        .signal!;
+      const closing = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(closing);
+      expect(closing.defaultPrevented).toBe(true);
+      await act(() => router.navigate('/settings/appearance'));
+      await screen.findByRole('dialog', { name: 'Discard unsaved changes?' });
+      expect(router.state.location.pathname).toBe('/settings/profile');
+      expect(signal.aborted).toBe(false);
+      fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+      expect(signal.aborted).toBe(false);
+      await act(async () =>
+        pending.resolve(
+          phase === 'upload'
+            ? { status: 204 }
+            : ok(
+                phase === 'remove' ? { ...testUser, avatarRevision: 1 } : saved,
+              ),
+        ),
+      );
+      await screen.findByText(
+        phase === 'remove' ? 'Photo removed.' : 'Photo saved.',
+      );
+      const settled = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(settled);
+      expect(settled.defaultPrevented).toBe(false);
+      await act(() => router.navigate('/settings/appearance'));
+      await screen.findByRole('heading', { name: 'Appearance' });
+    },
+  );
+
   it('previews and cancels without starting an upload; releases object URLs', async () => {
     const { calls } = await open();
     select();

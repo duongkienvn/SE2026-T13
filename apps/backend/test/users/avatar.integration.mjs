@@ -32,6 +32,12 @@ const {
   AvatarService,
 } = require('../../dist/api/users/avatars/avatar.service.js');
 const {
+  AvatarImageService,
+} = require('../../dist/api/users/avatars/avatar-image.service.js');
+const {
+  avatarError,
+} = require('../../dist/api/users/avatars/avatar.constants.js');
+const {
   AvatarStorage,
 } = require('../../dist/api/users/avatars/avatar-storage.js');
 const {
@@ -335,6 +341,43 @@ try {
   };
   await rejectsCode(avatars.read(bob.id, alice.id, id), 'AVATAR_NOT_FOUND');
   storage.get = get;
+  // Pre-PUT 503s can retry the same intent without another upload/quota slot.
+  const images = app.get(AvatarImageService);
+  for (const phase of ['get', 'normalize']) {
+    const retryUser = await makeUser({
+      avatarUrl: 'https://images.example.test/preserved.jpg',
+    });
+    const retry = await intent(retryUser);
+    const dependency = phase === 'get' ? storage : images;
+    const method = phase === 'get' ? 'get' : 'normalize';
+    const original = dependency[method].bind(dependency);
+    dependency[method] = async () => {
+      throw avatarError(503, 'AVATAR_TEMPORARILY_UNAVAILABLE', 'Try again.');
+    };
+    try {
+      await rejectsCode(
+        avatars.complete(retryUser.id, retry.uploadId),
+        'AVATAR_TEMPORARILY_UNAVAILABLE',
+      );
+    } finally {
+      dependency[method] = original;
+    }
+    const pending = await uploads.findOneByOrFail({ id: retry.uploadId });
+    assert.equal(pending.state, 'pending');
+    assert.equal(pending.expiresAt.getTime(), retry.row.expiresAt.getTime());
+    assert.equal(pending.baseRevision, retry.row.baseRevision);
+    assert.equal(storage.objects.has(retry.row.pendingKey), true);
+    assert.equal(storage.objects.has(retry.row.activeKey), false);
+    assert.equal(
+      (await users.findOneByOrFail({ id: retryUser.id })).avatarUrl,
+      retryUser.avatarUrl,
+    );
+    assert.equal(
+      (await avatars.complete(retryUser.id, retry.uploadId)).avatarRevision,
+      1,
+    );
+    assert.equal(await uploads.countBy({ userId: retryUser.id }), 1);
+  }
   await api().get(imagePath).auth(bToken, { type: 'bearer' }).expect(404);
   assert.equal(
     (await avatars.complete(alice.id, id)).avatarRevision,
@@ -430,10 +473,18 @@ try {
   storage.put = async (...args) => {
     await put(...args);
     if (args[0] === failedIntent.row.activeKey)
-      throw new Error('lost PUT acknowledgement');
+      throw avatarError(
+        503,
+        'AVATAR_STORAGE_UNAVAILABLE',
+        'lost PUT acknowledgement',
+      );
   };
   await assert.rejects(avatars.complete(failed.id, failedIntent.uploadId));
   storage.put = put;
+  assert.equal(
+    (await uploads.findOneByOrFail({ id: failedIntent.uploadId })).state,
+    'rejected',
+  );
   assert.equal(
     (await users.findOneByOrFail({ id: failed.id })).avatarUrl,
     failed.avatarUrl,
@@ -452,14 +503,26 @@ try {
     db.transaction = async (...args) => {
       calls++;
       if (calls === 2 && !afterCommit)
-        throw new Error('DB unavailable before commit');
+        throw avatarError(
+          503,
+          'AVATAR_TEMPORARILY_UNAVAILABLE',
+          'DB unavailable before commit',
+        );
       const result = await transaction(...args);
       if (calls === 2 && afterCommit)
-        throw new Error('lost DB commit acknowledgement');
+        throw avatarError(
+          503,
+          'AVATAR_TEMPORARILY_UNAVAILABLE',
+          'lost DB commit acknowledgement',
+        );
       return result;
     };
     await assert.rejects(avatars.complete(user.id, upload.uploadId));
     db.transaction = transaction;
+    assert.equal(
+      (await uploads.findOneByOrFail({ id: upload.uploadId })).state,
+      afterCommit ? 'completed' : 'rejected',
+    );
     const saved = await users.findOneByOrFail({ id: user.id });
     assert.equal(saved.avatarRevision, afterCommit ? 1 : 0);
     await expire(upload.uploadId);

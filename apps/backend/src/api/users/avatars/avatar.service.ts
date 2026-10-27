@@ -1,4 +1,5 @@
 import {
+  HttpException,
   Injectable,
   Logger,
   OnModuleDestroy,
@@ -186,6 +187,7 @@ export class AvatarService implements OnModuleInit, OnModuleDestroy {
     });
     if (claim.completed) return claim.completed;
     const intent = claim.intent;
+    let activePutStarted = false;
     try {
       const object = await this.storage.get(
         intent.pendingKey,
@@ -204,6 +206,7 @@ export class AvatarService implements OnModuleInit, OnModuleDestroy {
         object.body,
         intent.contentType,
       );
+      activePutStarted = true;
       await this.storage.put(intent.activeKey, normalized, 'image/webp', true);
       const result = await this.source.transaction(async (manager) => {
         const user = await this.lockUser(manager, userId);
@@ -242,9 +245,16 @@ export class AvatarService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       // Never delete an active object here: a lost DB acknowledgement might
       // follow a successful commit. Durable intent cleanup rechecks references.
+      const retryable =
+        !activePutStarted &&
+        error instanceof HttpException &&
+        error.getStatus() === 503;
       await this.source
         .getRepository(AvatarUpload)
-        .update({ id, userId, state: 'processing' }, { state: 'rejected' })
+        .update(
+          { id, userId, state: 'processing' },
+          { state: retryable ? 'pending' : 'rejected' },
+        )
         .catch(() => undefined);
       throw error;
     }

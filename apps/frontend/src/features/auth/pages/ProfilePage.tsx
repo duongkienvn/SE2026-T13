@@ -165,7 +165,7 @@ function ProfileForm({ user }: { user: User }) {
         </div>
       </form>
       <UnsavedChangesGuard
-        when={(isDirty && !mutation.isPending) || (photoDirty && !photoBusy)}
+        when={(isDirty && !mutation.isPending) || photoDirty || photoBusy}
         description="Your profile edits have not been saved."
       />
     </>

@@ -5,6 +5,7 @@ import { AuthContext } from '../auth-context';
 import { useAuthSession } from '../auth-session-context';
 import { useAuth } from '../useAuth';
 import { isManagedAvatar, readAvatar } from '../avatar-api';
+import { avatarKeys } from '../avatar-query-keys';
 
 interface UserAvatarProps {
   user: Pick<User, 'displayName' | 'avatarUrl'> & { id?: string };
@@ -58,7 +59,7 @@ function ManagedAvatar({
   const { runAuthorized } = useAuth();
   const { generation, isCurrent } = useAuthSession();
   const image = useQuery({
-    queryKey: ['avatar', generation, path],
+    queryKey: avatarKeys.image(generation, path),
     queryFn: ({ signal }) =>
       runAuthorized((token) => readAvatar(token, path, signal)),
     staleTime: 5 * 60_000,

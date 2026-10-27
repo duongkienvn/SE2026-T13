@@ -112,8 +112,16 @@ not persistent S3 emulation. Default/production example stays disabled until
 [manual AWS preparation](../../deployment/private-avatars.md). No real AWS
 credentials are needed by tests; `NODE_ENV=test` forces inherited S3 mode off.
 
-`pnpm --filter @kanban/backend test:avatars:database` creates its own randomly
-named disposable PostgreSQL 16 Docker container bound to loopback, runs all
+On a fresh checkout, build the shared package first so its generated declarations
+are available to the backend:
+
+```powershell
+pnpm --filter @kanban/shared build
+pnpm --filter @kanban/backend test:avatars:database
+```
+
+The database test creates its own randomly named disposable PostgreSQL 16 Docker
+container bound to loopback, runs all
 migrations and the existing foundation suite against that server, and removes
 the container in `finally`. It ignores the user's DB settings. Real JWT, DTOs,
 HTTP, authorization, decoder and PostgreSQL locks are exercised; only object
