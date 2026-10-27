@@ -17,7 +17,7 @@ Các phần đã có trong `apps/frontend/src`:
 ```text
 apps/frontend/src/
 ├── app/
-│   ├── AppProviders.tsx      # QueryClientProvider + AuthProvider
+│   ├── AppProviders.tsx      # QueryClientProvider + AuthProvider + ThemeSync
 │   ├── routes.tsx            # React Router routes, root errorElement
 │   ├── guards.tsx            # RequireAuth / PublicOnly
 │   ├── redirect.ts           # post-login redirect an toàn
@@ -47,6 +47,8 @@ apps/frontend/src/
 - Realtime nằm ở `features/realtime/` (#43): `RealtimeProvider` (trong `AppProviders`) giữ một Socket.IO connection cho mỗi auth session; board page gọi `useBoardRealtime(boardId)` để join room và invalidate query keys khi có event. Chi tiết: `docs/tasks/frontend/realtime-frontend.md`.
 
 - Activity History nằm ở `features/activities/` (#61): dialog chỉ đọc mở từ header Board, REST phân trang `limit=8`, query keys dưới `boardKeys.detail(boardId)` nên realtime resync cũng làm mới lịch sử. Chi tiết: `docs/tasks/frontend/activity-history.md`.
+
+- Account Settings, theme và preferences nằm ở `features/settings/` (#92): section config `sections.ts`, `/settings/*` routes, `ThemeSync` trong `AppProviders` đặt `<html data-theme>` (boot script trong `index.html` tránh flash), dark tokens trong `style.css`. Chi tiết: `docs/tasks/frontend/account-settings-appearance.md`.
 
 Hiện chưa có:
 

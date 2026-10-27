@@ -67,6 +67,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 - [Sidebar navigation and board creation UX](frontend/app-navigation-board-ux.md)
 - [Public landing page](frontend/public-landing-page.md)
 - [App Shell V2 and responsive navigation](frontend/app-shell-v2.md)
+- [Account Settings, Appearance and Preferences](frontend/account-settings-appearance.md)
 
 ## Quy ước
 
