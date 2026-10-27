@@ -62,7 +62,8 @@ describe.each([375, 1280])('card navigation at %ipx', (width) => {
     const opener = await screen.findByRole('button', { name: 'First card' });
     expect(
       screen.getByRole('button', {
-        name: width === 375 ? 'Expand sidebar' : 'Collapse sidebar',
+        // Phones open navigation from the header; desktop keeps the toggle.
+        name: width === 375 ? 'Open navigation' : 'Collapse sidebar',
       }),
     ).toBeTruthy();
     const main = screen.getByRole('main');

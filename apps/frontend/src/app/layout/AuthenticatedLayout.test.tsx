@@ -1,6 +1,6 @@
 import { focusManager } from '@tanstack/react-query';
 import { act, fireEvent, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { makeBoard, okPage } from '../../test/board-fixtures';
 import { fail, mockApi, ok, storeSession, testUser } from '../../test/mock-api';
 import { renderApp } from '../../test/render';
@@ -8,6 +8,7 @@ import { renderApp } from '../../test/render';
 afterEach(() => {
   focusManager.setFocused(undefined);
   localStorage.removeItem('kanvexa.sidebar.expanded');
+  vi.unstubAllGlobals();
 });
 
 describe('Authenticated navigation', () => {
@@ -151,4 +152,37 @@ describe('Authenticated navigation', () => {
       expect(screen.getByRole('link', { name: 'Boards' })).toBeTruthy();
     },
   );
+
+  it('offers Profile and Log out from the mobile navigation drawer', async () => {
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    storeSession();
+    mockApi({
+      'GET /users/me': ok(testUser),
+      'GET /auth/linked-providers': ok({
+        googleLinked: false,
+        hasPassword: true,
+      }),
+      'GET /boards?page=1&limit=100': okPage([]),
+      'POST /auth/logout': ok(null),
+    });
+    const view = renderApp('/boards');
+    const open = await screen.findByRole('button', { name: 'Open navigation' });
+    fireEvent.click(open);
+    let drawer = screen.getByRole('dialog', { name: 'Navigation menu' });
+    expect(within(drawer).getByText(testUser.email)).toBeTruthy();
+    fireEvent.click(within(drawer).getByRole('link', { name: 'Profile' }));
+    await screen.findByRole('heading', { name: 'Profile' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open navigation' }));
+    drawer = screen.getByRole('dialog', { name: 'Navigation menu' });
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Log out' }));
+    await screen.findByRole('heading', { name: /sign in|log in|welcome/i });
+    expect(view.router.state.location.pathname).toBe('/login');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
 });

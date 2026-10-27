@@ -17,7 +17,8 @@ export function Sidebar({ groups, activeItemId }: SidebarProps) {
   return (
     <nav
       aria-label="Primary"
-      className={`flex shrink-0 flex-col border-r border-line bg-surface ${expanded ? 'w-64' : 'w-16'}`}
+      // Phones use the header menu drawer instead of a rail.
+      className={`hidden shrink-0 flex-col border-r border-line bg-surface md:flex ${expanded ? 'w-64' : 'w-16'}`}
     >
       <div
         className={`flex h-14 shrink-0 items-center gap-2 md:h-15 ${expanded ? 'px-4' : 'justify-center'}`}
@@ -31,44 +32,67 @@ export function Sidebar({ groups, activeItemId }: SidebarProps) {
       </div>
       <div
         id={itemsId}
-        className={`flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pb-2 ${expanded ? 'px-3' : 'px-2'}`}
+        className={`flex min-h-0 flex-1 flex-col overflow-y-auto pb-2 ${expanded ? 'px-3' : 'px-2'}`}
       >
-        <WorkspaceSwitcherSlot expanded={expanded} />
-        {groups.map((group) => (
-          <SidebarGroup
-            key={group.id}
-            group={group}
-            activeItemId={activeItemId}
-            expanded={expanded}
-          />
-        ))}
+        <SidebarNavContent
+          groups={groups}
+          activeItemId={activeItemId}
+          expanded={expanded}
+        />
       </div>
-      <div
-        className={`shrink-0 border-t border-line py-2 ${expanded ? 'px-3' : 'px-2'}`}
-      >
-        <button
-          type="button"
-          aria-label={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
-          title={
-            !desktop
-              ? 'Sidebar stays compact on narrow screens'
-              : expanded
-                ? 'Collapse sidebar'
-                : 'Expand sidebar'
-          }
-          aria-expanded={expanded}
-          aria-controls={itemsId}
-          disabled={!desktop}
-          onClick={toggle}
-          className={`flex min-h-10 w-full items-center gap-3 rounded-lg text-sm text-muted enabled:hover:bg-app enabled:hover:text-ink focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50 ${expanded ? 'px-3' : 'justify-center'}`}
+      {/* Tablet rails stay compact; the header menu opens the full drawer. */}
+      {desktop && (
+        <div
+          className={`shrink-0 border-t border-line py-2 ${expanded ? 'px-3' : 'px-2'}`}
         >
-          <ChevronRightIcon
-            className={`size-5 shrink-0 ${expanded ? 'rotate-180' : ''}`}
-          />
-          {expanded && <span>Collapse sidebar</span>}
-        </button>
-      </div>
+          <button
+            type="button"
+            aria-label={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
+            title={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
+            aria-expanded={expanded}
+            aria-controls={itemsId}
+            onClick={toggle}
+            className={`flex min-h-10 w-full items-center gap-3 rounded-lg text-sm text-muted hover:bg-app hover:text-ink focus-visible:outline-2 focus-visible:outline-primary ${expanded ? 'px-3' : 'justify-center'}`}
+          >
+            <ChevronRightIcon
+              className={`size-5 shrink-0 ${expanded ? 'rotate-180' : ''}`}
+            />
+            {expanded && <span>Collapse sidebar</span>}
+          </button>
+        </div>
+      )}
     </nav>
+  );
+}
+
+interface SidebarNavContentProps {
+  groups: NavGroup[];
+  activeItemId?: string;
+  expanded: boolean;
+  /** Touch layout for the mobile drawer: 44px rows. */
+  roomy?: boolean;
+}
+
+/** Workspace slot and navigation groups, shared by the sidebar and the mobile drawer. */
+export function SidebarNavContent({
+  groups,
+  activeItemId,
+  expanded,
+  roomy = false,
+}: SidebarNavContentProps) {
+  return (
+    <div className="flex flex-col gap-1">
+      <WorkspaceSwitcherSlot expanded={expanded} />
+      {groups.map((group) => (
+        <SidebarGroup
+          key={group.id}
+          group={group}
+          activeItemId={activeItemId}
+          expanded={expanded}
+          roomy={roomy}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -113,9 +137,15 @@ interface SidebarGroupProps {
   group: NavGroup;
   activeItemId?: string;
   expanded: boolean;
+  roomy: boolean;
 }
 
-function SidebarGroup({ group, activeItemId, expanded }: SidebarGroupProps) {
+function SidebarGroup({
+  group,
+  activeItemId,
+  expanded,
+  roomy,
+}: SidebarGroupProps) {
   const headingId = useId();
   return (
     <div
@@ -143,6 +173,7 @@ function SidebarGroup({ group, activeItemId, expanded }: SidebarGroupProps) {
             item={item}
             active={item.id === activeItemId}
             expanded={expanded}
+            roomy={roomy}
           />
         ))}
       </ul>
@@ -154,11 +185,12 @@ interface SidebarItemProps {
   item: NavItem;
   active: boolean;
   expanded: boolean;
+  roomy: boolean;
 }
 
-function SidebarItem({ item, active, expanded }: SidebarItemProps) {
+function SidebarItem({ item, active, expanded, roomy }: SidebarItemProps) {
   const { icon: Icon, label } = item;
-  const layout = `flex min-h-10 w-full items-center gap-2.5 rounded-lg ${expanded ? 'px-3 text-left' : 'justify-center'}`;
+  const layout = `flex ${roomy ? 'min-h-11' : 'min-h-10'} w-full items-center gap-2.5 rounded-lg ${expanded ? 'px-3 text-left' : 'justify-center'}`;
 
   if (item.availability === 'soon') {
     // Not focusable: an unfinished feature must not be a keyboard dead end.

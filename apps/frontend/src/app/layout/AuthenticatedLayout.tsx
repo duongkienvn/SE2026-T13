@@ -1,5 +1,6 @@
 import { Link, Outlet, useLocation, useMatches } from 'react-router';
 import { ChevronRightIcon } from '../../components/icons';
+import { AccountLinks } from '../../features/auth/components/AccountLinks';
 import { UserMenu } from '../../features/auth/components/UserMenu';
 import { useBoardMembers } from '../../features/board-members/hooks';
 import { useVerifiedBoard } from '../../features/boards/useVerifiedBoard';
@@ -56,6 +57,7 @@ export function AuthenticatedLayout() {
         )
       }
       headerActions={<UserMenu />}
+      drawerFooter={<AccountLinks />}
     >
       <Outlet />
     </AppShell>

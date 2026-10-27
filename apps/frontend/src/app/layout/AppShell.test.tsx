@@ -21,9 +21,10 @@ describe('AppShell', () => {
     const header = screen.getByRole('banner');
     // The brand lives once, in the sidebar; the header carries page context.
     expect(within(header).queryByText(/Kanvexa|Kanban/)).toBeNull();
-    // Check the DOM too: a decorative duplicate has alt="" and is excluded
-    // from accessible image queries.
-    expect(header.querySelector('img')).toBeNull();
+    // Only phones (no rail) show the logo in the header.
+    const headerLogos = header.querySelectorAll('img');
+    expect(headerLogos).toHaveLength(1);
+    expect(headerLogos[0].className).toContain('md:hidden');
     const logo = within(
       screen.getByRole('navigation', { name: 'Primary' }),
     ).getByRole('img', { name: 'Kanvexa' });
@@ -50,12 +51,15 @@ describe('AppShell', () => {
     expect(within(header).queryByRole('searchbox')).toBeNull();
     expect(within(header).queryByRole('textbox')).toBeNull();
     expect(within(header).queryAllByRole('link')).toHaveLength(0);
-    // Only the real account action is interactive; no unread count or shortcut.
+    // Only the drawer opener and the real account action are interactive;
+    // no unread count or shortcut.
     expect(
       within(header)
         .getAllByRole('button')
-        .map((button) => button.textContent),
-    ).toEqual(['Account']);
+        .map(
+          (button) => button.getAttribute('aria-label') ?? button.textContent,
+        ),
+    ).toEqual(['Open navigation', 'Account']);
     expect(header.querySelector('[tabindex], input, kbd')).toBeNull();
     expect(header.textContent).not.toMatch(/\d|ctrl|⌘/i);
   });

@@ -70,13 +70,9 @@ describe('Sidebar', () => {
         listeners.forEach((listener) => listener());
       });
     resize(false);
-    expect(
-      (
-        screen.getByRole('button', {
-          name: 'Expand sidebar',
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
+    // Tablet rails stay compact; the header menu opens the drawer instead.
+    expect(screen.queryByRole('button', { name: /sidebar/ })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Boards' }).title).toBe('Boards');
     expect(localStorage.getItem('kanvexa.sidebar.expanded')).toBeNull();
     resize(true);
     fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
