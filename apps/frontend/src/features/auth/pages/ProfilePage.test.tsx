@@ -20,7 +20,8 @@ async function openProfile(extra: Parameters<typeof mockApi>[0] = {}) {
     }),
     ...extra,
   });
-  const view = renderApp('/profile');
+  // `/profile` redirects here; the redirect itself is covered by SettingsLayout tests.
+  const view = renderApp('/settings/profile');
   await screen.findByRole('heading', { name: 'Profile' });
   return { calls, ...view };
 }
@@ -32,7 +33,8 @@ describe('ProfilePage', () => {
     const email = screen.getByLabelText('Email address') as HTMLInputElement;
     expect(email.value).toBe(testUser.email);
     expect(email.readOnly).toBe(true);
-    expect(document.title).toBe('Profile · Kanvexa');
+    // Set in an effect that can land just after the heading renders.
+    await waitFor(() => expect(document.title).toBe('Profile · Kanvexa'));
     expect(
       (screen.getByLabelText('Display name') as HTMLInputElement).value,
     ).toBe(testUser.displayName);

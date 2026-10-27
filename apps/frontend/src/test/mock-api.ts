@@ -18,11 +18,22 @@ type Handler =
   | MockResponse
   | ((request: MockRequest) => MockResponse | Promise<MockResponse>);
 
+/** Every signed-in app loads preferences (ThemeSync); tests may override this. */
+const defaultHandlers: Record<string, Handler> = {
+  'GET /users/me/preferences': ok({
+    theme: 'system',
+    timeZone: 'UTC',
+    dateFormat: 'YYYY-MM-DD',
+    weekStartsOn: 'monday',
+  }),
+};
+
 /**
  * Replaces `fetch` with handlers keyed by "METHOD /path" (relative to the API
  * base URL). Unknown requests fail the test loudly. Returns the call log.
  */
-export function mockApi(handlers: Record<string, Handler>): MockRequest[] {
+export function mockApi(overrides: Record<string, Handler>): MockRequest[] {
+  const handlers = { ...defaultHandlers, ...overrides };
   const calls: MockRequest[] = [];
 
   vi.stubGlobal(
