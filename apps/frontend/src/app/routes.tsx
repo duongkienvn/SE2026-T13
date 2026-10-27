@@ -14,7 +14,9 @@ import {
   SettingsIndex,
   SettingsLayout,
 } from '../features/settings/components/SettingsLayout';
+import { AppearancePage } from '../features/settings/pages/AppearancePage';
 import { ConnectedAccountsPage } from '../features/settings/pages/ConnectedAccountsPage';
+import { PreferencesPage } from '../features/settings/pages/PreferencesPage';
 import { ProfileRedirect } from '../features/settings/pages/ProfileRedirect';
 import { SecuritySettingsPage } from '../features/settings/pages/SecuritySettingsPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
@@ -62,6 +64,8 @@ export const routes: RouteObject[] = [
                 children: [
                   { index: true, element: <SettingsIndex /> },
                   { path: 'profile', element: <ProfilePage /> },
+                  { path: 'appearance', element: <AppearancePage /> },
+                  { path: 'preferences', element: <PreferencesPage /> },
                   { path: 'security', element: <SecuritySettingsPage /> },
                   {
                     path: 'connected-accounts',

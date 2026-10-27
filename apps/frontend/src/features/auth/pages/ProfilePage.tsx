@@ -1,9 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState, type FormEvent } from 'react';
-import { useBlocker } from 'react-router';
+import { useState, type FormEvent } from 'react';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
-import { Dialog } from '../../../components/Dialog';
+import { UnsavedChangesGuard } from '../../../components/UnsavedChangesGuard';
 import { MailIcon, UserIcon } from '../../../components/icons';
 import { PageHeader } from '../../../components/PageHeader';
 import { TextField } from '../../../components/TextField';
@@ -93,20 +92,6 @@ function ProfileForm({ user }: { user: User }) {
 
   const patch = buildPatch(user, displayName, avatarUrl);
   const isDirty = Object.keys(patch).length > 0;
-  const guarded = isDirty && !mutation.isPending;
-
-  // Ask before a Settings link or Back drops unsaved edits. Logout and session
-  // expiry unmount this form (and its blocker) through RequireAuth instead.
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      guarded && currentLocation.pathname !== nextLocation.pathname,
-  );
-  useEffect(() => {
-    if (!guarded) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [guarded]);
   const previewUrl = validateAvatarUrl(avatarUrl)
     ? null
     : avatarUrl.trim() || null;
@@ -213,21 +198,10 @@ function ProfileForm({ user }: { user: User }) {
           </div>
         </div>
       </form>
-      <Dialog
-        open={blocker.state === 'blocked'}
-        onClose={() => blocker.reset?.()}
-        title="Discard unsaved changes?"
+      <UnsavedChangesGuard
+        when={isDirty && !mutation.isPending}
         description="Your profile edits have not been saved."
-      >
-        <div className="flex justify-end gap-3">
-          <Button variant="secondary" onClick={() => blocker.reset?.()}>
-            Keep editing
-          </Button>
-          <Button variant="danger" onClick={() => blocker.proceed?.()}>
-            Discard changes
-          </Button>
-        </div>
-      </Dialog>
+      />
     </>
   );
 }

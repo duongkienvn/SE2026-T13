@@ -54,7 +54,8 @@ export const settingsSections: SettingsSection[] = [
     label: 'Appearance',
     summary: 'Light, dark or match system',
     icon: PaletteIcon,
-    availability: 'soon',
+    availability: 'available',
+    path: 'appearance',
   },
   {
     id: 'notifications',
@@ -68,7 +69,8 @@ export const settingsSections: SettingsSection[] = [
     label: 'Preferences',
     summary: 'Time zone, date format and week start',
     icon: SlidersIcon,
-    availability: 'soon',
+    availability: 'available',
+    path: 'preferences',
   },
   {
     id: 'security',
