@@ -1,0 +1,98 @@
+{
+  "date": "2026-10-28",
+  "browser": "Chrome DevTools MCP",
+  "source": "Separate Vite DEV entry /qa/workspace.html; isolated browser context workspace-113",
+  "apiIntegration": "Not verified: P2-02 controller/DTOs absent. Production uses unavailable gateway.",
+  "viewports": [
+    {
+      "width": 320,
+      "theme": "light",
+      "pageOverflow": false,
+      "mainOverflow": false
+    },
+    {
+      "width": 375,
+      "theme": "light",
+      "pageOverflow": false,
+      "mainOverflow": false
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "pageOverflow": false,
+      "mainOverflow": false
+    },
+    {
+      "width": 768,
+      "theme": "light",
+      "pageOverflow": false,
+      "mainOverflow": false
+    },
+    {
+      "width": 1280,
+      "theme": "light",
+      "pageOverflow": false,
+      "mainOverflow": false
+    },
+    {
+      "width": 1920,
+      "theme": "light",
+      "pageOverflow": false,
+      "mainOverflow": false
+    },
+    {
+      "width": 320,
+      "theme": "dark",
+      "pageOverflow": false,
+      "mainOverflow": false
+    },
+    {
+      "width": 375,
+      "theme": "dark",
+      "pageOverflow": false,
+      "mainOverflow": false
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "pageOverflow": false,
+      "mainOverflow": false
+    },
+    {
+      "width": 768,
+      "theme": "dark",
+      "pageOverflow": false,
+      "mainOverflow": false
+    },
+    {
+      "width": 1280,
+      "theme": "dark",
+      "pageOverflow": false,
+      "mainOverflow": false
+    },
+    {
+      "width": 1920,
+      "theme": "dark",
+      "pageOverflow": false,
+      "mainOverflow": false
+    }
+  ],
+  "additionalChecks": {
+    "systemTheme": "Existing ThemeSync observed switching dark to light and light to dark through media emulation",
+    "longName320": "136-character unbroken name: wrapping corrected, no main overflow",
+    "manyMemberships390": {
+      "memberships": 48,
+      "selectorHeight": 256,
+      "scrolls": true,
+      "drawerOverflow": false
+    },
+    "createDialog320": "Tab wraps through fields/actions; Escape closes and restores Create Workspace focus; no dialog overflow",
+    "drawer": "RTL focus trap/restoration and navigation close pass; browser Escape closes selector before drawer",
+    "reducedMotion": "prefers-reduced-motion: reduce observed; motion-safe animations suppressed",
+    "accessibility": "Chrome accessibility tree: labelled landmarks, current page/location, dialog names, unavailable action description, Soon text; no live screen-reader software audit",
+    "console": "No browser errors after QA preference-cache correction",
+    "network": "No Workspace HTTP requests in unavailable runtime; no failed API requests in final isolated preview"
+  },
+  "comparison": "reference-comparison.png",
+  "responsiveOverview": "responsive-contact-sheet.png"
+}
