@@ -47,12 +47,10 @@ describe('Resend Workspace invitation delivery (no real network)', () => {
   it.each([400, 401, 403, 422, 429])(
     'returns FAILED for explicit HTTP %s rejection',
     async (statusCode) => {
-      const send = jest
-        .fn()
-        .mockResolvedValue({
-          data: null,
-          error: { statusCode, message: payload.proof },
-        });
+      const send = jest.fn().mockResolvedValue({
+        data: null,
+        error: { statusCode, message: payload.proof },
+      });
       expect(await mockAdapter(send).send(payload)).toBe('FAILED');
       expect(send).toHaveBeenCalledTimes(1);
     },
@@ -61,12 +59,10 @@ describe('Resend Workspace invitation delivery (no real network)', () => {
   it.each([408, 409, 500, 503, null, undefined])(
     'returns UNKNOWN for uncertain HTTP %s outcome',
     async (statusCode) => {
-      const send = jest
-        .fn()
-        .mockResolvedValue({
-          data: null,
-          error: { statusCode, message: payload.proof },
-        });
+      const send = jest.fn().mockResolvedValue({
+        data: null,
+        error: { statusCode, message: payload.proof },
+      });
       expect(await mockAdapter(send).send(payload)).toBe('UNKNOWN');
       expect(send).toHaveBeenCalledTimes(1);
     },
@@ -96,18 +92,16 @@ describe('Resend Workspace invitation delivery (no real network)', () => {
   });
 
   it('silences real SDK error-body logging even when provider echoes a proof in development', async () => {
-    const fetch = jest
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            name: 'validation_error',
-            statusCode: 422,
-            message: payload.proof,
-          }),
-          { status: 422 },
-        ),
-      );
+    const fetch = jest.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          name: 'validation_error',
+          statusCode: 422,
+          message: payload.proof,
+        }),
+        { status: 422 },
+      ),
+    );
     const log = jest
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);

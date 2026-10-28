@@ -100,10 +100,12 @@ fresh proof. Lock collisions cause extra serialization, not privilege changes.
 
 ## Typed mail handoff to P2-10
 
-`WorkspaceInvitationMailer` is the sole new typed port. No implementation is
-registered in production. Existing verification/recovery mail is unchanged.
-P2-10 registers a provider visible to `WorkspaceApiModule`; it needs no table
-changes. Test fakes live only under `apps/backend/test/workspaces/`.
+`WorkspaceInvitationMailer` is the sole typed port. The original P2-03 slice
+left it unwired. [P2-10](workspace-invitation-email-delivery.md) now registers
+Fake/Resend through `MailModule`, visible to `WorkspaceApiModule`, behind an
+explicit acceptance-destination rollout gate. No table changes are needed.
+Existing verification/recovery mail is unchanged. Gate-off still means
+UNAVAILABLE; fake-mode SENT is a local simulation, not live delivery.
 
 `send(payload)` receives only in process: `invitationId`, `workspaceId`,
 `workspaceName` (snapshot at issuance), `recipient`, `role`, ephemeral `proof`,

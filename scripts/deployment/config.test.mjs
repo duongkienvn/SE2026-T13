@@ -15,6 +15,7 @@ const env = {
   RESEND_API_KEY: 're_configuration_test_only',
   MAIL_FROM: 'Kanvexa <no-reply@kanvexa.tech>',
   PUBLIC_APP_URL: 'https://kanvexa.tech',
+  WORKSPACE_INVITATION_ACCEPT_PATH: '',
   IMAGE_TAG: 'configuration-test',
   BACKEND_IMAGE: 'kanvexa-backend',
   FRONTEND_IMAGE: 'kanvexa-frontend',
@@ -26,7 +27,7 @@ const args = [
   '-f',
   'compose.prod.yml',
 ];
-function config(local = false) {
+function config(local = false, overrides = {}) {
   return JSON.parse(
     execFileSync(
       'docker',
@@ -39,10 +40,28 @@ function config(local = false) {
         '--format',
         'json',
       ],
-      { env, encoding: 'utf8' },
+      { env: { ...env, ...overrides }, encoding: 'utf8' },
     ),
   );
 }
+
+test('invitation destination is gated by default and forwarded only to backend', () => {
+  assert.equal(
+    config().services.backend.environment.WORKSPACE_INVITATION_ACCEPT_PATH,
+    '',
+  );
+  const enabled = config(false, {
+    WORKSPACE_INVITATION_ACCEPT_PATH: '/qa/invitation',
+  });
+  assert.equal(
+    enabled.services.backend.environment.WORKSPACE_INVITATION_ACCEPT_PATH,
+    '/qa/invitation',
+  );
+  assert.equal(
+    enabled.services.frontend.environment?.WORKSPACE_INVITATION_ACCEPT_PATH,
+    undefined,
+  );
+});
 
 test('production publishes only Caddy and isolates the database network', () => {
   const result = config();
