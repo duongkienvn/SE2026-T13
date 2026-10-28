@@ -13,3 +13,4 @@ export * from './enums/activity-action-type.js';
 export * from './enums/activity-entity-type.js';
 export * from './enums/board-role.js';
 export * from './realtime.js';
+export * from './workspace.js';
