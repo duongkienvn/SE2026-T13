@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { WorkspaceType } from '@kanban/shared';
+import { WorkspaceRole, WorkspaceType } from '@kanban/shared';
 import { EntityManager, Repository } from 'typeorm';
 import { Workspace } from './entities/workspace.entity';
+import { WorkspaceMember } from './entities/workspace-member.entity';
+import { ApplicationException } from '../../exceptions/application.exception';
+import { ErrorCode } from '../../common/dto/api-error';
 
 /** Internal foundation. Callers supply trusted server identity, never client ownership. */
 @Injectable()
@@ -11,6 +14,46 @@ export class WorkspacesService {
     @InjectRepository(Workspace)
     private readonly workspaces: Repository<Workspace>,
   ) {}
+
+  /** Lock the grant until commit so removal/demotion cannot overtake a request. */
+  async requireMember(
+    userId: string,
+    workspaceId: string,
+    manager: EntityManager,
+  ): Promise<WorkspaceMember> {
+    const workspace = await manager.getRepository(Workspace).findOne({
+      where: { id: workspaceId },
+      lock: { mode: 'pessimistic_read' },
+    });
+    const member = await manager.getRepository(WorkspaceMember).findOne({
+      where: { workspaceId, userId },
+      lock: { mode: 'pessimistic_read' },
+    });
+    if (!workspace || !member)
+      throw new ApplicationException(
+        404,
+        ErrorCode.NOT_FOUND,
+        'Workspace not found',
+      );
+    member.workspace = workspace;
+    return member;
+  }
+
+  async requireAdmin(
+    userId: string,
+    workspaceId: string,
+    manager: EntityManager,
+  ): Promise<WorkspaceMember> {
+    const member = await this.requireMember(userId, workspaceId, manager);
+    if (member.role !== WorkspaceRole.ADMIN) {
+      throw new ApplicationException(
+        403,
+        ErrorCode.FORBIDDEN,
+        'Only Workspace ADMIN can perform this operation',
+      );
+    }
+    return member;
+  }
 
   findPersonalWorkspace(
     userId: string,
