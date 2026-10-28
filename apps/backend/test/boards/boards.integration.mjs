@@ -23,6 +23,9 @@ const { JwtService } = require('@nestjs/jwt');
 const request = require('supertest');
 const { databaseOptions } = require('../../dist/database/database-options.js');
 const { BoardsService } = require('../../dist/api/boards/boards.service.js');
+const {
+  WorkspacesService,
+} = require('../../dist/api/workspaces/workspaces.service.js');
 const { Board } = require('../../dist/api/boards/entities/board.entity.js');
 const {
   BoardMember,
@@ -70,6 +73,7 @@ try {
     new BoardAuthorizationService(members),
     activityWriter,
     { publish: async () => undefined },
+    new WorkspacesService(source.getRepository('Workspace')),
   );
   const user = (name) =>
     users.save(

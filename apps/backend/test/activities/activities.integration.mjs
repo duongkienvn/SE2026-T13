@@ -32,6 +32,9 @@ const {
   BoardMember,
 } = require('../../dist/api/board-members/entities/board-member.entity.js');
 const { BoardsService } = require('../../dist/api/boards/boards.service.js');
+const {
+  WorkspacesService,
+} = require('../../dist/api/workspaces/workspaces.service.js');
 const { ColumnsService } = require('../../dist/api/columns/columns.service.js');
 const {
   BoardColumn,
@@ -261,6 +264,7 @@ try {
     authorization,
     writer,
     events,
+    new WorkspacesService(source.getRepository('Workspace')),
   );
   const columnRepository = source.getRepository(BoardColumn);
   const cardRepository = source.getRepository(Card);

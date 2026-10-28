@@ -9,6 +9,7 @@ import { BoardAuthorizationService } from '../../src/api/board-members/board-aut
 import { ActivityWriterService } from '../../src/api/activities/activity-writer.service';
 import { BoardEventPublisher } from '../../src/realtime/board-event-publisher.service';
 import { ActivityActionType } from '../../src/common/enums/database-enums';
+import { WorkspacesService } from '../../src/api/workspaces/workspaces.service';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: (entity: { name: string }) =>
@@ -41,10 +42,14 @@ describe('BoardsService', () => {
   const members = { findOne: jest.fn() };
   const activities = { record: jest.fn() };
   const events = { publish: jest.fn() };
+  const workspaces = { ensurePersonalWorkspace: jest.fn() };
 
   beforeEach(async () => {
     jest.resetAllMocks();
     board = boardFixture();
+    workspaces.ensurePersonalWorkspace.mockResolvedValue({
+      id: 'personal-workspace',
+    });
     txBoards.create.mockImplementation((value) => value);
     txBoards.save.mockImplementation(async (value) =>
       Object.assign(board, value),
@@ -58,6 +63,7 @@ describe('BoardsService', () => {
     const module = await Test.createTestingModule({
       providers: [
         BoardsService,
+        { provide: WorkspacesService, useValue: workspaces },
         BoardAuthorizationService,
         { provide: ActivityWriterService, useValue: activities },
         { provide: BoardEventPublisher, useValue: events },
@@ -71,11 +77,17 @@ describe('BoardsService', () => {
   it('creates exactly one OWNER using only transaction-scoped repositories', async () => {
     const result = await service.create(USER_ID, { name: 'Board' });
     expect(transaction).toHaveBeenCalledTimes(1);
+    expect(workspaces.ensurePersonalWorkspace).toHaveBeenCalledWith(
+      USER_ID,
+      manager,
+    );
     expect(manager.getRepository.mock.calls).toEqual([[Board], [BoardMember]]);
     expect(txBoards.create).toHaveBeenCalledWith({
       name: 'Board',
       description: null,
       createdById: USER_ID,
+      workspaceId: 'personal-workspace',
+      visibility: 'PRIVATE',
     });
     expect(txMembers.save).toHaveBeenCalledTimes(1);
     expect(txMembers.create).toHaveBeenCalledWith({
@@ -163,12 +175,16 @@ describe('BoardsService', () => {
       name: 'Board',
       createdById: 'attacker',
       currentUserRole: 'MEMBER',
+      workspaceId: 'attacker-workspace',
+      visibility: 'WORKSPACE_VISIBLE',
     };
     await service.create(USER_ID, input);
     expect(txBoards.create).toHaveBeenCalledWith({
       name: 'Board',
       description: null,
       createdById: USER_ID,
+      workspaceId: 'personal-workspace',
+      visibility: 'PRIVATE',
     });
     expect(txMembers.create).toHaveBeenCalledWith({
       boardId: BOARD_ID,
