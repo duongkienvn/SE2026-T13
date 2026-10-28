@@ -191,9 +191,10 @@ try {
     await source.getRepository(GoogleIdentity).countBy({ userId: legacy.id }),
     1,
   );
-  await source.undoLastMigration();
-  await source.undoLastMigration();
-  await source.runMigrations();
+  await source.transaction(async (manager) => {
+    await recoveryMigration.down(manager.queryRunner);
+    await recoveryMigration.up(manager.queryRunner);
+  });
   assert.equal((await source.runMigrations()).length, 0);
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries.map(
@@ -377,9 +378,10 @@ try {
   check(
     '202/timer does not wait for an in-flight provider; eligible/unknown/unverified responses match and verified delivery completes eventually',
   );
-  await source.undoLastMigration();
   await assert.rejects(
-    source.undoLastMigration(),
+    source.transaction((manager) =>
+      recoveryMigration.down(manager.queryRunner),
+    ),
     /Cannot discard recovery proofs/,
   );
   assert.equal((await find(known.id)).passwordHash, oldHash);

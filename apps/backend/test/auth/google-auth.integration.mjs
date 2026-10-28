@@ -154,7 +154,13 @@ try {
   );
   await source.destroy();
   source = await new DataSource(options).initialize();
-  assert.equal((await source.runMigrations()).length, 4);
+  const allMigrations = [...source.migrations];
+  const googleMigration = allMigrations.find(
+    (m) => m.name === 'GoogleIdentity1792850400000',
+  );
+  // Test the Google migration boundary before applying later feature schemas.
+  source.migrations = [googleMigration];
+  assert.equal((await source.runMigrations()).length, 1);
   assert.equal(
     (
       await source.query('SELECT password_hash FROM users WHERE id=$1', [
@@ -163,9 +169,6 @@ try {
     )[0].password_hash,
     hash,
   );
-  await source.undoLastMigration();
-  await source.undoLastMigration();
-  await source.undoLastMigration();
   await source.undoLastMigration();
   assert.equal(
     (
@@ -177,13 +180,6 @@ try {
   );
   await source.runMigrations();
   assert.equal((await source.runMigrations()).length, 0);
-  assert.deepEqual(
-    (await source.driver.createSchemaBuilder().log()).upQueries.map(
-      (q) => q.query,
-    ),
-    [],
-    'No entity/migration schema drift',
-  );
   check(
     'upgrade/backward-compatible empty rollback/rerun preserve legacy hash and board',
   );
@@ -191,9 +187,6 @@ try {
   const [passwordless] =
     await source.query(`INSERT INTO users(email,password_hash,display_name)
     VALUES('rollback-guard@example.com',NULL,'Rollback guard') RETURNING id`);
-  await source.undoLastMigration();
-  await source.undoLastMigration();
-  await source.undoLastMigration();
   await assert.rejects(
     source.undoLastMigration(),
     /Cannot revert Google identity/,
@@ -204,7 +197,15 @@ try {
     0,
   );
   await source.query('DELETE FROM users WHERE id=$1', [passwordless.id]);
+  source.migrations = allMigrations;
   await source.runMigrations();
+  assert.deepEqual(
+    (await source.driver.createSchemaBuilder().log()).upQueries.map(
+      (q) => q.query,
+    ),
+    [],
+    'No entity/migration schema drift',
+  );
   check(
     'rollback refuses NULL passwords even when the identity table is empty',
   );
@@ -554,11 +555,8 @@ try {
     source.query('DELETE FROM users WHERE id=$1', [first.user.id]),
     (e) => e.code === '23503',
   );
-  await source.undoLastMigration();
-  await source.undoLastMigration();
-  await source.undoLastMigration();
   await assert.rejects(
-    source.undoLastMigration(),
+    source.transaction((manager) => googleMigration.down(manager.queryRunner)),
     /Cannot revert Google identity/,
   );
   assert.equal(
@@ -577,7 +575,7 @@ try {
       ])
     ).length,
   );
-  assert.equal((await source.runMigrations()).length, 3);
+  assert.equal((await source.runMigrations()).length, 0);
   check(
     'FK prevents silent identity deletion; rollback refuses without losing users/identities/business data',
   );

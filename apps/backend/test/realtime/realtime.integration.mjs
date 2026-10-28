@@ -72,6 +72,15 @@ try {
     );
   }
   const members = source.getRepository('BoardMember');
+  // Workspace ADMIN alone must not bypass any existing socket/REST rejection.
+  const [workspace] = await source.query(
+    'SELECT workspace_id FROM boards WHERE id=$1',
+    [ids.a],
+  );
+  await source.query(
+    `INSERT INTO workspace_members(workspace_id,user_id,role) VALUES ($1,$2,'ADMIN')`,
+    [workspace.workspace_id, ids.other],
+  );
   for (const [boardId, userId, role] of [
     [ids.a, ids.owner, 'OWNER'],
     [ids.a, ids.member, 'MEMBER'],
