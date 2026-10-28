@@ -119,8 +119,8 @@ describe('Workspace runtime and navigation', () => {
       within(nav)
         .getAllByRole('link')
         .map((item) => item.textContent),
-    ).toEqual(['Overview']);
-    expect(within(nav).getAllByText(/coming soon/)).toHaveLength(3);
+    ).toEqual(['Overview', 'Boards']);
+    expect(within(nav).getAllByText(/coming soon/)).toHaveLength(2);
     expect(calls.some((call) => /workspaces|boards/.test(call.path))).toBe(
       false,
     );

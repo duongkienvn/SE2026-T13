@@ -4,10 +4,20 @@ export const workspaceKeys = {
     [...workspaceKeys.all, userId, generation] as const,
   list: (userId: string, generation: number) =>
     [...workspaceKeys.session(userId, generation), 'list'] as const,
-  overview: (userId: string, generation: number, workspaceId: string) =>
+  resource: (userId: string, generation: number, workspaceId: string) =>
     [
       ...workspaceKeys.session(userId, generation),
-      'overview',
+      'workspace',
       workspaceId,
+    ] as const,
+  overview: (userId: string, generation: number, workspaceId: string) =>
+    [
+      ...workspaceKeys.resource(userId, generation, workspaceId),
+      'overview',
+    ] as const,
+  boards: (userId: string, generation: number, workspaceId: string) =>
+    [
+      ...workspaceKeys.resource(userId, generation, workspaceId),
+      'boards',
     ] as const,
 };

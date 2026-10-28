@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useId, useRef, useState, type FormEvent } from 'react';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
 import { Dialog } from '../../../components/Dialog';
@@ -18,7 +18,7 @@ import {
 const FIELD_LABELS = { name: 'Board name', description: 'Description' };
 type Field = keyof typeof FIELD_LABELS;
 
-interface BoardValues {
+export interface BoardValues {
   name: string;
   description: string | null;
 }
@@ -33,9 +33,10 @@ interface BoardFormProps {
   pending: boolean;
   onSubmit: (values: BoardValues) => Promise<unknown>;
   onCancel: () => void;
+  disabledReason?: string;
 }
 
-function BoardForm({
+export function BoardForm({
   initial,
   submitLabel,
   pendingLabel,
@@ -43,6 +44,7 @@ function BoardForm({
   pending,
   onSubmit,
   onCancel,
+  disabledReason,
 }: BoardFormProps) {
   const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
   const [name, setName] = useState(initial.name);
@@ -51,6 +53,8 @@ function BoardForm({
     Partial<Record<Field, string>>
   >({});
   const [formError, setFormError] = useState<string>();
+  const submitting = useRef(false);
+  const noticeId = useId();
 
   const values: BoardValues = {
     name: name.trim(),
@@ -61,7 +65,13 @@ function BoardForm({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (pending || (requireChange && !changed)) return;
+    if (
+      pending ||
+      submitting.current ||
+      disabledReason ||
+      (requireChange && !changed)
+    )
+      return;
 
     const errors = {
       name: validateBoardName(name),
@@ -74,6 +84,7 @@ function BoardForm({
       return;
     }
 
+    submitting.current = true;
     try {
       await onSubmit(values);
     } catch (error) {
@@ -81,6 +92,8 @@ function BoardForm({
       setFieldErrors(result.fieldErrors);
       setFormError(result.formError);
       focusFirstInvalid();
+    } finally {
+      submitting.current = false;
     }
   };
 
@@ -92,6 +105,15 @@ function BoardForm({
       className="space-y-5"
     >
       {formError && <Alert variant="error">{formError}</Alert>}
+      {disabledReason && (
+        <p
+          id={noticeId}
+          role="status"
+          className="rounded-lg border border-line bg-app p-3 text-sm leading-relaxed text-muted"
+        >
+          {disabledReason}
+        </p>
+      )}
       <TextField
         label="Board name"
         name="name"
@@ -99,6 +121,7 @@ function BoardForm({
         onChange={(event) => setName(event.target.value)}
         error={fieldErrors.name}
         data-autofocus
+        disabled={pending}
       />
       <TextAreaField
         label="Description"
@@ -107,13 +130,22 @@ function BoardForm({
         hint={`Optional. Up to ${BOARD_DESCRIPTION_MAX_LENGTH} characters.`}
         onChange={(event) => setDescription(event.target.value)}
         error={fieldErrors.description}
+        disabled={pending}
       />
       <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
         <Button variant="secondary" onClick={onCancel} disabled={pending}>
           Cancel
         </Button>
-        <Button type="submit" disabled={pending || (requireChange && !changed)}>
-          {pending ? pendingLabel : submitLabel}
+        <Button
+          type="submit"
+          disabled={pending || !!disabledReason || (requireChange && !changed)}
+          aria-describedby={disabledReason ? noticeId : undefined}
+        >
+          {pending
+            ? pendingLabel
+            : disabledReason
+              ? 'Create unavailable'
+              : submitLabel}
         </Button>
       </div>
     </form>

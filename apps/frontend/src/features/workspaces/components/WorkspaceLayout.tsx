@@ -1,7 +1,13 @@
-import { Link, Outlet, useOutletContext, useParams } from 'react-router';
+import {
+  Link,
+  Outlet,
+  useLocation,
+  useOutletContext,
+  useParams,
+} from 'react-router';
 import { ChevronRightIcon } from '../../../components/icons';
 import { useWorkspaceOverview } from '../hooks';
-import { workspacePath } from '../navigation';
+import { workspacePath, workspaceSections } from '../navigation';
 import { WorkspaceIdentity } from './WorkspaceIdentity';
 import { WorkspaceSections } from './WorkspaceSections';
 import { WorkspaceState } from './WorkspaceState';
@@ -13,6 +19,13 @@ export function useWorkspacePage() {
 
 export function WorkspaceLayout() {
   const { workspaceId = '' } = useParams();
+  const { pathname } = useLocation();
+  const section =
+    workspaceSections(workspaceId).find(
+      (item) =>
+        item.availability === 'available' &&
+        item.path === pathname.replace(/\/+$/, ''),
+    )?.label ?? 'Overview';
   const query = useWorkspaceOverview(workspaceId);
   const workspace = query.overview?.workspace;
   return (
@@ -46,7 +59,7 @@ export function WorkspaceLayout() {
             <ChevronRightIcon className="size-3.5" />
           </li>
           <li aria-current="page" className="font-medium text-ink">
-            Overview
+            {section}
           </li>
         </ol>
       </nav>

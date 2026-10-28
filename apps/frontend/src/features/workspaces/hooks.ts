@@ -5,11 +5,8 @@ import { useAuth } from '../auth/useAuth';
 import { WorkspaceUnavailableError } from './api';
 import { useWorkspaceGateway } from './gateway-context';
 import { workspaceKeys } from './query-keys';
-import type {
-  CreateTeamWorkspaceInput,
-  WorkspaceSummary,
-  WorkspaceViewState,
-} from './types';
+import { revokeWorkspaceAccess } from './revoke-workspace-access';
+import type { CreateTeamWorkspaceInput, WorkspaceViewState } from './types';
 
 export function workspaceErrorState(error: unknown): WorkspaceViewState {
   if (error instanceof WorkspaceUnavailableError) return 'unavailable';
@@ -66,19 +63,17 @@ export function useWorkspaceOverview(workspaceId: string) {
           isApiError(error) &&
           [403, 404].includes(error.status)
         ) {
-          // Error queries otherwise retain their previous success payload.
-          client.setQueryData(
+          await revokeWorkspaceAccess(
+            client,
+            user?.id ?? '',
+            scope.generation,
+            workspaceId,
+            error,
             workspaceKeys.overview(
               user?.id ?? '',
               scope.generation,
               workspaceId,
             ),
-            null,
-          );
-          const queryKey = workspaceKeys.list(user?.id ?? '', scope.generation);
-          await client.cancelQueries({ queryKey });
-          client.setQueryData<WorkspaceSummary[]>(queryKey, (items) =>
-            items?.filter((item) => item.id !== workspaceId),
           );
         }
         throw error;

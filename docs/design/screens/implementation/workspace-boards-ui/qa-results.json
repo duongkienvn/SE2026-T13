@@ -1,0 +1,144 @@
+{
+  "date": "2026-10-28",
+  "source": "Chrome DevTools; isolated development fixtures only",
+  "viewports": [
+    {
+      "theme": "light",
+      "width": 320,
+      "documentOverflow": false,
+      "mainOverflow": false,
+      "cards": 6
+    },
+    {
+      "theme": "light",
+      "width": 375,
+      "documentOverflow": false,
+      "mainOverflow": false,
+      "cards": 6
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "documentOverflow": false,
+      "mainOverflow": false,
+      "cards": 6
+    },
+    {
+      "theme": "light",
+      "width": 768,
+      "documentOverflow": false,
+      "mainOverflow": false,
+      "cards": 6
+    },
+    {
+      "theme": "light",
+      "width": 1280,
+      "documentOverflow": false,
+      "mainOverflow": false,
+      "cards": 6
+    },
+    {
+      "theme": "light",
+      "width": 1920,
+      "documentOverflow": false,
+      "mainOverflow": false,
+      "cards": 6
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "documentOverflow": false,
+      "mainOverflow": false,
+      "cards": 6
+    },
+    {
+      "theme": "dark",
+      "width": 375,
+      "documentOverflow": false,
+      "mainOverflow": false,
+      "cards": 6
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "documentOverflow": false,
+      "mainOverflow": false,
+      "cards": 6
+    },
+    {
+      "theme": "dark",
+      "width": 768,
+      "documentOverflow": false,
+      "mainOverflow": false,
+      "cards": 6
+    },
+    {
+      "theme": "dark",
+      "width": 1280,
+      "documentOverflow": false,
+      "mainOverflow": false,
+      "cards": 6
+    },
+    {
+      "theme": "dark",
+      "width": 1920,
+      "documentOverflow": false,
+      "mainOverflow": false,
+      "cards": 6
+    },
+    {
+      "theme": "system",
+      "resolvedTheme": "dark",
+      "width": 320,
+      "documentOverflow": false,
+      "mainOverflow": false
+    },
+    {
+      "theme": "system",
+      "resolvedTheme": "dark",
+      "width": 375,
+      "documentOverflow": false,
+      "mainOverflow": false
+    },
+    {
+      "theme": "system",
+      "resolvedTheme": "dark",
+      "width": 390,
+      "documentOverflow": false,
+      "mainOverflow": false
+    },
+    {
+      "theme": "system",
+      "resolvedTheme": "dark",
+      "width": 768,
+      "documentOverflow": false,
+      "mainOverflow": false
+    },
+    {
+      "theme": "system",
+      "resolvedTheme": "dark",
+      "width": 1280,
+      "documentOverflow": false,
+      "mainOverflow": false
+    },
+    {
+      "theme": "system",
+      "resolvedTheme": "dark",
+      "width": 1920,
+      "documentOverflow": false,
+      "mainOverflow": false
+    }
+  ],
+  "interactions": {
+    "systemDarkThenLight": "passed: data-theme changed dark to light without reload",
+    "drawer": "Tab stayed inside; Escape closed and restored Open navigation",
+    "create": "blank validation focused Board name; failed draft retained; Escape restored Create Board",
+    "search": "fast typing preserved No matching board after synchronous URL commit fix; no matching result rendered",
+    "pagination": "Next page displayed Frontend Development 7 in 60-record isolated fixture",
+    "console": "no warnings or errors after final search fix"
+  },
+  "limitations": [
+    "No live Workspace API in this checkout; no production Board data or mutations used.",
+    "Fixture create always rejects. Archive/restore verified with controlled network tests, not live browser writes."
+  ]
+}
