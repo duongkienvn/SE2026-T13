@@ -1,10 +1,14 @@
 import {
   StringField,
   StringFieldOptional,
+  UUIDFieldOptional,
 } from '../../../decorators/field.decorators';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateBoardDto {
+  @UUIDFieldOptional()
+  workspaceId?: string;
+
   @StringField({ trim: true, minLength: 1, maxLength: 120 })
   @ApiProperty({ minLength: 1, maxLength: 120 })
   name!: string;
