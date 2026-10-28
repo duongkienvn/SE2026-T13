@@ -6,7 +6,7 @@ import {
   PlusIcon,
 } from '../../../components/icons';
 import { useWorkspaceDirectory } from '../hooks';
-import { workspacePath } from '../navigation';
+import { workspaceDestination } from '../navigation';
 import { WorkspaceAvatar } from './WorkspaceIdentity';
 import { WorkspaceSections } from './WorkspaceSections';
 
@@ -93,7 +93,7 @@ export function WorkspaceSwitcher({ expanded }: { expanded: boolean }) {
           {query.workspaces.map((item) => (
             <Link
               key={item.id}
-              to={workspacePath(item.id)}
+              to={workspaceDestination(item.id, location.pathname)}
               aria-current={item.id === current?.id ? 'location' : undefined}
               className={`${linkStyle} ${item.id === current?.id ? 'bg-primary-soft text-primary' : 'text-ink'}`}
             >
@@ -186,7 +186,7 @@ export function WorkspaceNavigation({ expanded }: { expanded: boolean }) {
                     .map((item) => (
                       <div key={item.id}>
                         <Link
-                          to={workspacePath(item.id)}
+                          to={workspaceDestination(item.id, pathname)}
                           aria-current={
                             item.id === match?.params.workspaceId
                               ? 'location'

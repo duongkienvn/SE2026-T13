@@ -24,6 +24,7 @@ import { RouteErrorPage } from '../pages/RouteErrorPage';
 import { WorkspaceLayout } from '../features/workspaces/components/WorkspaceLayout';
 import { WorkspaceOverviewPage } from '../features/workspaces/pages/WorkspaceOverviewPage';
 import { WorkspacesPage } from '../features/workspaces/pages/WorkspacesPage';
+import { WorkspaceBoardsPage } from '../features/workspaces/pages/WorkspaceBoardsPage';
 import { PublicOnly, RequireAuth } from './guards';
 import { AuthenticatedLayout } from './layout/AuthenticatedLayout';
 
@@ -55,7 +56,10 @@ export const routes: RouteObject[] = [
               {
                 path: 'workspaces/:workspaceId',
                 element: <WorkspaceLayout />,
-                children: [{ index: true, element: <WorkspaceOverviewPage /> }],
+                children: [
+                  { index: true, element: <WorkspaceOverviewPage /> },
+                  { path: 'boards', element: <WorkspaceBoardsPage /> },
+                ],
               },
               { path: 'boards', element: <BoardsPage /> },
               {

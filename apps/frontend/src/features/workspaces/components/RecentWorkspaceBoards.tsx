@@ -1,11 +1,11 @@
-import { Link } from 'react-router';
+import { Link, useParams } from 'react-router';
 import {
   ArrowRightIcon,
   ColumnsIcon,
   LockIcon,
 } from '../../../components/icons';
 import { formatRelativeTime } from '../../../lib/format';
-import { SoonBadge } from '../../../app/layout/SoonBadge';
+import { workspacePath } from '../navigation';
 import type { WorkspaceOverview, WorkspaceViewState } from '../types';
 
 export function RecentWorkspaceBoards({
@@ -16,6 +16,7 @@ export function RecentWorkspaceBoards({
   state: WorkspaceViewState;
 }) {
   const boards = overview?.recentBoards ?? [];
+  const { workspaceId = '' } = useParams();
   return (
     <section
       aria-labelledby="recent-workspace-boards"
@@ -28,14 +29,12 @@ export function RecentWorkspaceBoards({
         >
           Recent Boards
         </h2>
-        <span
-          aria-disabled="true"
-          className="flex min-h-8 items-center gap-1.5 text-xs text-muted"
+        <Link
+          to={`${workspacePath(workspaceId)}/boards`}
+          className="flex min-h-11 items-center gap-1.5 rounded text-xs text-primary focus-visible:outline-2 focus-visible:outline-primary"
         >
           View all <ArrowRightIcon className="size-3.5" />
-          <SoonBadge />
-          <span className="sr-only">, coming soon</span>
-        </span>
+        </Link>
       </header>
       {state === 'loading' ? (
         <div
