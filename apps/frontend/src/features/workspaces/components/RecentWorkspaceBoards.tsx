@@ -34,6 +34,7 @@ export function RecentWorkspaceBoards({
         >
           View all <ArrowRightIcon className="size-3.5" />
           <SoonBadge />
+          <span className="sr-only">, coming soon</span>
         </span>
       </header>
       {state === 'loading' ? (
@@ -74,8 +75,9 @@ export function RecentWorkspaceBoards({
                     {board.name}
                   </h3>
                   <p className="mt-1.5 text-xs leading-relaxed text-muted">
-                    {board.archived ? 'Archived · Read only' : 'Updated'}
-                    {!board.archived && ' '}
+                    {board.archived
+                      ? 'Archived · Read only · Updated '
+                      : 'Updated '}
                     <time dateTime={board.updatedAt}>
                       {formatRelativeTime(board.updatedAt)}
                     </time>

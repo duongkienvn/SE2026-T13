@@ -5,6 +5,7 @@ import { Dialog } from '../../../components/Dialog';
 import { LayersIcon } from '../../../components/icons';
 import { TextAreaField } from '../../../components/TextAreaField';
 import { TextField } from '../../../components/TextField';
+import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
 import { useCreateTeamWorkspace } from '../hooks';
 import { workspacePath } from '../navigation';
 
@@ -29,6 +30,7 @@ function CreateWorkspaceForm({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
   const submitting = useRef(false);
   const noticeId = useId();
+  const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
   const validate = () => {
     const error = !name.trim()
       ? 'Enter a workspace name.'
@@ -40,12 +42,11 @@ function CreateWorkspaceForm({ onClose }: { onClose: () => void }) {
   };
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (
-      !validate() ||
-      submitting.current ||
-      !mutation.available ||
-      !mutation.isCurrent()
-    )
+    if (!validate()) {
+      focusFirstInvalid();
+      return;
+    }
+    if (submitting.current || !mutation.available || !mutation.isCurrent())
       return;
     submitting.current = true;
     try {
@@ -71,6 +72,7 @@ function CreateWorkspaceForm({ onClose }: { onClose: () => void }) {
       dismissible={!mutation.isPending}
     >
       <form
+        ref={formRef}
         onSubmit={(event) => void submit(event)}
         noValidate
         className="space-y-5"

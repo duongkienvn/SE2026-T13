@@ -18,6 +18,7 @@ export function WorkspaceActivity() {
         >
           View all <ArrowRightIcon className="size-3.5" />
           <SoonBadge />
+          <span className="sr-only">, coming soon</span>
         </span>
       </header>
       <div className="flex min-h-56 flex-col items-center justify-center rounded-lg bg-app/40 px-4 py-6 text-center">

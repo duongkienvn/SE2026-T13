@@ -32,6 +32,19 @@ export function WorkspaceSwitcher({ expanded }: { expanded: boolean }) {
     document.addEventListener('pointerdown', close);
     return () => document.removeEventListener('pointerdown', close);
   }, []);
+  // Compact rails use the real discovery picker; a flyout inside the rail's
+  // scroll container would be clipped. The drawer keeps the full selector.
+  if (!expanded)
+    return (
+      <Link
+        to="/workspaces"
+        aria-label="Choose workspace"
+        title="Choose workspace"
+        className="mb-1 flex min-h-12 items-center justify-center rounded-lg focus-visible:outline-2 focus-visible:outline-primary"
+      >
+        <WorkspaceAvatar workspace={current} className="size-8 text-sm" />
+      </Link>
+    );
   return (
     <details
       ref={details}

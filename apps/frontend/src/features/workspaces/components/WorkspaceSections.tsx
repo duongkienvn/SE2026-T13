@@ -47,6 +47,7 @@ export function WorkspaceSections({
                   <Icon className="size-4 shrink-0" />
                   {item.label}
                   <SoonBadge />
+                  <span className="sr-only">, coming soon</span>
                 </span>
               )}
             </li>
