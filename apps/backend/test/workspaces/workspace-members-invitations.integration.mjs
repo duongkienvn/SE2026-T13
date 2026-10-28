@@ -7,7 +7,13 @@ import process from 'node:process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { verifyMembers } from './workspace-members.lifecycle.mjs';
 import { verifyInvitations } from './workspace-invitations.lifecycle.mjs';
+import { verifyInvitationRaces } from './workspace-invitations.concurrency.mjs';
 import { verifyInvitationMigration } from './workspace-invitations.migration.mjs';
+import { verifyQuotaContention } from './workspace-invitations.quotas.mjs';
+import {
+  verifyDispatchLease,
+  verifyAcceptRemoval,
+} from './workspace-invitations.boundaries.mjs';
 
 // Own disposable local PostgreSQL, never credentials or migrations from the application DB.
 const require = createRequire(import.meta.url);
@@ -160,6 +166,10 @@ try {
   };
   await verifyMembers(context);
   await verifyInvitations(context);
+  await verifyInvitationRaces(context);
+  await verifyQuotaContention(context);
+  await verifyDispatchLease(context);
+  await verifyAcceptRemoval(context);
   const swagger = await http.get('/api-docs-json').expect(200);
   for (const [path, method, status] of [
     ['/api/workspaces/{workspaceId}/members', 'get', '200'],
@@ -188,6 +198,20 @@ try {
         (payload) => payload.invitationId === unavailable.body.data.id,
       ),
     );
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const rejected = await request(unwiredApp.getHttpServer())
+        .post('/api/workspace-invitations/accept')
+        .set('Authorization', `Bearer ${tokens.admin}`)
+        .send({ proof: 'a'.repeat(43) })
+        .expect(410);
+      assert.equal(rejected.body.code, 'INVALID_WORKSPACE_INVITATION');
+    }
+    const limited = await request(unwiredApp.getHttpServer())
+      .post('/api/workspace-invitations/accept')
+      .set('Authorization', `Bearer ${tokens.admin}`)
+      .send({ proof: 'a'.repeat(43) })
+      .expect(429);
+    assert.equal(limited.body.code, 'TOO_MANY_REQUESTS');
   } finally {
     await unwiredApp.close();
   }
