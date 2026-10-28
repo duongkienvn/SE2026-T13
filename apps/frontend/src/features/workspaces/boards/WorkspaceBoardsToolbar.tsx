@@ -77,6 +77,7 @@ export function WorkspaceBoardsToolbar({
         <label className="relative min-w-0">
           <span className="sr-only">Sort workspace boards</span>
           <select
+            name="sort"
             aria-describedby={hintId}
             value={control.filters.sort}
             disabled={!available || !features.sorts.length}
@@ -107,8 +108,9 @@ export function WorkspaceBoardsToolbar({
           className="inline-flex min-h-11 shrink-0 items-center rounded-lg border border-line bg-surface"
         >
           <span
+            role="img"
             className="grid size-11 place-items-center rounded-l-lg bg-primary-soft text-primary"
-            aria-label="Grid view"
+            aria-label="Grid view selected"
           >
             <ColumnsIcon className="size-4" />
           </span>

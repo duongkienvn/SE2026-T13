@@ -120,6 +120,21 @@ function WorkspaceBoardsContent({ workspaceId }: { workspaceId: string }) {
           )}
         </div>
       )}
+      {!query.pageData && (
+        <div
+          role="group"
+          aria-label="Board pagination"
+          className="flex flex-wrap items-center justify-center gap-3 text-xs text-muted"
+        >
+          <Button variant="secondary" size="lg" disabled>
+            Previous
+          </Button>
+          <span>Pagination unavailable</span>
+          <Button variant="secondary" size="lg" disabled>
+            Next
+          </Button>
+        </div>
+      )}
       {params.get('create') === 'board' &&
         !['forbidden', 'not-found'].includes(workspace.state) && (
           <CreateWorkspaceBoardDialog

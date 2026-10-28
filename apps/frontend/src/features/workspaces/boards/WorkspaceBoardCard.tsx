@@ -1,6 +1,11 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
-import { ColumnsIcon, LockIcon, UsersIcon } from '../../../components/icons';
+import {
+  ColumnsIcon,
+  LockIcon,
+  StarIcon,
+  UsersIcon,
+} from '../../../components/icons';
 import { formatRelativeTime } from '../../../lib/format';
 import type { WorkspaceBoardSummary } from './types';
 
@@ -20,6 +25,13 @@ export function WorkspaceBoardCard({
       >
         <div className="relative m-2 mb-0 flex h-24 items-center justify-center rounded-lg border border-line bg-app text-muted">
           <ColumnsIcon className="size-8" />
+          <span
+            aria-disabled="true"
+            className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-md bg-surface px-2 py-1 text-[11px] text-muted"
+          >
+            <StarIcon className="size-3" />
+            Soon<span className="sr-only">Star board, coming soon</span>
+          </span>
           <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-medium">
             <LockIcon className="size-3" />
             Private
