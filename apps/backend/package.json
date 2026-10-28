@@ -8,6 +8,7 @@
     "build": "nest build",
     "preview:verification-email": "pnpm build && node scripts/preview-verification-email.mjs",
     "preview:welcome-email": "pnpm build && node scripts/preview-welcome-email.mjs",
+    "preview:workspace-invitation-email": "pnpm build && node scripts/preview-workspace-invitation-email.mjs",
     "test": "jest --runInBand",
     "test:unit": "jest --runInBand --testPathIgnorePatterns=e2e-spec",
     "test:e2e": "jest --runInBand --testPathPattern=e2e-spec",
