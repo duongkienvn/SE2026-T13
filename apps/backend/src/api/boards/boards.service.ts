@@ -195,10 +195,16 @@ export class BoardsService {
     return this.boards.manager.transaction(async (manager) => {
       const boards = manager.getRepository(Board);
       const members = manager.getRepository(BoardMember);
-      const workspace = await this.workspaces.ensurePersonalWorkspace(
-        userId,
-        manager,
-      );
+      const workspace =
+        input.workspaceId === undefined
+          ? await this.workspaces.ensurePersonalWorkspace(userId, manager)
+          : (
+              await this.workspaces.requireMember(
+                userId,
+                input.workspaceId,
+                manager,
+              )
+            ).workspace;
       const board = await boards.save(
         boards.create({
           name: input.name,
