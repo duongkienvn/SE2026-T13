@@ -43,7 +43,8 @@ function WorkspaceBoardsContent({ workspaceId }: { workspaceId: string }) {
       : 'Workspace boards',
   );
   const canCreate =
-    query.state === 'ready' && query.pageData?.canCreateBoard === true;
+    query.state === 'ready' &&
+    workspace.overview?.workspace.canCreateBoards === true;
   const disabledReason = canCreate
     ? undefined
     : !gateway.available

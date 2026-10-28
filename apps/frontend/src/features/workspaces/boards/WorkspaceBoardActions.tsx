@@ -12,7 +12,7 @@ import { workspaceKeys } from '../query-keys';
 import type { WorkspaceOverview } from '../types';
 import type { WorkspaceBoardSummary } from './types';
 
-/** Board OWNER plus an explicit server capability; never Workspace ADMIN. */
+/** Board OWNER and archive state, independent of Workspace ADMIN. */
 export function WorkspaceBoardActions({
   board,
   workspaceId,
@@ -50,6 +50,17 @@ export function WorkspaceBoardActions({
       setOpen(false);
     },
     onError: async (error) => {
+      if (scope.isCurrent() && isApiError(error) && error.status === 409) {
+        void client.invalidateQueries({ queryKey: boardKeys.detail(board.id) });
+        void client.invalidateQueries({
+          queryKey: workspaceKeys.resource(
+            user?.id ?? '',
+            scope.generation,
+            workspaceId,
+          ),
+        });
+        return;
+      }
       if (
         !scope.isCurrent() ||
         !isApiError(error) ||

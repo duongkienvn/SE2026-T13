@@ -16,6 +16,7 @@ import { ActivityWriterService } from '../../src/api/activities/activity-writer.
 import { BoardAuthorizationService } from '../../src/api/board-members/board-authorization.service';
 import { Board } from '../../src/api/boards/entities/board.entity';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { WelcomeOnboardingService } from '../../src/api/auth/welcome-onboarding.service';
 import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
 import { JwtAuthGuard } from '../../src/api/auth/guards/jwt-auth.guard';
 import {
@@ -98,6 +99,7 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
         { provide: BoardEventPublisher, useValue: { publish: jest.fn() } },
         BoardAuthorizationService,
         AuthService,
+        { provide: WelcomeOnboardingService, useValue: {} },
         { provide: EmailVerificationService, useValue: { send: jest.fn() } },
         JwtAuthGuard,
         { provide: 'BoardRepository', useValue: boards },

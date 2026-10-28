@@ -1,15 +1,22 @@
+import {
+  apiRequest,
+  apiRequestPage,
+  fetchAllPages,
+  MAX_PAGE_LIMIT,
+} from '../../lib/api-client';
+import {
+  mapWorkspace,
+  mapWorkspaceBoard,
+  type WorkspaceResponse,
+  type WorkspaceOverviewResponse,
+} from './response';
 import type {
   CreateTeamWorkspaceInput,
   WorkspaceOverview,
   WorkspaceSummary,
 } from './types';
 
-/**
- * Frontend integration seam. P2-02 must implement an adapter using the verified
- * wire DTOs and the existing apiRequest envelope. No speculative URLs are called.
- * list must contain Workspace memberships only; overview must apply Board ACLs
- * before counting/limiting. Board membership never implies Workspace membership.
- */
+/** Membership-only discovery and server ACL-filtered overview. */
 export interface WorkspaceGateway {
   available: boolean;
   list(token: string, signal: AbortSignal): Promise<WorkspaceSummary[]>;
@@ -31,12 +38,44 @@ export class WorkspaceUnavailableError extends Error {
   }
 }
 
-const unavailable = () => Promise.reject(new WorkspaceUnavailableError());
-
-/** No fallback data, HTTP probing or guessed backend contract in production. */
 export const workspaceGateway: WorkspaceGateway = {
-  available: false,
-  list: unavailable,
-  overview: unavailable,
-  createTeam: unavailable,
+  available: true,
+  async list(accessToken, signal) {
+    const items = await fetchAllPages((page) =>
+      apiRequestPage<WorkspaceResponse>(
+        `/workspaces?${new URLSearchParams({ page: String(page), limit: String(MAX_PAGE_LIMIT) })}`,
+        { accessToken, signal },
+      ),
+    );
+    return items.map(mapWorkspace);
+  },
+  async overview(accessToken, workspaceId, signal) {
+    const response = await apiRequest<WorkspaceOverviewResponse>(
+      `/workspaces/${encodeURIComponent(workspaceId)}/overview`,
+      { accessToken, signal },
+    );
+    return {
+      workspace: mapWorkspace(response.workspace),
+      visibleBoardCount: response.visibleBoardCount,
+      memberCount: response.memberCount,
+      recentBoards: response.recentBoards.map((item) => {
+        const board = mapWorkspaceBoard(item);
+        return {
+          id: board.id,
+          name: board.name,
+          updatedAt: item.updatedAt,
+          archived: board.isArchived,
+        };
+      }),
+    };
+  },
+  async createTeam(accessToken, input) {
+    return mapWorkspace(
+      await apiRequest<WorkspaceResponse>('/workspaces', {
+        accessToken,
+        method: 'POST',
+        body: { name: input.name, description: input.description },
+      }),
+    );
+  },
 };

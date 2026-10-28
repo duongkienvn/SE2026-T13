@@ -193,6 +193,20 @@ P2-02 cho phép `workspaceId` tùy chọn khi tạo Board: server kiểm tra Wor
 membership trong cùng transaction; bỏ qua ID thì dùng Personal của caller.
 Không nhận client visibility; Board mới luôn PRIVATE.
 
+### Welcome email delivery ledger
+
+`welcome_email_deliveries` is an auth-owned transactional outbox with one UUID
+`user_id` primary key/FK (User deletion cascades), created only by new signup
+transactions. There is no legacy backfill. Nullable `ready_at`/`message jsonb`
+become available together after verification; message stores the frozen sender,
+recipient and HTML/plain-text content and is excluded from default entity SELECT.
+The ledger tracks attempts, first/next attempt times, an expiring lease/token,
+provider acceptance (`sent_at`) and retry-window exhaustion (`stopped_at`).
+An index selects ready, unsent, unstopped rows by next attempt. PostgreSQL row
+claims coordinate processes; provider calls run after commit with a stable
+idempotency key. Populated history cannot be reverted by the down migration.
+See [lifecycle, retries and rollout](../tasks/backend/welcome-email-onboarding.md).
+
 ### Workspace foundation (P2-01)
 
 | Table                   | Columns / invariants                                                                                                                                                                                                                                                                                                                                                                                                                 |

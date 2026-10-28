@@ -50,7 +50,7 @@ apps/frontend/src/
 
 - Account Settings, theme và preferences nằm ở `features/settings/` (#92): section config `sections.ts`, `/settings/*` routes, `ThemeSync` trong `AppProviders` đặt `<html data-theme>` (boot script trong `index.html` tránh flash), dark tokens trong `style.css`. Chi tiết: `docs/tasks/frontend/account-settings-appearance.md`.
 
-- Workspace UI foundation (P2-06) bổ sung `features/workspaces/`, routes `/workspaces` và `/workspaces/:workspaceId`, cùng selector/navigation slots trong App Shell và mobile drawer. Query keys scope theo user/session/Workspace. Backend controller/DTOs P2-02 chưa có trong checkout ở thời điểm triển khai: production adapter trả unavailable, không gọi endpoint suy đoán hoặc dùng fixture. QA fixtures nằm ở entry Vite riêng `apps/frontend/qa/workspace.html`, không nằm trong production bundle. Xem [task record và API handoff](../tasks/frontend/workspace-shell-overview.md).
+- Workspace UI (`features/workspaces/`) có routes discovery, Overview và Boards, cùng selector trong App Shell/mobile drawer. Production gateways dùng REST Workspace API, mapping wire DTO sang presentation models; discovery tải đủ trang, Boards search/status/sort/pagination chạy trên server. Query keys scope theo user/session/Workspace; creation dựa trên `canCreateBoards`, Board archive/restore dựa trên Board OWNER. WORKSPACE_VISIBLE vẫn disabled; Members/Settings và các slot chưa có API giữ Soon. QA fixtures chỉ nằm ở entry Vite riêng, không nằm trong production bundle. Xem [Workspace API integration](../tasks/frontend/workspace-api-integration.md).
 
 Hiện chưa có:
 

@@ -68,6 +68,7 @@ async function inspectSchema() {
       'password_reset_tokens',
       'user_preferences',
       'users',
+      'welcome_email_deliveries',
       'workspace_invitations',
       'workspace_members',
       'workspaces',
@@ -99,11 +100,12 @@ async function inspectSchema() {
     FK_comments_card_id: 'c',
     FK_email_verification_user: 'c',
     FK_password_reset_user: 'c',
+    FK_welcome_email_user: 'c',
   };
   for (const [name, behavior] of Object.entries(deletes)) {
     assert.equal(byName.get(name)?.confdeltype, behavior, name);
   }
-  assert.equal(constraints.filter((row) => row.contype === 'f').length, 25);
+  assert.equal(constraints.filter((row) => row.contype === 'f').length, 26);
   for (const row of constraints.filter(
     (row) => row.contype === 'f' && !(row.conname in deletes),
   )) {
@@ -167,7 +169,7 @@ async function inspectSchema() {
   assert.equal(column('cards', 'is_archived')?.column_default, 'false');
   assert.equal(column('users', 'email')?.is_nullable, 'NO');
   for (const table of tables.map((row) => row.table_name)) {
-    if (table === 'user_preferences') {
+    if (table === 'user_preferences' || table === 'welcome_email_deliveries') {
       assert.equal(column(table, 'user_id')?.data_type, 'uuid');
       continue;
     }
@@ -382,7 +384,7 @@ try {
   assert.equal(source.options.logging, false);
   assert.equal(source.options.synchronize, false);
   assert.equal(source.options.migrationsRun, false);
-  assert.equal(source.entityMetadatas.length, 16);
+  assert.equal(source.entityMetadatas.length, 17);
   assert.deepEqual(
     source.entityMetadatas.map((entity) => entity.tableName).sort(),
     [
@@ -399,12 +401,13 @@ try {
       'password_reset_tokens',
       'user_preferences',
       'users',
+      'welcome_email_deliveries',
       'workspace_invitations',
       'workspace_members',
       'workspaces',
     ],
   );
-  assert.equal(source.migrations.length, 12);
+  assert.equal(source.migrations.length, 13);
 
   const originalDatabase = process.env.DATABASE_NAME;
   process.env.DATABASE_NAME = testDatabase;
@@ -415,8 +418,8 @@ try {
     });
     try {
       const nestDataSource = app.get(DataSource);
-      assert.equal(nestDataSource.entityMetadatas.length, 16);
-      assert.equal(nestDataSource.migrations.length, 12);
+      assert.equal(nestDataSource.entityMetadatas.length, 17);
+      assert.equal(nestDataSource.migrations.length, 13);
       assert.equal(nestDataSource.options.poolSize, source.options.poolSize);
       assert.equal(
         nestDataSource.options.connectTimeoutMS,
@@ -430,7 +433,7 @@ try {
     process.env.DATABASE_NAME = originalDatabase;
   }
 
-  assert.equal((await source.runMigrations()).length, 12);
+  assert.equal((await source.runMigrations()).length, 13);
   const cliOutput = execFileSync(
     process.execPath,
     [
@@ -454,7 +457,7 @@ try {
       '-e',
       `const dataSource = require('./src/database/data-source.ts').default;
        dataSource.initialize().then(async () => {
-         if (dataSource.entityMetadatas.length !== 16 || dataSource.migrations.length !== 12) {
+         if (dataSource.entityMetadatas.length !== 17 || dataSource.migrations.length !== 13) {
            throw new Error('TypeScript DataSource discovery mismatch');
          }
          await dataSource.destroy();
@@ -473,6 +476,7 @@ try {
 
   await source.undoLastMigration(); // Invitation lifecycle.
   await source.undoLastMigration(); // Workspace icon.
+  await source.undoLastMigration(); // Empty welcome ledger.
   await source.undoLastMigration();
   await assert.rejects(
     source.undoLastMigration(),
@@ -498,7 +502,7 @@ try {
   await source.undoLastMigration();
   await source.undoLastMigration();
   await assert.rejects(source.undoLastMigration(), /cannot be safely removed/);
-  assert.equal((await source.runMigrations()).length, 9);
+  assert.equal((await source.runMigrations()).length, 10);
   await inspectSchema();
   console.log(
     'Enum rollback retains existing values/history; idempotent reapply: PASS',

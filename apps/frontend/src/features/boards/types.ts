@@ -19,6 +19,7 @@ export interface Board {
 }
 
 export interface CreateBoardRequest {
+  workspaceId?: string;
   name: string;
   description?: string | null;
 }

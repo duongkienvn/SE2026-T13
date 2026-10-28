@@ -24,6 +24,7 @@ const team: WorkspaceSummary = {
   description: 'Build together.',
   type: 'TEAM',
   role: 'ADMIN',
+  canCreateBoards: true,
 };
 const personal: WorkspaceSummary = {
   ...team,
@@ -107,7 +108,10 @@ afterEach(() => {
 
 describe('Workspace runtime and navigation', () => {
   it('renders the entire unavailable composition without calling a speculative API', async () => {
-    const { calls } = mount('/workspaces/unknown', workspaceGateway);
+    const { calls } = mount('/workspaces/unknown', {
+      ...workspaceGateway,
+      available: false,
+    });
     await screen.findByRole('heading', { name: 'Workspaces are on their way' });
     expect(
       main().getByRole('region', { name: 'Workspace summary' }),
@@ -472,7 +476,10 @@ describe('Workspace states and access isolation', () => {
 
 describe('Create team workspace dialog', () => {
   it('validates an unavailable form, prevents saving and restores focus on Escape', async () => {
-    const { calls } = mount('/workspaces', workspaceGateway);
+    const { calls } = mount('/workspaces', {
+      ...workspaceGateway,
+      available: false,
+    });
     const opener = await screen.findByRole('button', {
       name: 'Create Workspace',
     });

@@ -61,6 +61,7 @@ const team: WorkspaceSummary = {
   name: 'Development Team',
   description: 'Build amazing products together.',
   role: 'ADMIN',
+  canCreateBoards: scenario !== 'no-permission',
   type: 'TEAM',
 };
 const personal: WorkspaceSummary = {
@@ -97,7 +98,7 @@ const boards: WorkspaceBoardSummary[] = Array.from(
 );
 const workspace: WorkspaceGateway =
   scenario === 'unavailable'
-    ? workspaceGateway
+    ? { ...workspaceGateway, available: false }
     : {
         available: true,
         list: async () => [personal, team],
@@ -113,7 +114,16 @@ const workspace: WorkspaceGateway =
       };
 const gateway: WorkspaceBoardsGateway =
   scenario === 'unavailable'
-    ? workspaceBoardsGateway
+    ? {
+        ...workspaceBoardsGateway,
+        available: false,
+        features: {
+          search: false,
+          status: false,
+          sorts: [],
+          pagination: false,
+        },
+      }
     : {
         available: true,
         features: {
@@ -158,7 +168,6 @@ const gateway: WorkspaceBoardsGateway =
             total: items.length,
             page: filters.page,
             pageCount: Math.ceil(items.length / 6),
-            canCreateBoard: scenario !== 'no-permission',
           };
         },
         create: async () => {

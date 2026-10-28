@@ -1,12 +1,13 @@
 import type { WorkspaceRole, WorkspaceType } from '@kanban/shared';
 
-/** Presentation models, NOT a claim about the pending P2-02 wire DTOs. */
+/** Presentation models mapped from the Workspace API DTOs. */
 export interface WorkspaceSummary {
   id: string;
   name: string;
   description: string | null;
   type: WorkspaceType;
   role: WorkspaceRole;
+  canCreateBoards: boolean;
 }
 
 export interface RecentWorkspaceBoard {

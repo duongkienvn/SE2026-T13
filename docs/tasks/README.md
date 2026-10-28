@@ -40,6 +40,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 - [Private profile avatar uploads](backend/profile-avatar-upload.md)
 - [Password recovery and account security](backend/password-recovery-security.md)
 - [Verification email layout](backend/verification-email-layout.md)
+- [Welcome email and new user onboarding](backend/welcome-email-onboarding.md)
 - [Board management API](backend/board-management-api.md)
 - [Board archive management](backend/board-archive-management.md)
 - [Board members management](backend/board-members-management.md)
@@ -56,6 +57,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Frontend tasks
 
+- [Workspace frontend API integration](frontend/workspace-api-integration.md)
 - [Workspace Shell, Navigation and Overview UI V1](frontend/workspace-shell-overview.md)
 - [Workspace Boards UI V1, Filters and Create Board](frontend/workspace-boards-ui.md)
 - [Frontend application foundation](frontend/frontend-foundation.md)
