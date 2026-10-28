@@ -1,6 +1,7 @@
 import { useParams } from 'react-router';
 import { usePageTitle } from '../../../hooks/usePageTitle';
 import { useWorkspaceBoards } from '../boards/hooks';
+import { WorkspaceBoardGrid } from '../boards/WorkspaceBoardGrid';
 import { useWorkspacePage } from '../components/WorkspaceLayout';
 import { WorkspaceState } from '../components/WorkspaceState';
 
@@ -33,6 +34,10 @@ export function WorkspaceBoardsPage() {
           retry={() => void query.refetch()}
         />
       )}
+      <WorkspaceBoardGrid
+        boards={query.pageData?.items ?? []}
+        state={query.state}
+      />
     </section>
   );
 }
