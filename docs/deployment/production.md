@@ -131,6 +131,15 @@ an SMTP fallback. The migration tool does not consume the mail credentials.
 See [K2 rollout and recovery](../tasks/backend/email-verification.md) for backfill, backup,
 dry-run and real-inbox verification. No real email is sent by automated tests.
 
+Workspace invitation email has a separate, default-off destination gate:
+`WORKSPACE_INVITATION_ACCEPT_PATH=`. Keep it empty until #117's acceptance route
+and `#proof=` fragment handling are agreed, deployed and verified. An empty value
+reports `UNAVAILABLE` for invitations while existing auth mail continues. Resend
+selection alone does not enable invitations. See the
+[P2-10 rollout and safe smoke sequence](../tasks/backend/workspace-invitation-email-delivery.md#destination-contract-and-default-off-rollout-gate)
+before configuring a path or approving a real send; no acceptance route is
+implemented by the mail change.
+
 Development `.env` and `docker-compose.yml` remain unchanged. Always explicitly
 select production Compose and its environment file; never use bare `compose up`.
 Create secrets outside the checkout, using an authorized administrator shell:
