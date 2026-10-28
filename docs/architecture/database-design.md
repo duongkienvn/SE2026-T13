@@ -186,17 +186,20 @@ Existing response DTOs và Board authorization tiếp tục chỉ dùng Board me
 
 Khi tạo `Board`, tạo cả `BoardMember` cho người tạo với role `OWNER`. Các bước persistence này phải nhất quán, dự kiến trong cùng transaction. Normal user flow dùng archive; hard delete không phải operation mặc định của MVP.
 
-Tạo Board hiện gọi `WorkspacesService.ensurePersonalWorkspace(currentUserId,
-manager)` trong cùng transaction trước khi lưu Board PRIVATE và Board OWNER.
-Client chưa được chọn Team Workspace hoặc đổi visibility tại đây.
+Tạo Board không truyền Workspace gọi
+`WorkspacesService.ensurePersonalWorkspace(currentUserId, manager)` trong cùng
+transaction trước khi lưu Board PRIVATE và Board OWNER.
+P2-02 cho phép `workspaceId` tùy chọn khi tạo Board: server kiểm tra Workspace
+membership trong cùng transaction; bỏ qua ID thì dùng Personal của caller.
+Không nhận client visibility; Board mới luôn PRIVATE.
 
 ### Workspace foundation (P2-01)
 
-| Table                   | Columns / invariants                                                                                                                                                                                                                                                                                                                                                                               |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `workspaces`            | UUID `id`; varchar `type` PERSONAL/TEAM; nonblank `name varchar(120)`; nullable text `description`; UUID `created_by_id` FK User, NO ACTION; `created_at`/`updated_at` timestamptz. Creator là durable owner của PERSONAL. Partial unique `UQ_workspaces_personal_creator(created_by_id) WHERE type='PERSONAL'`; index creator cho lookup/FK. Icon representation để P2-02 chốt, chưa thêm cột.    |
-| `workspace_members`     | UUID `id`; UUID workspace/user FKs NO ACTION; varchar `role` ADMIN/MEMBER; `joined_at`/`created_at`/`updated_at` timestamptz. Unique `(workspace_id,user_id)`; indexes `user_id`, `(workspace_id,role)`. Personal owner được provision ADMIN; không copy Board collaborators.                                                                                                                      |
-| `workspace_invitations` | UUID `id`; UUID workspace/inviter FKs NO ACTION; normalized `email varchar(320)` (lowercase, trimmed, basic email shape); varchar role ADMIN/MEMBER; unique SHA-256 lowercase hex `token_hash char(64)` (excluded from default entity SELECT); required `expires_at`; nullable `consumed_at`/`revoked_at`; `created_at`/`updated_at` timestamptz. Indexes `(workspace_id,email)`, expiry, inviter. |
+| Table                   | Columns / invariants                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `workspaces`            | UUID `id`; varchar `type` PERSONAL/TEAM; nonblank `name varchar(120)`; nullable text `description`; nullable `icon varchar(16)` với CHECK key briefcase/users/code/palette/layers (P2-02); UUID `created_by_id` FK User, NO ACTION; `created_at`/`updated_at` timestamptz. Creator là durable owner của PERSONAL. Partial unique `UQ_workspaces_personal_creator(created_by_id) WHERE type='PERSONAL'`; index creator cho lookup/FK. |
+| `workspace_members`     | UUID `id`; UUID workspace/user FKs NO ACTION; varchar `role` ADMIN/MEMBER; `joined_at`/`created_at`/`updated_at` timestamptz. Unique `(workspace_id,user_id)`; indexes `user_id`, `(workspace_id,role)`. Personal owner được provision ADMIN; không copy Board collaborators.                                                                                                                                                        |
+| `workspace_invitations` | UUID `id`; UUID workspace/inviter FKs NO ACTION; normalized `email varchar(320)` (lowercase, trimmed, basic email shape); varchar role ADMIN/MEMBER; unique SHA-256 lowercase hex `token_hash char(64)` (excluded from default entity SELECT); required `expires_at`; nullable `consumed_at`/`revoked_at`; `created_at`/`updated_at` timestamptz. Indexes `(workspace_id,email)`, expiry, inviter.                                   |
 
 Invitation expiry phải sau creation; consumed time thuộc `[created_at,expires_at)`;
 revocation không trước creation; consumed và revoked loại trừ nhau. Không có
@@ -205,14 +208,15 @@ Pending là chưa consumed/revoked và chưa expired; P2-03 chịu trách nhiệ
 verified-email binding, single-use và chính sách pending duplicates trong service.
 
 Mọi FK mới dùng NO ACTION: xóa Workspace không cascade Board/Card/User.
-Workspace ADMIN không có Board grant. Last-admin protection, Team management và
+Workspace ADMIN không có Board grant. Last-admin protection, membership management và
 Workspace-visible read policy phải được triển khai qua các issue tương ứng.
 
 `public.ensure_personal_workspace(uuid)` là persistence primitive SECURITY INVOKER
 dùng chung cho service, migration và old-writer bridge. Partial unique upsert khóa
 Workspace rồi insert/repair owner ADMIN; repeat giữ IDs/timestamps nếu grant đã
 đúng. Service nhận trusted identity, cung cấp lookup và transaction participation.
-Không có Workspace REST controller hay socket contract mới.
+P2-02 bổ sung [Workspace REST API](../tasks/backend/workspace-core-api.md),
+giữ nguyên socket contract và giới hạn private Board bằng direct membership.
 
 Migration expand `1793145600000-WorkspaceFoundation` thêm nullable Board FK và
 trigger `TR_boards_workspace_bridge` để lệnh cũ thiếu Workspace được gán Personal
@@ -385,5 +389,6 @@ Timestamp persistent dùng `timestamptz` và lưu theo UTC; việc hiển thị 
 
 Chưa có labels, attachments, checklist, card priority, notification system,
 calendar, time tracking, analytics, automation rules hoặc CRDT state. Workspace và
-invitation persistence đã có ở P2-01; Workspace management/invitation workflow và
-visibility authorization còn thuộc các issue tiếp theo.
+invitation persistence đã có ở P2-01; P2-02 thêm Workspace lifecycle/metadata REST
+và queries theo Board ACL. Membership/invitation workflow và visibility
+authorization còn thuộc các issue tiếp theo.
