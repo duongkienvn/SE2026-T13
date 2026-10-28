@@ -39,7 +39,9 @@ export function useBoardFilters(features: WorkspaceBoardsGateway['features']) {
       else next.delete(key);
     }
     if (!('page' in patch)) next.delete('page');
-    void setParams(next, { replace });
+    // Search is URL-controlled: commit each input event before the next keystroke.
+    // Deferred router transitions otherwise restore an older controlled value.
+    void setParams(next, { replace, flushSync: true });
   };
   return {
     filters,

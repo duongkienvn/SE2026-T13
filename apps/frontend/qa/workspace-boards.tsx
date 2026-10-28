@@ -2,6 +2,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
 import { createMemoryRouter, RouterProvider } from 'react-router';
+import { flushSync } from 'react-dom';
 import { AuthenticatedLayout } from '../src/app/layout/AuthenticatedLayout';
 import {
   AuthContext,
@@ -230,7 +231,12 @@ if (import.meta.env.DEV)
                 ISOLATED BOARDS QA FIXTURES · {scenario} · {theme} · No saved
                 data
               </div>
-              <RouterProvider router={router} />
+              <RouterProvider
+                router={router}
+                flushSync={(callback) => {
+                  flushSync(callback);
+                }}
+              />
             </WorkspaceBoardsGatewayContext.Provider>
           </WorkspaceGatewayContext.Provider>
         </AuthContext.Provider>

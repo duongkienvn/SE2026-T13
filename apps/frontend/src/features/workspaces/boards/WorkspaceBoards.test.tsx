@@ -8,6 +8,7 @@ import {
   within,
 } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
+import { flushSync } from 'react-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { routes } from '../../../app/routes';
 import { ApiError } from '../../../lib/api-client';
@@ -151,7 +152,12 @@ function mount(
         <RealtimeProvider>
           <WorkspaceGatewayContext.Provider value={workspace}>
             <WorkspaceBoardsGatewayContext.Provider value={boards}>
-              <RouterProvider router={router} />
+              <RouterProvider
+                router={router}
+                flushSync={(callback) => {
+                  flushSync(callback);
+                }}
+              />
             </WorkspaceBoardsGatewayContext.Provider>
           </WorkspaceGatewayContext.Provider>
         </RealtimeProvider>
@@ -389,6 +395,25 @@ describe('Workspace Boards route and capabilities', () => {
 });
 
 describe('Server-backed filtering seam', () => {
+  it('preserves every character while router transitions receive fast typing', async () => {
+    const api = gateway({ list: vi.fn(async () => page) });
+    mount(undefined, api);
+    await ready();
+    const input = main().getByRole('searchbox') as HTMLInputElement;
+    // A browser reads the current controlled value for each incoming key.
+    // Keep the events in one transition window to catch stale URL renders.
+    act(() => {
+      for (const character of 'No matching board') {
+        fireEvent.change(input, { target: { value: input.value + character } });
+      }
+    });
+    expect(input.value).toBe('No matching board');
+    await waitFor(() =>
+      expect(vi.mocked(api.list).mock.lastCall?.[2].search).toBe(
+        'No matching board',
+      ),
+    );
+  });
   it('debounces search, hides previous results and never filters a broad response in React', async () => {
     const api = gateway({
       list: vi.fn(async (_token, _id, filters) =>
