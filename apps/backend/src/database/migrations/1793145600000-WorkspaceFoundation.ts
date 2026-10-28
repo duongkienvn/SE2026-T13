@@ -5,6 +5,8 @@ export class WorkspaceFoundation1793145600000 implements MigrationInterface {
   name = 'WorkspaceFoundation1793145600000';
 
   async up(runner: QueryRunner): Promise<void> {
+    if (!runner.isTransactionActive)
+      throw new Error('Workspace migrations require a transaction');
     await runner.query(`CREATE TABLE workspaces (
       id uuid NOT NULL DEFAULT gen_random_uuid(),
       type varchar NOT NULL,
@@ -123,6 +125,8 @@ export class WorkspaceFoundation1793145600000 implements MigrationInterface {
   }
 
   async down(runner: QueryRunner): Promise<void> {
+    if (!runner.isTransactionActive)
+      throw new Error('Workspace migrations require a transaction');
     await runner.query(
       'LOCK TABLE boards, workspaces, workspace_members, workspace_invitations IN ACCESS EXCLUSIVE MODE',
     );
