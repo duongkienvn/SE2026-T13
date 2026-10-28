@@ -404,7 +404,7 @@ try {
       'workspaces',
     ],
   );
-  assert.equal(source.migrations.length, 11);
+  assert.equal(source.migrations.length, 12);
 
   const originalDatabase = process.env.DATABASE_NAME;
   process.env.DATABASE_NAME = testDatabase;
@@ -416,7 +416,7 @@ try {
     try {
       const nestDataSource = app.get(DataSource);
       assert.equal(nestDataSource.entityMetadatas.length, 16);
-      assert.equal(nestDataSource.migrations.length, 11);
+      assert.equal(nestDataSource.migrations.length, 12);
       assert.equal(nestDataSource.options.poolSize, source.options.poolSize);
       assert.equal(
         nestDataSource.options.connectTimeoutMS,
@@ -430,7 +430,7 @@ try {
     process.env.DATABASE_NAME = originalDatabase;
   }
 
-  assert.equal((await source.runMigrations()).length, 11);
+  assert.equal((await source.runMigrations()).length, 12);
   const cliOutput = execFileSync(
     process.execPath,
     [
@@ -454,7 +454,7 @@ try {
       '-e',
       `const dataSource = require('./src/database/data-source.ts').default;
        dataSource.initialize().then(async () => {
-         if (dataSource.entityMetadatas.length !== 16 || dataSource.migrations.length !== 11) {
+         if (dataSource.entityMetadatas.length !== 16 || dataSource.migrations.length !== 12) {
            throw new Error('TypeScript DataSource discovery mismatch');
          }
          await dataSource.destroy();
@@ -471,6 +471,7 @@ try {
   await inspectPagination();
   console.log('Migration run and schema/behavior inspection: PASS');
 
+  await source.undoLastMigration(); // Invitation lifecycle.
   await source.undoLastMigration(); // Workspace icon.
   await source.undoLastMigration();
   await assert.rejects(
@@ -497,7 +498,7 @@ try {
   await source.undoLastMigration();
   await source.undoLastMigration();
   await assert.rejects(source.undoLastMigration(), /cannot be safely removed/);
-  assert.equal((await source.runMigrations()).length, 8);
+  assert.equal((await source.runMigrations()).length, 9);
   await inspectSchema();
   console.log(
     'Enum rollback retains existing values/history; idempotent reapply: PASS',
