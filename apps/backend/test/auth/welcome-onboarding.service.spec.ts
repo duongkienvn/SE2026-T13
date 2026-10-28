@@ -43,6 +43,7 @@ describe('welcome onboarding delivery boundary', () => {
     andWhere: jest.fn(),
     orderBy: jest.fn(),
     addOrderBy: jest.fn(),
+    limit: jest.fn(),
     setLock: jest.fn(),
     setOnLocked: jest.fn(),
     getOne: jest.fn(),
@@ -79,6 +80,7 @@ describe('welcome onboarding delivery boundary', () => {
       'andWhere',
       'orderBy',
       'addOrderBy',
+      'limit',
       'setLock',
       'setOnLocked',
     ] as const)

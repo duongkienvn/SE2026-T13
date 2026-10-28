@@ -133,6 +133,7 @@ export class WelcomeOnboardingService
         )
         .orderBy('delivery.next_attempt_at', 'ASC')
         .addOrderBy('delivery.user_id', 'ASC')
+        .limit(1)
         .setLock('pessimistic_write')
         .setOnLocked('skip_locked');
       if (userId) query.andWhere('delivery.user_id = :userId', { userId });

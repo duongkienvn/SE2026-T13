@@ -227,6 +227,25 @@ shared-package rebuild and hit transient missing-output errors; the final run
 after builds completed passed all suites. No live send, migration, reconciliation,
 push, merge or deployment was performed for this correction.
 
+### Single-row claims (PR #124)
+
+The P2 review finding was valid: TypeORM `getOne()` does not add SQL `LIMIT 1`.
+The claim now explicitly uses `.limit(1)` while retaining the existing eligibility
+filters, ordering and `FOR UPDATE SKIP LOCKED`. Each claim transaction reads and
+locks only the next available delivery rather than the full eligible backlog.
+
+The PostgreSQL regression creates three pending deliveries and holds the first
+claim open before its lease update commits. A second worker must skip that locked
+row and deliver the other two; after release, all three complete with one attempt
+each. The test also captures executed claim SQL and checks for
+`LIMIT 1 FOR UPDATE SKIP LOCKED`. It failed without the limit because the held
+claim locked all three rows, and passes with the fix. The complete Welcome suite
+now passes 15 PostgreSQL/HTTP checks using only disposable databases and fake or
+mocked mail. This change requires no schema migration or existing-data rewrite.
+For this fix, `pnpm lint`, `pnpm test` (594 backend, 855 frontend, 7 shared),
+`pnpm build`, changed-file Prettier and `git diff --check` pass. Repository-wide
+`pnpm format:check` retains the existing failure on 662 untouched CRLF files.
+
 ### Rollout
 
 1. Back up the database and explicitly apply the new migration before starting

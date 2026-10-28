@@ -632,6 +632,120 @@ try {
     globalThis.fetch = originalFetch;
     await providerModule.close();
   }
+
+  // Hold the first claim before its lease UPDATE/commit. Other workers must
+  // still claim the rest of the backlog rather than finding every row locked.
+  const backlogMailer = new FakeWelcomeMailer();
+  const firstWorker = new WelcomeOnboardingService(
+    source,
+    backlogMailer,
+    new ConfigService(config),
+  );
+  const secondWorker = new WelcomeOnboardingService(
+    source,
+    backlogMailer,
+    new ConfigService(config),
+  );
+  const backlog = [];
+  for (let i = 0; i < 3; i++) {
+    const account = await source.transaction(async (manager) => {
+      const account = await manager.getRepository('User').save({
+        email: `claim-backlog-${i}@example.test`,
+        displayName: 'Backlog fixture',
+        passwordHash: null,
+        emailVerifiedAt: new Date(),
+      });
+      await new WorkspacesService(
+        source.getRepository('Workspace'),
+      ).ensurePersonalWorkspace(account.id, manager);
+      await firstWorker.enroll(manager, account);
+      await manager.query(
+        `UPDATE welcome_email_deliveries
+        SET next_attempt_at = CURRENT_TIMESTAMP - interval '5 minutes' + $2::int * interval '1 second'
+        WHERE user_id=$1`,
+        [account.id, i],
+      );
+      return account;
+    });
+    backlog.push(account);
+  }
+  let claimEntered, releaseClaim;
+  const enteredClaim = new Promise((resolve) => {
+    claimEntered = resolve;
+  });
+  const heldClaim = new Promise((resolve) => {
+    releaseClaim = resolve;
+  });
+  let pauseFirstClaim = true;
+  const subscriber = {
+    listenTo: () =>
+      source.getRepository('WelcomeEmailDelivery').metadata.target,
+    async beforeUpdate(event) {
+      if (
+        pauseFirstClaim &&
+        event.entity?.userId === backlog[0].id &&
+        event.entity.leaseToken
+      ) {
+        pauseFirstClaim = false;
+        claimEntered();
+        await heldClaim;
+      }
+    },
+  };
+  const claimQueries = [];
+  const originalLogQuery = source.logger.logQuery;
+  source.logger.logQuery = function (query, ...args) {
+    if (
+      query.includes('FROM "welcome_email_deliveries" "delivery"') &&
+      query.includes('FOR UPDATE SKIP LOCKED')
+    )
+      claimQueries.push(query);
+    return originalLogQuery.call(this, query, ...args);
+  };
+  source.subscribers.push(subscriber);
+  const firstDrain = firstWorker.deliverPending();
+  try {
+    await Promise.race([
+      enteredClaim,
+      delay(5000).then(() => {
+        throw new Error('First claim did not reach the lease update');
+      }),
+    ]);
+    await secondWorker.deliverPending();
+    assert.deepEqual(
+      backlogMailer.deliveries.map((delivery) => delivery.idempotencyKey),
+      backlog.slice(1).map((account) => `welcome/${account.id}`),
+      'A held claim must leave other eligible deliveries available to SKIP LOCKED workers',
+    );
+    assert.equal((await row(backlog[0].email)).sent_at, null);
+    for (const account of backlog.slice(1)) {
+      const delivered = await row(account.email);
+      assert.ok(delivered.sent_at);
+      assert.equal(delivered.attempts, 1);
+    }
+  } finally {
+    releaseClaim();
+    await firstDrain;
+    source.subscribers.splice(source.subscribers.indexOf(subscriber), 1);
+    source.logger.logQuery = originalLogQuery;
+  }
+  assert.equal(backlogMailer.deliveries.length, 3);
+  assert.equal(
+    new Set(backlogMailer.deliveries.map((delivery) => delivery.idempotencyKey))
+      .size,
+    3,
+  );
+  for (const account of backlog) {
+    const delivered = await row(account.email);
+    assert.ok(delivered.sent_at);
+    assert.equal(delivered.attempts, 1);
+  }
+  assert.ok(claimQueries.length >= 3);
+  for (const query of claimQueries)
+    assert.match(query, /LIMIT 1 FOR UPDATE SKIP LOCKED\s*$/);
+  pass(
+    'backlog claims select and lock one row; independent workers skip a held claim and deliver all pending rows once',
+  );
   console.log(`${checks} welcome PostgreSQL/HTTP integration checks passed.`);
 } finally {
   if (app) await app.close();
