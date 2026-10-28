@@ -36,6 +36,10 @@ const {
   VerificationMailer,
   FakeVerificationMailer,
 } = require('../../dist/mail/verification-mailer.js');
+const { FakeWelcomeMailer } = require('../../dist/mail/welcome-mailer.js');
+const {
+  WelcomeOnboardingService,
+} = require('../../dist/api/auth/welcome-onboarding.service.js');
 const {
   JWT_ISSUER,
   JWT_AUDIENCE,
@@ -202,8 +206,21 @@ try {
   );
 
   const mailer = new FakeVerificationMailer();
-  const config = new ConfigService({ PUBLIC_APP_URL: 'http://localhost:5173' });
-  const verification = new EmailVerificationService(source, mailer, config);
+  const config = new ConfigService({
+    PUBLIC_APP_URL: 'http://localhost:5173',
+    MAIL_FROM: 'Kanvexa <no-reply@example.test>',
+  });
+  const welcome = new WelcomeOnboardingService(
+    source,
+    new FakeWelcomeMailer(),
+    config,
+  );
+  const verification = new EmailVerificationService(
+    source,
+    mailer,
+    config,
+    welcome,
+  );
   const { AppModule } = require('../../dist/app.module.js');
   const {
     configureHttpApplication,
@@ -420,6 +437,7 @@ try {
       },
     },
     config,
+    welcome,
   );
   const recover = await source.getRepository(User).save(
     source.getRepository(User).create({
@@ -500,6 +518,7 @@ try {
       },
     },
     config,
+    welcome,
   );
   const sending = inFlightService.send(inFlightUser.email);
   await enteredPromise;

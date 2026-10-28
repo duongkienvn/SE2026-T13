@@ -8,6 +8,7 @@ import { ApplicationException } from '../../exceptions/application.exception';
 import { VerificationMailer } from '../../mail/verification-mailer';
 import { User } from '../users/entities/user.entity';
 import { EmailVerificationToken } from './entities/email-verification-token.entity';
+import { WelcomeOnboardingService } from './welcome-onboarding.service';
 
 export const VERIFICATION_COOLDOWN_MS = 60_000;
 const WINDOW_MS = 60 * 60_000;
@@ -24,6 +25,7 @@ export class EmailVerificationService {
     private readonly source: DataSource,
     private readonly mailer: VerificationMailer,
     private readonly config: ConfigService<EnvironmentConfig, true>,
+    private readonly welcome: WelcomeOnboardingService,
   ) {}
 
   async send(email: string, reportDeliveryFailure = false): Promise<void> {
@@ -126,7 +128,9 @@ export class EmailVerificationService {
       token.consumedAt = now;
       await users.save(user);
       await tokens.save(token);
+      await this.welcome.ready(manager, user);
     });
+    await this.welcome.deliverPending(candidate.userId);
   }
 
   private invalid(): ApplicationException {

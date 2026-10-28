@@ -20,6 +20,7 @@ import { LoginResponseDto } from './dto/login-response.dto';
 import { RegisterRequestDto } from './dto/register-request.dto';
 import { EmailVerificationService } from './email-verification.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
+import { WelcomeOnboardingService } from './welcome-onboarding.service';
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -45,6 +46,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly verification: EmailVerificationService,
     private readonly workspaces: WorkspacesService,
+    private readonly welcome: WelcomeOnboardingService,
   ) {}
 
   async register(input: RegisterRequestDto): Promise<UserResponseDto> {
@@ -71,6 +73,7 @@ export class AuthService {
           }),
         );
         await this.workspaces.ensurePersonalWorkspace(user.id, manager);
+        await this.welcome.enroll(manager, user);
         return user;
       });
     } catch (error) {
