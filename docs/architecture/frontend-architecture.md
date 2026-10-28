@@ -50,6 +50,8 @@ apps/frontend/src/
 
 - Account Settings, theme và preferences nằm ở `features/settings/` (#92): section config `sections.ts`, `/settings/*` routes, `ThemeSync` trong `AppProviders` đặt `<html data-theme>` (boot script trong `index.html` tránh flash), dark tokens trong `style.css`. Chi tiết: `docs/tasks/frontend/account-settings-appearance.md`.
 
+- Workspace UI foundation (P2-06) bổ sung `features/workspaces/`, routes `/workspaces` và `/workspaces/:workspaceId`, cùng selector/navigation slots trong App Shell và mobile drawer. Query keys scope theo user/session/Workspace. Backend controller/DTOs P2-02 chưa có trong checkout ở thời điểm triển khai: production adapter trả unavailable, không gọi endpoint suy đoán hoặc dùng fixture. QA fixtures nằm ở entry Vite riêng `apps/frontend/qa/workspace.html`, không nằm trong production bundle. Xem [task record và API handoff](../tasks/frontend/workspace-shell-overview.md).
+
 Hiện chưa có:
 
 - feature folder `comments`, `presence`.

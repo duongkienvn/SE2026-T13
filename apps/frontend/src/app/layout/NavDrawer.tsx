@@ -5,7 +5,7 @@ import { BrandLogo } from '../../components/Brand';
 import { CloseIcon } from '../../components/icons';
 import { useModalFocus } from '../../hooks/useModalFocus';
 import type { NavGroup } from './navigation';
-import { SidebarNavContent } from './Sidebar';
+import { SidebarNavContent, type WorkspaceShellSlots } from './Sidebar';
 
 interface NavDrawerProps {
   id: string;
@@ -15,6 +15,7 @@ interface NavDrawerProps {
   activeItemId?: string;
   /** Account actions pinned to the bottom of the drawer. */
   footer?: ReactNode;
+  workspaceSlots?: WorkspaceShellSlots;
 }
 
 /**
@@ -29,6 +30,7 @@ export function NavDrawer({
   groups,
   activeItemId,
   footer,
+  workspaceSlots,
 }: NavDrawerProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   useModalFocus(open, panelRef, onClose);
@@ -84,6 +86,7 @@ export function NavDrawer({
             activeItemId={activeItemId}
             expanded
             roomy
+            workspaceSlots={workspaceSlots}
           />
         </nav>
         {footer && (

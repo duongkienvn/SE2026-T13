@@ -8,10 +8,20 @@ import { useBoardMembers } from '../../features/board-members/hooks';
 import { useVerifiedBoard } from '../../features/boards/useVerifiedBoard';
 import { isBoardUnavailable } from '../../features/boards/pages/BoardDetailPage';
 import { AppShell } from './AppShell';
+import { useAuthSession } from '../../features/auth/auth-session-context';
+import {
+  WorkspaceNavigation,
+  WorkspaceSwitcher,
+} from '../../features/workspaces/components/WorkspaceNavigation';
 import { findActiveNavItemId, navGroups } from './navigation';
 
 /** Application shell for signed-in routes, with App Shell V2 navigation, board context and the user menu. */
 export function AuthenticatedLayout() {
+  const { generation } = useAuthSession();
+  return <SessionLayout key={generation} />;
+}
+
+function SessionLayout() {
   const { user } = useAuth();
   const { pathname } = useLocation();
   // The deepest match carries every route param, e.g. `boardId` on board pages.
@@ -29,6 +39,10 @@ export function AuthenticatedLayout() {
 
   return (
     <AppShell
+      workspaceSlots={{
+        switcher: (expanded) => <WorkspaceSwitcher expanded={expanded} />,
+        navigation: (expanded) => <WorkspaceNavigation expanded={expanded} />,
+      }}
       navGroups={navGroups}
       activeNavItemId={findActiveNavItemId(navGroups, pathname)}
       headerContext={
