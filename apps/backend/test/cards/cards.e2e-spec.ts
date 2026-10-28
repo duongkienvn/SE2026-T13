@@ -12,6 +12,7 @@ import { Logger } from 'nestjs-pino';
 import { QueryFailedError } from 'typeorm';
 import request from 'supertest';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { WelcomeOnboardingService } from '../../src/api/auth/welcome-onboarding.service';
 import { WorkspacesService } from '../../src/api/workspaces/workspaces.service';
 import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
 import { ActivityWriterService } from '../../src/api/activities/activity-writer.service';
@@ -238,6 +239,7 @@ describe('Card HTTP API with real JWT, authorization, services and envelopes', (
         CardsService,
         { provide: ActivityWriterService, useValue: { record: jest.fn() } },
         AuthService,
+        { provide: WelcomeOnboardingService, useValue: {} },
         {
           provide: WorkspacesService,
           useValue: { ensurePersonalWorkspace: jest.fn() },

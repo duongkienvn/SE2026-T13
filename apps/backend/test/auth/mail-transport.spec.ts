@@ -94,9 +94,11 @@ describe('mail transport configuration', () => {
             : ResendPasswordRecoveryMailer,
         );
         expect(module.get(WelcomeMailer)).toBeInstanceOf(
-          expected === 'fake' ? FakeWelcomeMailer : ResendWelcomeMailer,
+          NODE_ENV === 'production' ? ResendWelcomeMailer : FakeWelcomeMailer,
         );
-        expect(Resend).toHaveBeenCalledTimes(expected === 'resend' ? 3 : 0);
+        expect(Resend).toHaveBeenCalledTimes(
+          expected === 'resend' ? (NODE_ENV === 'production' ? 3 : 2) : 0,
+        );
         if (expected === 'fake') expect(config.RESEND_API_KEY).toBe('');
         else expect(config.RESEND_API_KEY === mail.RESEND_API_KEY).toBe(true);
       } finally {

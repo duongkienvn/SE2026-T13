@@ -10,6 +10,7 @@ import { randomBytes } from 'node:crypto';
 import request from 'supertest';
 import { Logger } from 'nestjs-pino';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { WelcomeOnboardingService } from '../../src/api/auth/welcome-onboarding.service';
 import { WorkspacesService } from '../../src/api/workspaces/workspaces.service';
 import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
 import { ActivityWriterService } from '../../src/api/activities/activity-writer.service';
@@ -178,6 +179,7 @@ describe('Comments HTTP API with real JWT, validation and envelopes', () => {
         { provide: ActivityWriterService, useValue: { record: jest.fn() } },
         BoardAuthorizationService,
         AuthService,
+        { provide: WelcomeOnboardingService, useValue: {} },
         {
           provide: WorkspacesService,
           useValue: { ensurePersonalWorkspace: jest.fn() },

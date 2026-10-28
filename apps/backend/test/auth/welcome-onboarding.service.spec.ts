@@ -174,6 +174,30 @@ describe('welcome onboarding delivery boundary', () => {
     expect(mailer.send).not.toHaveBeenCalled();
   });
 
+  it('keeps shutdown safe when a database claim fails during bootstrap', async () => {
+    query.getOne.mockRejectedValueOnce(new Error('Synthetic missing table'));
+    service.onApplicationBootstrap();
+    await expect(service.onModuleDestroy()).resolves.toBeUndefined();
+    expect(mailer.send).not.toHaveBeenCalled();
+  });
+
+  it('recovers pending work at startup and on the periodic sweep', async () => {
+    jest.useFakeTimers();
+    row = null;
+    try {
+      service.onApplicationBootstrap();
+      await jest.advanceTimersByTimeAsync(0);
+      expect(query.getOne).toHaveBeenCalledTimes(1);
+      await jest.advanceTimersByTimeAsync(30_000);
+      expect(query.getOne).toHaveBeenCalledTimes(2);
+      await service.onModuleDestroy();
+      await jest.advanceTimersByTimeAsync(30_000);
+      expect(query.getOne).toHaveBeenCalledTimes(2);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('prevents overlapping drains and waits for active work on shutdown', async () => {
     let release!: () => void;
     mailer.send.mockImplementationOnce(

@@ -30,6 +30,11 @@ export class WelcomeEmailOutbox1793188800000 implements MigrationInterface {
   async down(queryRunner: QueryRunner): Promise<void> {
     // Dropping delivery history would let a later re-enrollment resend. Require
     // explicit operational reconciliation instead of silently erasing the ledger.
+    // Hold through the migration transaction so signup cannot insert between
+    // the emptiness check and DROP. LOCK also refuses nontransactional rollback.
+    await queryRunner.query(
+      'LOCK TABLE "welcome_email_deliveries" IN ACCESS EXCLUSIVE MODE',
+    );
     const [row]: { present: boolean }[] = await queryRunner.query(
       'SELECT EXISTS (SELECT 1 FROM "welcome_email_deliveries") AS present',
     );

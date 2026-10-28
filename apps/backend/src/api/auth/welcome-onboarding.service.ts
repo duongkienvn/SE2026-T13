@@ -67,7 +67,9 @@ export class WelcomeOnboardingService
   async onModuleDestroy(): Promise<void> {
     this.stopping = true;
     if (this.timer) clearInterval(this.timer);
-    await this.running;
+    // The dispatch boundary logs failures. Shutdown must still reach TypeORM's
+    // connection cleanup if an active claim fails (for example before migration).
+    await this.running?.catch(() => undefined);
   }
 
   /** Best effort after commit. All delivery/storage failures stay out of auth. */

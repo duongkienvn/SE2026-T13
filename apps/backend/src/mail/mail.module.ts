@@ -24,6 +24,9 @@ import { ResendWelcomeMailer } from './resend-welcome-mailer';
       useFactory: (
         config: ConfigService<EnvironmentConfig, true>,
       ): WelcomeMailer =>
+        // Welcome mail never contacts a provider in development or tests, even
+        // when another transactional-mail flow explicitly opts into Resend.
+        config.get('NODE_ENV', { infer: true }) !== 'production' ||
         config.get('MAIL_TRANSPORT', { infer: true }) === 'fake'
           ? new FakeWelcomeMailer()
           : new ResendWelcomeMailer(
