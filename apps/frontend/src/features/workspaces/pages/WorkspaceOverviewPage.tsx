@@ -1,20 +1,21 @@
 import { usePageTitle } from '../../../hooks/usePageTitle';
 import { useWorkspacePage } from '../components/WorkspaceLayout';
+import { WorkspaceSummaryCards } from '../components/WorkspaceSummaryCards';
+import { RecentWorkspaceBoards } from '../components/RecentWorkspaceBoards';
+import { WorkspaceActivity } from '../components/WorkspaceActivity';
 
 export function WorkspaceOverviewPage() {
-  const { overview } = useWorkspacePage();
+  const { overview, state } = useWorkspacePage();
   usePageTitle(
     overview ? `${overview.workspace.name} · Overview` : 'Workspace overview',
   );
   return (
-    <section
-      aria-label="Workspace overview"
-      className="rounded-xl border border-line bg-surface p-5"
-    >
-      <h2 className="font-semibold text-ink">Your workspace at a glance</h2>
-      <p className="mt-2 text-sm text-muted">
-        Accessible boards and workspace updates will appear here when available.
-      </p>
-    </section>
+    <div className="space-y-5">
+      <WorkspaceSummaryCards overview={overview} state={state} />
+      <div className="grid items-start gap-4 md:grid-cols-2">
+        <RecentWorkspaceBoards overview={overview} state={state} />
+        <WorkspaceActivity />
+      </div>
+    </div>
   );
 }
