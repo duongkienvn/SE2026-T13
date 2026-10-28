@@ -4,7 +4,7 @@ import { WorkspaceRole } from '@kanban/shared';
 import { Repository, type EntityManager } from 'typeorm';
 import { Workspace } from './entities/workspace.entity';
 import { WorkspaceMember } from './entities/workspace-member.entity';
-
+import { User } from '../users/entities/user.entity';
 import { WorkspacesService } from './workspaces.service';
 import { lockWorkspace, requireTeam } from './workspace-access';
 import { readWorkspaceSnapshot } from './workspace-read';
@@ -97,6 +97,59 @@ export class WorkspaceMembersService {
       }
       return toWorkspaceMemberDto(target);
     });
+  }
+
+  remove(actor: string, workspaceId: string, userId: string) {
+    return this.workspaces.manager.transaction(async (manager) => {
+      await lockWorkspace(manager, workspaceId);
+      const admin = await this.foundation.requireAdmin(
+        actor,
+        workspaceId,
+        manager,
+      );
+      requireTeam(admin.workspace);
+      if (actor === userId)
+        throw new ApplicationException(
+          409,
+          ErrorCode.CONFLICT,
+          'Use Leave Workspace to remove yourself',
+        );
+      await this.deleteMember(manager, workspaceId, userId);
+    });
+  }
+
+  leave(actor: string, workspaceId: string) {
+    return this.workspaces.manager.transaction(async (manager) => {
+      const workspace = await lockWorkspace(manager, workspaceId);
+      if (!workspace) return;
+      const member = await manager
+        .getRepository(WorkspaceMember)
+        .findOneBy({ workspaceId, userId: actor });
+      if (!member) return;
+      requireTeam(workspace);
+      await this.deleteMember(manager, workspaceId, actor);
+    });
+  }
+
+  private async deleteMember(
+    manager: EntityManager,
+    workspaceId: string,
+    userId: string,
+  ) {
+    const repository = manager.getRepository(WorkspaceMember);
+    const member = await repository.findOneBy({ workspaceId, userId });
+    if (!member) return;
+    await this.protectLastAdmin(manager, member);
+    const user = await manager
+      .getRepository(User)
+      .findOneByOrFail({ id: userId });
+    await manager.query(
+      `UPDATE workspace_invitations SET revoked_at = clock_timestamp(), updated_at = clock_timestamp()
+      WHERE workspace_id = $1 AND consumed_at IS NULL AND revoked_at IS NULL
+      AND (email = lower(btrim($2)) OR invited_by_id = $3)`,
+      [workspaceId, user.email, userId],
+    );
+    await repository.delete(member.id);
   }
 
   private async protectLastAdmin(

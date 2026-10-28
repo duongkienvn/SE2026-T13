@@ -1,21 +1,25 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Header,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
+  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { AuthenticatedUser } from '../auth/constants/auth.constants';
+import type { AuthenticatedUser } from '../auth/constants/auth.constants';
 import {
   ApiBearerToken,
   ApiCommonErrors,
+  ApiNoContent,
   ApiPaginated,
   ApiSuccess,
 } from '../../decorators/swagger-response.decorators';
@@ -70,5 +74,34 @@ export class WorkspaceMembersController {
       userId,
       input.role,
     );
+  }
+
+  @Delete('members/:userId')
+  @ApiBearerToken()
+  @ApiCommonErrors()
+  @HttpCode(204)
+  @ApiNoContent({
+    summary: 'Remove another Team member, preserving explicit Board grants',
+  })
+  remove(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
+  ) {
+    return this.members.remove(user.userId, workspaceId, userId);
+  }
+
+  @Post('leave')
+  @ApiBearerToken()
+  @ApiCommonErrors()
+  @HttpCode(204)
+  @ApiNoContent({
+    summary: 'Leave Team Workspace, retaining at least one ADMIN',
+  })
+  leave(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+  ) {
+    return this.members.leave(user.userId, workspaceId);
   }
 }
