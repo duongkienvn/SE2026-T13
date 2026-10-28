@@ -219,8 +219,13 @@ trigger `TR_boards_workspace_bridge` để lệnh cũ thiếu Workspace được
 và PRIVATE trước khi kiểm tra constraints. Migration
 `1793145600001-LegacyBoardWorkspaces` provision mọi User, backfill Board theo creator,
 verify rồi SET NOT NULL dưới Board lock. Raw SQL không sửa legacy timestamps.
-New users bootstrap lazily khi tạo Board đầu tiên, dù tạo account bằng email hay
-Google. Bridge phải được giữ qua application rollback/cutover; production dùng
+New users nhận Personal Workspace + ADMIN ngay khi tạo account: email registration
+lưu User + Workspace + ADMIN trong cùng transaction, trước email verification;
+Google signup lưu cùng transaction với User và GoogleIdentity. Email xác minh chỉ
+gửi sau commit. Google login/link không provision thêm Workspace. Tạo Board vẫn
+gọi ensure để reuse Workspace hiện có và phục hồi an toàn cho legacy/old writers;
+không có Board/Column/Card mẫu trong P2-01.
+Bridge phải được giữ qua application rollback/cutover; production dùng
 maintenance window đã drain writers. Xem [runbook](../deployment/workspace-foundation.md).
 
 ### `board_members`

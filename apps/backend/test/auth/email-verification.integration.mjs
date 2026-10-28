@@ -236,6 +236,21 @@ try {
     .getRepository(User)
     .findOneByOrFail({ email: input.email });
   assert.equal(user.emailVerifiedAt, null);
+  const [personal] = await source.query(
+    `SELECT w.id, m.role FROM workspaces w
+    JOIN workspace_members m ON m.workspace_id=w.id AND m.user_id=w.created_by_id
+    WHERE w.type='PERSONAL' AND w.created_by_id=$1`,
+    [user.id],
+  );
+  assert.ok(
+    personal,
+    'Unverified signup must already have its Personal Workspace',
+  );
+  assert.equal(personal.role, 'ADMIN');
+  assert.equal(
+    await source.getRepository('Board').countBy({ createdById: user.id }),
+    0,
+  );
   assert(user.passwordHash.startsWith('$argon2id$'));
   const token = () =>
     new URL(mailer.deliveries.at(-1).url).searchParams.get('token');

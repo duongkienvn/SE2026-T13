@@ -203,7 +203,12 @@ P2-01 adds `api/workspaces/` with three entities and `WorkspacesModule`, exporti
 `WorkspacesService` for trusted internal lookup/provisioning. `BoardsModule` imports
 it; Board creation includes Personal Workspace + ADMIN and Board + OWNER in one
 transaction. The PostgreSQL provisioning primitive is also used by the legacy
-writer bridge. There are no Workspace controllers, invitation handlers or new
+writer bridge. AuthModule also imports WorkspacesModule, which depends only on
+TypeORM and does not import AuthModule. Email registration creates User, Personal
+Workspace and ADMIN atomically before sending verification mail after commit.
+First-time Google signup provisions in the User/GoogleIdentity transaction;
+returning sign-in and account linking do not provision. Signup creates no sample
+Board/Column/Card. There are no Workspace controllers, invitation handlers or new
 realtime contracts. Authorization continues through `BoardAuthorizationService`;
 Workspace membership does not grant private Board access. See the
 [foundation record](../tasks/backend/workspace-data-foundation.md).

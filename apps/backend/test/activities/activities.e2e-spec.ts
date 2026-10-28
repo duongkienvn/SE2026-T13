@@ -16,6 +16,7 @@ import {
 } from '../../src/common/enums/database-enums';
 import { paginate } from '../../src/common/dto/paginated-response';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { WorkspacesService } from '../../src/api/workspaces/workspaces.service';
 import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
 import {
   JWT_AUDIENCE,
@@ -92,6 +93,10 @@ describe('Activities HTTP API with real JWT and validation', () => {
       providers: [
         { provide: ActivitiesService, useValue: activities },
         AuthService,
+        {
+          provide: WorkspacesService,
+          useValue: { ensurePersonalWorkspace: jest.fn() },
+        },
         { provide: EmailVerificationService, useValue: { send: jest.fn() } },
         JwtAuthGuard,
         { provide: 'UserRepository', useValue: users },

@@ -22,11 +22,13 @@ import { GoogleAuthController } from './google-auth.controller';
 import { PasswordSecurityService } from './password-security.service';
 import { PasswordSecurityController } from './password-security.controller';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
+import { WorkspacesModule } from '../workspaces/workspaces.module';
 
 @Module({
   imports: [
     ConfigModule,
     MailModule,
+    WorkspacesModule,
     TypeOrmModule.forFeature([
       User,
       EmailVerificationToken,

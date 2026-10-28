@@ -16,6 +16,7 @@ import { ActivityWriterService } from '../../src/api/activities/activity-writer.
 import { BoardMember } from '../../src/api/board-members/entities/board-member.entity';
 import { Board } from '../../src/api/boards/entities/board.entity';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { WorkspacesService } from '../../src/api/workspaces/workspaces.service';
 import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
 import { JwtAuthGuard } from '../../src/api/auth/guards/jwt-auth.guard';
 import {
@@ -105,6 +106,10 @@ describe('board-members HTTP contract', () => {
         { provide: ActivityWriterService, useValue: { record: jest.fn() } },
         BoardAuthorizationService,
         AuthService,
+        {
+          provide: WorkspacesService,
+          useValue: { ensurePersonalWorkspace: jest.fn() },
+        },
         { provide: EmailVerificationService, useValue: { send: jest.fn() } },
         JwtAuthGuard,
         { provide: 'BoardRepository', useValue: boards },

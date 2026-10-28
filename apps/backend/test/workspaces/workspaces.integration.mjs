@@ -4,6 +4,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import process from 'node:process';
 import { setTimeout as delay } from 'node:timers/promises';
+import { URL } from 'node:url';
 
 // Explicit local test opt-in; deliberately never load a .env file.
 assert.equal(process.env.WORKSPACE_DATABASE_TESTS, 'local-only');
@@ -430,9 +431,75 @@ async function inspectAuthentication() {
   const { Test } = require('@nestjs/testing');
   const { JwtService } = require('@nestjs/jwt');
   const request = require('supertest');
+  const { AuthService } = require('../../dist/api/auth/auth.service.js');
+  const {
+    GoogleAuthService,
+  } = require('../../dist/api/auth/google-auth.service.js');
   const {
     GoogleTokenVerifier,
   } = require('../../dist/api/auth/google-token-verifier.service.js');
+  const {
+    VerificationMailer,
+  } = require('../../dist/mail/verification-mailer.js');
+  const service = new WorkspacesService(source.getRepository('Workspace'));
+  const assertPersonal = async (userId) => {
+    const personal = await service.findPersonalWorkspace(userId);
+    assert.ok(personal, 'Account must have Personal Workspace immediately');
+    assert.equal(
+      await source
+        .getRepository('Workspace')
+        .countBy({ type: 'PERSONAL', createdById: userId }),
+      1,
+    );
+    assert.equal(
+      await source
+        .getRepository('WorkspaceMember')
+        .countBy({ workspaceId: personal.id, userId, role: 'ADMIN' }),
+      1,
+    );
+    return personal;
+  };
+  const assertNoContent = async (userId) => {
+    assert.equal(
+      await source.getRepository('Board').countBy({ createdById: userId }),
+      0,
+    );
+    assert.equal(
+      await source.getRepository('Card').countBy({ createdById: userId }),
+      0,
+    );
+    const [columns] = await source.query(
+      'SELECT count(*)::int AS n FROM board_columns c JOIN boards b ON b.id=c.board_id WHERE b.created_by_id=$1',
+      [userId],
+    );
+    assert.equal(columns.n, 0);
+  };
+  const profile = (sub, email) => ({
+    sub,
+    email,
+    displayName: 'Google fixture',
+    avatarUrl: null,
+    authoritativeEmail: true,
+  });
+  const profiles = new Map([
+    [
+      'test-credential',
+      profile('workspace-google-fixture', 'workspace-google@gmail.com'),
+    ],
+    [
+      'link-credential',
+      profile('workspace-link-fixture', 'workspace-email@example.test'),
+    ],
+    [
+      'failure-credential',
+      profile('workspace-failure-fixture', 'workspace-failure@gmail.com'),
+    ],
+    [
+      'concurrent-credential',
+      profile('workspace-concurrent-fixture', 'workspace-concurrent@gmail.com'),
+    ],
+  ]);
+  const deliveries = [];
   Object.assign(process.env, {
     DATABASE_NAME: source.options.database,
     NODE_ENV: 'test',
@@ -449,13 +516,24 @@ async function inspectAuthentication() {
   const module = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(GoogleTokenVerifier)
     .useValue({
-      verify: async () => ({
-        sub: 'workspace-google-fixture',
-        email: 'workspace-google@gmail.com',
-        displayName: 'Google fixture',
-        avatarUrl: null,
-        authoritativeEmail: true,
-      }),
+      verify: async (credential) => {
+        assert.ok(
+          profiles.has(credential),
+          'Only explicit fixture proofs are accepted',
+        );
+        return profiles.get(credential);
+      },
+    })
+    .overrideProvider(VerificationMailer)
+    .useValue({
+      send: async (email, url) => {
+        // This independent pool connection sees committed User + Workspace + ADMIN.
+        const account = await source
+          .getRepository('User')
+          .findOneByOrFail({ email });
+        await assertPersonal(account.id);
+        deliveries.push({ email, url });
+      },
     })
     .compile();
   const app = module.createNestApplication({ logger: false });
@@ -463,41 +541,92 @@ async function inspectAuthentication() {
     configureHttpApplication(app);
     await app.init();
     const http = request(app.getHttpServer());
+    const credentials = {
+      email: 'workspace-email@example.test',
+      password: 'WorkspaceTest123!',
+      displayName: 'Email fixture',
+    };
     const registered = await http
       .post('/api/auth/register')
-      .send({
-        email: 'workspace-email@example.test',
-        password: 'WorkspaceTest123!',
-        displayName: 'Email fixture',
-      })
+      .send(credentials)
       .expect(201);
     const userId = registered.body.data.id;
-    const service = new WorkspacesService(source.getRepository('Workspace'));
+    const emailPersonal = await assertPersonal(userId);
     assert.equal(
-      await service.findPersonalWorkspace(userId),
+      (await source.getRepository('User').findOneByOrFail({ id: userId }))
+        .emailVerifiedAt,
       null,
-      'Email signup remains unchanged; bootstrap is lazy',
     );
-    await source.query('UPDATE users SET email_verified_at=now() WHERE id=$1', [
-      userId,
-    ]);
+    await assertNoContent(userId);
+    await http
+      .post('/api/auth/login')
+      .send({ email: credentials.email, password: credentials.password })
+      .expect(403);
+    await http
+      .post('/api/auth/verify-email')
+      .send({
+        token: new URL(
+          deliveries.find((d) => d.email === credentials.email).url,
+        ).searchParams.get('token'),
+      })
+      .expect(204);
     const login = await http
       .post('/api/auth/login')
-      .send({
-        email: 'workspace-email@example.test',
-        password: 'WorkspaceTest123!',
-      })
+      .send({ email: credentials.email, password: credentials.password })
       .expect(200);
     const google = await http
       .post('/api/auth/google')
       .send({ credential: 'test-credential' })
       .expect(200);
-    assert.equal(
-      await service.findPersonalWorkspace(google.body.data.user.id),
-      null,
-      'Google signup also uses lazy bootstrap',
+    const googleId = google.body.data.user.id;
+    const googlePersonal = await assertPersonal(googleId);
+    await assertNoContent(googleId);
+    pass(
+      'Email signup before verification and Google signup eagerly commit one Personal Workspace/ADMIN with zero sample Boards/Columns/Cards; mail sees committed data',
     );
-    for (const response of [login, google]) {
+
+    await http.post('/api/auth/register').send(credentials).expect(409);
+    await http
+      .post('/api/auth/login')
+      .send({ email: credentials.email, password: credentials.password })
+      .expect(200);
+    const returning = await http
+      .post('/api/auth/google')
+      .send({ credential: 'test-credential' })
+      .expect(200);
+    assert.equal(returning.body.data.user.id, googleId);
+    const personalBeforeLink = await source.query(
+      'SELECT * FROM workspaces WHERE created_by_id=$1 ORDER BY id',
+      [userId],
+    );
+    const memberBeforeLink = await source.query(
+      'SELECT * FROM workspace_members WHERE user_id=$1 ORDER BY id',
+      [userId],
+    );
+    for (let i = 0; i < 2; i++)
+      await http
+        .post('/api/auth/google/link')
+        .auth(login.body.data.accessToken, { type: 'bearer' })
+        .send({ credential: 'link-credential', password: credentials.password })
+        .expect(204);
+    assert.deepEqual(
+      await source.query(
+        'SELECT * FROM workspaces WHERE created_by_id=$1 ORDER BY id',
+        [userId],
+      ),
+      personalBeforeLink,
+    );
+    assert.deepEqual(
+      await source.query(
+        'SELECT * FROM workspace_members WHERE user_id=$1 ORDER BY id',
+        [userId],
+      ),
+      memberBeforeLink,
+    );
+    for (const [response, personal] of [
+      [login, emailPersonal],
+      [google, googlePersonal],
+    ]) {
       const { accessToken, user: account } = response.body.data;
       const created = await http
         .post('/api/boards')
@@ -508,12 +637,18 @@ async function inspectAuthentication() {
         'SELECT workspace_id,visibility,created_by_id FROM boards WHERE id=$1',
         [created.body.data.id],
       );
-      assert.equal(
-        board.workspace_id,
-        (await service.findPersonalWorkspace(account.id)).id,
-      );
+      assert.equal(board.workspace_id, personal.id);
       assert.equal(board.created_by_id, account.id);
       assert.equal(board.visibility, 'PRIVATE');
+      assert.equal(
+        await source.getRepository('BoardMember').countBy({
+          boardId: created.body.data.id,
+          userId: account.id,
+          role: 'OWNER',
+        }),
+        1,
+      );
+      assert.equal((await assertPersonal(account.id)).id, personal.id);
       await http
         .post('/api/boards')
         .auth(accessToken, { type: 'bearer' })
@@ -529,7 +664,104 @@ async function inspectAuthentication() {
       );
     }
     pass(
-      'Real email/Google user creation, login/JWT, lazy first Board provisioning and forged Workspace/visibility rejection',
+      'Registration retry, repeat email/Google login, idempotent Google linking and first Board reuse the original Workspace without extra memberships',
+    );
+
+    const accountState = async () => {
+      const state = {};
+      for (const table of [
+        'users',
+        'google_identities',
+        'workspaces',
+        'workspace_members',
+        'email_verification_tokens',
+      ])
+        state[table] = await source.query(
+          'SELECT to_jsonb(t) AS row FROM ' + table + ' t ORDER BY id',
+        );
+      return state;
+    };
+    const beforeFailure = await accountState();
+    const deliveryCount = deliveries.length;
+    await source.query(
+      "CREATE FUNCTION fail_signup_workspace() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Injected Workspace ADMIN failure'; END $$",
+    );
+    await source.query(
+      'CREATE TRIGGER fail_signup_workspace BEFORE INSERT ON workspace_members FOR EACH ROW EXECUTE FUNCTION fail_signup_workspace()',
+    );
+    const failedEmail = {
+      ...credentials,
+      email: 'workspace-failure@example.test',
+    };
+    try {
+      await http.post('/api/auth/register').send(failedEmail).expect(500);
+      assert.deepEqual(await accountState(), beforeFailure);
+      await http
+        .post('/api/auth/google')
+        .send({ credential: 'failure-credential' })
+        .expect(500);
+      assert.deepEqual(await accountState(), beforeFailure);
+      assert.equal(
+        deliveries.length,
+        deliveryCount,
+        'Failed provisioning must not send verification mail',
+      );
+    } finally {
+      await source.query(
+        'DROP TRIGGER fail_signup_workspace ON workspace_members',
+      );
+      await source.query('DROP FUNCTION fail_signup_workspace()');
+    }
+    const retryEmail = await http
+      .post('/api/auth/register')
+      .send(failedEmail)
+      .expect(201);
+    const retryGoogle = await http
+      .post('/api/auth/google')
+      .send({ credential: 'failure-credential' })
+      .expect(200);
+    for (const account of [retryEmail.body.data, retryGoogle.body.data.user]) {
+      await assertPersonal(account.id);
+      await assertNoContent(account.id);
+    }
+    pass(
+      'Real SQL failure after User/identity/Workspace insertion rolls back all account state and sends no mail; retry safely creates both account types',
+    );
+
+    // Exercise database races directly through real services, independent of HTTP quotas.
+    const auth = app.get(AuthService);
+    const concurrentEmail = {
+      ...credentials,
+      email: 'workspace-concurrent@example.test',
+    };
+    const emailResults = await Promise.allSettled([
+      auth.register(concurrentEmail),
+      auth.register(concurrentEmail),
+    ]);
+    assert.equal(
+      emailResults.filter((r) => r.status === 'fulfilled').length,
+      1,
+    );
+    assert.equal(
+      emailResults.find((r) => r.status === 'rejected').reason.getResponse()
+        .code,
+      'EMAIL_ALREADY_EXISTS',
+    );
+    const emailAccount = await source
+      .getRepository('User')
+      .findOneByOrFail({ email: concurrentEmail.email });
+    await assertPersonal(emailAccount.id);
+    await assertNoContent(emailAccount.id);
+    const googleService = app.get(GoogleAuthService);
+    const googleResults = await Promise.all([
+      googleService.signIn('concurrent-credential'),
+      googleService.signIn('concurrent-credential'),
+    ]);
+    assert.equal(googleResults[0].user.id, googleResults[1].user.id);
+    await assertPersonal(googleResults[0].user.id);
+    await assertNoContent(googleResults[0].user.id);
+    pass(
+      'Concurrent email and Google signup commit exactly one account, Personal Workspace and ADMIN',
     );
   } finally {
     await app.close();

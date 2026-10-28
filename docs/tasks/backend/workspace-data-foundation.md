@@ -35,10 +35,14 @@ Local implementation/verification dated 2026-10-28. This is not deployment evide
 - `WorkspacesModule` exports `WorkspacesService`, with no controllers or network
   events. `BoardsModule` imports it. Existing create supplies the authenticated
   current user, explicitly provisions Personal + ADMIN and writes PRIVATE Board
-  - OWNER atomically. Input cannot select another Workspace or visibility.
-- Signup/authentication is unchanged. Email and Google accounts created after
-  migration bootstrap lazily on their first Board creation, or via an authorized
-  future internal ensure call. Lookup is read-only and can return null before use.
+  and Board OWNER atomically. Input cannot select another Workspace or visibility.
+- The product-owner eager-signup clarification is authoritative: email registration
+  commits User + Personal Workspace + ADMIN together, including unverified accounts.
+  Google signup provisions in the same transaction as User + GoogleIdentity.
+  Login and account linking do not provision. Lookup remains read-only; ensure is
+  retained for recovery/legacy callers and Board creation, not normal onboarding.
+  Verification email remains outside the transaction and preserves resend/failure
+  semantics. No sample Board/Column/Card data is created.
 
 See [database schema and ER diagram](../../architecture/database-design.md) for
 column/index details and [operator runbook](../../deployment/workspace-foundation.md)
@@ -56,6 +60,12 @@ unverified client ownership fields. Without a manager, ensure owns one transacti
 with a manager, it requires an active caller transaction and never nests one.
 The SQL parameter is bound as UUID. Failures propagate so the owning transaction
 rolls back Workspace, owner ADMIN, Board and Board OWNER together.
+Auth creation also supplies its manager, so provisioning failure rolls back the
+new User and, for Google, its identity. AuthModule imports WorkspacesModule in one
+direction; WorkspacesModule has no AuthModule dependency. Only the User email
+unique constraint maps to EMAIL_ALREADY_EXISTS; a Workspace failure is not reported
+as an email collision. Hashing precedes the email registration transaction; mail
+is requested only after it commits.
 
 `public.ensure_personal_workspace(uuid)` is the shared persistence primitive used
 by service, migrations and old-binary trigger. SECURITY INVOKER, schema-qualified
@@ -115,9 +125,13 @@ wait before the competing insert commits. Rollback tests fail both standalone
 provisioning and Board OWNER insertion after Board save, assert no partial rows,
 then retry successfully. Team roles and FK/unique/check constraints are exercised
 on real PostgreSQL. Auth checks use real email registration/login/JWT and mocked
-Google proof verification; no Google or mail provider is contacted.
+Google proof verification; no Google or mail provider is contacted. The eager
+follow-up asserts immediate Workspace/ADMIN with zero Boards before verification,
+no duplicates after repeat login/link/first Board, concurrent signups, and complete
+User/identity/Workspace rollback on an injected ADMIN insertion failure. An independent
+database connection in the mailer sees committed User + Workspace + ADMIN.
 
-## Verification record
+## Initial foundation verification (before eager-signup clarification)
 
 Node 22.17.0, pnpm 10.18.3. Workspace/domain suites use a task-owned PostgreSQL 16
 container bound to `127.0.0.1:55432`, with random databases created/dropped by each
@@ -177,15 +191,63 @@ Not run: actual production migrations/deployment, live Google/email/S3 operation
 production snapshot restore and production-sized performance/lock rehearsal. These
 remain explicit operator gates in the runbook, not local implementation claims.
 
+## Eager-signup follow-up verification
+
+Implements the updated [product-owner clarification on Issue #110](https://github.com/duongkienvn/SE2026-T13/issues/110) as read on 2026-10-28; the issue body is authoritative over the original lazy-onboarding assumption. The existing eight commits and migration definitions remain intact. One follow-up fix adds eager signup without sample content or new dependencies.
+
+PostgreSQL suites use only disposable local databases/containers. The preceding
+table retains the original run's evidence; the table below applies to eager signup.
+
+| Command                                                                                                                                                                                                                                 | Follow-up result                                                                                                                                                                                                                                                                                      |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm --filter @kanban/shared build`                                                                                                                                                                                                    | PASS.                                                                                                                                                                                                                                                                                                 |
+| `pnpm --filter @kanban/backend exec jest --runInBand --runTestsByPath test/auth/auth.service.spec.ts test/boards/boards.e2e-spec.ts`                                                                                                    | PASS, 50 tests. Covers transaction participation, mail-after-commit and distinguishing Workspace failures from duplicate email.                                                                                                                                                                       |
+| `pnpm --filter @kanban/backend test:workspaces:database`                                                                                                                                                                                | PASS, 18 groups. PostgreSQL/API eager signup, before-verification persistence, zero sample content, repeat login/link/first Board, complete signup rollback/retry and concurrent account creation; prior migration/backfill/bridge/access checks also pass.                                           |
+| `pnpm --filter @kanban/backend test:google-auth:database`                                                                                                                                                                               | PASS, 14 groups, including pending third-party-email Workspace, mail failure recovery, concurrent signup and existing linking/JWT behavior. Google proof verifier is mocked.                                                                                                                          |
+| `pnpm --filter @kanban/backend test:email-verification:database`                                                                                                                                                                        | PASS, 16 groups, including immediate unverified User Workspace/ADMIN, delivery failure/retry, JWT/Socket.IO verification gates and nested database foundation checks.                                                                                                                                 |
+| `pnpm --filter @kanban/backend exec node test/boards/boards.integration.mjs`                                                                                                                                                            | PASS, Board CRUD, roles/isolation, archive/restore, transaction rollback and real HTTP module wiring.                                                                                                                                                                                                 |
+| `pnpm lint`                                                                                                                                                                                                                             | PASS.                                                                                                                                                                                                                                                                                                 |
+| `pnpm build`                                                                                                                                                                                                                            | PASS, all workspace builds; existing Vite NODE_ENV and bundle-size warnings remain.                                                                                                                                                                                                                   |
+| `pnpm test` (default and serialized/offline reruns)                                                                                                                                                                                     | FAIL in the frontend suite: existing PreferencesPage 5s timeout; one earlier run also hit RegisterPage's extra Google SDK failure alert. The corrected backend run passes all 57 suites / 565 tests, and shared passes 7 tests. All frontend tests separately pass with one worker as recorded below. |
+| `pnpm --filter @kanban/frontend exec vitest run --maxWorkers=1`                                                                                                                                                                         | PASS, all 91 files / 803 tests.                                                                                                                                                                                                                                                                       |
+| `pnpm --filter @kanban/frontend exec vitest run src/features/auth/pages/RegisterPage.test.tsx src/features/settings/pages/PreferencesPage.test.tsx --maxWorkers=1` with process-only `VITE_GOOGLE_CLIENT_ID=disabled-for-offline-tests` | PASS, 30 tests; no `.env` or frontend source change.                                                                                                                                                                                                                                                  |
+| `pnpm format:check`                                                                                                                                                                                                                     | FAIL, existing Windows CRLF formatting issue (601 unchanged files); no unrelated rewrite.                                                                                                                                                                                                             |
+
+One initial Google-suite invocation failed before executing tests with Windows
+EPERM because two package commands built into the same dist directory concurrently.
+Builds were then serialized; the complete Google and Email scripts passed. This
+was a local execution collision, not a skipped test or application failure.
+The first root run hit the existing PreferencesPage 5s frontend timeout. The next
+run exposed import-order errors in six mocked HTTP suites introduced while adding
+the new Auth dependency; these were corrected, and a targeted rerun passed all
+six suites / 40 tests. A subsequent root run passed all 57 backend suites / 565
+tests, then failed RegisterPage's single-alert assertion because the locally
+configured Google SDK also produced a load-failure alert. Frontend source is
+unchanged, and all 803 tests passed with one frontend worker. The final root run
+uses process-only `npm_config_workspace_concurrency=1` and
+`VITE_GOOGLE_CLIENT_ID=disabled-for-offline-tests`, serializing workspace suites
+and disabling the optional external SDK in ordinary offline page fixtures.
+Google-specific frontend tests retain their explicit mocked client IDs/proofs;
+backend Google integration uses a mocked proof verifier. No repository or `.env`
+configuration is changed. The final root run still fails the existing PreferencesPage
+5s timeout (802 frontend tests pass), while backend 565 and shared 7 pass. The
+standalone frontend run with one worker passes all 803 tests. The root gate is
+therefore reported as failed, not replaced by the standalone result. No frontend
+code or test configuration is modified to mask this timing issue.
+
+No migrations, shared contracts or WorkspacesService SQL primitive changed in
+this follow-up. No sample content, production actions or external mail/Google
+requests were performed.
+
 ## Handoff
 
-| Owner / issue              | Stable foundation and remaining responsibility                                                                                                                                                                                                                                                                                                                                                                                             |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Nanromi / P2-02 (#111)     | Import WorkspacesModule/Service and the three entities. Use `createdById` as Personal owner/creator; never infer it from Board members. Call ensure with trusted identity and active manager for atomic workflows. Build authorized Workspace CRUD/listing, Team Board creation and scoped icon contract; preserve the old Personal-create path.                                                                                           |
-| Nanromi / P2-03 (#112)     | Use WorkspaceMember and WorkspaceInvitation; roles stay ADMIN/MEMBER. Normalize email before persistence; generate opaque CSPRNG token and persist SHA-256 hex only. Implement verified-email binding, row-locked single-use acceptance/revoke/expiry, admin policy/last-admin checks, rate limits and safe duplicate-pending behavior. Token lookup must explicitly select hash if needed. Workspace roles confer no private Board grant. |
-| P2-04 (#115)               | Add Workspace-visible reads only after consistent REST/list/search/Card/Socket.IO policy and revocation coverage. PRIVATE access remains explicit Board membership. No toggle is delivered here.                                                                                                                                                                                                                                           |
-| P2-05 / frontend P2-06–09  | Board Move/settings/policies and Workspace UI remain unimplemented; preserve IDs, guest grants, archive state, private-data isolation and API response allowlists.                                                                                                                                                                                                                                                                         |
-| duongkienvn / P2-10 (#119) | Email delivery/Resend/templates are separate. No invitation mail implementation is included in this task.                                                                                                                                                                                                                                                                                                                                  |
+| Owner / issue              | Stable foundation and remaining responsibility                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Nanromi / P2-02 (#111)     | Ordinary new accounts already have Personal Workspace + ADMIN immediately after signup. P2-02 must not own that onboarding trigger; use ensure defensively for legacy/inconsistent accounts. Import WorkspacesModule/Service and the three entities. Use `createdById` as Personal owner/creator; never infer it from Board members. Call ensure with trusted identity and active manager for atomic workflows. Build authorized Workspace CRUD/listing, Team Board creation and scoped icon contract; preserve the old Personal-create path. |
+| Nanromi / P2-03 (#112)     | Use WorkspaceMember and WorkspaceInvitation; roles stay ADMIN/MEMBER. Normalize email before persistence; generate opaque CSPRNG token and persist SHA-256 hex only. Implement verified-email binding, row-locked single-use acceptance/revoke/expiry, admin policy/last-admin checks, rate limits and safe duplicate-pending behavior. Token lookup must explicitly select hash if needed. Workspace roles confer no private Board grant.                                                                                                    |
+| P2-04 (#115)               | Add Workspace-visible reads only after consistent REST/list/search/Card/Socket.IO policy and revocation coverage. PRIVATE access remains explicit Board membership. No toggle is delivered here.                                                                                                                                                                                                                                                                                                                                              |
+| P2-05 / frontend P2-06–09  | Board Move/settings/policies and Workspace UI remain unimplemented; preserve IDs, guest grants, archive state, private-data isolation and API response allowlists.                                                                                                                                                                                                                                                                                                                                                                            |
+| duongkienvn / P2-10 (#119) | Email delivery/Resend/templates are separate. No invitation mail implementation is included in this task.                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
 Before production: review SQL and application rollback versions, approve off-host
 backup/restore rehearsal, production-sized timing/capacity and maintenance window;
@@ -197,38 +259,50 @@ production database operation or deployment is authorized by this record.
 
 Paths relative to repository root:
 
+The inventory covers the full foundation branch, including the eager-signup fix.
+
 ```text
-packages/shared/src/index.ts
-packages/shared/src/workspace.ts
-packages/shared/test/workspace.test.mjs
 apps/backend/package.json
-apps/backend/src/api/workspaces/entities/workspace.entity.ts
-apps/backend/src/api/workspaces/entities/workspace-member.entity.ts
-apps/backend/src/api/workspaces/entities/workspace-invitation.entity.ts
-apps/backend/src/api/workspaces/workspaces.module.ts
-apps/backend/src/api/workspaces/workspaces.service.ts
-apps/backend/src/api/boards/entities/board.entity.ts
+apps/backend/src/api/auth/auth.module.ts
+apps/backend/src/api/auth/auth.service.ts
+apps/backend/src/api/auth/google-auth.service.ts
 apps/backend/src/api/boards/boards.module.ts
 apps/backend/src/api/boards/boards.service.ts
+apps/backend/src/api/boards/entities/board.entity.ts
+apps/backend/src/api/workspaces/entities/workspace-invitation.entity.ts
+apps/backend/src/api/workspaces/entities/workspace-member.entity.ts
+apps/backend/src/api/workspaces/entities/workspace.entity.ts
+apps/backend/src/api/workspaces/workspaces.module.ts
+apps/backend/src/api/workspaces/workspaces.service.ts
 apps/backend/src/database/migrations/1793145600000-WorkspaceFoundation.ts
 apps/backend/src/database/migrations/1793145600001-LegacyBoardWorkspaces.ts
-apps/backend/test/workspaces/workspaces.service.spec.ts
-apps/backend/test/workspaces/workspaces.integration.mjs
-apps/backend/test/boards/boards.service.spec.ts
-apps/backend/test/boards/boards.e2e-spec.ts
-apps/backend/test/boards/boards.integration.mjs
+apps/backend/test/activities/activities.e2e-spec.ts
 apps/backend/test/activities/activities.integration.mjs
-apps/backend/test/database/database-foundation.integration.mjs
-apps/backend/test/realtime/realtime.integration.mjs
+apps/backend/test/auth/auth.service.spec.ts
 apps/backend/test/auth/email-verification.integration.mjs
 apps/backend/test/auth/google-auth.integration.mjs
 apps/backend/test/auth/password-security.integration.mjs
+apps/backend/test/board-members/board-members.e2e-spec.ts
+apps/backend/test/boards/boards.e2e-spec.ts
+apps/backend/test/boards/boards.integration.mjs
+apps/backend/test/boards/boards.service.spec.ts
+apps/backend/test/cards/cards.e2e-spec.ts
+apps/backend/test/columns/columns.e2e-spec.ts
+apps/backend/test/comments/comments.e2e-spec.ts
+apps/backend/test/database/database-foundation.integration.mjs
+apps/backend/test/realtime/realtime.integration.mjs
 apps/backend/test/users/avatar.integration.mjs
+apps/backend/test/users/user-preferences.e2e-spec.ts
 apps/backend/test/users/user-preferences.integration.mjs
-docs/architecture/database-design.md
+apps/backend/test/workspaces/workspaces.integration.mjs
+apps/backend/test/workspaces/workspaces.service.spec.ts
 docs/architecture/backend-architecture.md
+docs/architecture/database-design.md
 docs/deployment/production.md
 docs/deployment/workspace-foundation.md
 docs/tasks/README.md
 docs/tasks/backend/workspace-data-foundation.md
+packages/shared/src/index.ts
+packages/shared/src/workspace.ts
+packages/shared/test/workspace.test.mjs
 ```

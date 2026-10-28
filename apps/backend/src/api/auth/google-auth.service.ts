@@ -9,6 +9,7 @@ import { GoogleIdentity } from './entities/google-identity.entity';
 import { GoogleTokenVerifier } from './google-token-verifier.service';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { LinkedProvidersDto } from './dto/linked-providers.dto';
+import { WorkspacesService } from '../workspaces/workspaces.service';
 
 @Injectable()
 export class GoogleAuthService {
@@ -17,6 +18,7 @@ export class GoogleAuthService {
     private readonly verifier: GoogleTokenVerifier,
     private readonly auth: AuthService,
     private readonly verification: EmailVerificationService,
+    private readonly workspaces: WorkspacesService,
   ) {}
 
   async signIn(credential: string): Promise<LoginResponseDto> {
@@ -53,6 +55,7 @@ export class GoogleAuthService {
       await identities.save(
         identities.create({ userId: user.id, googleSub: profile.sub }),
       );
+      await this.workspaces.ensurePersonalWorkspace(user.id, manager);
       return { user, created: true };
     });
     // Reuse K2 token lifecycle, cooldown and delivery failure handling after commit.

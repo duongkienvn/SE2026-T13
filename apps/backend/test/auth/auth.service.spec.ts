@@ -12,6 +12,7 @@ import {
 import { LoginRequestDto } from '../../src/api/auth/dto/login-request.dto';
 import { RegisterRequestDto } from '../../src/api/auth/dto/register-request.dto';
 import { User } from '../../src/api/users/entities/user.entity';
+import { WorkspacesService } from '../../src/api/workspaces/workspaces.service';
 
 jest.mock('argon2', () => {
   const actual = jest.requireActual<typeof argon2>('argon2');
@@ -43,15 +44,25 @@ describe('AuthService', () => {
     findOne: jest.Mock;
     create: jest.Mock;
     save: jest.Mock;
+    manager: { transaction: jest.Mock };
   };
   let jwt: JwtService;
+  const workspaces = { ensurePersonalWorkspace: jest.fn() };
+  const verification = { send: jest.fn() };
+  const manager = { getRepository: jest.fn() };
 
   beforeEach(async () => {
     repository = {
       findOne: jest.fn(),
       create: jest.fn(),
       save: jest.fn(),
+      manager: { transaction: jest.fn(async (work) => work(manager)) },
     };
+    manager.getRepository.mockReturnValue(repository);
+    workspaces.ensurePersonalWorkspace
+      .mockReset()
+      .mockResolvedValue({ id: 'personal' });
+    verification.send.mockReset().mockResolvedValue(undefined);
     jwt = new JwtService({
       secret: JWT_SECRET,
       signOptions: {
@@ -69,7 +80,8 @@ describe('AuthService', () => {
     const module = await Test.createTestingModule({
       providers: [
         AuthService,
-        { provide: EmailVerificationService, useValue: { send: jest.fn() } },
+        { provide: EmailVerificationService, useValue: verification },
+        { provide: WorkspacesService, useValue: workspaces },
         { provide: 'UserRepository', useValue: repository },
         { provide: JwtService, useValue: jwt },
       ],
@@ -105,6 +117,10 @@ describe('AuthService', () => {
     expect(result).not.toHaveProperty('passwordHash');
     expect(result.email).toBe(input.email);
     expect(user.emailVerifiedAt).toBeNull();
+    expect(workspaces.ensurePersonalWorkspace).toHaveBeenCalledWith(
+      user.id,
+      manager,
+    );
   });
 
   it('returns EMAIL_ALREADY_EXISTS for a concurrent unique constraint conflict', async () => {
@@ -114,7 +130,10 @@ describe('AuthService', () => {
       new QueryFailedError(
         'insert user',
         [],
-        Object.assign(new Error('duplicate'), { code: '23505' }),
+        Object.assign(new Error('duplicate'), {
+          code: '23505',
+          constraint: 'UQ_users_email',
+        }),
       ),
     );
 
@@ -128,6 +147,52 @@ describe('AuthService', () => {
       status: 409,
       response: { code: 'EMAIL_ALREADY_EXISTS' },
     });
+  });
+
+  it('does not request verification mail when Workspace provisioning aborts registration', async () => {
+    const user = userFixture();
+    repository.findOne.mockResolvedValue(null);
+    repository.create.mockReturnValue(user);
+    repository.save.mockResolvedValue(user);
+    const failure = new QueryFailedError(
+      'insert membership',
+      [],
+      Object.assign(new Error('workspace conflict'), {
+        code: '23505',
+        constraint: 'UQ_workspace_members_workspace_user',
+      }),
+    );
+    workspaces.ensurePersonalWorkspace.mockRejectedValue(failure);
+    await expect(
+      service.register({
+        email: user.email,
+        password: 'Kanvexa@2026',
+        displayName: user.displayName,
+      }),
+    ).rejects.toBe(failure);
+    expect(verification.send).not.toHaveBeenCalled();
+  });
+
+  it('requests verification mail only after the User/Workspace transaction commits', async () => {
+    const user = userFixture();
+    repository.findOne.mockResolvedValue(null);
+    repository.create.mockReturnValue(user);
+    repository.save.mockResolvedValue(user);
+    const order: string[] = [];
+    repository.manager.transaction.mockImplementation(async (work) => {
+      const value = await work(manager);
+      order.push('commit');
+      return value;
+    });
+    verification.send.mockImplementation(async () => {
+      order.push('mail');
+    });
+    await service.register({
+      email: user.email,
+      password: 'Kanvexa@2026',
+      displayName: user.displayName,
+    });
+    expect(order).toEqual(['commit', 'mail']);
   });
 
   it('uses one invalid-credentials error for an unknown email and wrong password', async () => {
