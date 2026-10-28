@@ -27,6 +27,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Backend tasks
 
+- [Core Workspace API and access-scoped queries](backend/workspace-core-api.md)
 - [Workspace data foundation and legacy Board migration](backend/workspace-data-foundation.md)
 
 - [Backend foundation](backend/backend-foundation-pr-description.md)

@@ -21,6 +21,7 @@ import { EnvironmentConfig, validateEnvironment } from './config/environment';
 import { loggerOptions } from './logging/logger-options';
 import { HttpThrottlerGuard } from './guards/http-throttler.guard';
 import { RealtimeModule } from './realtime/realtime.module';
+import { WorkspaceApiModule } from './api/workspaces/workspace-api.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     CardsModule,
     CommentsModule,
     ActivitiesModule,
+    WorkspaceApiModule,
     RealtimeModule,
     LoggerModule.forRootAsync({
       inject: [ConfigService],

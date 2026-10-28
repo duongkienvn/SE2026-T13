@@ -175,7 +175,6 @@ describe('BoardsService', () => {
       name: 'Board',
       createdById: 'attacker',
       currentUserRole: 'MEMBER',
-      workspaceId: 'attacker-workspace',
       visibility: 'WORKSPACE_VISIBLE',
     };
     await service.create(USER_ID, input);

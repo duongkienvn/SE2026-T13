@@ -11,10 +11,15 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import type { WorkspaceIcon } from '../dto/workspace-input.dto';
 
 @Entity('workspaces')
 @Check('CK_workspaces_type', `"type" IN ('PERSONAL', 'TEAM')`)
 @Check('CK_workspaces_name', `length(btrim("name")) > 0`)
+@Check(
+  'CK_workspaces_icon',
+  `icon IN ('briefcase','users','code','palette','layers')`,
+)
 @Index('UQ_workspaces_personal_creator', ['createdById'], {
   unique: true,
   where: `"type" = 'PERSONAL'`,
@@ -25,7 +30,8 @@ export class Workspace implements WorkspaceIdentity {
   @Column({ type: 'varchar' }) type!: WorkspaceType;
   @Column({ type: 'varchar', length: 120 }) name!: string;
   @Column({ type: 'text', nullable: true }) description!: string | null;
-  // Representation/validation of the optional icon is deferred to P2-02.
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  icon!: WorkspaceIcon | null;
   @Column({ name: 'created_by_id', type: 'uuid' }) createdById!: string;
   @ManyToOne(() => User, { onDelete: 'NO ACTION' })
   @JoinColumn({

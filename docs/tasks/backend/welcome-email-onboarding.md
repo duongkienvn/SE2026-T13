@@ -246,6 +246,31 @@ For this fix, `pnpm lint`, `pnpm test` (594 backend, 855 frontend, 7 shared),
 `pnpm build`, changed-file Prettier and `git diff --check` pass. Repository-wide
 `pnpm format:check` retains the existing failure on 662 untouched CRLF files.
 
+### Workspace core API merge compatibility
+
+Merging the Workspace core API from `origin/main` required combining the database
+foundation and Workspace integration suites. The combined schema has 17 entities
+and 12 migrations: both the Welcome outbox and Workspace icon migrations remain.
+Fresh-database rollback/reapply checks cover the icon, empty Welcome ledger and
+both Workspace foundation stages in the correct order. Historical Workspace
+backfill fixtures still exclude later migrations deliberately, then restore the
+complete migration inventory before exercising the current auth services.
+
+The Workspace API lifecycle/privacy/concurrency scenarios and Welcome auth/mail
+scenarios are preserved from their respective branches. No application behavior,
+delivery history or migration is discarded to resolve conflicts. Verification
+uses only disposable local PostgreSQL and fake/mocked mail.
+
+Merge verification: `pnpm lint`, `pnpm test` (621 backend, 855 frontend, 7 shared),
+and `pnpm build` pass. PostgreSQL suites `test:database`, `test:workspaces:database`
+(18 checks), `test:workspace-api:database`, `test:welcome-email:database` (15 checks),
+`test:email-verification:database` (16 checks), and `test:google-auth:database`
+(14 checks) all pass under `pnpm --filter @kanban/backend`. Conflict-marker,
+task-record link, resolved-file Prettier and `git diff --check` checks pass.
+Canonical `pnpm format:check` reports CRLF checkout differences in 685 files;
+repository-wide Prettier with `--end-of-line auto` passes. No unrelated line-ending
+normalization, application database migration, real email or deployment was run.
+
 ### Rollout
 
 1. Back up the database and explicitly apply the new migration before starting

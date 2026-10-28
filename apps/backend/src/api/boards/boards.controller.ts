@@ -158,9 +158,10 @@ export class BoardsController {
   @ApiSuccess({
     type: BoardResponseDto,
     status: HttpStatus.CREATED,
-    summary: 'Create a board with an OWNER membership',
+    summary:
+      'Create a PRIVATE board in a joined Workspace, defaulting to own Personal Workspace',
   })
-  @ApiCommonErrors([400, 401, 409, 429, 500])
+  @ApiCommonErrors([400, 401, 404, 409, 429, 500])
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Body() input: CreateBoardDto,
