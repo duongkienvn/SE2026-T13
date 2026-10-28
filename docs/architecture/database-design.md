@@ -203,13 +203,17 @@ Không nhận client visibility; Board mới luôn PRIVATE.
 
 Invitation expiry phải sau creation; consumed time thuộc `[created_at,expires_at)`;
 revocation không trước creation; consumed và revoked loại trừ nhau. Không có
-plaintext token, issuance/acceptance/mail API, hoặc computed state column.
-Pending là chưa consumed/revoked và chưa expired; P2-03 chịu trách nhiệm khóa,
-verified-email binding, single-use và chính sách pending duplicates trong service.
+plaintext token hoặc computed invitation-status column. P2-03 bổ sung
+`send_state varchar(16)` UNAVAILABLE/DISPATCHING/SENT/FAILED/UNKNOWN, CHECK cho
+send state, index `created_at` và partial unique `(workspace_id,email)` khi chưa
+consumed/revoked. Pending là chưa consumed/revoked và chưa expired. Service khóa
+Workspace để bảo vệ verified-email binding, single-use, quota, rotate/revoke và
+last-admin; xem [member/invitation API](../tasks/backend/workspace-members-invitations-api.md).
+Migration dừng nguyên tử nếu có pending duplicates, không tự thu hồi dữ liệu cũ.
 
 Mọi FK mới dùng NO ACTION: xóa Workspace không cascade Board/Card/User.
-Workspace ADMIN không có Board grant. Last-admin protection, membership management và
-Workspace-visible read policy phải được triển khai qua các issue tương ứng.
+Workspace ADMIN không có Board grant. P2-03 triển khai last-admin protection và
+membership management; Workspace-visible read policy vẫn thuộc P2-04.
 
 `public.ensure_personal_workspace(uuid)` là persistence primitive SECURITY INVOKER
 dùng chung cho service, migration và old-writer bridge. Partial unique upsert khóa
@@ -390,5 +394,5 @@ Timestamp persistent dùng `timestamptz` và lưu theo UTC; việc hiển thị 
 Chưa có labels, attachments, checklist, card priority, notification system,
 calendar, time tracking, analytics, automation rules hoặc CRDT state. Workspace và
 invitation persistence đã có ở P2-01; P2-02 thêm Workspace lifecycle/metadata REST
-và queries theo Board ACL. Membership/invitation workflow và visibility
-authorization còn thuộc các issue tiếp theo.
+và queries theo Board ACL. P2-03 thêm membership/invitation domain API; mail
+delivery thuộc P2-10, visibility authorization thuộc P2-04.
