@@ -10,6 +10,7 @@ import { verifyInvitations } from './workspace-invitations.lifecycle.mjs';
 import { verifyInvitationRaces } from './workspace-invitations.concurrency.mjs';
 import { verifyInvitationMigration } from './workspace-invitations.migration.mjs';
 import { verifyQuotaContention } from './workspace-invitations.quotas.mjs';
+import { verifyInvitationMailDelivery } from './workspace-invitation-mail.integration.mjs';
 import {
   verifyDispatchLease,
   verifyAcceptRemoval,
@@ -93,6 +94,7 @@ try {
     GOOGLE_CLIENT_ID: '',
     JWT_SECRET: randomBytes(32).toString('hex'),
     MAIL_TRANSPORT: 'fake',
+    WORKSPACE_INVITATION_ACCEPT_PATH: '',
     AVATAR_STORAGE_DRIVER: 'disabled',
     SWAGGER_ENABLED: 'true',
     RATE_LIMIT_MAX: '10000',
@@ -170,6 +172,11 @@ try {
   await verifyQuotaContention(context);
   await verifyDispatchLease(context);
   await verifyAcceptRemoval(context);
+  await verifyInvitationMailDelivery({
+    source,
+    AppModule,
+    configureHttpApplication,
+  });
   const swagger = await http.get('/api-docs-json').expect(200);
   for (const [path, method, status] of [
     ['/api/workspaces/{workspaceId}/members', 'get', '200'],
@@ -178,7 +185,7 @@ try {
     ['/api/workspace-invitations/accept', 'post', '200'],
   ])
     assert(swagger.body.paths[path][method].responses[status]);
-  // Real module wiring has no fake/default successful invitation sender.
+  // Default rollout gate preserves UNAVAILABLE until a working destination is configured.
   const unwiredModule = await Test.createTestingModule({
     imports: [AppModule],
   }).compile();
