@@ -1,5 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Test } from '@nestjs/testing';
+import { Resend } from 'resend';
 import { DataSource, EntityManager } from 'typeorm';
 import {
   WelcomeOnboardingService,
@@ -7,8 +9,17 @@ import {
 } from '../../src/api/auth/welcome-onboarding.service';
 import { WelcomeEmailDelivery } from '../../src/api/auth/entities/welcome-email-delivery.entity';
 import { User } from '../../src/api/users/entities/user.entity';
-import { EnvironmentConfig } from '../../src/config/environment';
+import {
+  EnvironmentConfig,
+  validateEnvironment,
+} from '../../src/config/environment';
 import { welcomeEmail } from '../../src/mail/welcome-email';
+import { MailModule } from '../../src/mail/mail.module';
+import { WelcomeMailer } from '../../src/mail/welcome-mailer';
+import { ResendWelcomeMailer } from '../../src/mail/resend-welcome-mailer';
+
+// Provider construction and calls are mocked, including development Resend opt-in.
+jest.mock('resend', () => ({ Resend: jest.fn() }));
 
 describe('welcome onboarding delivery boundary', () => {
   const now = new Date('2026-10-28T12:00:00Z');
@@ -19,6 +30,7 @@ describe('welcome onboarding delivery boundary', () => {
   let row: WelcomeEmailDelivery | null;
   let service: WelcomeOnboardingService;
   let inTransaction: boolean;
+  let source: DataSource;
   const repository = {
     insert: jest.fn(),
     update: jest.fn(),
@@ -78,7 +90,7 @@ describe('welcome onboarding delivery boundary', () => {
     mailer.send.mockImplementation(async () => {
       expect(inTransaction).toBe(false);
     });
-    const source = {
+    source = {
       getRepository: () => repository,
       transaction: async (
         work: (manager: EntityManager) => Promise<unknown>,
@@ -138,6 +150,96 @@ describe('welcome onboarding delivery boundary', () => {
       }),
     );
   });
+
+  async function configuredResendDispatcher(send: jest.Mock) {
+    jest
+      .mocked(Resend)
+      .mockImplementation(() => ({ emails: { send } }) as unknown as Resend);
+    const environment = validateEnvironment({
+      NODE_ENV: 'development',
+      MAIL_TRANSPORT: 'resend',
+      JWT_SECRET: 'configuration-only-at-least-32-bytes',
+      DATABASE_HOST: 'localhost',
+      DATABASE_PORT: '5432',
+      DATABASE_NAME: 'test',
+      DATABASE_USER: 'test',
+      DATABASE_PASSWORD: 'test',
+      RESEND_API_KEY: 're_synthetic_configuration_only',
+      MAIL_FROM: 'Kanvexa <no-reply@example.test>',
+      PUBLIC_APP_URL: 'http://localhost:5173',
+    });
+    const module = await Test.createTestingModule({
+      imports: [MailModule],
+      providers: [
+        ConfigService,
+        WelcomeOnboardingService,
+        { provide: DataSource, useValue: source },
+      ],
+    })
+      .overrideProvider(ConfigService)
+      .useValue(new ConfigService(environment))
+      .compile();
+    return module;
+  }
+
+  it('uses the actual development Resend binding and waits for provider acceptance before sent_at', async () => {
+    let accept!: (value: unknown) => void;
+    const send = jest.fn(
+      () =>
+        new Promise((resolve) => {
+          accept = resolve;
+        }),
+    );
+    const module = await configuredResendDispatcher(send);
+    try {
+      expect(module.get(WelcomeMailer)).toBeInstanceOf(ResendWelcomeMailer);
+      const dispatch = module
+        .get(WelcomeOnboardingService)
+        .deliverPending('user');
+      while (!accept) await Promise.resolve();
+      expect(repository.update).not.toHaveBeenCalled();
+      expect(inTransaction).toBe(false);
+      expect(send).toHaveBeenCalledWith(
+        { ...row!.message, to: [row!.message!.to] },
+        { idempotencyKey: 'welcome/user', signal: expect.any(AbortSignal) },
+      );
+      accept({ data: { id: 'mock-provider-accepted' }, error: null });
+      await dispatch;
+      expect(repository.update).toHaveBeenCalledWith(
+        { userId: 'user', leaseToken: row!.leaseToken },
+        expect.objectContaining({ sentAt: expect.any(Function) }),
+      );
+    } finally {
+      await module.close();
+    }
+  });
+
+  it.each([
+    { data: null, error: { message: 'SECRET provider details' } },
+    { data: null, error: null },
+    new Error('SECRET timeout'),
+  ])(
+    'does not mark sent_at when the injected Resend provider fails or returns no message ID',
+    async (response) => {
+      const send =
+        response instanceof Error
+          ? jest.fn().mockRejectedValue(response)
+          : jest.fn().mockResolvedValue(response);
+      const module = await configuredResendDispatcher(send);
+      try {
+        expect(module.get(WelcomeMailer)).toBeInstanceOf(ResendWelcomeMailer);
+        await expect(
+          module.get(WelcomeOnboardingService).deliverPending('user'),
+        ).resolves.toBeUndefined();
+        expect(send).toHaveBeenCalledTimes(1);
+        expect(repository.update.mock.calls[0][1]).not.toHaveProperty('sentAt');
+        expect(row!.nextAttemptAt.getTime() - now.getTime()).toBe(60_000);
+        expect(JSON.stringify(log.mock.calls)).not.toContain('SECRET');
+      } finally {
+        await module.close();
+      }
+    },
+  );
 
   it('retains the frozen payload/key and schedules backoff on ambiguous provider failure', async () => {
     mailer.send.mockRejectedValue(

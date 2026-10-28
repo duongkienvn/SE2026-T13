@@ -83,8 +83,11 @@ connections if a dispatch failed.
 The ledger freezes the rendered subject/HTML/text, sender and recipient when it
 becomes ready. Every attempt uses `welcome/<userId>` and the frozen message,
 including after restarts, profile edits or configuration/template changes. A
-successful provider acceptance sets `sent_at`; that is not proof of inbox
-delivery. An interrupted/failed bookkeeping write leaves recoverable state.
+successful selected-adapter completion sets `sent_at`; in Resend mode the adapter
+requires a successful response with a message ID. In Fake mode it means only an
+in-memory capture, not a provider request. The timestamp alone is not proof of
+Resend acceptance or inbox delivery. An interrupted/failed bookkeeping write
+leaves recoverable state.
 
 Failures use persisted exponential backoff (one minute to one hour). Ambiguous
 timeouts can still deliver. [Resend retains idempotency keys for 24 hours](https://resend.com/docs/dashboard/emails/idempotency-keys),
@@ -104,9 +107,10 @@ unchanged.
 
 ## Transport and local previews
 
-No new dependencies, provider or environment variables. Production uses the
-existing Resend configuration; welcome transport is always Fake in development
-and tests, even if another mail flow explicitly opts into development Resend.
+No new dependencies, provider or environment variables. Welcome uses the same
+validated `MAIL_TRANSPORT` as verification and recovery: development defaults to
+Fake and explicitly setting `MAIL_TRANSPORT=resend` selects Resend. Production
+requires Resend, and `NODE_ENV=test` always forces Fake even if Resend is requested.
 Fake captures up to twenty messages in memory without network or logging.
 Its short in-memory key cache assists tests; the PostgreSQL ledger is the durable
 source of truth. Welcome mail ignores marketing/notification subscription state.
@@ -139,7 +143,7 @@ preview HTML and local PNG loaded successfully. Browser rendering does not prove
 Gmail/Outlook/Apple Mail rendering or client-forced color inversion; no real email
 or live provider request was used for QA.
 
-## Verification
+## Initial implementation verification
 
 Integration suites used disposable Docker PostgreSQL on loopback, Fake mail and
 synthetic Google profiles; production/development databases were not test targets.
@@ -177,6 +181,53 @@ dependencies or environment files changed. Work is local; no push, PR, merge,
 deployment or real email was performed.
 
 ## Deployment and reconciliation
+
+### Development transport correction
+
+Runtime investigation found a Welcome-only dependency-injection override in
+`MailModule`: `NODE_ENV !== production` selected Fake despite validated
+`MAIL_TRANSPORT=resend`. Verification/recovery honored the transport, explaining
+why verification appeared in Resend while Welcome did not. Fake's resolved
+`send()` was accepted by the outbox dispatcher and populated `sent_at` without a
+Resend request or provider response. The override has been removed; tests cover
+the real Nest binding through mocked Resend acceptance/failure and the outbox
+completion write.
+
+Existing completed rows are preserved. Older rows do not store transport or
+provider receipt metadata, so do not infer their delivery history from `sent_at`
+alone or bulk-clear it. Review affected rows against runtime/provider evidence
+before any separately authorized reconciliation. Changing transport does not
+automatically replay completed messages, reset retry windows, or re-enroll users.
+This correction requires no schema migration or data rewrite. The local backend
+was stopped before editing to prevent its watcher from dispatching real mail.
+No live provider send is part of verification.
+
+Offline diagnostics loaded the actual local `.env` through the existing validator
+without bootstrapping the app or its worker. It resolved to development + Resend,
+with no shell overrides for either setting. Before correction, both source and
+compiled DI resolved Welcome to Fake and verification to Resend. After correction,
+both resolve to Resend; diagnostics made zero provider network calls. A read-only
+fingerprint of the local ledger confirmed its single completed row remained
+unchanged. No environment file, schema or existing account/delivery data was
+rewritten, and the backend remains stopped to avoid live dispatch during review.
+
+Regression coverage now includes validated transport parity for all three mail
+types, tests remaining Fake when Resend is requested, and the actual Nest Welcome
+binding through mocked SDK success, rejection, missing-ID and timeout responses.
+The PostgreSQL suite additionally intercepts HTTP beneath the real SDK and proves
+provider acceptance/rejection bookkeeping and preservation of completed rows when
+transport changes. Synthetic credentials and disposable databases are used.
+
+Correction verification: **57 focused tests PASS**, **14 welcome PostgreSQL/HTTP
+checks PASS**, `pnpm test` **PASS** (594 backend, 855 frontend, 7 shared tests),
+`pnpm lint` **PASS**, and `pnpm build` **PASS**. Changed-file Prettier, task-record
+links and `git diff --check` pass. Canonical `pnpm format:check` still reports
+the same 662 untouched CRLF files. The first full-suite attempt overlapped a
+shared-package rebuild and hit transient missing-output errors; the final run
+after builds completed passed all suites. No live send, migration, reconciliation,
+push, merge or deployment was performed for this correction.
+
+### Rollout
 
 1. Back up the database and explicitly apply the new migration before starting
    this application version. Automatic startup migrations remain disabled.

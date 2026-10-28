@@ -516,6 +516,122 @@ try {
   pass(
     'old ambiguous attempts stop without resending; populated rollback/duplicate eligibility/invalid attempts are rejected',
   );
+
+  // Exercise the real Nest MailModule and Resend SDK with fetch intercepted.
+  // Only this suite's disposable database and synthetic credentials are used.
+  const { MailModule } = require('../../dist/mail/mail.module.js');
+  const {
+    ResendWelcomeMailer,
+  } = require('../../dist/mail/resend-welcome-mailer.js');
+  const {
+    WorkspacesService,
+  } = require('../../dist/api/workspaces/workspaces.service.js');
+  const developmentConfig = validateEnvironment({
+    ...config,
+    NODE_ENV: 'development',
+    MAIL_TRANSPORT: 'resend',
+    RESEND_API_KEY: 're_synthetic_no_network_only',
+  });
+  const providerModule = await Test.createTestingModule({
+    imports: [MailModule],
+  })
+    .overrideProvider(ConfigService)
+    .useValue(new ConfigService(developmentConfig))
+    .compile();
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  let rejectProvider = false;
+  globalThis.fetch = async (url, options) => {
+    assert.equal(String(url), 'https://api.resend.com/emails');
+    requests.push({
+      body: JSON.parse(options.body),
+      key: new globalThis.Headers(options.headers).get('Idempotency-Key'),
+    });
+    return new globalThis.Response(
+      JSON.stringify(
+        rejectProvider
+          ? {
+              name: 'application_error',
+              message: 'Synthetic provider rejection',
+            }
+          : { id: 'mock-provider-acceptance' },
+      ),
+      {
+        status: rejectProvider ? 500 : 200,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
+  };
+  try {
+    const adapter = providerModule.get(WelcomeMailer);
+    assert.ok(adapter instanceof ResendWelcomeMailer);
+    const providerWorker = new WelcomeOnboardingService(
+      source,
+      adapter,
+      new ConfigService(developmentConfig),
+    );
+    const existing = await source.query(
+      'SELECT * FROM welcome_email_deliveries ORDER BY user_id',
+    );
+    await providerWorker.deliverPending();
+    assert.equal(
+      requests.length,
+      0,
+      'Changing the transport must not replay completed rows',
+    );
+    assert.deepEqual(
+      await source.query(
+        'SELECT * FROM welcome_email_deliveries ORDER BY user_id',
+      ),
+      existing,
+    );
+
+    const provision = async (email) =>
+      source.transaction(async (manager) => {
+        const account = await manager.getRepository('User').save({
+          email,
+          displayName: 'Synthetic provider integration',
+          passwordHash: null,
+          emailVerifiedAt: new Date(),
+        });
+        await new WorkspacesService(
+          source.getRepository('Workspace'),
+        ).ensurePersonalWorkspace(account.id, manager);
+        await providerWorker.enroll(manager, account);
+        return account;
+      });
+    const acceptedUser = await provision('sdk-accepted@example.test');
+    await providerWorker.deliverPending(acceptedUser.id);
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].key, `welcome/${acceptedUser.id}`);
+    assert.deepEqual(requests[0].body.to, [acceptedUser.email]);
+    assert.ok((await row(acceptedUser.email)).sent_at);
+    pass(
+      'development Resend opt-in reaches the actual SDK through Nest DI and acknowledges mocked acceptance; existing rows are unchanged',
+    );
+
+    rejectProvider = true;
+    const rejectedUser = await provision('sdk-rejected@example.test');
+    await providerWorker.deliverPending(rejectedUser.id);
+    assert.equal(requests.length, 2);
+    const rejected = await row(rejectedUser.email);
+    assert.equal(rejected.sent_at, null);
+    assert.equal(rejected.attempts, 1);
+    assert.ok(rejected.next_attempt_at > rejected.first_attempt_at);
+    assert.deepEqual(
+      await source.query(
+        'SELECT * FROM welcome_email_deliveries WHERE user_id = ANY($1::uuid[]) ORDER BY user_id',
+        [existing.map((delivery) => delivery.user_id)],
+      ),
+      existing,
+    );
+    pass(
+      'mocked SDK rejection retains unsent retryable state without escaping the dispatcher',
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    await providerModule.close();
+  }
   console.log(`${checks} welcome PostgreSQL/HTTP integration checks passed.`);
 } finally {
   if (app) await app.close();
