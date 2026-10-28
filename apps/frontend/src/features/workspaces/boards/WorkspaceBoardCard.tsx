@@ -17,7 +17,14 @@ export function WorkspaceBoardCard({
   actions?: ReactNode;
 }) {
   return (
-    <article className="flex min-w-0 flex-col rounded-xl border border-line bg-surface shadow-card transition-colors hover:border-primary/40">
+    <article className="relative flex min-w-0 flex-col rounded-xl border border-line bg-surface shadow-card transition-colors hover:border-primary/40">
+      <span
+        aria-disabled="true"
+        className="absolute top-4 left-4 z-10 inline-flex items-center gap-1 rounded-md bg-surface px-2 py-1 text-[11px] text-muted"
+      >
+        <StarIcon className="size-3" />
+        Soon<span className="sr-only">Star board, coming soon</span>
+      </span>
       <Link
         to={`/boards/${encodeURIComponent(board.id)}`}
         aria-label={`Open ${board.name}${board.isArchived ? ', archived and read only' : ''}`}
@@ -25,13 +32,6 @@ export function WorkspaceBoardCard({
       >
         <div className="relative m-2 mb-0 flex h-24 items-center justify-center rounded-lg border border-line bg-app text-muted">
           <ColumnsIcon className="size-8" />
-          <span
-            aria-disabled="true"
-            className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-md bg-surface px-2 py-1 text-[11px] text-muted"
-          >
-            <StarIcon className="size-3" />
-            Soon<span className="sr-only">Star board, coming soon</span>
-          </span>
           <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-medium">
             <LockIcon className="size-3" />
             Private

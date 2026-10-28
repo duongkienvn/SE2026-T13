@@ -9,6 +9,7 @@ import { archiveBoard, restoreBoard } from '../../boards/api';
 import { boardKeys } from '../../boards/query-keys';
 import { revokeBoardAccess } from '../../boards/revoke-board-access';
 import { workspaceKeys } from '../query-keys';
+import type { WorkspaceOverview } from '../types';
 import type { WorkspaceBoardSummary } from './types';
 
 /** Board OWNER plus an explicit server capability; never Workspace ADMIN. */
@@ -61,7 +62,16 @@ export function WorkspaceBoardActions({
         scope.generation,
         workspaceId,
       );
-      await client.cancelQueries({ queryKey });
+      const overviewKey = workspaceKeys.overview(
+        user?.id ?? '',
+        scope.generation,
+        workspaceId,
+      );
+      await Promise.all([
+        client.cancelQueries({ queryKey }),
+        client.cancelQueries({ queryKey: overviewKey }),
+      ]);
+      if (!scope.isCurrent()) return;
       for (const query of client.getQueryCache().findAll({ queryKey }))
         query.setState({
           data: null,
@@ -72,6 +82,14 @@ export function WorkspaceBoardActions({
             'Board access changed. Reload boards.',
           ),
         });
+      // A previously readable Board may also exist in the shared Overview.
+      // Hide recents/count until a fresh ACL-filtered response confirms access.
+      client.setQueryData<WorkspaceOverview>(overviewKey, (current) =>
+        current
+          ? { ...current, recentBoards: [], visibleBoardCount: null }
+          : current,
+      );
+      void client.invalidateQueries({ queryKey: overviewKey });
     },
   });
   if (!allowed) return null;
