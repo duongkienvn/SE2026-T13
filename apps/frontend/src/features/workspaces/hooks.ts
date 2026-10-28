@@ -66,6 +66,15 @@ export function useWorkspaceOverview(workspaceId: string) {
           isApiError(error) &&
           [403, 404].includes(error.status)
         ) {
+          // Error queries otherwise retain their previous success payload.
+          client.setQueryData(
+            workspaceKeys.overview(
+              user?.id ?? '',
+              scope.generation,
+              workspaceId,
+            ),
+            null,
+          );
           const queryKey = workspaceKeys.list(user?.id ?? '', scope.generation);
           await client.cancelQueries({ queryKey });
           client.setQueryData<WorkspaceSummary[]>(queryKey, (items) =>

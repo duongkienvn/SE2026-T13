@@ -108,10 +108,7 @@ export function WorkspaceSwitcher({ expanded }: { expanded: boolean }) {
             </Link>
           ))}
           {query.state !== 'ready' && (
-            <p
-              role="status"
-              className="px-3 py-3 text-xs leading-relaxed text-muted"
-            >
+            <p className="px-3 py-3 text-xs leading-relaxed text-muted">
               {query.state === 'loading'
                 ? 'Loading workspaces…'
                 : query.state === 'unavailable'

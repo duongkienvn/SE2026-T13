@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '../../../components/Button';
 import { Dialog } from '../../../components/Dialog';
@@ -29,6 +29,13 @@ function CreateWorkspaceForm({ onClose }: { onClose: () => void }) {
   const mutation = useCreateTeamWorkspace();
   const navigate = useNavigate();
   const submitting = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const noticeId = useId();
   const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
   const validate = () => {
@@ -54,7 +61,7 @@ function CreateWorkspaceForm({ onClose }: { onClose: () => void }) {
         name: name.trim(),
         description: description.trim(),
       });
-      if (!mutation.isCurrent()) return;
+      if (!mounted.current || !mutation.isCurrent()) return;
       onClose();
       void navigate(workspacePath(workspace.id));
     } catch {

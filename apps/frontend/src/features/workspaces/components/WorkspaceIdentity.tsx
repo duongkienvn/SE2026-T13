@@ -39,7 +39,7 @@ export function WorkspaceIdentity({
       />
       <div className="min-w-0 flex-1 basis-40">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-semibold tracking-tight break-words text-ink sm:text-2xl [overflow-wrap:anywhere]">
+          <h1 className="min-w-0 max-w-full text-xl font-semibold tracking-tight text-ink sm:text-2xl [overflow-wrap:anywhere]">
             {workspace?.name ??
               (loading ? 'Loading workspace…' : 'Workspace overview')}
           </h1>
