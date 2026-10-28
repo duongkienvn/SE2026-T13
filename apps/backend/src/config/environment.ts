@@ -2,6 +2,7 @@ import {
   validateAvatarEnvironment,
   type AvatarEnvironment,
 } from '../api/users/avatars/avatar.config';
+import { invitationAcceptPath } from '../mail/workspace-invitation-link';
 
 export type AppEnvironment = 'development' | 'test' | 'production';
 export type MailTransport = 'fake' | 'resend';
@@ -22,6 +23,7 @@ export interface EnvironmentConfig extends AvatarEnvironment {
   RESEND_API_KEY: string;
   MAIL_FROM: string;
   PUBLIC_APP_URL: string;
+  WORKSPACE_INVITATION_ACCEPT_PATH: string;
   DATABASE_HOST: string;
   DATABASE_PORT: number;
   DATABASE_NAME: string;
@@ -203,6 +205,9 @@ export function validateEnvironment(
     RESEND_API_KEY: resendKey,
     MAIL_FROM: mailFrom,
     PUBLIC_APP_URL: appUrl,
+    WORKSPACE_INVITATION_ACCEPT_PATH: invitationAcceptPath(
+      input.WORKSPACE_INVITATION_ACCEPT_PATH,
+    ),
     NODE_ENV: nodeEnv,
     API_PORT: port(input.API_PORT, 'API_PORT', 3000),
     API_PREFIX: apiPrefix,
