@@ -12,10 +12,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { AuthenticatedUser } from '../auth/constants/auth.constants';
+import type { AuthenticatedUser } from '../auth/constants/auth.constants';
 import {
   ApiBearerToken,
   ApiCommonErrors,
@@ -27,10 +27,12 @@ import { SerializeResponse } from '../../decorators/response.decorators';
 import { WorkspaceInvitationsService } from './workspace-invitations.service';
 import { WorkspaceInvitationIssuanceService } from './workspace-invitation-issuance.service';
 import {
+  AcceptWorkspaceInvitationDto,
   CreateWorkspaceInvitationDto,
   WorkspaceInvitationResponseDto,
   WorkspaceInvitationsQueryDto,
 } from './dto/workspace-invitations.dto';
+import { WorkspaceMemberResponseDto } from './dto/workspace-members.dto';
 
 @ApiTags('workspace-invitations')
 @UseGuards(JwtAuthGuard)
@@ -88,5 +90,31 @@ export class WorkspaceInvitationsController {
     @Param('invitationId', ParseUUIDPipe) invitationId: string,
   ) {
     return this.invitations.revoke(user.userId, workspaceId, invitationId);
+  }
+}
+
+@ApiTags('workspace-invitations')
+@UseGuards(JwtAuthGuard)
+@Controller('workspace-invitations')
+export class WorkspaceInvitationAcceptanceController {
+  constructor(private readonly invitations: WorkspaceInvitationsService) {}
+
+  @Post('accept')
+  @ApiBearerToken()
+  @ApiCommonErrors([400, 401, 403, 409, 410, 429, 500])
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @SerializeResponse(WorkspaceMemberResponseDto)
+  @ApiSuccess({
+    type: WorkspaceMemberResponseDto,
+    summary:
+      'Consume delivered proof for matching verified authenticated email',
+  })
+  accept(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() input: AcceptWorkspaceInvitationDto,
+  ) {
+    return this.invitations.accept(user.userId, input.proof);
   }
 }
