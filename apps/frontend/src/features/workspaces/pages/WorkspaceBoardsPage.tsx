@@ -10,6 +10,7 @@ import { useAuthSession } from '../../auth/auth-session-context';
 import { Button } from '../../../components/Button';
 import { PlusIcon } from '../../../components/icons';
 import { CreateWorkspaceBoardDialog } from '../boards/CreateWorkspaceBoardDialog';
+import { WorkspaceBoardActions } from '../boards/WorkspaceBoardActions';
 import { useWorkspacePage } from '../components/WorkspaceLayout';
 import { WorkspaceState } from '../components/WorkspaceState';
 
@@ -98,6 +99,9 @@ function WorkspaceBoardsContent({ workspaceId }: { workspaceId: string }) {
         boards={query.pageData?.items ?? []}
         state={query.state}
         filtered={control.filtered}
+        actions={(board) => (
+          <WorkspaceBoardActions board={board} workspaceId={workspaceId} />
+        )}
       />
       {query.pageData && (
         <div className="space-y-3">
