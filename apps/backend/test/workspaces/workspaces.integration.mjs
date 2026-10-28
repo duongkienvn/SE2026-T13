@@ -233,7 +233,11 @@ async function inspectConstraints(owner, guest, personalId) {
     '23503',
   );
   await sqlstate(
-    invite({ inviter: randomUUID(), hash: 'b'.repeat(64) }),
+    invite({
+      inviter: randomUUID(),
+      hash: 'b'.repeat(64),
+      email: 'orphan-inviter@example.test',
+    }),
     '23503',
   );
   pass(
@@ -773,7 +777,7 @@ async function inspectAuthentication() {
 try {
   await admin.connect();
   await openDatabase();
-  assert.equal((await source.runMigrations()).length, 12);
+  assert.equal((await source.runMigrations()).length, 13);
   assert.deepEqual(await source.runMigrations(), []);
   assert.equal(source.entityMetadatas.length, 17);
   const drift = await source.driver.createSchemaBuilder().log();
@@ -782,12 +786,13 @@ try {
     [],
     'Entity metadata must match final migrations',
   );
-  // Revert the icon, welcome ledger and both Workspace foundation migrations.
+  // Revert invitation, icon, empty welcome ledger and both Workspace foundation stages.
+  await source.undoLastMigration(); // Invitation lifecycle.
   await source.undoLastMigration(); // Workspace icon.
   await source.undoLastMigration(); // Empty welcome ledger.
   await source.undoLastMigration();
   await source.undoLastMigration();
-  assert.equal((await source.runMigrations()).length, 4);
+  assert.equal((await source.runMigrations()).length, 5);
   pass(
     'Fresh database, metadata/discovery, no schema drift, empty down/up and migration retry',
   );
@@ -803,7 +808,8 @@ try {
     (m) =>
       !m.name.startsWith('WorkspaceFoundation') &&
       !m.name.startsWith('LegacyBoardWorkspaces') &&
-      !m.name.startsWith('WorkspaceIcon'),
+      !m.name.startsWith('WorkspaceIcon') &&
+      !m.name.startsWith('WorkspaceInvitationLifecycle'),
   );
   await source.runMigrations();
   const atomicUser = await user('atomic-upgrade@example.test');
@@ -838,7 +844,7 @@ try {
   assert.deepEqual(await snapshot(), atomicBefore);
   await source.query('DROP TRIGGER fail_atomic_upgrade ON boards');
   await source.query('DROP FUNCTION fail_atomic_upgrade()');
-  assert.equal((await source.runMigrations()).length, 3);
+  assert.equal((await source.runMigrations()).length, 4);
   assert.deepEqual(await snapshot(), atomicBefore);
   pass(
     'Default all-migrations failure rolls back schema, content and history; two-stage retry recovers',
@@ -854,7 +860,8 @@ try {
     (m) =>
       !m.name.startsWith('WorkspaceFoundation') &&
       !m.name.startsWith('LegacyBoardWorkspaces') &&
-      !m.name.startsWith('WorkspaceIcon'),
+      !m.name.startsWith('WorkspaceIcon') &&
+      !m.name.startsWith('WorkspaceInvitationLifecycle'),
   );
   await source.runMigrations();
   const owner = await user('legacy-owner@example.test');
@@ -903,7 +910,8 @@ try {
   source.migrations = migrations.filter(
     (m) =>
       !m.name.startsWith('LegacyBoardWorkspaces') &&
-      !m.name.startsWith('WorkspaceIcon'),
+      !m.name.startsWith('WorkspaceIcon') &&
+      !m.name.startsWith('WorkspaceInvitationLifecycle'),
   );
   assert.equal((await source.runMigrations()).length, 1);
   assert.deepEqual(await snapshot(), before);
@@ -950,7 +958,7 @@ try {
   assert.deepEqual(await snapshot(), before);
   await source.query('DROP TRIGGER reject_backfill_fixture ON boards');
   await source.query('DROP FUNCTION reject_backfill_fixture()');
-  assert.equal((await source.runMigrations()).length, 2);
+  assert.equal((await source.runMigrations()).length, 3);
   assert.deepEqual(await snapshot(), before);
   pass(
     'Backfill failure rolls back data and migration history; retry preserves all legacy JSON records exactly',
@@ -1031,18 +1039,20 @@ try {
     memberships,
   );
   assert.deepEqual(await snapshot(), before);
+  await source.undoLastMigration(); // Invitation lifecycle.
   await source.undoLastMigration(); // Workspace icon.
   await source.undoLastMigration();
   await assert.rejects(
     source.undoLastMigration(),
     /Cannot discard populated Workspace data/,
   );
-  assert.equal((await source.runMigrations()).length, 2);
+  assert.equal((await source.runMigrations()).length, 3);
   pass(
     'Supported backfill rerun and constrain down/up are idempotent; destructive down refuses populated data',
   );
 
   // Prove the migration reports inconsistent preassignment instead of silently fixing it.
+  await source.undoLastMigration(); // Invitation lifecycle.
   await source.undoLastMigration(); // Workspace icon.
   await source.undoLastMigration();
   await source.query(
@@ -1067,7 +1077,7 @@ try {
     personal.id,
     boardIds[1],
   ]);
-  assert.equal((await source.runMigrations()).length, 2);
+  assert.equal((await source.runMigrations()).length, 3);
   pass(
     'Unexpected preassignment/visibility fails closed and explicit remediation permits retry',
   );

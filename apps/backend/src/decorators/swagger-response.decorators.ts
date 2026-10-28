@@ -15,7 +15,11 @@ import {
 
 interface DocumentedResponseOptions<T extends Type<unknown>> {
   type: T;
-  status?: HttpStatus.OK | HttpStatus.CREATED | HttpStatus.NO_CONTENT;
+  status?:
+    | HttpStatus.OK
+    | HttpStatus.CREATED
+    | HttpStatus.ACCEPTED
+    | HttpStatus.NO_CONTENT;
   summary?: string;
   description?: string;
 }

@@ -13,6 +13,7 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Workspace } from './workspace.entity';
+import type { InvitationSendState } from '../workspace-invitation-mailer';
 
 /** Persistence only. P2-03 owns verified-email binding and atomic consumption. */
 @Entity('workspace_invitations')
@@ -31,6 +32,15 @@ import { Workspace } from './workspace.entity';
 @Index('IDX_workspace_invitations_workspace_email', ['workspaceId', 'email'])
 @Index('IDX_workspace_invitations_expires_at', ['expiresAt'])
 @Index('IDX_workspace_invitations_invited_by_id', ['invitedById'])
+@Index('IDX_workspace_invitations_created_at', ['createdAt'])
+@Index('UQ_workspace_invitations_open_email', ['workspaceId', 'email'], {
+  unique: true,
+  where: '"consumed_at" IS NULL AND "revoked_at" IS NULL',
+})
+@Check(
+  'CK_workspace_invitations_send_state',
+  `"send_state" IN ('UNAVAILABLE', 'DISPATCHING', 'SENT', 'FAILED', 'UNKNOWN')`,
+)
 export class WorkspaceInvitation {
   @PrimaryGeneratedColumn('uuid') id!: string;
   @Column({ name: 'workspace_id', type: 'uuid' }) workspaceId!: string;
@@ -44,6 +54,13 @@ export class WorkspaceInvitation {
   @Column({ type: 'varchar' }) role!: WorkspaceRole;
   @Column({ name: 'token_hash', type: 'char', length: 64, select: false })
   tokenHash!: string;
+  @Column({
+    name: 'send_state',
+    type: 'varchar',
+    length: 16,
+    default: 'UNAVAILABLE',
+  })
+  sendState!: InvitationSendState;
   @Column({ name: 'expires_at', type: 'timestamptz' }) expiresAt!: Date;
   @Column({ name: 'consumed_at', type: 'timestamptz', nullable: true })
   consumedAt!: Date | null;
