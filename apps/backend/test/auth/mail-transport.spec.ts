@@ -5,6 +5,11 @@ import { validateEnvironment } from '../../src/config/environment';
 import { MailModule } from '../../src/mail/mail.module';
 import { ResendVerificationMailer } from '../../src/mail/resend-verification-mailer';
 import {
+  FakeWelcomeMailer,
+  WelcomeMailer,
+} from '../../src/mail/welcome-mailer';
+import { ResendWelcomeMailer } from '../../src/mail/resend-welcome-mailer';
+import {
   PasswordRecoveryMailer,
   FakePasswordRecoveryMailer,
 } from '../../src/mail/password-recovery-mailer';
@@ -88,7 +93,10 @@ describe('mail transport configuration', () => {
             ? FakePasswordRecoveryMailer
             : ResendPasswordRecoveryMailer,
         );
-        expect(Resend).toHaveBeenCalledTimes(expected === 'resend' ? 2 : 0);
+        expect(module.get(WelcomeMailer)).toBeInstanceOf(
+          expected === 'fake' ? FakeWelcomeMailer : ResendWelcomeMailer,
+        );
+        expect(Resend).toHaveBeenCalledTimes(expected === 'resend' ? 3 : 0);
         if (expected === 'fake') expect(config.RESEND_API_KEY).toBe('');
         else expect(config.RESEND_API_KEY === mail.RESEND_API_KEY).toBe(true);
       } finally {
