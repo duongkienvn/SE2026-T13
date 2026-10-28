@@ -11,6 +11,7 @@ import { randomBytes } from 'node:crypto';
 import { Logger } from 'nestjs-pino';
 import request from 'supertest';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { WorkspacesService } from '../../src/api/workspaces/workspaces.service';
 import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
 import { JwtAuthGuard } from '../../src/api/auth/guards/jwt-auth.guard';
 import {
@@ -70,6 +71,10 @@ describe('preferences HTTP contract (real JWT, mocked preferences service)', () 
       controllers: [UserPreferencesController],
       providers: [
         AuthService,
+        {
+          provide: WorkspacesService,
+          useValue: { ensurePersonalWorkspace: jest.fn() },
+        },
         JwtAuthGuard,
         { provide: EmailVerificationService, useValue: {} },
         {

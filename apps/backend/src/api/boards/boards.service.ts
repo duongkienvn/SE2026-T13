@@ -23,7 +23,8 @@ import { ErrorCode } from '../../common/dto/api-error';
 import { UpdateBoardDto } from './dto/update-board.dto';
 import { BoardAuthorizationService } from '../board-members/board-authorization.service';
 import { BoardEventPublisher } from '../../realtime/board-event-publisher.service';
-import { RealtimeServerEvent } from '@kanban/shared';
+import { BoardVisibility, RealtimeServerEvent } from '@kanban/shared';
+import { WorkspacesService } from '../workspaces/workspaces.service';
 
 @Injectable()
 export class BoardsService {
@@ -34,6 +35,7 @@ export class BoardsService {
     private readonly authorization: BoardAuthorizationService,
     private readonly activities: ActivityWriterService,
     private readonly events: BoardEventPublisher,
+    private readonly workspaces: WorkspacesService,
   ) {}
 
   async archive(userId: string, boardId: string): Promise<BoardResponseDto> {
@@ -193,11 +195,17 @@ export class BoardsService {
     return this.boards.manager.transaction(async (manager) => {
       const boards = manager.getRepository(Board);
       const members = manager.getRepository(BoardMember);
+      const workspace = await this.workspaces.ensurePersonalWorkspace(
+        userId,
+        manager,
+      );
       const board = await boards.save(
         boards.create({
           name: input.name,
           description: input.description ?? null,
           createdById: userId,
+          workspaceId: workspace.id,
+          visibility: BoardVisibility.PRIVATE,
         }),
       );
       const member = await members.save(

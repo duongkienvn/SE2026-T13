@@ -125,6 +125,11 @@ try {
   );
   await source.destroy();
   source = await new DataSource(options).initialize();
+  const allMigrations = [...source.migrations];
+  const preferencesMigration = allMigrations.find(
+    (m) => m.name === 'UserPreferences1792886400000',
+  );
+  source.migrations = [preferencesMigration];
   assert.equal((await source.runMigrations()).length, 1);
   assert.deepEqual(
     await source.query('SELECT * FROM users ORDER BY id'),
@@ -140,6 +145,8 @@ try {
   );
   await source.undoLastMigration();
   assert.equal((await source.runMigrations()).length, 1);
+  source.migrations = allMigrations;
+  await source.runMigrations();
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries.map(
       (q) => q.query,
@@ -213,7 +220,9 @@ try {
     .expect(200);
   assert.deepEqual(response.body.data, { ...saved });
   await assert.rejects(
-    source.undoLastMigration(),
+    source.transaction((manager) =>
+      preferencesMigration.down(manager.queryRunner),
+    ),
     /Cannot revert user preferences/,
   );
   assert.deepEqual(await app.get(UserPreferencesService).get(legacy.id), saved);

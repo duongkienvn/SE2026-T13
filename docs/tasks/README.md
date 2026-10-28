@@ -27,6 +27,8 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Backend tasks
 
+- [Workspace data foundation and legacy Board migration](backend/workspace-data-foundation.md)
+
 - [Backend foundation](backend/backend-foundation-pr-description.md)
 - [Authentication](backend/backend-authentication.md)
 - [Registration password policy](backend/auth-registration-password-policy.md)

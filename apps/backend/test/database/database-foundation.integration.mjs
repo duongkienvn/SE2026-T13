@@ -68,6 +68,9 @@ async function inspectSchema() {
       'password_reset_tokens',
       'user_preferences',
       'users',
+      'workspace_invitations',
+      'workspace_members',
+      'workspaces',
     ],
   );
 
@@ -100,7 +103,7 @@ async function inspectSchema() {
   for (const [name, behavior] of Object.entries(deletes)) {
     assert.equal(byName.get(name)?.confdeltype, behavior, name);
   }
-  assert.equal(constraints.filter((row) => row.contype === 'f').length, 19);
+  assert.equal(constraints.filter((row) => row.contype === 'f').length, 25);
   for (const row of constraints.filter(
     (row) => row.contype === 'f' && !(row.conname in deletes),
   )) {
@@ -379,7 +382,7 @@ try {
   assert.equal(source.options.logging, false);
   assert.equal(source.options.synchronize, false);
   assert.equal(source.options.migrationsRun, false);
-  assert.equal(source.entityMetadatas.length, 13);
+  assert.equal(source.entityMetadatas.length, 16);
   assert.deepEqual(
     source.entityMetadatas.map((entity) => entity.tableName).sort(),
     [
@@ -396,9 +399,12 @@ try {
       'password_reset_tokens',
       'user_preferences',
       'users',
+      'workspace_invitations',
+      'workspace_members',
+      'workspaces',
     ],
   );
-  assert.equal(source.migrations.length, 8);
+  assert.equal(source.migrations.length, 10);
 
   const originalDatabase = process.env.DATABASE_NAME;
   process.env.DATABASE_NAME = testDatabase;
@@ -409,8 +415,8 @@ try {
     });
     try {
       const nestDataSource = app.get(DataSource);
-      assert.equal(nestDataSource.entityMetadatas.length, 13);
-      assert.equal(nestDataSource.migrations.length, 8);
+      assert.equal(nestDataSource.entityMetadatas.length, 16);
+      assert.equal(nestDataSource.migrations.length, 10);
       assert.equal(nestDataSource.options.poolSize, source.options.poolSize);
       assert.equal(
         nestDataSource.options.connectTimeoutMS,
@@ -424,7 +430,7 @@ try {
     process.env.DATABASE_NAME = originalDatabase;
   }
 
-  assert.equal((await source.runMigrations()).length, 8);
+  assert.equal((await source.runMigrations()).length, 10);
   const cliOutput = execFileSync(
     process.execPath,
     [
@@ -448,7 +454,7 @@ try {
       '-e',
       `const dataSource = require('./src/database/data-source.ts').default;
        dataSource.initialize().then(async () => {
-         if (dataSource.entityMetadatas.length !== 13 || dataSource.migrations.length !== 8) {
+         if (dataSource.entityMetadatas.length !== 16 || dataSource.migrations.length !== 10) {
            throw new Error('TypeScript DataSource discovery mismatch');
          }
          await dataSource.destroy();
@@ -466,6 +472,17 @@ try {
   console.log('Migration run and schema/behavior inspection: PASS');
 
   await source.undoLastMigration();
+  await assert.rejects(
+    source.undoLastMigration(),
+    /Cannot discard populated Workspace data/,
+  );
+  // Explicit fixture cleanup is restricted to this script's random disposable DB.
+  await source.query('DELETE FROM board_columns');
+  await source.query('DELETE FROM boards');
+  await source.query('DELETE FROM workspace_members');
+  await source.query('DELETE FROM workspaces');
+  await source.undoLastMigration();
+  await source.undoLastMigration();
   assert.equal(
     (
       await source.query(
@@ -479,7 +496,7 @@ try {
   await source.undoLastMigration();
   await source.undoLastMigration();
   await assert.rejects(source.undoLastMigration(), /cannot be safely removed/);
-  assert.equal((await source.runMigrations()).length, 5);
+  assert.equal((await source.runMigrations()).length, 7);
   await inspectSchema();
   console.log(
     'Enum rollback retains existing values/history; idempotent reapply: PASS',

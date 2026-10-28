@@ -19,19 +19,22 @@ import { LoginRequestDto } from './dto/login-request.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { RegisterRequestDto } from './dto/register-request.dto';
 import { EmailVerificationService } from './email-verification.service';
+import { WorkspacesService } from '../workspaces/workspaces.service';
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DUMMY_PASSWORD_HASH =
   '$argon2id$v=19$m=65536,t=3,p=4$FkCAAQOfeN/lp3mMq1O8aw$LWh98eRvcVRX1VCWEcG9asSUZIBwaYSxzn6jPGgxQ9I';
 
-function isUniqueViolation(error: QueryFailedError): boolean {
+function isEmailUniqueViolation(error: QueryFailedError): boolean {
   const driverError = error.driverError;
   return (
     typeof driverError === 'object' &&
     driverError !== null &&
     'code' in driverError &&
-    driverError.code === '23505'
+    driverError.code === '23505' &&
+    'constraint' in driverError &&
+    driverError.constraint === 'UQ_users_email'
   );
 }
 
@@ -41,6 +44,7 @@ export class AuthService {
     @InjectRepository(User) private readonly users: Repository<User>,
     private readonly jwt: JwtService,
     private readonly verification: EmailVerificationService,
+    private readonly workspaces: WorkspacesService,
   ) {}
 
   async register(input: RegisterRequestDto): Promise<UserResponseDto> {
@@ -49,25 +53,35 @@ export class AuthService {
     });
     if (existing) throw this.emailAlreadyExists();
 
+    // Hash before opening the transaction; no row lock spans this CPU work.
+    const passwordHash = await argon2.hash(input.password, {
+      type: argon2.argon2id,
+    });
+    let saved: User;
     try {
-      const user = this.users.create({
-        email: input.email,
-        passwordHash: await argon2.hash(input.password, {
-          type: argon2.argon2id,
-        }),
-        displayName: input.displayName,
-        avatarUrl: null,
-        emailVerifiedAt: null,
+      saved = await this.users.manager.transaction(async (manager) => {
+        const users = manager.getRepository(User);
+        const user = await users.save(
+          users.create({
+            email: input.email,
+            passwordHash,
+            displayName: input.displayName,
+            avatarUrl: null,
+            emailVerifiedAt: null,
+          }),
+        );
+        await this.workspaces.ensurePersonalWorkspace(user.id, manager);
+        return user;
       });
-      const saved = await this.users.save(user);
-      await this.verification.send(saved.email, true);
-      return toUserResponseDto(saved);
     } catch (error) {
-      if (error instanceof QueryFailedError && isUniqueViolation(error)) {
+      if (error instanceof QueryFailedError && isEmailUniqueViolation(error)) {
         throw this.emailAlreadyExists();
       }
       throw error;
     }
+    // Delivery failure retains the committed pending account + Workspace for resend.
+    await this.verification.send(saved.email, true);
+    return toUserResponseDto(saved);
   }
 
   async login(input: LoginRequestDto): Promise<LoginResponseDto> {

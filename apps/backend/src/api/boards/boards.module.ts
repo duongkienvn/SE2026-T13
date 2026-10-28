@@ -8,9 +8,11 @@ import { BoardsController } from './boards.controller';
 import { BoardsService } from './boards.service';
 import { ActivityWriterModule } from '../activities/activity-writer.module';
 import { RealtimeDeliveryModule } from '../../realtime/realtime-delivery.module';
+import { WorkspacesModule } from '../workspaces/workspaces.module';
 
 @Module({
   imports: [
+    WorkspacesModule,
     AuthModule,
     BoardMembersModule,
     ActivityWriterModule,

@@ -28,6 +28,7 @@ import { GlobalExceptionFilter } from '../../src/filters/global-exception.filter
 import { BoardMemberRole } from '../../src/common/enums/database-enums';
 import { BoardEventPublisher } from '../../src/realtime/board-event-publisher.service';
 import { User } from '../../src/api/users/entities/user.entity';
+import { WorkspacesService } from '../../src/api/workspaces/workspaces.service';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: (entity: { name: string }) =>
@@ -87,6 +88,12 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
       controllers: [BoardsController],
       providers: [
         BoardsService,
+        {
+          provide: WorkspacesService,
+          useValue: {
+            ensurePersonalWorkspace: async () => ({ id: 'personal-workspace' }),
+          },
+        },
         { provide: ActivityWriterService, useValue: { record: jest.fn() } },
         { provide: BoardEventPublisher, useValue: { publish: jest.fn() } },
         BoardAuthorizationService,

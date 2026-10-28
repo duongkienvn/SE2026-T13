@@ -137,8 +137,12 @@ try {
       .name,
     'Private board',
   );
-  await source.undoLastMigration();
-  assert.equal((await source.runMigrations()).length, 1);
+  // Exercise this migration explicitly; newer migrations may be applied after it.
+  await source.transaction(async (manager) => {
+    await avatarMigration.down(manager.queryRunner);
+    await avatarMigration.up(manager.queryRunner);
+  });
+  assert.equal((await source.runMigrations()).length, 0);
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries.map(
       (q) => q.query,
@@ -657,7 +661,7 @@ try {
     .getCurrentUser(legacy.id);
   assert.equal(publicLegacy.avatarUrl, legacy.avatar_url);
   await assert.rejects(
-    source.undoLastMigration(),
+    source.transaction((manager) => avatarMigration.down(manager.queryRunner)),
     /Detach or export private avatars/,
   );
   console.log(

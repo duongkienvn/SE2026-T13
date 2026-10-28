@@ -1,8 +1,14 @@
-# Database Design — Realtime Collaborative Kanban MVP
+# Database Design — Kanvexa
 
 ## Tổng quan
 
 Tài liệu này chốt schema và các ràng buộc dữ liệu cho MVP, làm cơ sở cho task triển khai TypeORM entities và migration đầu tiên. PostgreSQL lưu persistent business state; TypeORM dùng migrations với `synchronize: false`. Tám bảng domain gồm `users`, `boards`, `board_members`, `board_columns`, `cards`, `card_assignees`, `comments` và `activities`; K2 và #79 bổ sung `email_verification_tokens` và `google_identities` thuộc auth.
+
+P2-01 bổ sung persistence foundation `workspaces`, `workspace_members`,
+`workspace_invitations`, cùng `boards.workspace_id` và `visibility`. Các extension
+preferences/password/avatar được mô tả bên dưới. Schema sau migration có 16 entity
+tables; Workspace API/UI và quyền Workspace-visible chưa được triển khai trong
+foundation này. Xem [migration, rollout và verification](../tasks/backend/workspace-data-foundation.md).
 
 Mọi bảng dùng UUID primary key. Tên bảng/cột trong database dùng `snake_case`, property TypeScript dùng `camelCase`. Các timestamp dùng PostgreSQL `timestamptz` và lưu theo UTC.
 
@@ -10,6 +16,12 @@ Mọi bảng dùng UUID primary key. Tên bảng/cột trong database dùng `sna
 
 ```mermaid
 erDiagram
+    users ||--o{ workspaces : creates_and_personally_owns
+    workspaces ||--o{ workspace_members : has
+    users ||--o{ workspace_members : joins
+    workspaces ||--o{ workspace_invitations : has
+    users ||--o{ workspace_invitations : invites
+    workspaces ||--o{ boards : contains
     users ||--o{ boards : creates
     boards ||--o{ board_columns : has
     board_columns ||--o{ cards : contains
@@ -33,6 +45,26 @@ erDiagram
     boards {
         uuid id PK
         uuid created_by_id FK
+        uuid workspace_id FK
+        varchar visibility
+    }
+    workspaces {
+        uuid id PK
+        varchar type
+        uuid created_by_id FK
+    }
+    workspace_members {
+        uuid id PK
+        uuid workspace_id FK
+        uuid user_id FK
+        varchar role
+    }
+    workspace_invitations {
+        uuid id PK
+        uuid workspace_id FK
+        uuid invited_by_id FK
+        varchar email
+        char token_hash UK
     }
     board_columns {
         uuid id PK
@@ -135,6 +167,12 @@ version. See [lifecycle and deployment details](../tasks/backend/password-recove
 
 ### `boards`
 
+P2-01 thêm UUID `workspace_id NOT NULL` (FK → `workspaces.id`, NO ACTION,
+index `IDX_boards_workspace_id`) và varchar `visibility NOT NULL DEFAULT 'PRIVATE'`
+(CHECK chỉ nhận `PRIVATE`/`WORKSPACE_VISIBLE`). Board thuộc đúng một Workspace;
+`created_by_id` vẫn là người tạo Board, không thay bằng Workspace owner.
+Existing response DTOs và Board authorization tiếp tục chỉ dùng Board membership.
+
 | Cột             | PostgreSQL type | Nullable | Ràng buộc / ý nghĩa         |
 | --------------- | --------------- | -------- | --------------------------- |
 | `id`            | `uuid`          | Không    | Primary key.                |
@@ -147,6 +185,48 @@ version. See [lifecycle and deployment details](../tasks/backend/password-recove
 | `updated_at`    | `timestamptz`   | Không    | Thời điểm cập nhật.         |
 
 Khi tạo `Board`, tạo cả `BoardMember` cho người tạo với role `OWNER`. Các bước persistence này phải nhất quán, dự kiến trong cùng transaction. Normal user flow dùng archive; hard delete không phải operation mặc định của MVP.
+
+Tạo Board hiện gọi `WorkspacesService.ensurePersonalWorkspace(currentUserId,
+manager)` trong cùng transaction trước khi lưu Board PRIVATE và Board OWNER.
+Client chưa được chọn Team Workspace hoặc đổi visibility tại đây.
+
+### Workspace foundation (P2-01)
+
+| Table                   | Columns / invariants                                                                                                                                                                                                                                                                                                                                                                               |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `workspaces`            | UUID `id`; varchar `type` PERSONAL/TEAM; nonblank `name varchar(120)`; nullable text `description`; UUID `created_by_id` FK User, NO ACTION; `created_at`/`updated_at` timestamptz. Creator là durable owner của PERSONAL. Partial unique `UQ_workspaces_personal_creator(created_by_id) WHERE type='PERSONAL'`; index creator cho lookup/FK. Icon representation để P2-02 chốt, chưa thêm cột.    |
+| `workspace_members`     | UUID `id`; UUID workspace/user FKs NO ACTION; varchar `role` ADMIN/MEMBER; `joined_at`/`created_at`/`updated_at` timestamptz. Unique `(workspace_id,user_id)`; indexes `user_id`, `(workspace_id,role)`. Personal owner được provision ADMIN; không copy Board collaborators.                                                                                                                      |
+| `workspace_invitations` | UUID `id`; UUID workspace/inviter FKs NO ACTION; normalized `email varchar(320)` (lowercase, trimmed, basic email shape); varchar role ADMIN/MEMBER; unique SHA-256 lowercase hex `token_hash char(64)` (excluded from default entity SELECT); required `expires_at`; nullable `consumed_at`/`revoked_at`; `created_at`/`updated_at` timestamptz. Indexes `(workspace_id,email)`, expiry, inviter. |
+
+Invitation expiry phải sau creation; consumed time thuộc `[created_at,expires_at)`;
+revocation không trước creation; consumed và revoked loại trừ nhau. Không có
+plaintext token, issuance/acceptance/mail API, hoặc computed state column.
+Pending là chưa consumed/revoked và chưa expired; P2-03 chịu trách nhiệm khóa,
+verified-email binding, single-use và chính sách pending duplicates trong service.
+
+Mọi FK mới dùng NO ACTION: xóa Workspace không cascade Board/Card/User.
+Workspace ADMIN không có Board grant. Last-admin protection, Team management và
+Workspace-visible read policy phải được triển khai qua các issue tương ứng.
+
+`public.ensure_personal_workspace(uuid)` là persistence primitive SECURITY INVOKER
+dùng chung cho service, migration và old-writer bridge. Partial unique upsert khóa
+Workspace rồi insert/repair owner ADMIN; repeat giữ IDs/timestamps nếu grant đã
+đúng. Service nhận trusted identity, cung cấp lookup và transaction participation.
+Không có Workspace REST controller hay socket contract mới.
+
+Migration expand `1793145600000-WorkspaceFoundation` thêm nullable Board FK và
+trigger `TR_boards_workspace_bridge` để lệnh cũ thiếu Workspace được gán Personal
+và PRIVATE trước khi kiểm tra constraints. Migration
+`1793145600001-LegacyBoardWorkspaces` provision mọi User, backfill Board theo creator,
+verify rồi SET NOT NULL dưới Board lock. Raw SQL không sửa legacy timestamps.
+New users nhận Personal Workspace + ADMIN ngay khi tạo account: email registration
+lưu User + Workspace + ADMIN trong cùng transaction, trước email verification;
+Google signup lưu cùng transaction với User và GoogleIdentity. Email xác minh chỉ
+gửi sau commit. Google login/link không provision thêm Workspace. Tạo Board vẫn
+gọi ensure để reuse Workspace hiện có và phục hồi an toàn cho legacy/old writers;
+không có Board/Column/Card mẫu trong P2-01.
+Bridge phải được giữ qua application rollback/cutover; production dùng
+maintenance window đã drain writers. Xem [runbook](../deployment/workspace-foundation.md).
 
 ### `board_members`
 
@@ -303,4 +383,7 @@ Timestamp persistent dùng `timestamptz` và lưu theo UTC; việc hiển thị 
 
 ## Ngoài phạm vi database MVP
 
-Chưa có workspace, labels, attachments, checklist, card priority, notification system, invitation token system, calendar, time tracking, analytics, automation rules hoặc CRDT state. Nếu sau này có requirement, bổ sung bằng migration mới.
+Chưa có labels, attachments, checklist, card priority, notification system,
+calendar, time tracking, analytics, automation rules hoặc CRDT state. Workspace và
+invitation persistence đã có ở P2-01; Workspace management/invitation workflow và
+visibility authorization còn thuộc các issue tiếp theo.
