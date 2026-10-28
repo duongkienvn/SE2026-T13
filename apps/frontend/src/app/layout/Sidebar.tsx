@@ -10,9 +10,20 @@ interface SidebarProps {
   groups: NavGroup[];
   activeItemId?: string;
   footer?: (expanded: boolean) => ReactNode;
+  workspaceSlots?: WorkspaceShellSlots;
 }
 
-export function Sidebar({ groups, activeItemId, footer }: SidebarProps) {
+export interface WorkspaceShellSlots {
+  switcher: (expanded: boolean) => ReactNode;
+  navigation: (expanded: boolean) => ReactNode;
+}
+
+export function Sidebar({
+  groups,
+  activeItemId,
+  footer,
+  workspaceSlots,
+}: SidebarProps) {
   const { expanded, desktop, toggle } = useSidebarPreference();
   const itemsId = useId();
   const toggleButton = desktop && (
@@ -62,6 +73,7 @@ export function Sidebar({ groups, activeItemId, footer }: SidebarProps) {
           groups={groups}
           activeItemId={activeItemId}
           expanded={expanded}
+          workspaceSlots={workspaceSlots}
         />
       </div>
       {footer && (
@@ -81,6 +93,7 @@ interface SidebarNavContentProps {
   expanded: boolean;
   /** Touch layout for the mobile drawer: 44px rows. */
   roomy?: boolean;
+  workspaceSlots?: WorkspaceShellSlots;
 }
 
 /** Workspace slot and navigation groups, shared by the sidebar and the mobile drawer. */
@@ -89,19 +102,30 @@ export function SidebarNavContent({
   activeItemId,
   expanded,
   roomy = false,
+  workspaceSlots,
 }: SidebarNavContentProps) {
   return (
     <div className="flex flex-col gap-1">
-      <WorkspaceSwitcherSlot expanded={expanded} />
-      {groups.map((group) => (
-        <SidebarGroup
-          key={group.id}
-          group={group}
-          activeItemId={activeItemId}
-          expanded={expanded}
-          roomy={roomy}
-        />
-      ))}
+      {workspaceSlots ? (
+        workspaceSlots.switcher(expanded)
+      ) : (
+        <WorkspaceSwitcherSlot expanded={expanded} />
+      )}
+      {groups.map((group) =>
+        group.id === 'workspaces' && workspaceSlots ? (
+          <div key={group.id} role="group" aria-label="Workspaces">
+            {workspaceSlots.navigation(expanded)}
+          </div>
+        ) : (
+          <SidebarGroup
+            key={group.id}
+            group={group}
+            activeItemId={activeItemId}
+            expanded={expanded}
+            roomy={roomy}
+          />
+        ),
+      )}
     </div>
   );
 }

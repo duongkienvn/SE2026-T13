@@ -4,7 +4,7 @@ import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { AppHeader } from './AppHeader';
 import { navGroups as defaultNavGroups, type NavGroup } from './navigation';
 import { NavDrawer } from './NavDrawer';
-import { Sidebar } from './Sidebar';
+import { Sidebar, type WorkspaceShellSlots } from './Sidebar';
 
 interface AppShellProps {
   children: ReactNode;
@@ -15,6 +15,7 @@ interface AppShellProps {
   sidebarFooter?: (expanded: boolean) => ReactNode;
   /** Account actions at the bottom of the mobile navigation drawer. */
   drawerFooter?: ReactNode;
+  workspaceSlots?: WorkspaceShellSlots;
 }
 
 /** Authenticated application frame: lavender outer frame, side rail, top header and scrollable content. */
@@ -26,6 +27,7 @@ export function AppShell({
   headerActions,
   sidebarFooter,
   drawerFooter,
+  workspaceSlots,
 }: AppShellProps) {
   const desktop = useMediaQuery('(min-width: 1024px)', true);
   const { key: locationKey } = useLocation();
@@ -52,6 +54,7 @@ export function AppShell({
           groups={navGroups}
           activeItemId={activeNavItemId}
           footer={sidebarFooter}
+          workspaceSlots={workspaceSlots}
         />
         <div className="flex min-w-0 flex-1 flex-col">
           <AppHeader
@@ -84,6 +87,7 @@ export function AppShell({
         groups={navGroups}
         activeItemId={activeNavItemId}
         footer={drawerFooter}
+        workspaceSlots={workspaceSlots}
       />
     </div>
   );
