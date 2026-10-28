@@ -23,6 +23,8 @@ import { PasswordSecurityService } from './password-security.service';
 import { PasswordSecurityController } from './password-security.controller';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
+import { WelcomeOnboardingService } from './welcome-onboarding.service';
+import { WelcomeEmailDelivery } from './entities/welcome-email-delivery.entity';
 
 @Module({
   imports: [
@@ -34,6 +36,7 @@ import { WorkspacesModule } from '../workspaces/workspaces.module';
       EmailVerificationToken,
       GoogleIdentity,
       PasswordResetToken,
+      WelcomeEmailDelivery,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -66,6 +69,7 @@ import { WorkspacesModule } from '../workspaces/workspaces.module';
     EmailVerificationService,
     GoogleTokenVerifier,
     GoogleAuthService,
+    WelcomeOnboardingService,
   ],
   exports: [AuthService, JwtAuthGuard],
 })

@@ -13,6 +13,7 @@ import { LoginRequestDto } from '../../src/api/auth/dto/login-request.dto';
 import { RegisterRequestDto } from '../../src/api/auth/dto/register-request.dto';
 import { User } from '../../src/api/users/entities/user.entity';
 import { WorkspacesService } from '../../src/api/workspaces/workspaces.service';
+import { WelcomeOnboardingService } from '../../src/api/auth/welcome-onboarding.service';
 
 jest.mock('argon2', () => {
   const actual = jest.requireActual<typeof argon2>('argon2');
@@ -49,6 +50,7 @@ describe('AuthService', () => {
   let jwt: JwtService;
   const workspaces = { ensurePersonalWorkspace: jest.fn() };
   const verification = { send: jest.fn() };
+  const welcome = { enroll: jest.fn() };
   const manager = { getRepository: jest.fn() };
 
   beforeEach(async () => {
@@ -63,6 +65,7 @@ describe('AuthService', () => {
       .mockReset()
       .mockResolvedValue({ id: 'personal' });
     verification.send.mockReset().mockResolvedValue(undefined);
+    welcome.enroll.mockReset().mockResolvedValue(undefined);
     jwt = new JwtService({
       secret: JWT_SECRET,
       signOptions: {
@@ -82,6 +85,7 @@ describe('AuthService', () => {
         AuthService,
         { provide: EmailVerificationService, useValue: verification },
         { provide: WorkspacesService, useValue: workspaces },
+        { provide: WelcomeOnboardingService, useValue: welcome },
         { provide: 'UserRepository', useValue: repository },
         { provide: JwtService, useValue: jwt },
       ],
@@ -117,6 +121,7 @@ describe('AuthService', () => {
     expect(result).not.toHaveProperty('passwordHash');
     expect(result.email).toBe(input.email);
     expect(user.emailVerifiedAt).toBeNull();
+    expect(welcome.enroll).toHaveBeenCalledWith(manager, user);
     expect(workspaces.ensurePersonalWorkspace).toHaveBeenCalledWith(
       user.id,
       manager,

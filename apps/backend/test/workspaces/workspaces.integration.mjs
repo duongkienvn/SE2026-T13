@@ -38,6 +38,7 @@ const admin = new Client({
 });
 const databases = [];
 let source;
+let currentMigrations;
 let checks = 0;
 const pass = (label) => console.log(`PASS ${++checks}: ${label}`);
 const sqlstate = (promise, code) =>
@@ -57,6 +58,7 @@ async function openDatabase() {
   await admin.query(`CREATE DATABASE "${name}"`);
   databases.push(name);
   source = await new DataSource({ ...options, database: name }).initialize();
+  currentMigrations = [...source.migrations];
   return source;
 }
 const snapshot = async () => {
@@ -771,20 +773,21 @@ async function inspectAuthentication() {
 try {
   await admin.connect();
   await openDatabase();
-  assert.equal((await source.runMigrations()).length, 11);
+  assert.equal((await source.runMigrations()).length, 12);
   assert.deepEqual(await source.runMigrations(), []);
-  assert.equal(source.entityMetadatas.length, 16);
+  assert.equal(source.entityMetadatas.length, 17);
   const drift = await source.driver.createSchemaBuilder().log();
   assert.deepEqual(
     drift.upQueries.map((q) => q.query),
     [],
     'Entity metadata must match final migrations',
   );
-  // An empty database can safely revert both new migrations and apply again.
+  // Revert the icon, welcome ledger and both Workspace foundation migrations.
   await source.undoLastMigration(); // Workspace icon.
+  await source.undoLastMigration(); // Empty welcome ledger.
   await source.undoLastMigration();
   await source.undoLastMigration();
-  assert.equal((await source.runMigrations()).length, 3);
+  assert.equal((await source.runMigrations()).length, 4);
   pass(
     'Fresh database, metadata/discovery, no schema drift, empty down/up and migration retry',
   );
@@ -792,6 +795,9 @@ try {
 
   // Default all-migrations mode must roll back expand as well as backfill.
   await openDatabase();
+  source.migrations = source.migrations.filter(
+    (m) => !m.name.startsWith('WelcomeEmailOutbox'),
+  );
   const atomicMigrations = [...source.migrations];
   source.migrations = atomicMigrations.filter(
     (m) =>
@@ -840,6 +846,9 @@ try {
   await source.destroy();
 
   await openDatabase();
+  source.migrations = source.migrations.filter(
+    (m) => !m.name.startsWith('WelcomeEmailOutbox'),
+  );
   const migrations = [...source.migrations];
   source.migrations = migrations.filter(
     (m) =>
@@ -1075,6 +1084,8 @@ try {
   pass(
     'Final inventory has zero NULL/orphan Boards with physical NOT NULL enforced',
   );
+  source.migrations = currentMigrations;
+  await source.runMigrations();
   await inspectAuthentication();
   console.log(`Workspace PostgreSQL integration: ${checks} checks PASS`);
 } finally {

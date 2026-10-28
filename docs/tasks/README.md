@@ -39,6 +39,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 - [Private profile avatar uploads](backend/profile-avatar-upload.md)
 - [Password recovery and account security](backend/password-recovery-security.md)
 - [Verification email layout](backend/verification-email-layout.md)
+- [Welcome email and new user onboarding](backend/welcome-email-onboarding.md)
 - [Board management API](backend/board-management-api.md)
 - [Board archive management](backend/board-archive-management.md)
 - [Board members management](backend/board-members-management.md)
