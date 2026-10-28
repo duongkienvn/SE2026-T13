@@ -1,3 +1,5 @@
+import { WorkspaceMembersService } from './workspace-members.service';
+import { WorkspaceMembersController } from './workspace-members.controller';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
@@ -14,7 +16,11 @@ import { WorkspaceBoardsService } from './workspace-boards.service';
     WorkspacesModule,
     TypeOrmModule.forFeature([Workspace, Board]),
   ],
-  controllers: [WorkspaceApiController],
-  providers: [WorkspaceApiService, WorkspaceBoardsService],
+  controllers: [WorkspaceApiController, WorkspaceMembersController],
+  providers: [
+    WorkspaceApiService,
+    WorkspaceBoardsService,
+    WorkspaceMembersService,
+  ],
 })
 export class WorkspaceApiModule {}
