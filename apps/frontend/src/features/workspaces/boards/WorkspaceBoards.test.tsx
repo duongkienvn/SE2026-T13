@@ -30,7 +30,7 @@ import { workspaceKeys } from '../query-keys';
 import type { WorkspaceOverview, WorkspaceSummary } from '../types';
 import {
   WorkspaceBoardsGatewayContext,
-  workspaceBoardsGateway,
+  workspaceBoardsGateway as realBoardsGateway,
 } from './gateway';
 import type {
   WorkspaceBoardSummary,
@@ -38,12 +38,18 @@ import type {
   WorkspaceBoardsPageData,
 } from './types';
 
+const workspaceBoardsGateway = {
+  ...realBoardsGateway,
+  available: false,
+  features: { search: false, status: false, sorts: [], pagination: false },
+};
 const space: WorkspaceSummary = {
   id: 'space-one',
   name: 'Engineering workspace',
   description: 'Build together.',
   type: 'TEAM',
   role: 'ADMIN',
+  canCreateBoards: true,
 };
 const other: WorkspaceSummary = {
   ...space,
@@ -67,7 +73,6 @@ const page: WorkspaceBoardsPageData = {
   total: 1,
   page: 1,
   pageCount: 1,
-  canCreateBoard: true,
 };
 function gateway(
   overrides: Partial<WorkspaceBoardsGateway> = {},
@@ -108,6 +113,7 @@ function mount(
   path = `/workspaces/${space.id}/boards`,
   boards = gateway(),
   handlers: Record<string, Handler> = {},
+  canCreateBoards = true,
 ) {
   storeSession();
   const calls = mockApi({
@@ -135,7 +141,7 @@ function mount(
     available: true,
     list: vi.fn(async () => [space, other]),
     overview: vi.fn(async (_token, id) => ({
-      workspace: id === other.id ? other : space,
+      workspace: { ...(id === other.id ? other : space), canCreateBoards },
       visibleBoardCount: 1,
       memberCount: null,
       recentBoards: [],
@@ -246,10 +252,11 @@ describe('Workspace Boards route and capabilities', () => {
       gateway({
         list: async () => ({
           ...page,
-          canCreateBoard: false,
           items: [{ ...board, currentUserRole: 'MEMBER' }],
         }),
       }),
+      {},
+      false,
     );
     await ready();
     expect(
@@ -722,12 +729,7 @@ describe('Existing archive and restore REST integration', () => {
         ]),
       ),
     ).not.toContain(board.name);
-    expect(
-      client.getQueryData<WorkspaceOverview>(overviewKey)?.recentBoards,
-    ).toEqual([]);
-    expect(
-      client.getQueryData<WorkspaceOverview>(overviewKey)?.visibleBoardCount,
-    ).toBeNull();
+    expect(client.getQueryData(overviewKey)).toBeNull();
     await act(async () =>
       refresh.resolve({
         workspace: space,

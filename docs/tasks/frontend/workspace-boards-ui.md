@@ -1,5 +1,8 @@
 # Workspace Boards UI V1 — P2-07 (#114)
 
+Follow-up: [Workspace API integration](workspace-api-integration.md) connects the
+production gateways. The unavailable/API handoff notes below are historical.
+
 Implementation and local QA record, 2026-10-28. This records the checkout, not a
 deployment or release claim. The visual foundation is complete; live Workspace
 Board browsing and creation remain blocked by #111. No backend, schema, shared

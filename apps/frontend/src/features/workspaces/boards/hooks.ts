@@ -5,7 +5,7 @@ import { useAuthSession } from '../../auth/auth-session-context';
 import { workspaceErrorState } from '../hooks';
 import { workspaceKeys } from '../query-keys';
 import { revokeWorkspaceAccess } from '../revoke-workspace-access';
-import type { WorkspaceViewState } from '../types';
+import type { WorkspaceOverview, WorkspaceViewState } from '../types';
 import { useWorkspaceBoardsGateway } from './gateway';
 import type { WorkspaceBoardFilters } from './types';
 import type { CreateBoardRequest } from '../../boards/types';
@@ -21,6 +21,7 @@ export function useCreateWorkspaceBoard(
   const gateway = useWorkspaceBoardsGateway();
   const client = useQueryClient();
   const mutation = useMutation({
+    retry: false,
     mutationKey: [
       ...workspaceKeys.boards(user?.id ?? '', scope.generation, workspaceId),
       'create',
@@ -42,6 +43,34 @@ export function useCreateWorkspaceBoard(
         ),
       });
       void client.invalidateQueries({ queryKey: boardKeys.lists() });
+    },
+    onError: async (error) => {
+      if (!scope.isCurrent() || !isApiError(error)) return;
+      const overviewKey = workspaceKeys.overview(
+        user?.id ?? '',
+        scope.generation,
+        workspaceId,
+      );
+      if (error.status === 404) {
+        await revokeWorkspaceAccess(
+          client,
+          user?.id ?? '',
+          scope.generation,
+          workspaceId,
+          error,
+          overviewKey,
+        );
+      } else if (error.status === 403) {
+        client.setQueryData<WorkspaceOverview>(overviewKey, (current) =>
+          current
+            ? {
+                ...current,
+                workspace: { ...current.workspace, canCreateBoards: false },
+              }
+            : current,
+        );
+        void client.invalidateQueries({ queryKey: overviewKey });
+      }
     },
   });
   return { ...mutation, isCurrent: scope.isCurrent };

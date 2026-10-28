@@ -1,5 +1,8 @@
 # Workspace Shell, Navigation & Overview UI V1
 
+Follow-up: [Workspace API integration](workspace-api-integration.md) connects the
+production gateways. The unavailable/API handoff notes below are historical.
+
 ## Delivery status
 
 Issue [#113](https://github.com/duongkienvn/SE2026-T13/issues/113), P2-06 / WS-01 discovery slice and WS-04 Overview. Checked on 2026-10-28.

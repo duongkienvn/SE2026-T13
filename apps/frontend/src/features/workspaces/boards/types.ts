@@ -1,7 +1,7 @@
 import type { BoardRole } from '@kanban/shared';
 import type { CreateBoardRequest } from '../../boards/types';
 
-/** UI models only. Map the final #111 wire DTOs before enabling the adapter. */
+/** UI models mapped from the #111 wire DTOs. */
 export interface WorkspaceBoardSummary {
   id: string;
   name: string;
@@ -29,7 +29,6 @@ export interface WorkspaceBoardsPageData {
   total: number;
   page: number;
   pageCount: number;
-  canCreateBoard: boolean;
 }
 export interface WorkspaceBoardsGateway {
   available: boolean;
