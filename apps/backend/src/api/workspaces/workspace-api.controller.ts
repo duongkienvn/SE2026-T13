@@ -22,18 +22,25 @@ import {
 } from '../../decorators/swagger-response.decorators';
 import { SerializeResponse } from '../../decorators/response.decorators';
 import { WorkspaceApiService } from './workspace-api.service';
+import { WorkspaceBoardsService } from './workspace-boards.service';
 import { WorkspaceResponseDto } from './dto/workspace-response.dto';
 import {
   CreateWorkspaceDto,
   UpdateWorkspaceDto,
 } from './dto/workspace-input.dto';
 import { WorkspacePageQueryDto } from './dto/workspace-page-query.dto';
+import { WorkspaceBoardsQueryDto } from './dto/workspace-boards-query.dto';
+import { WorkspaceBoardResponseDto } from './dto/workspace-board-response.dto';
+import { WorkspaceOverviewDto } from './dto/workspace-overview.dto';
 
 @ApiTags('workspaces')
 @UseGuards(JwtAuthGuard)
 @Controller('workspaces')
 export class WorkspaceApiController {
-  constructor(private readonly workspaces: WorkspaceApiService) {}
+  constructor(
+    private readonly workspaces: WorkspaceApiService,
+    private readonly boards: WorkspaceBoardsService,
+  ) {}
 
   @Get()
   @Header('Cache-Control', 'no-store')
@@ -78,6 +85,38 @@ export class WorkspaceApiController {
     @Body() input: CreateWorkspaceDto,
   ) {
     return this.workspaces.create(user.userId, input);
+  }
+
+  @Get(':workspaceId/boards')
+  @Header('Cache-Control', 'no-store')
+  @ApiBearerToken()
+  @ApiCommonErrors([400, 401, 404, 429, 500])
+  @SerializeResponse(WorkspaceBoardResponseDto)
+  @ApiPaginated(WorkspaceBoardResponseDto, {
+    summary: 'List readable Boards as a Workspace Member',
+  })
+  listBoards(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @Query() query: WorkspaceBoardsQueryDto,
+  ) {
+    return this.boards.list(user.userId, workspaceId, query);
+  }
+
+  @Get(':workspaceId/overview')
+  @Header('Cache-Control', 'no-store')
+  @ApiBearerToken()
+  @ApiCommonErrors([400, 401, 404, 429, 500])
+  @SerializeResponse(WorkspaceOverviewDto)
+  @ApiSuccess({
+    type: WorkspaceOverviewDto,
+    summary: 'ACL-filtered Board counts and five recently updated Boards',
+  })
+  overview(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+  ) {
+    return this.boards.overview(user.userId, workspaceId);
   }
 
   @Get(':workspaceId')
