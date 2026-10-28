@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { isApiError } from '../../../lib/api-client';
 import { useAuth } from '../../auth/useAuth';
 import { useAuthSession } from '../../auth/auth-session-context';
@@ -8,6 +8,44 @@ import { revokeWorkspaceAccess } from '../revoke-workspace-access';
 import type { WorkspaceViewState } from '../types';
 import { useWorkspaceBoardsGateway } from './gateway';
 import type { WorkspaceBoardFilters } from './types';
+import type { CreateBoardRequest } from '../../boards/types';
+import { boardKeys } from '../../boards/query-keys';
+import { WorkspaceUnavailableError } from '../api';
+
+export function useCreateWorkspaceBoard(
+  workspaceId: string,
+  canCreate: boolean,
+) {
+  const { user, runAuthorized } = useAuth();
+  const scope = useAuthSession();
+  const gateway = useWorkspaceBoardsGateway();
+  const client = useQueryClient();
+  const mutation = useMutation({
+    mutationKey: [
+      ...workspaceKeys.boards(user?.id ?? '', scope.generation, workspaceId),
+      'create',
+    ],
+    mutationFn: (input: CreateBoardRequest) => {
+      if (!canCreate || !gateway.available || !scope.isCurrent())
+        throw new WorkspaceUnavailableError();
+      return runAuthorized((token) =>
+        gateway.create(token, workspaceId, input),
+      );
+    },
+    onSuccess: () => {
+      if (!scope.isCurrent()) return;
+      void client.invalidateQueries({
+        queryKey: workspaceKeys.resource(
+          user?.id ?? '',
+          scope.generation,
+          workspaceId,
+        ),
+      });
+      void client.invalidateQueries({ queryKey: boardKeys.lists() });
+    },
+  });
+  return { ...mutation, isCurrent: scope.isCurrent };
+}
 
 export function useWorkspaceBoards(
   workspaceId: string,
