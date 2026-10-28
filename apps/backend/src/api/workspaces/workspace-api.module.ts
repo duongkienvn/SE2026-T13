@@ -1,5 +1,8 @@
 import { WorkspaceMembersService } from './workspace-members.service';
 import { WorkspaceMembersController } from './workspace-members.controller';
+import { WorkspaceInvitationsService } from './workspace-invitations.service';
+import { WorkspaceInvitationIssuanceService } from './workspace-invitation-issuance.service';
+import { WorkspaceInvitationsController } from './workspace-invitations.controller';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
@@ -16,11 +19,17 @@ import { WorkspaceBoardsService } from './workspace-boards.service';
     WorkspacesModule,
     TypeOrmModule.forFeature([Workspace, Board]),
   ],
-  controllers: [WorkspaceApiController, WorkspaceMembersController],
+  controllers: [
+    WorkspaceApiController,
+    WorkspaceMembersController,
+    WorkspaceInvitationsController,
+  ],
   providers: [
     WorkspaceApiService,
     WorkspaceBoardsService,
     WorkspaceMembersService,
+    WorkspaceInvitationsService,
+    WorkspaceInvitationIssuanceService,
   ],
 })
 export class WorkspaceApiModule {}

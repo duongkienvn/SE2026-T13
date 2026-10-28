@@ -43,6 +43,7 @@ export async function verifyMembers(ctx) {
   );
   for (const actor of ['guest', 'outsider']) {
     await send(actor, 'get', `${root}/members`).expect(404);
+    await send(actor, 'get', `${root}/invitations`).expect(404);
     await send(actor, 'patch', `${root}/members/${actors.member}`)
       .send({ role: 'ADMIN' })
       .expect(404);
@@ -51,6 +52,7 @@ export async function verifyMembers(ctx) {
     const req = send('member', method, `${root}/members/${actors.admin2}`);
     await (method === 'patch' ? req.send({ role: 'MEMBER' }) : req).expect(403);
   }
+  await send('member', 'get', `${root}/invitations`).expect(403);
   await send('admin', 'patch', `${root}/members/${actors.member}`)
     .send({ role: 'OWNER' })
     .expect(400);
@@ -119,6 +121,7 @@ export async function verifyMembers(ctx) {
   ).body.data;
   for (const [method, suffix, body] of [
     ['post', '/leave', {}],
+    ['post', '/invitations', { email: 'target@example.test' }],
     ['patch', `/members/${actors.admin}`, { role: 'MEMBER' }],
     ['delete', `/members/${actors.member}`, {}],
   ])
