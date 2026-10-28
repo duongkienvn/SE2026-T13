@@ -6,8 +6,31 @@ import {
 } from '../../src/api/workspaces/dto/workspace-input.dto';
 import { WorkspaceBoardsQueryDto } from '../../src/api/workspaces/dto/workspace-boards-query.dto';
 import { CreateBoardDto } from '../../src/api/boards/dto/create-board.dto';
+import { WorkspacePageQueryDto } from '../../src/api/workspaces/dto/workspace-page-query.dto';
 
 describe('Workspace API validation', () => {
+  describe.each([
+    ['WorkspacePageQueryDto', WorkspacePageQueryDto],
+    ['WorkspaceBoardsQueryDto', WorkspaceBoardsQueryDto],
+  ] as const)('%s page validation', (_name, queryType) => {
+    it.each(['0', '-1', '1.5', 0, -1, 1.5, '1000001', 1000001])(
+      'rejects invalid page %p',
+      async (page) => {
+        const errors = await validate(plainToInstance(queryType, { page }));
+        expect(errors.map((error) => error.property)).toContain('page');
+      },
+    );
+
+    it.each(['1', 1, '1000000', 1000000])(
+      'accepts page within bounds %p',
+      async (page) => {
+        expect(await validate(plainToInstance(queryType, { page }))).toEqual(
+          [],
+        );
+      },
+    );
+  });
+
   it('trims metadata and accepts only supported nullable icon keys', async () => {
     const input = plainToInstance(CreateWorkspaceDto, {
       name: ' Team ',
