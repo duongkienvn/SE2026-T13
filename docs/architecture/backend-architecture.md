@@ -199,6 +199,15 @@ Gateway không chứa core business logic. Gateway chỉ tập trung vào transp
 
 ## 4. Business module direction
 
+P2-01 adds `api/workspaces/` with three entities and `WorkspacesModule`, exporting
+`WorkspacesService` for trusted internal lookup/provisioning. `BoardsModule` imports
+it; Board creation includes Personal Workspace + ADMIN and Board + OWNER in one
+transaction. The PostgreSQL provisioning primitive is also used by the legacy
+writer bridge. There are no Workspace controllers, invitation handlers or new
+realtime contracts. Authorization continues through `BoardAuthorizationService`;
+Workspace membership does not grant private Board access. See the
+[foundation record](../tasks/backend/workspace-data-foundation.md).
+
 MVP dự kiến có các business module sau:
 
 - `auth`

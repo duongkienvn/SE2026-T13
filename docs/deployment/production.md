@@ -277,6 +277,12 @@ that override on production. No real DNS or ACME certificate is needed locally.
 
 ## Updates, rollback and migration failure
 
+For Workspace foundation releases, follow the
+[Workspace migration runbook](workspace-foundation.md) in addition to the sequence
+below. It requires writer drain, backup/restore rehearsal, legacy inventories and
+post-migration verification. Keep the compatibility trigger when rolling back the
+application; never automatically revert populated Workspace tables.
+
 For automated releases, follow [approval and failure handling](cicd.md); the
 pipeline implements these steps without building on EC2 or modifying PostgreSQL.
 For manual maintenance:
