@@ -4,6 +4,10 @@ import { Resend } from 'resend';
 import { validateEnvironment } from '../../src/config/environment';
 import { MailModule } from '../../src/mail/mail.module';
 import { ResendVerificationMailer } from '../../src/mail/resend-verification-mailer';
+import { WorkspaceInvitationMailer } from '../../src/api/workspaces/workspace-invitation-mailer';
+import { FakeWorkspaceInvitationMailer } from '../../src/mail/fake-workspace-invitation-mailer';
+import { ResendWorkspaceInvitationMailer } from '../../src/mail/resend-workspace-invitation-mailer';
+import { WorkspaceRole } from '@kanban/shared';
 import {
   FakeWelcomeMailer,
   WelcomeMailer,
@@ -65,6 +69,7 @@ describe('mail transport configuration', () => {
         ...mail,
         NODE_ENV,
         MAIL_TRANSPORT,
+        WORKSPACE_INVITATION_ACCEPT_PATH: '/qa/invite',
         CORS_ORIGINS: 'https://kanvexa.tech',
         PUBLIC_APP_URL:
           NODE_ENV === 'production'
@@ -96,12 +101,58 @@ describe('mail transport configuration', () => {
         expect(module.get(WelcomeMailer)).toBeInstanceOf(
           expected === 'resend' ? ResendWelcomeMailer : FakeWelcomeMailer,
         );
-        expect(Resend).toHaveBeenCalledTimes(expected === 'resend' ? 3 : 0);
+        const invitations = module.get(WorkspaceInvitationMailer);
+        expect(invitations).toBeInstanceOf(
+          expected === 'resend'
+            ? ResendWorkspaceInvitationMailer
+            : FakeWorkspaceInvitationMailer,
+        );
+        expect(
+          await invitations.send({
+            invitationId: 'binding-test',
+            workspaceId: 'workspace',
+            workspaceName: 'Team',
+            recipient: 'recipient@example.test',
+            role: WorkspaceRole.MEMBER,
+            proof: 'a'.repeat(43),
+            expiresAt: new Date('2026-11-04T09:30:00Z'),
+            idempotencyKey: 'workspace-invitation/binding-test',
+          }),
+        ).toBe('SENT');
+        expect(Resend).toHaveBeenCalledTimes(expected === 'resend' ? 4 : 0);
         if (expected === 'fake') expect(config.RESEND_API_KEY).toBe('');
         else expect(config.RESEND_API_KEY === mail.RESEND_API_KEY).toBe(true);
       } finally {
         await module.close();
       }
+    },
+  );
+
+  it('leaves invitation mail unavailable by default without affecting existing mail providers', async () => {
+    const config = validateEnvironment(base);
+    expect(config.WORKSPACE_INVITATION_ACCEPT_PATH).toBe('');
+    const module = await Test.createTestingModule({ imports: [MailModule] })
+      .overrideProvider(ConfigService)
+      .useValue(new ConfigService(config))
+      .compile();
+    try {
+      expect(module.get(WorkspaceInvitationMailer)).toBeUndefined();
+      expect(module.get(WelcomeMailer)).toBeInstanceOf(FakeWelcomeMailer);
+      expect(Resend).not.toHaveBeenCalled();
+    } finally {
+      await module.close();
+    }
+  });
+
+  it.each(['//evil.test', '/a?redirect=x', '/a#proof=x', '/a/../b'])(
+    'validates the invitation gate at startup: %s',
+    (path) => {
+      expect(() =>
+        validateEnvironment({
+          ...base,
+          WORKSPACE_INVITATION_ACCEPT_PATH: path,
+        }),
+      ).toThrow('WORKSPACE_INVITATION_ACCEPT_PATH');
     },
   );
 

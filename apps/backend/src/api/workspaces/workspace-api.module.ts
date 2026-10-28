@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { MailModule } from '../../mail/mail.module';
 import { AuthModule } from '../auth/auth.module';
 import { Board } from '../boards/entities/board.entity';
 import { Workspace } from './entities/workspace.entity';
@@ -19,6 +20,7 @@ import {
 @Module({
   imports: [
     AuthModule,
+    MailModule,
     WorkspacesModule,
     TypeOrmModule.forFeature([Workspace, Board]),
   ],
