@@ -21,6 +21,9 @@ import { ProfileRedirect } from '../features/settings/pages/ProfileRedirect';
 import { SecuritySettingsPage } from '../features/settings/pages/SecuritySettingsPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { RouteErrorPage } from '../pages/RouteErrorPage';
+import { WorkspaceLayout } from '../features/workspaces/components/WorkspaceLayout';
+import { WorkspaceOverviewPage } from '../features/workspaces/pages/WorkspaceOverviewPage';
+import { WorkspacesPage } from '../features/workspaces/pages/WorkspacesPage';
 import { PublicOnly, RequireAuth } from './guards';
 import { AuthenticatedLayout } from './layout/AuthenticatedLayout';
 
@@ -48,6 +51,12 @@ export const routes: RouteObject[] = [
           {
             element: <AuthenticatedLayout />,
             children: [
+              { path: 'workspaces', element: <WorkspacesPage /> },
+              {
+                path: 'workspaces/:workspaceId',
+                element: <WorkspaceLayout />,
+                children: [{ index: true, element: <WorkspaceOverviewPage /> }],
+              },
               { path: 'boards', element: <BoardsPage /> },
               {
                 path: 'boards/:boardId',
