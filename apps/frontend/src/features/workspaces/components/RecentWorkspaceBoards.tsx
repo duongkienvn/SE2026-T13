@@ -99,9 +99,17 @@ export function RecentWorkspaceBoards({
           </h3>
           <p className="mt-2 max-w-xs text-xs leading-relaxed text-muted">
             {state === 'ready'
-              ? 'Boards you have access to will appear here. Board creation in a workspace is coming soon.'
+              ? 'Boards you have access to will appear here.'
               : 'Your accessible boards will appear here when Workspace services are available.'}
           </p>
+          {state === 'ready' && overview?.workspace.canCreateBoards && (
+            <Link
+              to={`${workspacePath(workspaceId)}/boards?create=board`}
+              className="mt-3 inline-flex min-h-11 items-center rounded text-sm text-primary focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              Create Board
+            </Link>
+          )}
         </div>
       )}
       <p className="mt-4 flex items-start gap-1.5 text-xs leading-relaxed text-muted">

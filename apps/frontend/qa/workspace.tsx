@@ -57,6 +57,7 @@ const team: WorkspaceSummary = {
   description: 'Build amazing products together.',
   type: 'TEAM',
   role: 'ADMIN',
+  canCreateBoards: true,
 };
 const personal: WorkspaceSummary = {
   id: 'qa-personal',
@@ -64,6 +65,7 @@ const personal: WorkspaceSummary = {
   description: 'A home for your own work.',
   type: 'PERSONAL',
   role: 'ADMIN',
+  canCreateBoards: true,
 };
 const other: WorkspaceSummary = {
   id: 'qa-marketing',
@@ -71,6 +73,7 @@ const other: WorkspaceSummary = {
   description: 'Bring ideas to life.',
   type: 'TEAM',
   role: 'MEMBER',
+  canCreateBoards: true,
 };
 const memberships = [
   personal,
@@ -86,7 +89,7 @@ const memberships = [
 ];
 const gateway: WorkspaceGateway =
   scenario === 'unavailable'
-    ? workspaceGateway
+    ? { ...workspaceGateway, available: false }
     : {
         available: true,
         list: async () => (scenario === 'no-workspaces' ? [] : memberships),

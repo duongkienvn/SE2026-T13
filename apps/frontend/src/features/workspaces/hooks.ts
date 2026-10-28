@@ -104,6 +104,7 @@ export function useCreateTeamWorkspace() {
   const gateway = useWorkspaceGateway();
   const client = useQueryClient();
   const mutation = useMutation({
+    retry: false,
     mutationKey: [
       ...workspaceKeys.session(user?.id ?? '', scope.generation),
       'create',

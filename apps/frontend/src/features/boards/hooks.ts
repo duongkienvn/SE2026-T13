@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BOARD_ARCHIVED, isApiError } from '../../lib/api-client';
 import { retryUnlessClientError } from '../../lib/query-client';
 import { useAuth } from '../auth/useAuth';
+import { useAuthSession } from '../auth/auth-session-context';
+import { workspaceKeys } from '../workspaces/query-keys';
 import {
   archiveBoard,
   createBoard,
@@ -49,27 +51,37 @@ export function useRefreshIfArchived(boardId: string) {
 }
 
 export function useCreateBoard() {
-  const { runAuthorized } = useAuth();
+  const { user, runAuthorized } = useAuth();
+  const scope = useAuthSession();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateBoardRequest) =>
       runAuthorized((token) => createBoard(token, input)),
     onSuccess: (board) => {
+      if (!scope.isCurrent()) return;
       queryClient.setQueryData(boardKeys.detail(board.id), board);
+      void queryClient.invalidateQueries({
+        queryKey: workspaceKeys.session(user?.id ?? '', scope.generation),
+      });
       return queryClient.invalidateQueries({ queryKey: boardKeys.lists() });
     },
   });
 }
 
 export function useUpdateBoard(boardId: string) {
-  const { runAuthorized } = useAuth();
+  const { user, runAuthorized } = useAuth();
+  const scope = useAuthSession();
   const queryClient = useQueryClient();
   const refreshIfArchived = useRefreshIfArchived(boardId);
   return useMutation({
     mutationFn: (input: UpdateBoardRequest) =>
       runAuthorized((token) => updateBoard(token, boardId, input)),
     onSuccess: (board) => {
+      if (!scope.isCurrent()) return;
       queryClient.setQueryData(boardKeys.detail(board.id), board);
+      void queryClient.invalidateQueries({
+        queryKey: workspaceKeys.session(user?.id ?? '', scope.generation),
+      });
       return queryClient.invalidateQueries({ queryKey: boardKeys.lists() });
     },
     onError: refreshIfArchived,
@@ -77,13 +89,18 @@ export function useUpdateBoard(boardId: string) {
 }
 
 export function useArchiveBoard(boardId: string) {
-  const { runAuthorized } = useAuth();
+  const { user, runAuthorized } = useAuth();
+  const scope = useAuthSession();
   const queryClient = useQueryClient();
   const refreshIfArchived = useRefreshIfArchived(boardId);
   return useMutation({
     mutationFn: () => runAuthorized((token) => archiveBoard(token, boardId)),
     onSuccess: (board: Board) => {
+      if (!scope.isCurrent()) return;
       queryClient.setQueryData(boardKeys.detail(board.id), board);
+      void queryClient.invalidateQueries({
+        queryKey: workspaceKeys.session(user?.id ?? '', scope.generation),
+      });
       return queryClient.invalidateQueries({ queryKey: boardKeys.lists() });
     },
     onError: refreshIfArchived,
@@ -91,12 +108,17 @@ export function useArchiveBoard(boardId: string) {
 }
 
 export function useRestoreBoard(boardId: string) {
-  const { runAuthorized } = useAuth();
+  const { user, runAuthorized } = useAuth();
+  const scope = useAuthSession();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => runAuthorized((token) => restoreBoard(token, boardId)),
     onSuccess: (board: Board) => {
+      if (!scope.isCurrent()) return;
       queryClient.setQueryData(boardKeys.detail(board.id), board);
+      void queryClient.invalidateQueries({
+        queryKey: workspaceKeys.session(user?.id ?? '', scope.generation),
+      });
       return queryClient.invalidateQueries({ queryKey: boardKeys.lists() });
     },
   });

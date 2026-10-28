@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import { ApiError } from '../../lib/api-client';
 import { boardKeys } from './query-keys';
 import { avatarKeys } from '../auth/avatar-query-keys';
+import { workspaceKeys } from '../workspaces/query-keys';
 
 export const BOARD_ACCESS_REVOKED = 'BOARD_ACCESS_REVOKED';
 
@@ -24,4 +25,27 @@ export function revokeBoardAccess(client: QueryClient, boardId: string) {
       error: new ApiError(404, BOARD_ACCESS_REVOKED, 'Board unavailable'),
     });
   client.removeQueries({ queryKey: boardKeys.lists() });
+  // Workspace pages can retain this Board's name, role and ACL-filtered totals.
+  // Hide every cached resource before rechecking REST permissions; directory
+  // memberships are independent of Board access and can remain visible.
+  const resources = {
+    queryKey: workspaceKeys.all,
+    predicate: (query: { queryKey: readonly unknown[] }) =>
+      query.queryKey[3] === 'workspace',
+  };
+  const queries = client.getQueryCache().findAll(resources);
+  if (!queries.length) return;
+  void client.cancelQueries(resources);
+  for (const query of queries) {
+    query.setState({
+      data: null,
+      status: 'error',
+      error: new ApiError(
+        409,
+        'BOARD_ACCESS_CHANGED',
+        'Board access changed. Reload workspace.',
+      ),
+    });
+  }
+  void client.invalidateQueries(resources);
 }
