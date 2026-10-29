@@ -147,12 +147,15 @@ export async function verifyPrivacy(ctx) {
     `UPDATE boards SET visibility='WORKSPACE_VISIBLE' WHERE id=$1`,
     [hiddenId],
   );
-  const stillPrivate = await send(
+  const workspaceVisible = await send(
     'admin',
     'get',
     `/api/workspaces/${team.id}/boards?search=Secret`,
   ).expect(200);
-  assert.equal(stillPrivate.body.meta.total, 0);
+  assert.equal(workspaceVisible.body.meta.total, 1);
+  assert.equal(workspaceVisible.body.data[0].id, hiddenId);
+  assert.equal(workspaceVisible.body.data[0].currentUserRole, null);
+  assert.equal(workspaceVisible.body.data[0].canEdit, false);
   await source.query(
     'DELETE FROM board_members WHERE board_id=$1 AND user_id=$2',
     [hiddenId, actors.guest],
