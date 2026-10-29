@@ -62,8 +62,10 @@ const cardEvent = { boardId: BOARD, cardId: CARD, columnId: 'column-1' };
 const member = { boardId: BOARD, userId: 'user-1' };
 
 describe('BOARD_EVENTS', () => {
-  it('lists the 18 business events of the shared contract', () => {
+  it('lists the Board events of the shared contract', () => {
     expect([...BOARD_EVENTS].sort()).toEqual([
+      'board:access-changed',
+      'board:access-revoked',
       'board:archived',
       'board:restored',
       'card:archived',
@@ -167,8 +169,12 @@ describe('invalidationTargets', () => {
     ]);
   });
 
-  it('member:added refreshes the members', async () => {
-    expect(await hit('member:added', member)).toEqual(['members']);
+  it('member:added refreshes membership and any newly granted collaboration role', async () => {
+    expect(await hit('member:added', member)).toEqual([
+      'board',
+      'members',
+      'boardList',
+    ]);
   });
 
   it('member:role-changed also refreshes the role shown on the board', async () => {

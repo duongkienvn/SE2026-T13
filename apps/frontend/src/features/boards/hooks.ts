@@ -14,6 +14,7 @@ import {
 } from './api';
 import { boardKeys } from './query-keys';
 import type { Board, CreateBoardRequest, UpdateBoardRequest } from './types';
+import { boardAccessVersion } from './access-version';
 
 /** Every board the user belongs to; the page searches and paginates them. */
 export function useBoards(status: 'active' | 'archived' = 'active') {
@@ -76,8 +77,13 @@ export function useUpdateBoard(boardId: string) {
   return useMutation({
     mutationFn: (input: UpdateBoardRequest) =>
       runAuthorized((token) => updateBoard(token, boardId, input)),
-    onSuccess: (board) => {
-      if (!scope.isCurrent()) return;
+    onMutate: () => boardAccessVersion(queryClient, boardId),
+    onSuccess: (board, _input, version) => {
+      if (
+        !scope.isCurrent() ||
+        version !== boardAccessVersion(queryClient, boardId)
+      )
+        return;
       queryClient.setQueryData(boardKeys.detail(board.id), board);
       void queryClient.invalidateQueries({
         queryKey: workspaceKeys.session(user?.id ?? '', scope.generation),
@@ -95,8 +101,13 @@ export function useArchiveBoard(boardId: string) {
   const refreshIfArchived = useRefreshIfArchived(boardId);
   return useMutation({
     mutationFn: () => runAuthorized((token) => archiveBoard(token, boardId)),
-    onSuccess: (board: Board) => {
-      if (!scope.isCurrent()) return;
+    onMutate: () => boardAccessVersion(queryClient, boardId),
+    onSuccess: (board: Board, _input, version) => {
+      if (
+        !scope.isCurrent() ||
+        version !== boardAccessVersion(queryClient, boardId)
+      )
+        return;
       queryClient.setQueryData(boardKeys.detail(board.id), board);
       void queryClient.invalidateQueries({
         queryKey: workspaceKeys.session(user?.id ?? '', scope.generation),
@@ -113,8 +124,13 @@ export function useRestoreBoard(boardId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => runAuthorized((token) => restoreBoard(token, boardId)),
-    onSuccess: (board: Board) => {
-      if (!scope.isCurrent()) return;
+    onMutate: () => boardAccessVersion(queryClient, boardId),
+    onSuccess: (board: Board, _input, version) => {
+      if (
+        !scope.isCurrent() ||
+        version !== boardAccessVersion(queryClient, boardId)
+      )
+        return;
       queryClient.setQueryData(boardKeys.detail(board.id), board);
       void queryClient.invalidateQueries({
         queryKey: workspaceKeys.session(user?.id ?? '', scope.generation),

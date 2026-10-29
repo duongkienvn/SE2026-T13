@@ -3,11 +3,16 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { currentUserQueryKey } from '../auth/AuthProvider';
 import { useAuth } from '../auth/useAuth';
 import { useAuthSession } from '../auth/auth-session-context';
-import { revokeBoardAccess } from '../boards/revoke-board-access';
+import {
+  receiveBoardRevocation,
+  receiveWorkspaceRevocation,
+  reduceBoardToReadOnly,
+} from './access-revocation';
 import { BoardRealtimeClient } from './board-realtime-client';
 import { createInvalidationQueue } from './invalidation-queue';
 import { RealtimeContext } from './realtime-context';
 import { createRealtimeSocket } from './socket-client';
+import { changeBoardAccessVersion } from '../boards/access-version';
 
 /**
  * Owns the realtime client of the signed-in session. A new session (sign-in,
@@ -39,23 +44,49 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
           if (!('boardId' in payload) || typeof payload.boardId !== 'string')
             return;
           if (!('userId' in payload) || payload.userId !== userId) return;
-          const boardId = payload.boardId.toLowerCase();
-          // Route keys can retain uppercase UUIDs from a pasted URL.
-          const ids = new Set([
-            boardId,
-            ...queryClient
-              .getQueryCache()
-              .findAll({ queryKey: ['boards', 'detail'] })
-              .map((query) => query.queryKey[2]),
-          ]);
-          for (const id of ids) {
-            if (typeof id === 'string' && id.toLowerCase() === boardId)
-              revokeBoardAccess(queryClient, id);
+          if (
+            'retainsReadAccess' in payload &&
+            payload.retainsReadAccess === true
+          ) {
+            reduceBoardToReadOnly(queryClient, payload.boardId);
+            return;
           }
+          receiveBoardRevocation(queryClient, payload);
         });
+        socket.on('board:access-revoked', (payload: unknown) => {
+          if (isCurrent()) receiveBoardRevocation(queryClient, payload);
+        });
+        socket.on('workspace:access-revoked', (payload: unknown) => {
+          if (isCurrent()) receiveWorkspaceRevocation(queryClient, payload);
+        });
+        for (const event of ['member:added', 'member:role-changed'] as const) {
+          socket.on(event, (payload: unknown) => {
+            if (
+              !isCurrent() ||
+              !payload ||
+              typeof payload !== 'object' ||
+              !('userId' in payload) ||
+              payload.userId !== userId ||
+              !('boardId' in payload) ||
+              typeof payload.boardId !== 'string'
+            )
+              return;
+            const id = payload.boardId.toLowerCase();
+            changeBoardAccessVersion(queryClient, id);
+            void queryClient.cancelQueries({
+              queryKey: ['boards', 'detail'],
+              predicate: (query) =>
+                typeof query.queryKey[2] === 'string' &&
+                query.queryKey[2].toLowerCase() === id,
+            });
+          });
+        }
         return socket;
       },
       invalidate: queue.add,
+      accessRevoked: (boardId) => {
+        if (isCurrent()) receiveBoardRevocation(queryClient, { boardId });
+      },
       verifySession: () =>
         void queryClient.invalidateQueries({ queryKey: currentUserQueryKey }),
     });

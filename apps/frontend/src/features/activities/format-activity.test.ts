@@ -146,6 +146,11 @@ describe('describeActivity', () => {
 });
 
 describe('resolveActor', () => {
+  it('does not imply departure when the member directory is inaccessible', () => {
+    expect(resolveActor('not-public', [], null, false)).toEqual({
+      name: 'Unknown member',
+    });
+  });
   const grace = makeMember({
     id: 'membership-grace',
     role: 'MEMBER',

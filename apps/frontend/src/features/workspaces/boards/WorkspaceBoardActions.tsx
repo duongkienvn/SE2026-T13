@@ -8,6 +8,7 @@ import { useAuthSession } from '../../auth/auth-session-context';
 import { archiveBoard, restoreBoard } from '../../boards/api';
 import { boardKeys } from '../../boards/query-keys';
 import { revokeBoardAccess } from '../../boards/revoke-board-access';
+import { boardAccessVersion } from '../../boards/access-version';
 import { workspaceKeys } from '../query-keys';
 import type { WorkspaceOverview } from '../types';
 import type { WorkspaceBoardSummary } from './types';
@@ -36,8 +37,13 @@ export function WorkspaceBoardActions({
         (board.isArchived ? restoreBoard : archiveBoard)(token, board.id),
       );
     },
-    onSuccess: (saved) => {
-      if (!scope.isCurrent()) return;
+    onMutate: () => boardAccessVersion(client, board.id),
+    onSuccess: (saved, _input, version) => {
+      if (
+        !scope.isCurrent() ||
+        version !== boardAccessVersion(client, board.id)
+      )
+        return;
       client.setQueryData(boardKeys.detail(saved.id), saved);
       void client.invalidateQueries({ queryKey: boardKeys.lists() });
       void client.invalidateQueries({

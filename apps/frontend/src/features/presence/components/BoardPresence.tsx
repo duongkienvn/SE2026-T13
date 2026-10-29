@@ -19,22 +19,29 @@ const messages = {
 } as const;
 
 /** Resolves profiles through existing REST data, never infers population from it. */
-export function BoardPresence({ boardId }: { boardId: string }) {
+export function BoardPresence({
+  boardId,
+  canReadMembers = true,
+}: {
+  boardId: string;
+  canReadMembers?: boolean;
+}) {
   const presence = useBoardPresence(boardId);
-  const members = useBoardMembers(boardId);
+  const members = useBoardMembers(boardId, { enabled: canReadMembers });
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const profiles = useMemo(() => {
     const values = new Map<string, Profile>(
-      (members.data ?? []).map((member) => [
+      (canReadMembers ? (members.data ?? []) : []).map((member) => [
         member.user.id.toLowerCase(),
         member.user,
       ]),
     );
     if (user) values.set(user.id.toLowerCase(), user);
     return values;
-  }, [members.data, user]);
+  }, [members.data, user, canReadMembers]);
   const forbidden =
+    canReadMembers &&
     isApiError(members.error) &&
     (members.error.status === 403 || members.error.status === 404);
   useEffect(() => {

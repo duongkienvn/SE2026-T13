@@ -31,6 +31,7 @@ interface ActivityHistoryDialogProps {
   boardId: string;
   open: boolean;
   onClose: () => void;
+  canReadMembers?: boolean;
 }
 
 /** Read-only, server-ordered (newest first) history of one board. */
@@ -38,12 +39,13 @@ export function ActivityHistoryDialog({
   boardId,
   open,
   onClose,
+  canReadMembers = true,
 }: ActivityHistoryDialogProps) {
   const [page, setPage] = useState(1);
   const query = useActivities(boardId, page, { enabled: open });
   // Names come from the member list; wait for it so current members don't
   // flash as "Former member". If it fails, rows fall back to generic names.
-  const members = useBoardMembers(boardId);
+  const members = useBoardMembers(boardId, { enabled: canReadMembers });
   const unavailable = query.isError && isAccessError(query.error);
   const pageData = unavailable ? undefined : query.data;
 
@@ -85,7 +87,8 @@ export function ActivityHistoryDialog({
             <Alert variant="error">Activity could not be refreshed.</Alert>
           </div>
         )}
-        {query.isPending || (pageData && members.isPending) ? (
+        {query.isPending ||
+        (canReadMembers && pageData && members.isPending) ? (
           <LoadingState label="Loading activity…" />
         ) : query.isError && !pageData ? (
           <ErrorState
@@ -106,7 +109,11 @@ export function ActivityHistoryDialog({
           />
         ) : (
           pageData && (
-            <ActivityList items={pageData.items} members={members.data ?? []} />
+            <ActivityList
+              items={pageData.items}
+              members={canReadMembers ? (members.data ?? []) : []}
+              canReadMembers={canReadMembers}
+            />
           )
         )}
         {pageData && (
@@ -126,16 +133,23 @@ export function ActivityHistoryDialog({
 function ActivityList({
   items,
   members,
+  canReadMembers,
 }: {
   items: Activity[];
   members: BoardMember[];
+  canReadMembers: boolean;
 }) {
   const { user } = useAuth();
 
   return (
     <ol aria-label="Activity" className="space-y-3 short:space-y-2">
       {items.map((activity, index) => {
-        const actor = resolveActor(activity.actorId, members, user);
+        const actor = resolveActor(
+          activity.actorId,
+          members,
+          user,
+          canReadMembers,
+        );
         const { action, detail } = describeActivity(activity);
         const timestamp = validTimestamp(activity.createdAt);
         return (

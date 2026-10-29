@@ -42,10 +42,10 @@ export function mapWorkspace(item: WorkspaceResponse): WorkspaceSummary {
 export function mapWorkspaceBoard(
   item: WorkspaceBoardResponse,
 ): WorkspaceBoardSummary {
-  // #115 must deliver read-only grants before these can be presented or opened.
   if (
-    item.visibility !== 'PRIVATE' ||
-    !['OWNER', 'MEMBER'].includes(item.currentUserRole)
+    !['PRIVATE', 'WORKSPACE_VISIBLE'].includes(item.visibility) ||
+    ![null, 'OWNER', 'MEMBER'].includes(item.currentUserRole) ||
+    (item.currentUserRole === null && item.visibility !== 'WORKSPACE_VISIBLE')
   ) {
     throw new ApiError(
       200,

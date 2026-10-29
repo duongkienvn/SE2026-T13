@@ -31,6 +31,7 @@ export interface BoardRealtimeOptions {
   invalidate: (targets: InvalidationTarget[]) => void;
   /** Re-checks the session by REST; a 401 there ends it (and this client). */
   verifySession: () => void;
+  accessRevoked?: (boardId: string) => void;
   ackTimeoutMs?: number;
   /** First retry delay; each further retry doubles it, up to 30 s. */
   retryBaseMs?: number;
@@ -306,6 +307,7 @@ export class BoardRealtimeClient {
     room.presence = EMPTY_PRESENCE.syncing;
     if (ack && !ack.success) {
       if (ack.code === 'NOT_FOUND' || ack.code === 'VALIDATION_FAILED') {
+        this.options.accessRevoked?.(room.boardId);
         // Not a member (any more) or no such board: let REST say so on the page.
         room.status = 'unavailable';
         room.presence = EMPTY_PRESENCE.unavailable;
@@ -387,6 +389,19 @@ export class BoardRealtimeClient {
     if (typeof boardId !== 'string') return;
     const id = boardId.toLowerCase();
     for (const room of this.rooms.values()) {
+      if (
+        event === 'board:access-revoked' &&
+        room.boardId.toLowerCase() === id
+      ) {
+        clearTimeout(room.retryTimer);
+        room.attempt++;
+        room.joinPending = false;
+        room.pendingPresence = undefined;
+        room.status = 'unavailable';
+        room.presence = EMPTY_PRESENCE.unavailable;
+        this.notify();
+        continue;
+      }
       // Events before the join ACK are covered by the resync that follows it.
       if (room.status !== 'live' || room.boardId.toLowerCase() !== id) continue;
       // Query keys use the board id as the page has it, which may differ in case.

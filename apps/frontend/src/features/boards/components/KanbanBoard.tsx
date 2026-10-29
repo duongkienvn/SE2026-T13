@@ -30,6 +30,7 @@ interface KanbanBoardProps {
   boardId: string;
   /** Archived boards can be viewed but not changed. */
   readOnly: boolean;
+  canReadMembers?: boolean;
 }
 
 type OpenDialog =
@@ -38,12 +39,16 @@ type OpenDialog =
   | { kind: 'delete-column'; column: Column };
 
 /** The board's columns and active cards, side by side. */
-export function KanbanBoard({ boardId, readOnly }: KanbanBoardProps) {
+export function KanbanBoard({
+  boardId,
+  readOnly,
+  canReadMembers = true,
+}: KanbanBoardProps) {
   const { cardId, openCard, closeCard } = useCardRoute(boardId);
   const columns = useColumns(boardId);
   const cards = useCards(boardId);
   // Only for assignee names and avatars: the board still shows without them.
-  const members = useBoardMembers(boardId);
+  const members = useBoardMembers(boardId, { enabled: canReadMembers });
   const queryClient = useQueryClient();
   const [dialog, setDialog] = useState<OpenDialog>();
 
@@ -66,9 +71,12 @@ export function KanbanBoard({ boardId, readOnly }: KanbanBoardProps) {
   const membersById = useMemo(
     () =>
       new Map<string, MemberUser>(
-        (members.data ?? []).map((member) => [member.user.id, member.user]),
+        (canReadMembers ? (members.data ?? []) : []).map((member) => [
+          member.user.id,
+          member.user,
+        ]),
       ),
-    [members.data],
+    [members.data, canReadMembers],
   );
   const groups = useMemo(
     () => groupCardsByColumn(columns.data ?? [], cards.data ?? []),
@@ -140,13 +148,13 @@ export function KanbanBoard({ boardId, readOnly }: KanbanBoardProps) {
   return (
     <>
       {content}
-      {dialog?.kind === 'create-column' && (
+      {!readOnly && dialog?.kind === 'create-column' && (
         <CreateColumnDialog boardId={boardId} open onClose={closeDialog} />
       )}
-      {dialog?.kind === 'rename-column' && (
+      {!readOnly && dialog?.kind === 'rename-column' && (
         <RenameColumnDialog column={dialog.column} open onClose={closeDialog} />
       )}
-      {dialog?.kind === 'delete-column' && (
+      {!readOnly && dialog?.kind === 'delete-column' && (
         <DeleteColumnDialog column={dialog.column} open onClose={closeDialog} />
       )}
       {cardId && (
@@ -159,7 +167,8 @@ export function KanbanBoard({ boardId, readOnly }: KanbanBoardProps) {
             columns.data?.find((column) => column.id === openedCard?.columnId)
               ?.name
           }
-          members={members.data ?? []}
+          members={canReadMembers ? (members.data ?? []) : []}
+          canReadMembers={canReadMembers}
           boardReadOnly={readOnly}
           onClose={closeCard}
         />

@@ -3,11 +3,13 @@ import { ApiError } from '../../lib/api-client';
 import { boardKeys } from './query-keys';
 import { avatarKeys } from '../auth/avatar-query-keys';
 import { workspaceKeys } from '../workspaces/query-keys';
+import { changeBoardAccessVersion } from './access-version';
 
 export const BOARD_ACCESS_REVOKED = 'BOARD_ACCESS_REVOKED';
 
 /** Keep a denial tombstone so mounted observers cannot revive protected data. */
 export function revokeBoardAccess(client: QueryClient, boardId: string) {
+  changeBoardAccessVersion(client, boardId);
   // A shared Board may have been the only permission to read another avatar.
   void client.resetQueries({ queryKey: avatarKeys.all });
   const key = boardKeys.detail(boardId);

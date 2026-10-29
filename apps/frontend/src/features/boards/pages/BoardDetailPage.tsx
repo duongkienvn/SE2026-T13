@@ -114,6 +114,10 @@ export function BoardDetailPage() {
   // UI hint only: the backend enforces OWNER-only actions.
   const canManage =
     data.currentUserRole === BoardRole.OWNER && !data.isArchived;
+  const readOnly =
+    data.isArchived ||
+    data.currentUserRole === null ||
+    data.capabilities?.canWriteBoard === false;
 
   return (
     <PageContainer fill>
@@ -125,7 +129,10 @@ export function BoardDetailPage() {
             description={data.description ?? undefined}
             actions={
               <>
-                <BoardPresence boardId={data.id} />
+                <BoardPresence
+                  boardId={data.id}
+                  canReadMembers={data.currentUserRole !== null}
+                />
                 <RealtimeStatus {...realtime} />
                 <RoleChip role={data.currentUserRole} />
                 <Button
@@ -135,13 +142,15 @@ export function BoardDetailPage() {
                   <ActivityIcon aria-hidden="true" className="size-4.5" />
                   Activity
                 </Button>
-                <Link
-                  to={`/boards/${data.id}/members`}
-                  className={buttonClassName('secondary')}
-                >
-                  <UsersIcon aria-hidden="true" className="size-4.5" />
-                  Members
-                </Link>
+                {data.currentUserRole !== null && (
+                  <Link
+                    to={`/boards/${data.id}/members`}
+                    className={buttonClassName('secondary')}
+                  >
+                    <UsersIcon aria-hidden="true" className="size-4.5" />
+                    Members
+                  </Link>
+                )}
                 {
                   <ActionMenu
                     className="ml-auto"
@@ -188,24 +197,30 @@ export function BoardDetailPage() {
       </div>
 
       <div className="mt-5 min-h-0 flex-1 short:mt-3">
-        <KanbanBoard boardId={data.id} readOnly={data.isArchived} />
+        <KanbanBoard
+          boardId={data.id}
+          readOnly={readOnly}
+          canReadMembers={data.currentUserRole !== null}
+        />
       </div>
 
       {showingArchivedCards && (
         <ArchivedCardsDialog
           boardId={data.id}
-          readOnly={data.isArchived}
+          readOnly={readOnly}
           onClose={() => setShowingArchivedCards(false)}
         />
       )}
       {showingActivity && (
         <ActivityHistoryDialog
+          key={`${data.id}:${data.currentUserRole === null ? 'workspace' : 'member'}`}
           boardId={data.id}
+          canReadMembers={data.currentUserRole !== null}
           open
           onClose={() => setShowingActivity(false)}
         />
       )}
-      {editing && (
+      {canManage && editing && (
         <EditBoardDialog
           board={data}
           open
@@ -216,7 +231,7 @@ export function BoardDetailPage() {
           }}
         />
       )}
-      {archiving && (
+      {canManage && archiving && (
         <ArchiveBoardDialog
           board={data}
           open
@@ -229,7 +244,7 @@ export function BoardDetailPage() {
           }}
         />
       )}
-      {restoring && (
+      {data.currentUserRole === BoardRole.OWNER && restoring && (
         <RestoreBoardDialog
           board={data}
           open

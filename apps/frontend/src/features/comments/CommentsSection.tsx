@@ -42,6 +42,7 @@ interface CommentsSectionProps {
   cardId: string;
   members: BoardMember[];
   readOnly: boolean;
+  canReadMembers?: boolean;
 }
 
 /** A sibling of CardForm, never a form inside the card edit form. */
@@ -50,6 +51,7 @@ export function CommentsSection({
   cardId,
   members,
   readOnly,
+  canReadMembers = true,
 }: CommentsSectionProps) {
   const { user } = useAuth();
   const [page, setPage] = useState(1);
@@ -199,7 +201,9 @@ export function CommentsSection({
               const author =
                 byId.get(comment.authorId) ??
                 (user?.id === comment.authorId ? user : undefined);
-              const name = author?.displayName ?? 'Former member';
+              const name =
+                author?.displayName ??
+                (canReadMembers ? 'Former member' : 'Unknown member');
               const own = user?.id === comment.authorId;
               return (
                 <li key={comment.id} className="flex gap-3 text-sm">

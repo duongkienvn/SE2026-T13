@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ApiError } from '../../lib/api-client';
 import { mockApi, ok, fail } from '../../test/mock-api';
 import {
   workspaceResponse as workspace,
@@ -217,7 +216,7 @@ describe('Workspace HTTP adapters', () => {
     ).rejects.toMatchObject({ name: 'AbortError' });
   });
 
-  it('refuses future visibility grants in both lists and Overview until #115', async () => {
+  it('maps Workspace-derived read-only grants without inventing a Board role', async () => {
     const future = {
       ...board,
       visibility: 'WORKSPACE_VISIBLE',
@@ -230,11 +229,26 @@ describe('Workspace HTTP adapters', () => {
         recentBoards: [future],
       }),
     });
-    await expect(
-      workspaceBoardsGateway.list('token', workspace.id, filters, signal()),
-    ).rejects.toBeInstanceOf(ApiError);
-    await expect(
-      workspaceGateway.overview('token', workspace.id, signal()),
-    ).rejects.toMatchObject({ code: 'INVALID_RESPONSE' });
+    const list = await workspaceBoardsGateway.list(
+      'token',
+      workspace.id,
+      filters,
+      signal(),
+    );
+    expect(list.items[0]).toMatchObject({
+      visibility: 'WORKSPACE_VISIBLE',
+      currentUserRole: null,
+      canArchive: false,
+      canRestore: false,
+    });
+    const result = await workspaceGateway.overview(
+      'token',
+      workspace.id,
+      signal(),
+    );
+    expect(result.recentBoards[0]).toMatchObject({
+      id: future.id,
+      name: future.name,
+    });
   });
 });
