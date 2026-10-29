@@ -22,7 +22,12 @@ const request = require('supertest');
 const { io } = createRequire(
   new URL('../../../../frontend/package.json', import.meta.url),
 )('socket.io-client');
-const events = Object.values(RealtimeServerEvent);
+// The ACL integration suite drives access changes; this fixture covers content/member events.
+const events = Object.values(RealtimeServerEvent).filter(
+  (event) =>
+    event !== RealtimeServerEvent.BOARD_ACCESS_CHANGED &&
+    event !== RealtimeServerEvent.BOARD_ACCESS_REVOKED,
+);
 
 export async function seedBoardEvents(source) {
   const passwordHash = await argon2.hash('board-events-password');

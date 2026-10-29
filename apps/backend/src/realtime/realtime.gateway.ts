@@ -35,6 +35,23 @@ export class RealtimeGateway
 
   handleConnection(socket: RealtimeSocket): void {
     this.auth.connected(socket);
+    // Business commands use REST; no forged server event can become a mutation.
+    socket.onAny((event: string, ...args: unknown[]) => {
+      if (
+        event === RealtimeEvent.BOARD_JOIN ||
+        event === RealtimeEvent.BOARD_LEAVE
+      )
+        return;
+      const acknowledge = args.at(-1);
+      if (typeof acknowledge === 'function')
+        acknowledge({
+          success: false,
+          code: this.auth.isActive(socket)
+            ? 'VALIDATION_FAILED'
+            : 'UNAUTHORIZED',
+          message: 'Unsupported client event',
+        });
+    });
   }
 
   async handleDisconnect(socket: RealtimeSocket): Promise<void> {

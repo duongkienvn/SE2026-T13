@@ -61,46 +61,50 @@ export class BoardRoomService {
         };
       }
       const boardId = request.boardId.toLowerCase();
-      return await this.coordinator.run(boardId, async () => {
-        if (!this.auth.isActive(socket)) return this.unauthorized();
-        if (join) {
-          await this.authorization.requireMember(
-            socket.data.identity!.userId,
-            boardId,
-          );
+      const changeRoom = (): Promise<BoardRoomAck> =>
+        this.coordinator.run(boardId, async (): Promise<BoardRoomAck> => {
           if (!this.auth.isActive(socket)) return this.unauthorized();
-          try {
-            await socket.join(boardRoom(boardId));
-          } catch (error) {
-            socket.data.authorizedBoardIds?.delete(boardId);
-            this.coordinator.presence.remove(boardId, socket.id);
+          if (join) {
+            await this.authorization.requireRead(
+              socket.data.identity!.userId,
+              boardId,
+            );
+            if (!this.auth.isActive(socket)) return this.unauthorized();
+            try {
+              await socket.join(boardRoom(boardId));
+            } catch (error) {
+              socket.data.authorizedBoardIds?.delete(boardId);
+              this.coordinator.presence.remove(boardId, socket.id);
+              this.coordinator.syncPresence(boardId);
+              throw error;
+            }
+            if (!this.auth.isActive(socket)) {
+              socket.data.authorizedBoardIds?.delete(boardId);
+              this.coordinator.presence.remove(boardId, socket.id);
+              this.coordinator.syncPresence(boardId);
+              await socket.leave(boardRoom(boardId));
+              return this.unauthorized();
+            }
+            (socket.data.authorizedBoardIds ??= new Set()).add(boardId);
+            this.coordinator.presence.add(
+              boardId,
+              socket.data.identity!.userId,
+              socket.id,
+            );
+            // Initial snapshot precedes the unchanged join ACK.
             this.coordinator.syncPresence(boardId);
-            throw error;
-          }
-          if (!this.auth.isActive(socket)) {
+          } else {
+            // Stop delivery even if the adapter fails to remove physical membership.
             socket.data.authorizedBoardIds?.delete(boardId);
             this.coordinator.presence.remove(boardId, socket.id);
             this.coordinator.syncPresence(boardId);
             await socket.leave(boardRoom(boardId));
-            return this.unauthorized();
           }
-          (socket.data.authorizedBoardIds ??= new Set()).add(boardId);
-          this.coordinator.presence.add(
-            boardId,
-            socket.data.identity!.userId,
-            socket.id,
-          );
-          // Initial snapshot precedes the unchanged join ACK.
-          this.coordinator.syncPresence(boardId);
-        } else {
-          // Stop delivery even if the adapter fails to remove physical membership.
-          socket.data.authorizedBoardIds?.delete(boardId);
-          this.coordinator.presence.remove(boardId, socket.id);
-          this.coordinator.syncPresence(boardId);
-          await socket.leave(boardRoom(boardId));
-        }
-        return { success: true, boardId };
-      });
+          return { success: true, boardId };
+        });
+      return await (join
+        ? this.coordinator.withReadGrantChanges(changeRoom)
+        : changeRoom());
     } catch (error) {
       if (error instanceof HttpException && error.getStatus() === 404) {
         return {

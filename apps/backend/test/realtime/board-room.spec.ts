@@ -16,7 +16,7 @@ jest.mock('@nestjs/typeorm', () => ({
 
 const BOARD = 'c6ba7134-97ef-4c1b-a342-001a982a7721';
 describe('BoardRoomService', () => {
-  const requireMember = jest.fn();
+  const requireRead = jest.fn();
   const isActive = jest.fn();
   let service: BoardRoomService;
   let socket: RealtimeSocket;
@@ -25,7 +25,7 @@ describe('BoardRoomService', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.resetAllMocks();
-    requireMember.mockResolvedValue({ board: { isArchived: true } });
+    requireRead.mockResolvedValue({ board: { isArchived: true } });
     isActive.mockReturnValue(true);
     socket = {
       data: { identity: { userId: 'verified' } },
@@ -35,7 +35,7 @@ describe('BoardRoomService', () => {
     coordinator = new BoardRoomCoordinator(new BoardPresenceService());
     limiter = new BoardRoomRateLimiter();
     service = new BoardRoomService(
-      { requireMember } as unknown as BoardAuthorizationService,
+      { requireRead } as unknown as BoardAuthorizationService,
       { isActive } as unknown as RealtimeAuthService,
       coordinator,
       limiter,
@@ -59,7 +59,7 @@ describe('BoardRoomService', () => {
           : await service.join(socket, { boardId });
       expect(result.success).toBe(true);
     }
-    const queries = requireMember.mock.calls.length;
+    const queries = requireRead.mock.calls.length;
     await expect(service.join(otherTab, { boardId: BOARD })).resolves.toEqual({
       success: false,
       code: 'TOO_MANY_REQUESTS',
@@ -68,7 +68,7 @@ describe('BoardRoomService', () => {
     await expect(
       service.leave(socket, { boardId: BOARD }),
     ).resolves.toMatchObject({ code: 'TOO_MANY_REQUESTS' });
-    expect(requireMember).toHaveBeenCalledTimes(queries);
+    expect(requireRead).toHaveBeenCalledTimes(queries);
     jest.advanceTimersByTime(BOARD_ROOM_REQUEST_LIMITS.windowMs - 1);
     await expect(
       service.join(socket, { boardId: BOARD }),
@@ -90,7 +90,12 @@ describe('BoardRoomService', () => {
   it('bounds queued requests even across windows while authorization is stalled', async () => {
     let resume!: () => void;
     const blocked = new Promise<void>((resolve) => (resume = resolve));
-    requireMember.mockReturnValue(blocked);
+    const started = new Promise<void>((resolve) => {
+      requireRead.mockImplementation(() => {
+        resolve();
+        return blocked;
+      });
+    });
     const run = jest.spyOn(coordinator, 'run');
     const admitted = Array.from(
       { length: BOARD_ROOM_REQUEST_LIMITS.pending },
@@ -104,8 +109,9 @@ describe('BoardRoomService', () => {
     expect(
       burst.every((ack) => !ack.success && ack.code === 'TOO_MANY_REQUESTS'),
     ).toBe(true);
-    expect(run).toHaveBeenCalledTimes(BOARD_ROOM_REQUEST_LIMITS.pending);
-    expect(requireMember).toHaveBeenCalledTimes(1);
+    await started;
+    expect(run).toHaveBeenCalledTimes(BOARD_ROOM_REQUEST_LIMITS.pending + 1);
+    expect(requireRead).toHaveBeenCalledTimes(1);
     jest.advanceTimersByTime(BOARD_ROOM_REQUEST_LIMITS.windowMs * 2);
     await expect(
       service.leave(socket, { boardId: BOARD }),
@@ -130,9 +136,9 @@ describe('BoardRoomService', () => {
       service.join(socket, { boardId: BOARD }),
     ).resolves.toMatchObject({ code: 'TOO_MANY_REQUESTS' });
     expect(run).not.toHaveBeenCalled();
-    expect(requireMember).not.toHaveBeenCalled();
+    expect(requireRead).not.toHaveBeenCalled();
     jest.advanceTimersByTime(BOARD_ROOM_REQUEST_LIMITS.windowMs);
-    requireMember.mockRejectedValueOnce(new NotFoundException());
+    requireRead.mockRejectedValueOnce(new NotFoundException());
     await expect(
       service.join(socket, { boardId: BOARD }),
     ).resolves.toMatchObject({ code: 'NOT_FOUND' });
@@ -145,10 +151,10 @@ describe('BoardRoomService', () => {
     await expect(
       service.join(socket, { boardId: BOARD.toUpperCase() }),
     ).resolves.toEqual({ success: true, boardId: BOARD });
-    expect(requireMember).toHaveBeenCalledWith('verified', BOARD);
+    expect(requireRead).toHaveBeenCalledWith('verified', BOARD);
     expect(socket.join).toHaveBeenCalledWith(`board:${BOARD}`);
     expect(socket.data.authorizedBoardIds?.has(BOARD)).toBe(true);
-    expect(requireMember.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(requireRead.mock.invocationCallOrder[0]).toBeLessThan(
       (socket.join as jest.Mock).mock.invocationCallOrder[0],
     );
   });
@@ -170,13 +176,11 @@ describe('BoardRoomService', () => {
     });
     expect(socket.join).not.toHaveBeenCalled();
     expect(socket.data.authorizedBoardIds?.has(BOARD)).not.toBe(true);
-    expect(requireMember).not.toHaveBeenCalled();
+    expect(requireRead).not.toHaveBeenCalled();
   });
 
   it('hides missing board and nonmembership behind the same acknowledgement', async () => {
-    requireMember.mockRejectedValue(
-      new NotFoundException('private information'),
-    );
+    requireRead.mockRejectedValue(new NotFoundException('private information'));
     await expect(service.join(socket, { boardId: BOARD })).resolves.toEqual({
       success: false,
       code: 'NOT_FOUND',
@@ -202,7 +206,7 @@ describe('BoardRoomService', () => {
     let checked!: () => void;
     const reading = new Promise<void>((resolve) => (checked = resolve));
     const barrier = new Promise<void>((resolve) => (release = resolve));
-    requireMember.mockImplementationOnce(async () => {
+    requireRead.mockImplementationOnce(async () => {
       checked();
       await barrier;
     });
@@ -235,7 +239,7 @@ describe('BoardRoomService', () => {
     await service.leave(socket, { boardId: BOARD });
     expect(socket.leave).toHaveBeenCalledTimes(2);
     expect(socket.leave).toHaveBeenLastCalledWith(`board:${BOARD}`);
-    expect(requireMember).not.toHaveBeenCalled();
+    expect(requireRead).not.toHaveBeenCalled();
     expect([...socket.data.authorizedBoardIds]).toEqual(['another-board']);
   });
 
@@ -256,7 +260,7 @@ describe('BoardRoomService', () => {
   it('returns sanitized failure and keeps serving when authorization storage fails', async () => {
     const log = jest.spyOn(service['logger'], 'error').mockImplementation();
     try {
-      requireMember.mockRejectedValueOnce(new Error('SQL and secrets'));
+      requireRead.mockRejectedValueOnce(new Error('SQL and secrets'));
       await expect(
         service.join(socket, { boardId: BOARD }),
       ).resolves.toMatchObject({
