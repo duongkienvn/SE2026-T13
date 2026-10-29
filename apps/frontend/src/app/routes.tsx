@@ -25,6 +25,7 @@ import { WorkspaceLayout } from '../features/workspaces/components/WorkspaceLayo
 import { WorkspaceOverviewPage } from '../features/workspaces/pages/WorkspaceOverviewPage';
 import { WorkspacesPage } from '../features/workspaces/pages/WorkspacesPage';
 import { WorkspaceBoardsPage } from '../features/workspaces/pages/WorkspaceBoardsPage';
+import { AcceptInvitationPage } from '../features/workspaces/invitations/AcceptInvitationPage';
 import { WorkspaceMembersPage } from '../features/workspaces/pages/WorkspaceMembersPage';
 import { PublicOnly, RequireAuth } from './guards';
 import { AuthenticatedLayout } from './layout/AuthenticatedLayout';
@@ -40,6 +41,8 @@ export const routes: RouteObject[] = [
       { path: 'verify-email', element: <VerifyEmailPage /> },
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
       { path: 'reset-password', element: <ResetPasswordPage /> },
+      // Invitation email link; works signed in or out (#117, P2-10).
+      { path: 'invitations/workspace', element: <AcceptInvitationPage /> },
       {
         element: <PublicOnly />,
         children: [
