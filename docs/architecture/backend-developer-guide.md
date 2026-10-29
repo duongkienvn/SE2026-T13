@@ -76,7 +76,18 @@ TypeORM CLI commands use the same `databaseOptions()` as Nest runtime. Run `migr
 
 ## Board membership authorization
 
-`BoardAuthorizationService` is the reusable board-level authorization seam. It loads the board and `BoardMember` from PostgreSQL, returns `404 Board not found` for both absent boards and non-members, enforces `OWNER` where required, and rejects mutations on archived boards. Controllers and services for boards, columns, cards, comments, and realtime room access should consume this seam instead of trusting JWT roles or client input.
+`BoardAuthorizationService` is the reusable board-level authorization seam.
+`requireRead()` allows explicit Board members or authenticated Workspace members
+on WORKSPACE_VISIBLE Boards; Workspace ADMIN never overrides PRIVATE. Explicit
+membership is returned as OWNER/MEMBER, and Workspace-only read access as null.
+`requireMember()` remains the stricter gate for writes and administrative member
+reads, while owner wrappers preserve OWNER and archive rules. Mutations pass
+their transaction manager and acquire the Board row lock before checking the
+persisted grant. Missing/inaccessible reads and absent explicit write grants
+return the same safe 404. Do not trust JWT/client roles or capabilities. See the
+[visibility/access contract](../tasks/backend/board-visibility-access-control.md)
+for DTOs, SQL filtering, revocation ordering and the single-process deployment
+assumption.
 
 `BoardMembersService` performs membership mutations in TypeORM transactions. Removing a member deletes every matching `card_assignees` row through the board's cards before deleting the membership row; archived cards are included. The board creator cannot be demoted or removed, and role changes cannot leave a board without an `OWNER`. The member response DTO nests only the public `UserResponseDto` fields.
 
@@ -84,7 +95,7 @@ Column Management uses `BoardAuthorizationService.requireMember()` with
 `{ mutable: true }` for create, rename, reorder and delete. This keeps the MVP
 policy that both `OWNER` and `MEMBER` can collaborate on board structure while
 still rejecting archived-board mutations with `409 BOARD_ARCHIVED`. Read-only
-Column listing uses `requireMember()` without the mutable option.
+Column listing uses `requireRead()` without granting writes.
 
 Column create, reorder and delete operations run inside a transaction after
 locking the Board row. The lock serializes concurrent structural changes for a

@@ -19,6 +19,7 @@
     "test:workspaces:database": "pnpm build && node test/workspaces/workspaces.integration.mjs",
     "test:workspace-api:database": "pnpm build && node test/workspaces/workspace-api.integration.mjs",
     "test:workspace-members:database": "pnpm build && node test/workspaces/workspace-members-invitations.integration.mjs",
+    "test:board-access:database": "pnpm build && node test/workspaces/workspace-members-invitations.integration.mjs",
     "test:preferences:database": "pnpm build && node test/users/user-preferences.integration.mjs",
     "test:avatars:database": "pnpm build && node test/users/avatar.integration.mjs",
     "test:email-verification:database": "pnpm build && node test/auth/email-verification.integration.mjs",

@@ -10,6 +10,13 @@ import { verifyInvitations } from './workspace-invitations.lifecycle.mjs';
 import { verifyInvitationRaces } from './workspace-invitations.concurrency.mjs';
 import { verifyInvitationMigration } from './workspace-invitations.migration.mjs';
 import { verifyQuotaContention } from './workspace-invitations.quotas.mjs';
+import { verifyBoardAccess } from '../boards/board-access.matrix.mjs';
+import { verifyBoardAccessRealtime } from '../boards/board-access.realtime.mjs';
+import {
+  verifyBoardMemberWriteRace,
+  verifyWorkspaceSnapshotRace,
+} from '../boards/board-access.concurrency.mjs';
+import { verifyBoardAccessBrowser } from '../boards/board-access.browser.mjs';
 import {
   verifyDispatchLease,
   verifyAcceptRemoval,
@@ -170,6 +177,15 @@ try {
   await verifyQuotaContention(context);
   await verifyDispatchLease(context);
   await verifyAcceptRemoval(context);
+  await verifyBoardAccess(context);
+  await verifyBoardAccessRealtime(context);
+  await verifyBoardMemberWriteRace(context);
+  await verifyWorkspaceSnapshotRace(context);
+  if (process.argv.includes('--browser-qa'))
+    await verifyBoardAccessBrowser(context);
+  console.log(
+    'PASS: P2-04 Board ACL actor/visibility/archive matrix, nested REST, aggregates, Socket.IO, revocation and races',
+  );
   const swagger = await http.get('/api-docs-json').expect(200);
   for (const [path, method, status] of [
     ['/api/workspaces/{workspaceId}/members', 'get', '200'],

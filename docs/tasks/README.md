@@ -27,6 +27,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Backend tasks
 
+- [Board visibility, authorization and realtime access enforcement](backend/board-visibility-access-control.md)
 - [Workspace members, roles and secure invitations](backend/workspace-members-invitations-api.md)
 - [Core Workspace API and access-scoped queries](backend/workspace-core-api.md)
 - [Workspace data foundation and legacy Board migration](backend/workspace-data-foundation.md)
