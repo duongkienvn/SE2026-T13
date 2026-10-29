@@ -14,10 +14,36 @@ import {
 import { ResendPasswordRecoveryMailer } from './resend-password-recovery-mailer';
 import { FakeWelcomeMailer, WelcomeMailer } from './welcome-mailer';
 import { ResendWelcomeMailer } from './resend-welcome-mailer';
+import { WorkspaceInvitationMailer } from '../api/workspaces/workspace-invitation-mailer';
+import { FakeWorkspaceInvitationMailer } from './fake-workspace-invitation-mailer';
+import { ResendWorkspaceInvitationMailer } from './resend-workspace-invitation-mailer';
 
 @Module({
   imports: [ConfigModule],
   providers: [
+    {
+      provide: WorkspaceInvitationMailer,
+      inject: [ConfigService],
+      useFactory: (
+        config: ConfigService<EnvironmentConfig, true>,
+      ): WorkspaceInvitationMailer | undefined => {
+        const path = config.get('WORKSPACE_INVITATION_ACCEPT_PATH', {
+          infer: true,
+        });
+        // Preserve P2-03's UNAVAILABLE state until P2-08 has a working destination.
+        if (!path) return undefined;
+        const from = config.get('MAIL_FROM', { infer: true });
+        const origin = config.get('PUBLIC_APP_URL', { infer: true });
+        return config.get('MAIL_TRANSPORT', { infer: true }) === 'fake'
+          ? new FakeWorkspaceInvitationMailer(from, origin, path)
+          : new ResendWorkspaceInvitationMailer(
+              new Resend(config.get('RESEND_API_KEY', { infer: true })),
+              from,
+              origin,
+              path,
+            );
+      },
+    },
     {
       provide: WelcomeMailer,
       inject: [ConfigService],
@@ -61,6 +87,11 @@ import { ResendWelcomeMailer } from './resend-welcome-mailer';
       },
     },
   ],
-  exports: [VerificationMailer, PasswordRecoveryMailer, WelcomeMailer],
+  exports: [
+    VerificationMailer,
+    PasswordRecoveryMailer,
+    WelcomeMailer,
+    WorkspaceInvitationMailer,
+  ],
 })
 export class MailModule {}
