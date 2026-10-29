@@ -89,7 +89,7 @@ function WorkspaceMembersContent({ workspaceId }: { workspaceId: string }) {
       <div
         role="tablist"
         aria-label="Member lists"
-        className="flex gap-1 overflow-x-auto border-b border-line"
+        className="flex overflow-x-auto border-b border-line sm:gap-1"
       >
         {tabs.map((item) => {
           const Icon = item.icon;
@@ -113,7 +113,7 @@ function WorkspaceMembersContent({ workspaceId }: { workspaceId: string }) {
                 go({ tab: other.id === 'members' ? null : other.id }, true);
                 document.getElementById(`members-tab-${other.id}`)?.focus();
               }}
-              className={`-mb-px flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-sm focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary sm:px-4 ${selected ? 'border-primary font-medium text-primary' : 'border-transparent text-muted hover:text-ink'}`}
+              className={`-mb-px flex min-h-11 shrink-0 items-center gap-1.5 border-b-2 px-2 text-sm focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary sm:gap-2 sm:px-4 ${selected ? 'border-primary font-medium text-primary' : 'border-transparent text-muted hover:text-ink'}`}
             >
               <Icon className="size-4 shrink-0" />
               {item.label}
@@ -122,7 +122,7 @@ function WorkspaceMembersContent({ workspaceId }: { workspaceId: string }) {
         })}
         <span
           aria-disabled="true"
-          className="-mb-px flex min-h-11 shrink-0 items-center gap-2 border-b-2 border-transparent px-3 text-sm text-muted sm:px-4"
+          className="-mb-px flex min-h-11 shrink-0 items-center gap-1.5 border-b-2 border-transparent px-2 text-sm text-muted sm:gap-2 sm:px-4"
         >
           <UserIcon className="size-4 shrink-0" />
           Guests
