@@ -11,6 +11,23 @@ import type {
   UpdateMemberRoleRequest,
 } from './types';
 
+export interface BoardPolicyCapabilities {
+  readonly canInviteMembers: boolean;
+  readonly canChangeMembership: boolean;
+  readonly canChangeVisibility: boolean;
+}
+
+export function getBoardPolicyCapabilities(
+  accessToken: string,
+  boardId: string,
+  signal?: AbortSignal,
+): Promise<BoardPolicyCapabilities> {
+  return apiRequest<BoardPolicyCapabilities>(
+    `/boards/${encodeURIComponent(boardId)}/policy-capabilities`,
+    { accessToken, signal },
+  );
+}
+
 function membersPath(boardId: string, userId?: string): string {
   const base = `/boards/${encodeURIComponent(boardId)}/members`;
   return userId ? `${base}/${encodeURIComponent(userId)}` : base;

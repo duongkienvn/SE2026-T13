@@ -12,6 +12,10 @@ import { WorkspaceMembersService } from './workspace-members.service';
 import { WorkspaceInvitationsService } from './workspace-invitations.service';
 import { WorkspaceInvitationIssuanceService } from './workspace-invitation-issuance.service';
 import { WorkspaceMembersController } from './workspace-members.controller';
+import { WorkspacePoliciesController } from './workspace-policies.controller';
+import { WorkspacePoliciesService } from './workspace-policies.service';
+import { WorkspaceDeletionController } from './workspace-deletion.controller';
+import { WorkspaceDeletionService } from './workspace-deletion.service';
 import { BoardMembersModule } from '../board-members/board-members.module';
 import { RealtimeAccessModule } from '../../realtime/realtime-access.module';
 import {
@@ -31,6 +35,8 @@ import {
   controllers: [
     WorkspaceApiController,
     WorkspaceMembersController,
+    WorkspacePoliciesController,
+    WorkspaceDeletionController,
     WorkspaceInvitationsController,
     WorkspaceInvitationAcceptanceController,
   ],
@@ -38,6 +44,8 @@ import {
     WorkspaceApiService,
     WorkspaceBoardsService,
     WorkspaceMembersService,
+    WorkspacePoliciesService,
+    WorkspaceDeletionService,
     WorkspaceInvitationsService,
     WorkspaceInvitationIssuanceService,
   ],

@@ -4,6 +4,7 @@ import { Expose } from 'class-transformer';
 import { toResponseDto } from '../../../common/dto/to-response-dto';
 import { WorkspaceMember } from '../entities/workspace-member.entity';
 import { WORKSPACE_ICONS, type WorkspaceIcon } from './workspace-input.dto';
+import { canCreateBoard } from '../workspace-policy';
 
 export class WorkspaceResponseDto {
   @Expose() @ApiProperty({ format: 'uuid' }) id!: string;
@@ -35,7 +36,7 @@ export function toWorkspaceResponseDto(
     icon: workspace.icon,
     role: member.role,
     canManage: member.role === WorkspaceRole.ADMIN,
-    canCreateBoards: true,
+    canCreateBoards: canCreateBoard(member),
     joinedAt: member.joinedAt.toISOString(),
     createdAt: workspace.createdAt.toISOString(),
     updatedAt: workspace.updatedAt.toISOString(),

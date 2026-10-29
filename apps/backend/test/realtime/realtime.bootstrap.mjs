@@ -115,6 +115,9 @@ const repositories = {
   Board: {
     createQueryBuilder() {
       return {
+        innerJoinAndSelect() {
+          return this;
+        },
         where() {
           return this;
         },
@@ -128,6 +131,15 @@ const repositories = {
     },
     async findOne({ where }) {
       return boards.get(where.id) ?? null;
+    },
+  },
+  Workspace: {
+    async findOne() {
+      return {
+        boardInvitesEnabled: true,
+        boardMembershipChangesEnabled: true,
+        boardVisibilityChangesEnabled: true,
+      };
     },
   },
   BoardMember: {

@@ -32,6 +32,10 @@ export interface BoardRealtimeOptions {
   /** Re-checks the session by REST; a 401 there ends it (and this client). */
   verifySession: () => void;
   accessRevoked?: (boardId: string) => void;
+  /** Keep a session-scoped connection even without an open Board. */
+  keepAlive?: boolean;
+  connectionLost?: () => void;
+  reconnected?: () => void;
   ackTimeoutMs?: number;
   /** First retry delay; each further retry doubles it, up to 30 s. */
   retryBaseMs?: number;
@@ -86,6 +90,12 @@ export class BoardRealtimeClient {
     this.idleDisconnectMs = options.idleDisconnectMs ?? 10_000;
   }
 
+  start(): void {
+    if (this.disposed || !this.options.keepAlive) return;
+    const socket = this.ensureSocket();
+    if (!socket.connected && !socket.active) socket.connect();
+  }
+
   /** Keeps the board's room joined until the returned function is called. */
   watch(boardId: string): () => void {
     if (this.disposed) return () => undefined;
@@ -129,7 +139,12 @@ export class BoardRealtimeClient {
 
   /** The browser is back online or visible: retry now instead of waiting. */
   wake(): void {
-    if (this.disposed || !this.socket || this.watchers.size === 0) return;
+    if (
+      this.disposed ||
+      !this.socket ||
+      (!this.options.keepAlive && this.watchers.size === 0)
+    )
+      return;
     this.reconnectRetries = 0;
     if (!this.socket.connected) {
       clearTimeout(this.reconnectTimer);
@@ -208,7 +223,11 @@ export class BoardRealtimeClient {
       clearTimeout(this.idleTimer);
       this.idleTimer = undefined;
       if (socket && !socket.connected && !socket.active) socket.connect();
-    } else if (socket && this.idleTimer === undefined) {
+    } else if (
+      !this.options.keepAlive &&
+      socket &&
+      this.idleTimer === undefined
+    ) {
       this.idleTimer = setTimeout(() => {
         this.idleTimer = undefined;
         if (this.watchers.size === 0) socket.disconnect();
@@ -223,6 +242,7 @@ export class BoardRealtimeClient {
     this.socket = socket;
 
     socket.on('connect', () => {
+      this.options.reconnected?.();
       const epoch = ++this.connectionEpoch;
       if (this.presenceListener)
         socket.off(RealtimePresenceEvent.SYNC, this.presenceListener);
@@ -342,6 +362,7 @@ export class BoardRealtimeClient {
   }
 
   private connectionLost(): void {
+    this.options.connectionLost?.();
     this.connectionEpoch++;
     if (this.presenceListener)
       this.socket?.off(RealtimePresenceEvent.SYNC, this.presenceListener);
@@ -365,7 +386,7 @@ export class BoardRealtimeClient {
 
   private scheduleReconnect(): void {
     clearTimeout(this.reconnectTimer);
-    if (this.watchers.size === 0) return;
+    if (!this.options.keepAlive && this.watchers.size === 0) return;
     if (this.reconnectRetries >= this.maxRetries) {
       for (const room of this.rooms.values()) {
         if (room.status !== 'unavailable') {
@@ -378,7 +399,12 @@ export class BoardRealtimeClient {
     }
     this.reconnectTimer = setTimeout(() => {
       const socket = this.socket;
-      if (socket && !socket.connected && !socket.active && this.watchers.size)
+      if (
+        socket &&
+        !socket.connected &&
+        !socket.active &&
+        (this.options.keepAlive || this.watchers.size > 0)
+      )
         socket.connect();
     }, this.delay(this.reconnectRetries++));
   }

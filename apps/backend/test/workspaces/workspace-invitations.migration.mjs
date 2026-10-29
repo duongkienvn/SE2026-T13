@@ -6,7 +6,12 @@ export async function verifyInvitationMigration(source) {
   const lifecycle = migrations.find((m) =>
     m.name.startsWith('WorkspaceInvitationLifecycle'),
   );
-  source.migrations = migrations.filter((m) => m !== lifecycle);
+  const policies = migrations.find((m) =>
+    m.name.startsWith('WorkspacePolicies'),
+  );
+  source.migrations = migrations.filter(
+    (m) => m !== lifecycle && m !== policies,
+  );
   await source.runMigrations();
   const [user] = await source.query(
     `INSERT INTO users(email,display_name) VALUES ('migration@example.test','Migration') RETURNING id`,
@@ -24,7 +29,7 @@ export async function verifyInvitationMigration(source) {
   const before = await source.query(
     'SELECT * FROM workspace_invitations ORDER BY id',
   );
-  source.migrations = migrations;
+  source.migrations = migrations.filter((m) => m !== policies);
   await assert.rejects(source.runMigrations(), /Duplicate open invitations/);
   assert.deepEqual(
     await source.query('SELECT * FROM workspace_invitations ORDER BY id'),
@@ -55,6 +60,8 @@ export async function verifyInvitationMigration(source) {
     await source.query('SELECT * FROM workspace_invitations ORDER BY id'),
     preserved,
   );
+  assert.equal((await source.runMigrations()).length, 1);
+  source.migrations = migrations;
   assert.equal((await source.runMigrations()).length, 1);
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries,

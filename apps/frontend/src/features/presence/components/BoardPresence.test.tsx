@@ -62,8 +62,9 @@ async function openPresence(
   await waitFor(() => expect(createdSockets).toHaveLength(1));
   const { socket } = createdSockets[0];
   beforeJoin?.();
+  act(() => socket.open());
+  await waitFor(() => expect(socket.requests('board:join')).toHaveLength(1));
   act(() => {
-    socket.open();
     socket.push('presence:sync', { boardId: BOARD, userIds: ids });
     socket.lastJoin().reply(joined(BOARD));
   });

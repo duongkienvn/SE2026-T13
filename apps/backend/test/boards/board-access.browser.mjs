@@ -27,12 +27,14 @@ export async function verifyBoardAccessBrowser(ctx) {
     dirname(frontendRequire.resolve('vite/package.json')),
     'bin/vite.js',
   );
-  const output = fileURLToPath(
-    new URL(
-      '../../../../docs/design/screens/implementation/board-visibility-access-control/',
-      import.meta.url,
-    ),
-  );
+  const output =
+    process.env.P2_05_QA_OUTPUT ??
+    fileURLToPath(
+      new URL(
+        '../../../../docs/design/screens/implementation/board-visibility-access-control/',
+        import.meta.url,
+      ),
+    );
   const {
     app,
     send,

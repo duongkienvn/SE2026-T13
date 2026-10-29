@@ -4,13 +4,39 @@ import {
   receiveBoardRevocation,
   receiveWorkspaceRevocation,
   reduceBoardToReadOnly,
+  clearAccessSnapshots,
 } from './access-revocation';
 import { boardKeys } from '../boards/query-keys';
 import { workspaceKeys } from '../workspaces/query-keys';
 import { makeBoard } from '../../test/board-fixtures';
 import { activityKeys } from '../activities/query-keys';
+import { boardAccessVersion } from '../boards/access-version';
 
 describe('access-loss cache isolation', () => {
+  it('clears stale protected caches and cancels pending reads when access may have changed', async () => {
+    const client = new QueryClient();
+    const board = boardKeys.detail('board');
+    const workspace = workspaceKeys.overview('user', 1, 'team');
+    const pendingListOnlyBoardVersion = boardAccessVersion(client, 'list-only');
+    client.setQueryData(board, { name: 'Private Board' });
+    client.setQueryData(workspace, { recentBoards: ['Private Board'] });
+    let finish: (value: object) => void = () => undefined;
+    const deferred = new Promise<object>((resolve) => {
+      finish = resolve;
+    });
+    const running = client
+      .fetchQuery({ queryKey: board, queryFn: () => deferred, staleTime: 0 })
+      .catch(() => undefined);
+    clearAccessSnapshots(client);
+    finish({ name: 'Stale private data' });
+    await running;
+    expect(client.getQueryData(board)).toBeUndefined();
+    expect(client.getQueryData(workspace)).toBeUndefined();
+    expect(boardAccessVersion(client, 'list-only')).not.toBe(
+      pendingListOnlyBoardVersion,
+    );
+    client.clear();
+  });
   it('prevents an in-flight privileged Activity read from restoring cleared history', async () => {
     const client = new QueryClient();
     const board = makeBoard({ id: 'ABCD' });

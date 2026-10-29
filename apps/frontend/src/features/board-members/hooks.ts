@@ -3,8 +3,10 @@ import { useAuth } from '../auth/useAuth';
 import { retryUnlessClientError } from '../../lib/query-client';
 import { useRefreshIfArchived } from '../boards/hooks';
 import { boardKeys } from '../boards/query-keys';
+import { isApiError } from '../../lib/api-client';
 import {
   addMember,
+  getBoardPolicyCapabilities,
   listAllMembers,
   removeMember,
   updateMemberRole,
@@ -20,6 +22,31 @@ export function useBoardMembers(boardId: string, { enabled = true } = {}) {
     retry: retryUnlessClientError,
     enabled,
   });
+}
+
+export function useBoardPolicyCapabilities(boardId: string, enabled: boolean) {
+  const { runAuthorized } = useAuth();
+  return useQuery({
+    queryKey: boardKeys.policyCapabilities(boardId),
+    queryFn: ({ signal }) =>
+      runAuthorized((token) =>
+        getBoardPolicyCapabilities(token, boardId, signal),
+      ),
+    retry: retryUnlessClientError,
+    enabled,
+  });
+}
+
+function useRefreshDeniedPolicy(boardId: string) {
+  const client = useQueryClient();
+  const refreshIfArchived = useRefreshIfArchived(boardId);
+  return (error: unknown) => {
+    refreshIfArchived(error);
+    if (isApiError(error) && error.status === 403)
+      void client.invalidateQueries({
+        queryKey: boardKeys.policyCapabilities(boardId),
+      });
+  };
 }
 
 /**
@@ -38,7 +65,7 @@ function useInvalidateBoard(boardId: string) {
 export function useAddMember(boardId: string) {
   const { runAuthorized } = useAuth();
   const invalidate = useInvalidateBoard(boardId);
-  const refreshIfArchived = useRefreshIfArchived(boardId);
+  const refreshIfArchived = useRefreshDeniedPolicy(boardId);
   return useMutation({
     mutationFn: (input: AddMemberRequest) =>
       runAuthorized((token) => addMember(token, boardId, input)),
@@ -50,7 +77,7 @@ export function useAddMember(boardId: string) {
 export function useUpdateMemberRole(boardId: string) {
   const { runAuthorized } = useAuth();
   const invalidate = useInvalidateBoard(boardId);
-  const refreshIfArchived = useRefreshIfArchived(boardId);
+  const refreshIfArchived = useRefreshDeniedPolicy(boardId);
   return useMutation({
     mutationFn: ({
       userId,
@@ -65,7 +92,7 @@ export function useUpdateMemberRole(boardId: string) {
 export function useRemoveMember(boardId: string) {
   const { runAuthorized } = useAuth();
   const invalidate = useInvalidateBoard(boardId);
-  const refreshIfArchived = useRefreshIfArchived(boardId);
+  const refreshIfArchived = useRefreshDeniedPolicy(boardId);
   return useMutation({
     mutationFn: (userId: string) =>
       runAuthorized((token) => removeMember(token, boardId, userId)),

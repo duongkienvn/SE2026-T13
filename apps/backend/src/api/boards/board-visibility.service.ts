@@ -9,6 +9,7 @@ import { BoardEventPublisher } from '../../realtime/board-event-publisher.servic
 import { toBoardResponseDto } from './dto/board-response.dto';
 import { ApplicationException } from '../../exceptions/application.exception';
 import { ActivityWriterService } from '../activities/activity-writer.service';
+import { requireBoardPolicy } from '../workspaces/workspace-policy';
 import {
   ActivityActionType,
   ActivityEntityType,
@@ -33,14 +34,18 @@ export class BoardVisibilityService {
       );
     const result = await this.coordinator.run(boardId, async () => {
       const saved = await this.boards.manager.transaction(async (manager) => {
-        // P2-05 must enforce Workspace policy here, under the same transaction,
-        // after OWNER authorization and before changing the persisted grant.
         const { board, member } = await this.authorization.requireMutableOwner(
           userId,
           boardId,
           manager,
         );
-        if (board.visibility !== visibility) {
+        board.workspace = await requireBoardPolicy(
+          manager,
+          board.workspaceId,
+          'boardVisibilityChangesEnabled',
+        );
+        const changed = board.visibility !== visibility;
+        if (changed) {
           board.visibility = visibility;
           await manager.getRepository(Board).save(board);
           await this.activities.record(manager, {
@@ -52,16 +57,26 @@ export class BoardVisibilityService {
             metadata: null,
           });
         }
-        return toBoardResponseDto(board, member.role);
+        const recipients: { userId: string }[] = changed
+          ? await manager.query(
+              `SELECT user_id AS "userId" FROM workspace_members WHERE workspace_id = $1
+               UNION SELECT user_id AS "userId" FROM board_members WHERE board_id = $2`,
+              [board.workspaceId, board.id],
+            )
+          : [];
+        return { board: toBoardResponseDto(board, member.role), recipients };
       });
       await this.coordinator.reconcileBoard(boardId, (actor) =>
         this.authorization.canReadBoard(actor, boardId),
+      );
+      this.coordinator.notifyAccessChanged(
+        saved.recipients.map(({ userId }) => userId),
       );
       return saved;
     });
     await this.events.publish(RealtimeServerEvent.BOARD_ACCESS_CHANGED, {
       boardId,
     });
-    return result;
+    return result.board;
   }
 }

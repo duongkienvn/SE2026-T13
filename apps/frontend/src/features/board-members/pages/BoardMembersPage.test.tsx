@@ -61,6 +61,11 @@ function openMembers(
   const calls = mockApi({
     'GET /users/me': ok(testUser),
     [`GET /boards/${board.id}`]: ok(board),
+    [`GET /boards/${board.id}/policy-capabilities`]: ok({
+      canInviteMembers: true,
+      canChangeMembership: true,
+      canChangeVisibility: true,
+    }),
     [membersListKey(board)]: Array.isArray(members) ? okPage(members) : members,
     ...extra,
   });
@@ -79,6 +84,48 @@ function changes(before: BoardMember[], after: BoardMember[]): Handler {
 
 describe('BoardMembersPage (as OWNER)', () => {
   const board = makeBoard({ name: 'Design Team', currentUserRole: 'OWNER' });
+
+  it('honors separate Workspace policies for invitations and membership changes', async () => {
+    openMembers(board, [me, graceMember], {
+      [`GET /boards/${board.id}/policy-capabilities`]: ok({
+        canInviteMembers: false,
+        canChangeMembership: true,
+        canChangeVisibility: true,
+      }),
+    });
+    expect(
+      await screen.findByRole('button', { name: 'Actions for Grace Hopper' }),
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Add member' })).toBeNull();
+  });
+
+  it('hides membership actions when only Board invitations are allowed', async () => {
+    openMembers(board, [me, graceMember], {
+      [`GET /boards/${board.id}/policy-capabilities`]: ok({
+        canInviteMembers: true,
+        canChangeMembership: false,
+        canChangeVisibility: true,
+      }),
+    });
+    expect(
+      await screen.findByRole('button', { name: 'Add member' }),
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^Actions for/ })).toBeNull();
+  });
+
+  it('does not show management controls if policy capability cannot be loaded', async () => {
+    openMembers(board, [me, graceMember], {
+      [`GET /boards/${board.id}/policy-capabilities`]: fail(
+        500,
+        'INTERNAL_ERROR',
+      ),
+    });
+    expect(await screen.findByRole('table')).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Add member' })).toBeNull(),
+    );
+    expect(screen.queryByRole('button', { name: /^Actions for/ })).toBeNull();
+  });
 
   it('splits a long member list into numbered pages', async () => {
     // Without layout (jsdom) a page holds the fallback of 8 rows.

@@ -10,6 +10,8 @@ export const boardKeys = {
   detail: (boardId: string) => [...boardKeys.all, 'detail', boardId] as const,
   members: (boardId: string) =>
     [...boardKeys.all, 'detail', boardId, 'members'] as const,
+  policyCapabilities: (boardId: string) =>
+    [...boardKeys.detail(boardId), 'policy-capabilities'] as const,
   columns: (boardId: string) =>
     [...boardKeys.all, 'detail', boardId, 'columns'] as const,
   /** Active cards of the board; also the prefix of every card detail key. */

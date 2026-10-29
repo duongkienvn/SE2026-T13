@@ -68,6 +68,43 @@ async function live(boardId: string) {
 }
 
 describe('BoardRealtimeClient connection', () => {
+  it('keeps a session socket alive without a Board watcher and reconnects it', async () => {
+    client.dispose();
+    client = new BoardRealtimeClient({
+      createSocket,
+      invalidate,
+      verifySession,
+      keepAlive: true,
+      retryBaseMs: 1000,
+    });
+    client.start();
+    expect(socket.connect).toHaveBeenCalledTimes(1);
+    socket.open();
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(socket.disconnect).not.toHaveBeenCalled();
+    socket.serverDisconnect();
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(socket.connect).toHaveBeenCalledTimes(2);
+  });
+
+  it('clears on a failed initial handshake and resyncs when it later succeeds', () => {
+    client.dispose();
+    const connectionLost = vi.fn();
+    const reconnected = vi.fn();
+    client = new BoardRealtimeClient({
+      createSocket,
+      invalidate,
+      verifySession,
+      connectionLost,
+      reconnected,
+      keepAlive: true,
+    });
+    client.start();
+    socket.refuse();
+    expect(connectionLost).toHaveBeenCalledTimes(1);
+    socket.open();
+    expect(reconnected).toHaveBeenCalledTimes(1);
+  });
   it('opens no socket until a board is watched', async () => {
     await settle();
     expect(createSocket).not.toHaveBeenCalled();

@@ -32,6 +32,26 @@ export class Workspace implements WorkspaceIdentity {
   @Column({ type: 'text', nullable: true }) description!: string | null;
   @Column({ type: 'varchar', length: 16, nullable: true })
   icon!: WorkspaceIcon | null;
+  @Column({
+    name: 'board_creation_admin_only',
+    type: 'boolean',
+    default: false,
+  })
+  boardCreationAdminOnly!: boolean;
+  @Column({ name: 'board_invites_enabled', type: 'boolean', default: true })
+  boardInvitesEnabled!: boolean;
+  @Column({
+    name: 'board_membership_changes_enabled',
+    type: 'boolean',
+    default: true,
+  })
+  boardMembershipChangesEnabled!: boolean;
+  @Column({
+    name: 'board_visibility_changes_enabled',
+    type: 'boolean',
+    default: true,
+  })
+  boardVisibilityChangesEnabled!: boolean;
   @Column({ name: 'created_by_id', type: 'uuid' }) createdById!: string;
   @ManyToOne(() => User, { onDelete: 'NO ACTION' })
   @JoinColumn({

@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import { setTimeout as delay } from 'node:timers/promises';
 import { setTimeout, clearTimeout } from 'node:timers';
 import { URL } from 'node:url';
+import { verifyMoveRealtime } from './board-move.realtime.mjs';
 const require = createRequire(import.meta.url);
 const { io } = createRequire(
   new URL('../../../frontend/package.json', import.meta.url),
@@ -247,6 +248,7 @@ export async function verifyBoardAccessRealtime(ctx) {
       await authorization.canReadBoard(actors.admin2, board.id),
       persisted.visibility === 'WORKSPACE_VISIBLE',
     );
+    await verifyMoveRealtime(ctx);
   } finally {
     for (const socket of sockets) socket.disconnect();
   }

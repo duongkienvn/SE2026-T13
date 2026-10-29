@@ -7,7 +7,7 @@ import { workspaceKeys } from '../workspaces/query-keys';
 
 export type BoardEventName = Exclude<
   keyof RealtimeServerEvents,
-  'workspace:access-revoked'
+  'workspace:access-revoked' | 'access:changed'
 >;
 export type BoardEventPayload<E extends BoardEventName> = Parameters<
   RealtimeServerEvents[E]

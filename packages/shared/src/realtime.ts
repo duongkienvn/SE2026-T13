@@ -58,6 +58,7 @@ export const RealtimePresenceEvent = {
 
 export const RealtimeAccessEvent = {
   WORKSPACE_REVOKED: 'workspace:access-revoked',
+  ACCESS_CHANGED: 'access:changed',
 } as const;
 
 /** Ephemeral full snapshot; IDs are unique and sorted, boardId is lowercase. */
@@ -99,6 +100,7 @@ export interface CommentChangedEvent {
 
 /** Business events are invalidation hints; presence is an ephemeral full snapshot. */
 export interface RealtimeServerEvents {
+  'access:changed': () => void;
   'workspace:access-revoked': (payload: { workspaceId: string }) => void;
   'board:access-changed': (payload: BoardRoomRequest) => void;
   'board:access-revoked': (payload: BoardRoomRequest) => void;

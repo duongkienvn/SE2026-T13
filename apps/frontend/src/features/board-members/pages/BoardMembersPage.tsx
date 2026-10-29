@@ -36,6 +36,7 @@ import {
 import { AddMemberDialog } from '../components/AddMemberDialog';
 import {
   useBoardMembers,
+  useBoardPolicyCapabilities,
   useRemoveMember,
   useUpdateMemberRole,
 } from '../hooks';
@@ -60,6 +61,9 @@ export function BoardMembersPage() {
   const { user: currentUser } = useAuth();
   const board = useBoard(boardId);
   const members = useBoardMembers(boardId);
+  const owner =
+    board.data?.currentUserRole === BoardRole.OWNER && !board.data.isArchived;
+  const policy = useBoardPolicyCapabilities(boardId, owner);
   const unavailable =
     (board.isError && isBoardUnavailable(board.error)) ||
     (members.isError && isBoardUnavailable(members.error));
@@ -127,9 +131,10 @@ export function BoardMembersPage() {
   };
   const boardData = board.data!;
   const all = members.data!;
-  // UI hint only: the backend enforces OWNER-only membership management.
+  const canInvite =
+    owner && !policy.isError && policy.data?.canInviteMembers === true;
   const canManage =
-    boardData.currentUserRole === BoardRole.OWNER && !boardData.isArchived;
+    owner && !policy.isError && policy.data?.canChangeMembership === true;
 
   const showNotice = (message: string) => {
     setActionError(undefined);
@@ -182,7 +187,7 @@ export function BoardMembersPage() {
                 className="w-full sm:w-[280px]"
               />
             )}
-            {canManage && (
+            {canInvite && (
               <Button
                 onClick={() => {
                   setNotice(undefined);
@@ -197,9 +202,17 @@ export function BoardMembersPage() {
         }
       />
 
-      {(notice || actionError || boardData.isArchived) && (
+      {(notice ||
+        actionError ||
+        boardData.isArchived ||
+        (owner && policy.isError)) && (
         <div className="mt-4 space-y-3">
           {notice && <Alert variant="success">{notice}</Alert>}
+          {owner && policy.isError && (
+            <Alert variant="error">
+              Unable to check Workspace permissions. Refresh the page to retry.
+            </Alert>
+          )}
           {/* Once the board shows as archived, its notice explains any refusal. */}
           {boardData.isArchived ? (
             <ArchivedBoardNotice />
@@ -346,7 +359,7 @@ export function BoardMembersPage() {
       />
 
       {/* Mounted only while open so each opening starts with an empty form. */}
-      {canManage && adding && (
+      {canInvite && adding && (
         <AddMemberDialog
           boardId={boardId}
           boardName={boardData.name}
@@ -358,7 +371,7 @@ export function BoardMembersPage() {
           }}
         />
       )}
-      {removing && (
+      {canManage && removing && (
         <ConfirmDialog
           open
           title={`Remove ${removing.user.displayName}?`}

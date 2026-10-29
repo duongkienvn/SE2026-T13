@@ -7,6 +7,8 @@ import {
   receiveBoardRevocation,
   receiveWorkspaceRevocation,
   reduceBoardToReadOnly,
+  clearAccessSnapshots,
+  refreshAccessSnapshots,
 } from './access-revocation';
 import { BoardRealtimeClient } from './board-realtime-client';
 import { createInvalidationQueue } from './invalidation-queue';
@@ -17,7 +19,7 @@ import { changeBoardAccessVersion } from '../boards/access-version';
 /**
  * Owns the realtime client of the signed-in session. A new session (sign-in,
  * sign-out, expiry) gets a new client, so a socket never outlives the token
- * it was opened with. The socket itself opens only while a board is watched.
+ * it was opened with. The session socket also receives access changes while no Board is open.
  */
 export function RealtimeProvider({ children }: { children: ReactNode }) {
   const { status, user, runAuthorized } = useAuth();
@@ -59,6 +61,9 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         socket.on('workspace:access-revoked', (payload: unknown) => {
           if (isCurrent()) receiveWorkspaceRevocation(queryClient, payload);
         });
+        socket.on('access:changed', () => {
+          if (isCurrent()) refreshAccessSnapshots(queryClient);
+        });
         for (const event of ['member:added', 'member:role-changed'] as const) {
           socket.on(event, (payload: unknown) => {
             if (
@@ -89,15 +94,36 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       },
       verifySession: () =>
         void queryClient.invalidateQueries({ queryKey: currentUserQueryKey }),
+      keepAlive: true,
+      connectionLost: () => {
+        if (isCurrent()) clearAccessSnapshots(queryClient);
+      },
+      reconnected: () => {
+        if (isCurrent()) refreshAccessSnapshots(queryClient);
+      },
     });
+    next.start();
     const wake = () => {
       if (document.visibilityState === 'visible') next.wake();
     };
+    const guardDrafts = (event: BeforeUnloadEvent) => {
+      if (
+        queryClient
+          .getQueryCache()
+          .findAll({ queryKey: ['card-draft'] })
+          .some((query) => query.state.data !== undefined)
+      ) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    };
     window.addEventListener('online', wake);
+    window.addEventListener('beforeunload', guardDrafts);
     document.addEventListener('visibilitychange', wake);
     setConnection({ client: next, session: runAuthorized });
     return () => {
       window.removeEventListener('online', wake);
+      window.removeEventListener('beforeunload', guardDrafts);
       document.removeEventListener('visibilitychange', wake);
       next.dispose();
       queue.dispose();

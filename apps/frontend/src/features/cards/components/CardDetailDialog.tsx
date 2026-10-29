@@ -16,6 +16,7 @@ import { ArchiveCardSection } from './ArchiveCardSection';
 import { CardAssignees } from './CardAssignees';
 import { CardForm } from './CardForm';
 import { CopyCardLink } from './CopyCardLink';
+import { cardDraftKey } from '../card-draft';
 
 interface CardDetailDialogProps {
   boardId: string;
@@ -51,9 +52,21 @@ export function CardDetailDialog({
       : (query.data ?? initialCard);
   const busy = update.isPending || archive.isPending;
   const client = useQueryClient();
+  const close = () => {
+    if (!card)
+      client.removeQueries({
+        queryKey: cardDraftKey(boardId, cardId),
+        exact: true,
+      });
+    onClose();
+  };
 
   useEffect(() => {
     if (!gone) return;
+    client.removeQueries({
+      queryKey: cardDraftKey(boardId, cardId),
+      exact: true,
+    });
     void client.cancelQueries({
       queryKey: [...boardKeys.card(boardId, cardId), 'comments'],
     });
@@ -72,13 +85,7 @@ export function CardDetailDialog({
 
   if (!card) {
     return (
-      <Dialog
-        open
-        onClose={onClose}
-        title="Card"
-        size="wide"
-        fullscreenOnMobile
-      >
+      <Dialog open onClose={close} title="Card" size="wide" fullscreenOnMobile>
         {!gone && (query.isPending || query.isFetching) ? (
           <LoadingState label="Loading card…" />
         ) : (
@@ -97,7 +104,7 @@ export function CardDetailDialog({
                   Try again
                 </Button>
               )}
-              <Button variant="secondary" onClick={onClose}>
+              <Button variant="secondary" onClick={close}>
                 Close
               </Button>
             </div>
@@ -119,7 +126,7 @@ export function CardDetailDialog({
   return (
     <Dialog
       open
-      onClose={onClose}
+      onClose={close}
       title={card.title}
       description={meta}
       size="wide"
@@ -127,7 +134,7 @@ export function CardDetailDialog({
       dismissible={!busy}
     >
       <div className="mb-5 flex justify-end">
-        <Button variant="secondary" onClick={onClose} disabled={busy}>
+        <Button variant="secondary" onClick={close} disabled={busy}>
           Close card
         </Button>
       </div>
@@ -152,11 +159,12 @@ export function CardDetailDialog({
       )}
       <CardForm
         key={card.id}
+        boardId={boardId}
         card={card}
         readOnly={readOnly}
         pending={update.isPending}
         onSubmit={(patch) => update.mutateAsync(patch)}
-        onClose={onClose}
+        onClose={close}
         side={
           <>
             <CopyCardLink boardId={boardId} cardId={cardId} />
@@ -170,7 +178,7 @@ export function CardDetailDialog({
                     : undefined
                 }
                 onArchive={() =>
-                  archive.mutate(undefined, { onSuccess: onClose })
+                  archive.mutate(undefined, { onSuccess: close })
                 }
                 onCancel={() => archive.reset()}
               />

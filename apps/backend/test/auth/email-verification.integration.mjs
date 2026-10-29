@@ -184,6 +184,10 @@ try {
     ...options,
     database: 'k2_fresh',
   }).initialize();
+  // Exercise this historical rollback boundary before the irreversible P2-05 migration.
+  fresh.migrations = fresh.migrations.filter(
+    (migration) => !migration.name.startsWith('WorkspacePolicies'),
+  );
   assert.equal((await fresh.runMigrations()).length, fresh.migrations.length);
   await fresh.query(
     "INSERT INTO users(email,password_hash,display_name) VALUES('fresh@example.test','test-hash','Fresh')",

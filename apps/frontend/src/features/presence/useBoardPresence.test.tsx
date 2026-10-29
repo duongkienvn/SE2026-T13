@@ -39,8 +39,9 @@ describe('useBoardPresence', () => {
     );
     await waitFor(() => expect(createdSockets).toHaveLength(1));
     const { socket } = createdSockets[0];
+    act(() => socket.open());
+    await waitFor(() => expect(socket.requests('board:join')).toHaveLength(1));
     act(() => {
-      socket.open();
       socket.push('presence:sync', { boardId: A, userIds: [testUser.id] });
       socket.lastJoin().reply(joined(A));
     });
@@ -64,7 +65,7 @@ describe('useBoardPresence', () => {
     act(() => staleEvent({ boardId: A, userIds: [testUser.id] }));
     expect(result.current.presence.userIds).toBeNull();
   });
-  it('only subscribes; it never opens a socket or creates a watcher', async () => {
+  it('only subscribes and does not join a Board without a watcher', async () => {
     signIn();
     const { result } = renderHook(
       () => ({ auth: useAuth(), presence: useBoardPresence(A) }),
@@ -73,7 +74,8 @@ describe('useBoardPresence', () => {
     await waitFor(() =>
       expect(result.current.auth.status).toBe('authenticated'),
     );
-    expect(createdSockets).toHaveLength(0);
+    await waitFor(() => expect(createdSockets).toHaveLength(1));
+    expect(createdSockets[0].socket.requests('board:join')).toHaveLength(0);
     expect(result.current.presence.userIds).toBeNull();
   });
   it('shares the page watcher, buffers before ACK and keeps stable references for duplicate snapshots', async () => {
@@ -87,8 +89,9 @@ describe('useBoardPresence', () => {
     );
     await waitFor(() => expect(createdSockets).toHaveLength(1));
     const { socket } = createdSockets[0];
+    act(() => socket.open());
+    await waitFor(() => expect(socket.requests('board:join')).toHaveLength(1));
     act(() => {
-      socket.open();
       socket.push('presence:sync', { boardId: A, userIds: [testUser.id] });
     });
     expect(result.current.userIds).toBeNull();
@@ -117,8 +120,9 @@ describe('useBoardPresence', () => {
     );
     await waitFor(() => expect(createdSockets).toHaveLength(1));
     const { socket } = createdSockets[0];
+    act(() => socket.open());
+    await waitFor(() => expect(socket.requests('board:join')).toHaveLength(1));
     act(() => {
-      socket.open();
       socket.push('presence:sync', { boardId: A, userIds: [testUser.id] });
       socket.lastJoin().reply(joined(A));
     });
@@ -153,8 +157,9 @@ describe('useBoardPresence', () => {
     );
     await waitFor(() => expect(createdSockets).toHaveLength(1));
     const { socket } = createdSockets[0];
+    act(() => socket.open());
+    await waitFor(() => expect(socket.requests('board:join')).toHaveLength(1));
     act(() => {
-      socket.open();
       socket.push('presence:sync', { boardId: A, userIds: [testUser.id] });
       socket.lastJoin().reply(joined(A));
     });

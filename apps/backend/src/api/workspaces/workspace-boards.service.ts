@@ -35,6 +35,7 @@ export class WorkspaceBoardsService {
     return manager
       .getRepository(Board)
       .createQueryBuilder('board')
+      .innerJoinAndSelect('board.workspace', 'boardWorkspace')
       .leftJoinAndSelect('board.members', 'actor', 'actor.userId = :userId', {
         userId: member.userId,
       })

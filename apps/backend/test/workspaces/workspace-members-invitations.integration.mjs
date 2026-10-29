@@ -18,6 +18,8 @@ import {
 } from '../boards/board-access.concurrency.mjs';
 import { verifyBoardAccessBrowser } from '../boards/board-access.browser.mjs';
 import { verifyInvitationMailDelivery } from './workspace-invitation-mail.integration.mjs';
+import { verifyWorkspacePolicies } from './workspace-policies.integration.mjs';
+import { verifyDeletedWorkspaceInvitations } from './workspace-deletion-invitations.integration.mjs';
 import {
   verifyDispatchLease,
   verifyAcceptRemoval,
@@ -180,6 +182,8 @@ try {
   await verifyDispatchLease(context);
   await verifyAcceptRemoval(context);
   await verifyBoardAccess(context);
+  await verifyWorkspacePolicies(context);
+  await verifyDeletedWorkspaceInvitations(context);
   await verifyBoardAccessRealtime(context);
   await verifyBoardMemberWriteRace(context);
   await verifyWorkspaceSnapshotRace(context);
