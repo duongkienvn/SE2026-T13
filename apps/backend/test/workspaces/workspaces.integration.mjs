@@ -777,7 +777,7 @@ async function inspectAuthentication() {
 try {
   await admin.connect();
   await openDatabase();
-  assert.equal((await source.runMigrations()).length, 13);
+  assert.equal((await source.runMigrations()).length, source.migrations.length);
   assert.deepEqual(await source.runMigrations(), []);
   assert.equal(source.entityMetadatas.length, 17);
   const drift = await source.driver.createSchemaBuilder().log();
@@ -786,6 +786,18 @@ try {
     [],
     'Entity metadata must match final migrations',
   );
+  await assert.rejects(
+    source.undoLastMigration(),
+    /Workspace policies require a forward fix/,
+  );
+  await source.destroy();
+
+  // Exercise historical rollback in a separate disposable database without P2-05.
+  await openDatabase();
+  source.migrations = source.migrations.filter(
+    (m) => !m.name.startsWith('WorkspacePolicies'),
+  );
+  await source.runMigrations();
   // Revert invitation, icon, empty welcome ledger and both Workspace foundation stages.
   await source.undoLastMigration(); // Invitation lifecycle.
   await source.undoLastMigration(); // Workspace icon.
@@ -801,7 +813,9 @@ try {
   // Default all-migrations mode must roll back expand as well as backfill.
   await openDatabase();
   source.migrations = source.migrations.filter(
-    (m) => !m.name.startsWith('WelcomeEmailOutbox'),
+    (m) =>
+      !m.name.startsWith('WelcomeEmailOutbox') &&
+      !m.name.startsWith('WorkspacePolicies'),
   );
   const atomicMigrations = [...source.migrations];
   source.migrations = atomicMigrations.filter(
@@ -853,7 +867,9 @@ try {
 
   await openDatabase();
   source.migrations = source.migrations.filter(
-    (m) => !m.name.startsWith('WelcomeEmailOutbox'),
+    (m) =>
+      !m.name.startsWith('WelcomeEmailOutbox') &&
+      !m.name.startsWith('WorkspacePolicies'),
   );
   const migrations = [...source.migrations];
   source.migrations = migrations.filter(
@@ -987,9 +1003,15 @@ try {
     )[0].n,
     4,
   );
-  const service = new WorkspacesService(source.getRepository('Workspace'));
-  assert.ok(await service.findPersonalWorkspace(noBoards.id));
-  const personal = await service.findPersonalWorkspace(owner.id);
+  const [emptyPersonal] = await source.query(
+    `SELECT id FROM workspaces WHERE type='PERSONAL' AND created_by_id=$1`,
+    [noBoards.id],
+  );
+  assert.ok(emptyPersonal);
+  const [personal] = await source.query(
+    `SELECT id FROM workspaces WHERE type='PERSONAL' AND created_by_id=$1`,
+    [owner.id],
+  );
   assert.equal(
     (
       await source.query(
@@ -1082,7 +1104,6 @@ try {
     'Unexpected preassignment/visibility fails closed and explicit remediation permits retry',
   );
   await inspectConstraints(owner, guest, personal.id);
-  await inspectConcurrency();
   const [nulls] = await source.query(
     'SELECT count(*)::int AS n FROM boards WHERE workspace_id IS NULL',
   );
@@ -1094,8 +1115,32 @@ try {
   pass(
     'Final inventory has zero NULL/orphan Boards with physical NOT NULL enforced',
   );
+  const beforePolicies = await snapshot();
+  const beforeAssignments = await source.query(
+    'SELECT id, workspace_id, visibility FROM boards ORDER BY id',
+  );
   source.migrations = currentMigrations;
   await source.runMigrations();
+  assert.deepEqual(await snapshot(), beforePolicies);
+  assert.deepEqual(
+    await source.query(
+      'SELECT id, workspace_id, visibility FROM boards ORDER BY id',
+    ),
+    beforeAssignments,
+  );
+  const [defaults] = await source.query(`SELECT bool_and(
+    NOT board_creation_admin_only AND board_invites_enabled AND
+    board_membership_changes_enabled AND board_visibility_changes_enabled
+  ) AS valid FROM workspaces`);
+  assert.equal(defaults.valid, true);
+  await assert.rejects(
+    source.undoLastMigration(),
+    /Workspace policies require a forward fix/,
+  );
+  pass(
+    'Policy upgrade preserves populated Board data and applies default policies',
+  );
+  await inspectConcurrency();
   await inspectAuthentication();
   console.log(`Workspace PostgreSQL integration: ${checks} checks PASS`);
 } finally {

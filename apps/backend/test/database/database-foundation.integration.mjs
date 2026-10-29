@@ -188,8 +188,13 @@ async function inspectSchema() {
   const drift = await source.driver.createSchemaBuilder().log();
   assert.deepEqual(
     drift.upQueries.map((query) => query.query),
-    [],
-    'Entity metadata must match migration schema',
+    [
+      'ALTER TABLE "workspaces" ADD "board_creation_admin_only" boolean NOT NULL DEFAULT false',
+      'ALTER TABLE "workspaces" ADD "board_invites_enabled" boolean NOT NULL DEFAULT true',
+      'ALTER TABLE "workspaces" ADD "board_membership_changes_enabled" boolean NOT NULL DEFAULT true',
+      'ALTER TABLE "workspaces" ADD "board_visibility_changes_enabled" boolean NOT NULL DEFAULT true',
+    ],
+    'Only P2-05 policy columns should differ before its migration',
   );
 }
 
@@ -407,7 +412,7 @@ try {
       'workspaces',
     ],
   );
-  assert.equal(source.migrations.length, 13);
+  assert.equal(source.migrations.length, 14);
 
   const originalDatabase = process.env.DATABASE_NAME;
   process.env.DATABASE_NAME = testDatabase;
@@ -419,7 +424,7 @@ try {
     try {
       const nestDataSource = app.get(DataSource);
       assert.equal(nestDataSource.entityMetadatas.length, 17);
-      assert.equal(nestDataSource.migrations.length, 13);
+      assert.equal(nestDataSource.migrations.length, 14);
       assert.equal(nestDataSource.options.poolSize, source.options.poolSize);
       assert.equal(
         nestDataSource.options.connectTimeoutMS,
@@ -433,6 +438,10 @@ try {
     process.env.DATABASE_NAME = originalDatabase;
   }
 
+  const allMigrations = source.migrations;
+  source.migrations = allMigrations.filter(
+    (m) => !m.name.startsWith('WorkspacePolicies'),
+  );
   assert.equal((await source.runMigrations()).length, 13);
   const cliOutput = execFileSync(
     process.execPath,
@@ -457,7 +466,7 @@ try {
       '-e',
       `const dataSource = require('./src/database/data-source.ts').default;
        dataSource.initialize().then(async () => {
-         if (dataSource.entityMetadatas.length !== 17 || dataSource.migrations.length !== 13) {
+         if (dataSource.entityMetadatas.length !== 17 || dataSource.migrations.length !== 14) {
            throw new Error('TypeScript DataSource discovery mismatch');
          }
          await dataSource.destroy();
@@ -504,6 +513,16 @@ try {
   await assert.rejects(source.undoLastMigration(), /cannot be safely removed/);
   assert.equal((await source.runMigrations()).length, 10);
   await inspectSchema();
+  source.migrations = allMigrations;
+  assert.equal((await source.runMigrations()).length, 1);
+  assert.deepEqual(
+    (await source.driver.createSchemaBuilder().log()).upQueries,
+    [],
+  );
+  await assert.rejects(
+    source.undoLastMigration(),
+    /Workspace policies require a forward fix/,
+  );
   console.log(
     'Enum rollback retains existing values/history; idempotent reapply: PASS',
   );
