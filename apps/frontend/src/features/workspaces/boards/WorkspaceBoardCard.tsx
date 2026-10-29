@@ -33,8 +33,12 @@ export function WorkspaceBoardCard({
         <div className="relative m-2 mb-0 flex h-24 items-center justify-center rounded-lg border border-line bg-app text-muted">
           <ColumnsIcon className="size-8" />
           <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-medium">
-            <LockIcon className="size-3" />
-            Private
+            {board.visibility === 'PRIVATE' ? (
+              <LockIcon className="size-3" />
+            ) : (
+              <UsersIcon className="size-3" />
+            )}
+            {board.visibility === 'PRIVATE' ? 'Private' : 'Workspace visible'}
           </span>
           {board.isArchived && (
             <span className="absolute bottom-2 left-2 rounded-md bg-surface px-2 py-1 text-xs font-medium text-muted">

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Param,
@@ -41,6 +42,7 @@ export class BoardMembersController {
   constructor(private readonly boardMembers: BoardMembersService) {}
 
   @Get()
+  @Header('Cache-Control', 'no-store')
   @SerializeResponse(BoardMemberResponseDto)
   @ApiBearerToken()
   @ApiParam({ name: 'boardId', format: 'uuid' })

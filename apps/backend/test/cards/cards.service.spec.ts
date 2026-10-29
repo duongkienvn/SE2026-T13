@@ -383,9 +383,7 @@ describe('CardsService', () => {
     ).rejects.toMatchObject({ status: 404 });
   });
   it('rejects non-members before loading cards, and rejects invalid pagination', async () => {
-    h.authorization.requireMember.mockRejectedValueOnce(
-      new NotFoundException(),
-    );
+    h.authorization.requireRead.mockRejectedValueOnce(new NotFoundException());
     await expect(
       h.service.get(ID.user, ID.board, ID.card),
     ).rejects.toMatchObject({ status: 404 });

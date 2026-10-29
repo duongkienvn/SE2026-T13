@@ -113,6 +113,19 @@ const repositories = {
     },
   },
   Board: {
+    createQueryBuilder() {
+      return {
+        where() {
+          return this;
+        },
+        andWhere() {
+          return this;
+        },
+        async getOne() {
+          return null;
+        },
+      };
+    },
     async findOne({ where }) {
       return boards.get(where.id) ?? null;
     },

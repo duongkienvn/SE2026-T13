@@ -16,6 +16,9 @@ import { paginate } from '../../common/dto/paginated-response';
 import { paginateQueryBuilder } from '../../utils/offset-pagination';
 import { ErrorCode } from '../../common/dto/api-error';
 import { ApplicationException } from '../../exceptions/application.exception';
+import { Board } from '../boards/entities/board.entity';
+import { BoardAuthorizationService } from '../board-members/board-authorization.service';
+import { BoardRoomCoordinator } from '../../realtime/board-room-coordinator.service';
 
 @Injectable()
 export class WorkspaceMembersService {
@@ -23,6 +26,8 @@ export class WorkspaceMembersService {
     @InjectRepository(Workspace)
     private readonly workspaces: Repository<Workspace>,
     private readonly foundation: WorkspacesService,
+    private readonly authorization: BoardAuthorizationService,
+    private readonly coordinator: BoardRoomCoordinator,
   ) {}
 
   list(actor: string, workspaceId: string, query: WorkspaceMembersQueryDto) {
@@ -100,34 +105,63 @@ export class WorkspaceMembersService {
   }
 
   remove(actor: string, workspaceId: string, userId: string) {
-    return this.workspaces.manager.transaction(async (manager) => {
-      await lockWorkspace(manager, workspaceId);
-      const admin = await this.foundation.requireAdmin(
-        actor,
-        workspaceId,
-        manager,
-      );
-      requireTeam(admin.workspace);
-      if (actor === userId)
-        throw new ApplicationException(
-          409,
-          ErrorCode.CONFLICT,
-          'Use Leave Workspace to remove yourself',
+    return this.reconcileRemoval(workspaceId, userId, () =>
+      this.workspaces.manager.transaction(async (manager) => {
+        await lockWorkspace(manager, workspaceId);
+        const admin = await this.foundation.requireAdmin(
+          actor,
+          workspaceId,
+          manager,
         );
-      await this.deleteMember(manager, workspaceId, userId);
-    });
+        requireTeam(admin.workspace);
+        if (actor === userId)
+          throw new ApplicationException(
+            409,
+            ErrorCode.CONFLICT,
+            'Use Leave Workspace to remove yourself',
+          );
+        await this.deleteMember(manager, workspaceId, userId);
+      }),
+    );
   }
 
   leave(actor: string, workspaceId: string) {
-    return this.workspaces.manager.transaction(async (manager) => {
-      const workspace = await lockWorkspace(manager, workspaceId);
-      if (!workspace) return;
-      const member = await manager
-        .getRepository(WorkspaceMember)
-        .findOneBy({ workspaceId, userId: actor });
-      if (!member) return;
-      requireTeam(workspace);
-      await this.deleteMember(manager, workspaceId, actor);
+    return this.reconcileRemoval(workspaceId, actor, () =>
+      this.workspaces.manager.transaction(async (manager) => {
+        const workspace = await lockWorkspace(manager, workspaceId);
+        if (!workspace) return;
+        const member = await manager
+          .getRepository(WorkspaceMember)
+          .findOneBy({ workspaceId, userId: actor });
+        if (!member) return;
+        requireTeam(workspace);
+        await this.deleteMember(manager, workspaceId, actor);
+      }),
+    );
+  }
+
+  private async reconcileRemoval(
+    workspaceId: string,
+    userId: string,
+    operation: () => Promise<void>,
+  ) {
+    return this.coordinator.withReadGrantChanges(async () => {
+      const boards = await this.workspaces.manager.getRepository(Board).find({
+        select: { id: true },
+        where: { workspaceId },
+      });
+      return this.coordinator.runMany(
+        boards.map((board) => board.id),
+        async () => {
+          await operation();
+          this.coordinator.notifyWorkspaceRevoked(workspaceId, userId);
+          for (const board of boards) {
+            await this.coordinator.reconcileBoard(board.id, (userId) =>
+              this.authorization.canReadBoard(userId, board.id),
+            );
+          }
+        },
+      );
     });
   }
 

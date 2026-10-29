@@ -9,6 +9,8 @@ import { BoardsService } from './boards.service';
 import { ActivityWriterModule } from '../activities/activity-writer.module';
 import { RealtimeDeliveryModule } from '../../realtime/realtime-delivery.module';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
+import { BoardVisibilityService } from './board-visibility.service';
+import { BoardVisibilityController } from './board-visibility.controller';
 
 @Module({
   imports: [
@@ -19,7 +21,7 @@ import { WorkspacesModule } from '../workspaces/workspaces.module';
     RealtimeDeliveryModule,
     TypeOrmModule.forFeature([Board, BoardMember]),
   ],
-  controllers: [BoardsController],
-  providers: [BoardsService],
+  controllers: [BoardsController, BoardVisibilityController],
+  providers: [BoardsService, BoardVisibilityService],
 })
 export class BoardsModule {}

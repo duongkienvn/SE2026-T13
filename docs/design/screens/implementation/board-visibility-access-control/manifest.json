@@ -1,0 +1,290 @@
+[
+  {
+    "name": "boards",
+    "width": 375,
+    "theme": "light",
+    "screenshot": "boards-375-light.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "workspace-boards",
+    "width": 375,
+    "theme": "light",
+    "screenshot": "workspace-boards-375-light.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "board",
+    "width": 375,
+    "theme": "light",
+    "screenshot": "board-375-light.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "activity",
+    "width": 375,
+    "theme": "light",
+    "screenshot": "activity-375-light.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "card",
+    "width": 375,
+    "theme": "light",
+    "screenshot": "card-375-light.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "revoked",
+    "width": 375,
+    "theme": "light",
+    "screenshot": "revoked-375-light.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "boards",
+    "width": 768,
+    "theme": "light",
+    "screenshot": "boards-768-light.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "workspace-boards",
+    "width": 768,
+    "theme": "light",
+    "screenshot": "workspace-boards-768-light.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "board",
+    "width": 768,
+    "theme": "light",
+    "screenshot": "board-768-light.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "activity",
+    "width": 768,
+    "theme": "light",
+    "screenshot": "activity-768-light.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "card",
+    "width": 768,
+    "theme": "light",
+    "screenshot": "card-768-light.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "revoked",
+    "width": 768,
+    "theme": "light",
+    "screenshot": "revoked-768-light.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "boards",
+    "width": 1280,
+    "theme": "light",
+    "screenshot": "boards-1280-light.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "workspace-boards",
+    "width": 1280,
+    "theme": "light",
+    "screenshot": "workspace-boards-1280-light.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "board",
+    "width": 1280,
+    "theme": "light",
+    "screenshot": "board-1280-light.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "activity",
+    "width": 1280,
+    "theme": "light",
+    "screenshot": "activity-1280-light.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "card",
+    "width": 1280,
+    "theme": "light",
+    "screenshot": "card-1280-light.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "revoked",
+    "width": 1280,
+    "theme": "light",
+    "screenshot": "revoked-1280-light.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "boards",
+    "width": 375,
+    "theme": "dark",
+    "screenshot": "boards-375-dark.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "workspace-boards",
+    "width": 375,
+    "theme": "dark",
+    "screenshot": "workspace-boards-375-dark.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "board",
+    "width": 375,
+    "theme": "dark",
+    "screenshot": "board-375-dark.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "activity",
+    "width": 375,
+    "theme": "dark",
+    "screenshot": "activity-375-dark.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "card",
+    "width": 375,
+    "theme": "dark",
+    "screenshot": "card-375-dark.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "revoked",
+    "width": 375,
+    "theme": "dark",
+    "screenshot": "revoked-375-dark.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "boards",
+    "width": 768,
+    "theme": "dark",
+    "screenshot": "boards-768-dark.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "workspace-boards",
+    "width": 768,
+    "theme": "dark",
+    "screenshot": "workspace-boards-768-dark.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "board",
+    "width": 768,
+    "theme": "dark",
+    "screenshot": "board-768-dark.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "activity",
+    "width": 768,
+    "theme": "dark",
+    "screenshot": "activity-768-dark.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "card",
+    "width": 768,
+    "theme": "dark",
+    "screenshot": "card-768-dark.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "revoked",
+    "width": 768,
+    "theme": "dark",
+    "screenshot": "revoked-768-dark.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "boards",
+    "width": 1280,
+    "theme": "dark",
+    "screenshot": "boards-1280-dark.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "workspace-boards",
+    "width": 1280,
+    "theme": "dark",
+    "screenshot": "workspace-boards-1280-dark.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "board",
+    "width": 1280,
+    "theme": "dark",
+    "screenshot": "board-1280-dark.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "activity",
+    "width": 1280,
+    "theme": "dark",
+    "screenshot": "activity-1280-dark.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "card",
+    "width": 1280,
+    "theme": "dark",
+    "screenshot": "card-1280-dark.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "name": "revoked",
+    "width": 1280,
+    "theme": "dark",
+    "screenshot": "revoked-1280-dark.png",
+    "errors": [],
+    "overflow": false
+  }
+]

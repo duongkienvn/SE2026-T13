@@ -95,13 +95,14 @@ export function resolveActor(
   actorId: string,
   members: readonly BoardMember[],
   currentUser: User | null | undefined,
+  canReadMembers = true,
 ): ActivityActor {
   if (currentUser && currentUser.id === actorId) {
     return { name: 'You', user: currentUser };
   }
   const member = members.find((candidate) => candidate.user.id === actorId);
   if (member) return { name: member.user.displayName, user: member.user };
-  return { name: 'Former member' };
+  return { name: canReadMembers ? 'Former member' : 'Unknown member' };
 }
 
 /** A usable `<time dateTime>` value, or `undefined` for an invalid timestamp. */

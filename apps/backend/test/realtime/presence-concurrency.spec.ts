@@ -30,7 +30,7 @@ describe('Presence lifecycle concurrency', () => {
   let limiter: BoardRoomRateLimiter;
   let rooms: BoardRoomService;
   let gateway: RealtimeGateway;
-  let requireMember: jest.Mock;
+  let requireRead: jest.Mock;
   let sockets: Map<string, RealtimeSocket>;
   const makeSocket = (id: string, userId = id): RealtimeSocket =>
     ({
@@ -53,14 +53,14 @@ describe('Presence lifecycle concurrency', () => {
       ['member', makeSocket('member')],
     ]);
     coordinator.server = { sockets: { sockets } } as RealtimeServer;
-    requireMember = jest.fn().mockResolvedValue({});
+    requireRead = jest.fn().mockResolvedValue({});
     const auth = {
       isActive: (s: RealtimeSocket) =>
         Boolean(s.connected && s.data.identity!.expiresAt > Date.now()),
       cleanup: jest.fn(),
     } as unknown as RealtimeAuthService;
     rooms = new BoardRoomService(
-      { requireMember } as unknown as BoardAuthorizationService,
+      { requireRead } as unknown as BoardAuthorizationService,
       auth,
       coordinator,
       limiter,
@@ -83,8 +83,7 @@ describe('Presence lifecycle concurrency', () => {
         entered.resolve();
         await release.promise;
       };
-      if (phase === 'authorization')
-        requireMember.mockImplementationOnce(pause);
+      if (phase === 'authorization') requireRead.mockImplementationOnce(pause);
       else (member.join as jest.Mock).mockImplementationOnce(pause);
       const joining = rooms.join(member, { boardId: A });
       await entered.promise;
@@ -103,19 +102,22 @@ describe('Presence lifecycle concurrency', () => {
     const owner = sockets.get('owner')!,
       member = sockets.get('member')!;
     const run = jest.spyOn(coordinator, 'run');
-    await Promise.all([
+    const acknowledgements = await Promise.all([
       rooms.join(owner, { boardId: A }),
       rooms.join(member, { boardId: A }),
       rooms.join(member, { boardId: A }),
-      rooms.leave(member, { boardId: A }),
     ]);
+    expect(acknowledgements.every((ack) => ack.success)).toBe(true);
+    await expect(rooms.leave(member, { boardId: A })).resolves.toMatchObject({
+      success: true,
+    });
     expect(state(owner).map((s) => s.userIds)).toEqual([
       ['owner'],
       ['member', 'owner'],
       ['member', 'owner'],
       ['owner'],
     ]);
-    expect(run).toHaveBeenCalledTimes(4);
+    expect(run.mock.calls.filter(([boardId]) => boardId === A)).toHaveLength(4);
     expect(presence.snapshot(A).userIds).toEqual(['owner']);
     expect(coordinator['pending'].size).toBe(0);
   });
@@ -158,7 +160,7 @@ describe('Presence lifecycle concurrency', () => {
     const joining = rooms.join(member, { boardId: A });
     await entered.promise;
     const removal = coordinator.run(A, async () => {
-      requireMember.mockRejectedValue(new NotFoundException());
+      requireRead.mockRejectedValue(new NotFoundException());
       await coordinator.evictUser(A, 'member');
     });
     const rejoin = rooms.join(member, { boardId: A });

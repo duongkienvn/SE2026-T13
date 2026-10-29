@@ -4,6 +4,7 @@ import { retryUnlessClientError } from '../../lib/query-client';
 import { useAuth } from '../auth/useAuth';
 import { useRefreshIfArchived } from '../boards/hooks';
 import { boardKeys } from '../boards/query-keys';
+import { boardAccessVersion } from '../boards/access-version';
 import {
   archiveCard,
   assignCard,
@@ -96,19 +97,23 @@ export function useCard(boardId: string, cardId: string, placeholder?: Card) {
  */
 function useSaveCard(boardId: string) {
   const queryClient = useQueryClient();
-  return (card: Card) => {
-    queryClient.setQueryData(boardKeys.card(boardId, card.id), card);
-    queryClient.setQueryData<Card[]>(boardKeys.cards(boardId), (list) => {
-      if (!list) return list;
-      if (card.isArchived) return list.filter((item) => item.id !== card.id);
-      return list.some((item) => item.id === card.id)
-        ? list.map((item) => (item.id === card.id ? card : item))
-        : [...list, card];
-    });
-    return queryClient.invalidateQueries({
-      queryKey: boardKeys.cards(boardId),
-      exact: true,
-    });
+  return {
+    onMutate: () => boardAccessVersion(queryClient, boardId),
+    onSuccess: (card: Card, _input: unknown, version: number | undefined) => {
+      if (version !== boardAccessVersion(queryClient, boardId)) return;
+      queryClient.setQueryData(boardKeys.card(boardId, card.id), card);
+      queryClient.setQueryData<Card[]>(boardKeys.cards(boardId), (list) => {
+        if (!list) return list;
+        if (card.isArchived) return list.filter((item) => item.id !== card.id);
+        return list.some((item) => item.id === card.id)
+          ? list.map((item) => (item.id === card.id ? card : item))
+          : [...list, card];
+      });
+      return queryClient.invalidateQueries({
+        queryKey: boardKeys.cards(boardId),
+        exact: true,
+      });
+    },
   };
 }
 
@@ -146,7 +151,7 @@ export function useCreateCard(boardId: string) {
   return useMutation({
     mutationFn: (input: CreateCardRequest) =>
       runAuthorized((token) => createCard(token, boardId, input)),
-    onSuccess: save,
+    ...save,
     onError: refreshIfArchived,
   });
 }
@@ -158,7 +163,7 @@ export function useUpdateCard(boardId: string, cardId: string) {
   return useMutation({
     mutationFn: (input: UpdateCardRequest) =>
       runAuthorized((token) => updateCard(token, boardId, cardId, input)),
-    onSuccess: save,
+    ...save,
     onError,
   });
 }
@@ -171,9 +176,10 @@ export function useArchiveCard(boardId: string, cardId: string) {
   return useMutation({
     mutationFn: () =>
       runAuthorized((token) => archiveCard(token, boardId, cardId)),
-    onSuccess: (card) =>
+    onMutate: save.onMutate,
+    onSuccess: (card, input, version) =>
       Promise.all([
-        save(card),
+        save.onSuccess(card, input, version),
         client.invalidateQueries({
           queryKey: boardKeys.archivedCards(boardId),
         }),
@@ -195,7 +201,7 @@ export function useMoveCard(boardId: string) {
   return useMutation({
     mutationFn: ({ cardId, ...input }: MoveCardRequest & { cardId: string }) =>
       runAuthorized((token) => moveCard(token, boardId, cardId, input)),
-    onSuccess: save,
+    ...save,
     onError: (error) => {
       refreshIfArchived(error);
       void queryClient.invalidateQueries({

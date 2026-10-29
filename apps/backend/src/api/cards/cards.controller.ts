@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Param,
@@ -45,6 +46,7 @@ export class CardsController {
   constructor(private readonly cards: CardsService) {}
 
   @Get()
+  @Header('Cache-Control', 'no-store')
   @SerializeResponse(CardResponseDto)
   @ApiBearerToken()
   @ApiPaginated(CardResponseDto, {
@@ -80,6 +82,7 @@ export class CardsController {
   }
 
   @Get(':cardId')
+  @Header('Cache-Control', 'no-store')
   @SerializeResponse(CardResponseDto)
   @ApiBearerToken()
   @ApiParam({ name: 'cardId', format: 'uuid' })

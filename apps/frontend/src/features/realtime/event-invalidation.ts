@@ -3,8 +3,12 @@ import type { InvalidateQueryFilters } from '@tanstack/react-query';
 import { boardKeys } from '../boards/query-keys';
 import { commentKeys } from '../comments/query-keys';
 import { avatarKeys } from '../auth/avatar-query-keys';
+import { workspaceKeys } from '../workspaces/query-keys';
 
-export type BoardEventName = keyof RealtimeServerEvents;
+export type BoardEventName = Exclude<
+  keyof RealtimeServerEvents,
+  'workspace:access-revoked'
+>;
 export type BoardEventPayload<E extends BoardEventName> = Parameters<
   RealtimeServerEvents[E]
 >[0];
@@ -58,6 +62,14 @@ export function invalidationTargets<E extends BoardEventName>(
 ): InvalidationTarget[] {
   const { boardId } = payload;
   switch (event) {
+    case 'board:access-changed':
+      return [
+        { queryKey: boardKeys.detail(boardId) },
+        boardList(),
+        { queryKey: workspaceKeys.all },
+      ];
+    case 'board:access-revoked':
+      return [];
     case 'board:archived':
     case 'board:restored':
       return [boardDetail(boardId), boardList()];
@@ -84,10 +96,20 @@ export function invalidationTargets<E extends BoardEventName>(
       ];
     }
     case 'member:added':
-      return [members(boardId)];
+      return [
+        members(boardId),
+        boardDetail(boardId),
+        boardList(),
+        { queryKey: workspaceKeys.all },
+      ];
     case 'member:role-changed':
       // The signed-in user's own role lives on the board and the board list.
-      return [members(boardId), boardDetail(boardId), boardList()];
+      return [
+        members(boardId),
+        boardDetail(boardId),
+        boardList(),
+        { queryKey: workspaceKeys.all },
+      ];
     case 'member:removed':
       // Removing a member also drops them from every card they were assigned.
       return [
@@ -97,6 +119,7 @@ export function invalidationTargets<E extends BoardEventName>(
         boardList(),
         allCards(boardId),
         { queryKey: boardKeys.archivedCards(boardId) },
+        { queryKey: workspaceKeys.all },
       ];
     case 'comment:created':
     case 'comment:updated':

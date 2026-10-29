@@ -14,11 +14,14 @@ const ROLE_STYLES: Record<BoardRole, { label: string; className: string }> = {
 };
 
 /** OWNER/MEMBER badge styled after the role chips in boards.png and team-members.png. */
-export function RoleChip({ role }: { role: BoardRole }) {
-  const { label, className } = ROLE_STYLES[role];
+export function RoleChip({ role }: { role: BoardRole | null }) {
+  const { label, className } =
+    role === null
+      ? { label: 'Read only', className: 'bg-app text-muted' }
+      : ROLE_STYLES[role];
   return (
     <span
-      className={`inline-flex h-6 items-center rounded-full px-2.5 text-[13px] font-medium ${className}`}
+      className={`inline-flex h-6 shrink-0 items-center rounded-full px-2.5 text-[13px] font-medium whitespace-nowrap ${className}`}
     >
       {label}
     </span>

@@ -114,6 +114,10 @@ export function boardEventsMemorySource() {
               Object.assign(filters, parameters);
               return this;
             },
+            // This legacy fixture has explicit PRIVATE memberships only.
+            async getOne() {
+              return null;
+            },
             async execute() {
               let affected = 0;
               for (const [id, row] of rows) {

@@ -30,6 +30,7 @@ import { UpdateBoardMemberRoleDto } from './dto/update-board-member-role.dto';
 import { BoardAuthorizationService } from './board-authorization.service';
 import { BoardMember } from './entities/board-member.entity';
 import { BoardRoomCoordinator } from '../../realtime/board-room-coordinator.service';
+import { WorkspaceMember } from '../workspaces/entities/workspace-member.entity';
 
 @Injectable()
 export class BoardMembersService {
@@ -216,10 +217,31 @@ export class BoardMembersService {
           entityId: member.id,
           metadata: { targetUserId: member.userId },
         });
-        return { boardId: board.id, userId: member.userId };
+        const retainsReadAccess =
+          board.visibility === 'WORKSPACE_VISIBLE' &&
+          (await manager.getRepository(WorkspaceMember).existsBy({
+            workspaceId: board.workspaceId,
+            userId: member.userId,
+          }));
+        return {
+          boardId: board.id,
+          userId: member.userId,
+          visibility: board.visibility,
+          retainsReadAccess,
+        };
       });
-      await this.realtimeAccess.evictUser(removed.boardId, removed.userId);
-      return removed;
+      if (removed.visibility === 'WORKSPACE_VISIBLE') {
+        await this.realtimeAccess.reconcileBoard(removed.boardId, (userId) =>
+          this.authorization.canReadBoard(userId, removed.boardId),
+        );
+      } else {
+        await this.realtimeAccess.evictUser(removed.boardId, removed.userId);
+      }
+      return {
+        boardId: removed.boardId,
+        userId: removed.userId,
+        ...(removed.retainsReadAccess ? { retainsReadAccess: true } : {}),
+      };
     });
     // emitToBoard takes the same queue: publish only after run has released it.
     await this.events.publish(RealtimeServerEvent.MEMBER_REMOVED, payload);

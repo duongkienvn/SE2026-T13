@@ -1,4 +1,8 @@
-import type { BoardRole } from '@kanban/shared';
+import type {
+  BoardRole,
+  BoardCapabilities,
+  BoardVisibility,
+} from '@kanban/shared';
 
 /*
  * Frontend copies of the Board Management contract (issue #20).
@@ -15,7 +19,10 @@ export interface Board {
   createdAt: string;
   updatedAt: string;
   /** The signed-in user's role on this board, resolved by the backend. */
-  currentUserRole: BoardRole;
+  currentUserRole: BoardRole | null;
+  workspaceId?: string;
+  visibility?: BoardVisibility;
+  capabilities?: BoardCapabilities;
 }
 
 export interface CreateBoardRequest {

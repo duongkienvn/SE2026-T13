@@ -30,6 +30,8 @@ export interface RealtimeClientEvents {
 }
 
 export const RealtimeServerEvent = {
+  BOARD_ACCESS_CHANGED: 'board:access-changed',
+  BOARD_ACCESS_REVOKED: 'board:access-revoked',
   BOARD_ARCHIVED: 'board:archived',
   BOARD_RESTORED: 'board:restored',
   COLUMN_CREATED: 'column:created',
@@ -52,6 +54,10 @@ export const RealtimeServerEvent = {
 
 export const RealtimePresenceEvent = {
   SYNC: 'presence:sync',
+} as const;
+
+export const RealtimeAccessEvent = {
+  WORKSPACE_REVOKED: 'workspace:access-revoked',
 } as const;
 
 /** Ephemeral full snapshot; IDs are unique and sorted, boardId is lowercase. */
@@ -81,6 +87,8 @@ export interface CardMovedEvent {
 export interface MemberChangedEvent {
   boardId: string;
   userId: string;
+  /** Membership removed, but an independent Workspace read grant remains. */
+  retainsReadAccess?: boolean;
 }
 
 export interface CommentChangedEvent {
@@ -91,6 +99,9 @@ export interface CommentChangedEvent {
 
 /** Business events are invalidation hints; presence is an ephemeral full snapshot. */
 export interface RealtimeServerEvents {
+  'workspace:access-revoked': (payload: { workspaceId: string }) => void;
+  'board:access-changed': (payload: BoardRoomRequest) => void;
+  'board:access-revoked': (payload: BoardRoomRequest) => void;
   'board:archived': (payload: BoardRoomRequest) => void;
   'board:restored': (payload: BoardRoomRequest) => void;
   'presence:sync': (payload: BoardPresenceSnapshot) => void;

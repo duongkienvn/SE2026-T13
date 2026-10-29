@@ -53,6 +53,26 @@ function refocusWindow() {
 afterEach(() => focusManager.setFocused(undefined));
 
 describe('BoardDetailPage', () => {
+  it('renders a Workspace-only viewer without membership details or write controls', async () => {
+    const board = makeBoard({
+      name: 'Workspace view',
+      currentUserRole: null,
+      visibility: 'WORKSPACE_VISIBLE',
+    });
+    const { calls } = openBoard(board, {
+      [`GET /boards/${board.id}/activities?page=1&limit=8`]: okPage([]),
+    });
+    const main = within(await screen.findByRole('main'));
+    await main.findByRole('heading', { name: 'Workspace view' });
+    await main.findByRole('heading', { name: 'No columns yet' });
+    expect(main.getByText('Read only')).toBeTruthy();
+    expect(main.queryByRole('link', { name: 'Members' })).toBeNull();
+    expect(main.queryByRole('button', { name: 'Add column' })).toBeNull();
+    fireEvent.click(main.getByRole('button', { name: 'Activity' }));
+    await screen.findByRole('dialog', { name: 'Activity' });
+    await screen.findByRole('heading', { name: 'No activity yet' });
+    expect(calls.some((call) => call.path.includes('/members'))).toBe(false);
+  });
   it('shows the board with role, members link and tab title', async () => {
     const board = makeBoard({
       name: 'Product Development',

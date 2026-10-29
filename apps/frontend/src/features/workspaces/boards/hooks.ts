@@ -96,13 +96,14 @@ export function useWorkspaceBoards(
         const result = await runAuthorized((token) =>
           gateway.list(token, workspaceId, filters, signal),
         );
-        // Fail closed if an adapter delivers future read-only access before
-        // #115 is integrated. Never relabel such a board as PRIVATE.
+        // Validate the adapter's grant without inventing a Board role.
         if (
           result.items.some(
             (board) =>
-              board.visibility !== 'PRIVATE' ||
-              !['OWNER', 'MEMBER'].includes(board.currentUserRole),
+              !['PRIVATE', 'WORKSPACE_VISIBLE'].includes(board.visibility) ||
+              ![null, 'OWNER', 'MEMBER'].includes(board.currentUserRole) ||
+              (board.currentUserRole === null &&
+                board.visibility !== 'WORKSPACE_VISIBLE'),
           )
         )
           throw new WorkspaceUnavailableError();

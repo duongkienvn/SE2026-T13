@@ -39,7 +39,15 @@ describe('BoardsService', () => {
   const manager = { getRepository: jest.fn() };
   const transaction = jest.fn();
   const boards = { manager: { transaction }, createQueryBuilder: jest.fn() };
-  const members = { findOne: jest.fn() };
+  const readBoard = {
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    getOne: jest.fn().mockResolvedValue(null),
+  };
+  const members = {
+    findOne: jest.fn(),
+    manager: { getRepository: () => ({ createQueryBuilder: () => readBoard }) },
+  };
   const activities = { record: jest.fn() };
   const events = { publish: jest.fn() };
   const workspaces = { ensurePersonalWorkspace: jest.fn() };
@@ -47,6 +55,9 @@ describe('BoardsService', () => {
   beforeEach(async () => {
     jest.resetAllMocks();
     board = boardFixture();
+    readBoard.getOne.mockResolvedValue(null);
+    readBoard.where.mockReturnThis();
+    readBoard.andWhere.mockReturnThis();
     workspaces.ensurePersonalWorkspace.mockResolvedValue({
       id: 'personal-workspace',
     });
@@ -105,8 +116,9 @@ describe('BoardsService', () => {
 
   it('filters by membership and archive state, uses stable ordering and preserves page metadata', async () => {
     const builder = {
-      innerJoinAndSelect: jest.fn().mockReturnThis(),
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
       clone: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       addOrderBy: jest.fn().mockReturnThis(),
@@ -132,13 +144,13 @@ describe('BoardsService', () => {
     };
     boards.createQueryBuilder.mockReturnValue(builder);
     const result = await service.list(USER_ID, { page: 2, limit: 1 });
-    expect(builder.innerJoinAndSelect).toHaveBeenCalledWith(
+    expect(builder.leftJoinAndSelect).toHaveBeenCalledWith(
       'board.members',
       'member',
       'member.userId = :userId',
       { userId: USER_ID },
     );
-    expect(builder.where).toHaveBeenCalledWith(
+    expect(builder.andWhere).toHaveBeenCalledWith(
       'board.isArchived = :isArchived',
       { isArchived: false },
     );

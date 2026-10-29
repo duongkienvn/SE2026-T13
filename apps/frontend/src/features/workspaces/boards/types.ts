@@ -1,4 +1,4 @@
-import type { BoardRole } from '@kanban/shared';
+import type { BoardRole, BoardVisibility } from '@kanban/shared';
 import type { CreateBoardRequest } from '../../boards/types';
 
 /** UI models mapped from the #111 wire DTOs. */
@@ -8,9 +8,8 @@ export interface WorkspaceBoardSummary {
   description: string | null;
   updatedAt: string | null;
   isArchived: boolean;
-  /** #115 must be verified before adding WORKSPACE_VISIBLE presentation/access. */
-  visibility: 'PRIVATE';
-  currentUserRole: BoardRole;
+  visibility: BoardVisibility;
+  currentUserRole: BoardRole | null;
   canArchive: boolean;
   canRestore: boolean;
   /** Only a permitted server-provided summary; null means withheld/unsupported. */

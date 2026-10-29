@@ -12,6 +12,8 @@ import { WorkspaceMembersService } from './workspace-members.service';
 import { WorkspaceInvitationsService } from './workspace-invitations.service';
 import { WorkspaceInvitationIssuanceService } from './workspace-invitation-issuance.service';
 import { WorkspaceMembersController } from './workspace-members.controller';
+import { BoardMembersModule } from '../board-members/board-members.module';
+import { RealtimeAccessModule } from '../../realtime/realtime-access.module';
 import {
   WorkspaceInvitationsController,
   WorkspaceInvitationAcceptanceController,
@@ -19,6 +21,8 @@ import {
 
 @Module({
   imports: [
+    BoardMembersModule,
+    RealtimeAccessModule,
     AuthModule,
     MailModule,
     WorkspacesModule,

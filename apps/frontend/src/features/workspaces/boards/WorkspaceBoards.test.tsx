@@ -13,6 +13,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { routes } from '../../../app/routes';
 import { ApiError } from '../../../lib/api-client';
 import { makeBoard, okPage } from '../../../test/board-fixtures';
+import { receiveBoardRevocation } from '../../realtime/access-revocation';
+import { boardKeys } from '../../boards/query-keys';
 import {
   mockApi,
   ok,
@@ -311,7 +313,7 @@ describe('Workspace Boards route and capabilities', () => {
     ).toBeNull();
   });
 
-  it('fails closed when a future visibility response arrives before #115', async () => {
+  it('shows a Workspace-visible read-only Board without owner actions', async () => {
     mount(
       undefined,
       gateway({
@@ -320,17 +322,19 @@ describe('Workspace Boards route and capabilities', () => {
           items: [
             {
               ...board,
-              name: 'Unsupported visible board',
-              visibility: 'WORKSPACE_VISIBLE' as 'PRIVATE',
+              name: 'Shared view',
+              visibility: 'WORKSPACE_VISIBLE',
+              currentUserRole: null,
+              canArchive: false,
+              canRestore: false,
             },
           ],
         }),
       }),
     );
-    await screen.findByRole('heading', { name: 'Workspaces are on their way' });
-    expect(document.body.textContent).not.toContain(
-      'Unsupported visible board',
-    );
+    await screen.findByRole('link', { name: 'Open Shared view' });
+    expect(main().getByText('Workspace visible')).toBeTruthy();
+    expect(main().queryByRole('button', { name: /Actions for/ })).toBeNull();
   });
 
   it('keeps the mobile drawer and restores creation focus without nested dialogs', async () => {
@@ -620,6 +624,42 @@ describe('Workspace Board creation', () => {
 });
 
 describe('Existing archive and restore REST integration', () => {
+  it('does not recreate Board cache from an archive response arriving after revocation', async () => {
+    const pending = deferred<MockResponse>();
+    let revoked = false;
+    const { client, calls } = mount(
+      undefined,
+      gateway({
+        list: async () => ({ ...page, items: revoked ? [] : [board] }),
+      }),
+      { [`POST /boards/${board.id}/archive`]: () => pending.promise },
+    );
+    await screen.findByRole('link', { name: new RegExp(`Open ${board.name}`) });
+    client.setQueryData(
+      boardKeys.detail(board.id),
+      makeBoard({ id: board.id }),
+    );
+    fireEvent.click(
+      main().getByRole('button', { name: `Actions for ${board.name}` }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Archive board' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Archive board' }),
+    );
+    await waitFor(() =>
+      expect(calls.some((call) => call.method === 'POST')).toBe(true),
+    );
+    act(() => {
+      revoked = true;
+      receiveBoardRevocation(client, { boardId: board.id });
+    });
+    await act(async () =>
+      pending.resolve(ok(makeBoard({ id: board.id, isArchived: true }))),
+    );
+    await waitFor(() => expect(client.isMutating()).toBe(0));
+    expect(client.getQueryData(boardKeys.detail(board.id))).toBeUndefined();
+  });
   it.each([false, true])(
     'confirms and refreshes the existing %s archived-state mutation',
     async (isArchived) => {

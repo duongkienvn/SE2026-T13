@@ -24,6 +24,7 @@ interface CardDetailDialogProps {
   initialCard?: Card;
   columnName?: string;
   members: BoardMember[];
+  canReadMembers?: boolean;
   /** The board is archived: everything is view-only. */
   boardReadOnly: boolean;
   onClose: () => void;
@@ -35,6 +36,7 @@ export function CardDetailDialog({
   initialCard,
   columnName,
   members,
+  canReadMembers = true,
   boardReadOnly,
   onClose,
 }: CardDetailDialogProps) {
@@ -182,6 +184,7 @@ export function CardDetailDialog({
         cardId={cardId}
         members={members}
         readOnly={readOnly}
+        canReadMembers={canReadMembers}
       />
     </Dialog>
   );

@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Header,
   Param,
   ParseUUIDPipe,
   Query,
@@ -29,6 +30,7 @@ export class ActivitiesController {
   constructor(private readonly activities: ActivitiesService) {}
 
   @Get()
+  @Header('Cache-Control', 'no-store')
   @SerializeResponse(ActivityResponseDto)
   @ApiBearerToken()
   @ApiPaginated(ActivityResponseDto, {

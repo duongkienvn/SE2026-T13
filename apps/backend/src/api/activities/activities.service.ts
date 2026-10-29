@@ -13,6 +13,7 @@ import { BoardAuthorizationService } from '../board-members/board-authorization.
 import { Activity } from './entities/activity.entity';
 import { ActivityRecorder, RecordActivityInput } from './activity-recorder';
 import { ActivityWriterService } from './activity-writer.service';
+import { ActivityEntityType } from '../../common/enums/database-enums';
 import {
   ActivityResponseDto,
   toActivityResponseDto,
@@ -44,10 +45,15 @@ export class ActivitiesService implements ActivityRecorder {
       );
     }
 
-    await this.authorization.requireMember(userId, boardId);
-    const [rows, total] = await this.activities
+    const access = await this.authorization.requireRead(userId, boardId);
+    const builder = this.activities
       .createQueryBuilder('activity')
-      .where('activity.boardId = :boardId', { boardId })
+      .where('activity.boardId = :boardId', { boardId });
+    if (access.member === null)
+      builder.andWhere('activity.entityType <> :memberEntityType', {
+        memberEntityType: ActivityEntityType.MEMBER,
+      });
+    const [rows, total] = await builder
       .orderBy('activity.createdAt', 'DESC')
       .addOrderBy('activity.id', 'DESC')
       .skip((query.page - 1) * query.limit)

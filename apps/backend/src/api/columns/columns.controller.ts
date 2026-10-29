@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Param,
@@ -42,6 +43,7 @@ export class ColumnsController {
   constructor(private readonly columns: ColumnsService) {}
 
   @Get()
+  @Header('Cache-Control', 'no-store')
   @SerializeResponse(ColumnResponseDto)
   @ApiBearerToken()
   @ApiParam({ name: 'boardId', format: 'uuid' })

@@ -460,7 +460,7 @@ export class CardsService {
     boardId: string,
     query: ListCardsDto,
   ): Promise<PaginatedResponse<CardResponseDto>> {
-    await this.authorization.requireMember(userId, boardId);
+    await this.authorization.requireRead(userId, boardId);
     let offset: number;
     try {
       offset = pageOffset(query);
@@ -508,7 +508,7 @@ export class CardsService {
     boardId: string,
     cardId: string,
   ): Promise<CardResponseDto> {
-    await this.authorization.requireMember(userId, boardId);
+    await this.authorization.requireRead(userId, boardId);
     return toCardResponseDto(
       await this.requireCard(this.cards, boardId, cardId),
     );
