@@ -200,7 +200,7 @@ describe('Workspace Settings — Permissions', () => {
   it('shows a MEMBER the current rules without controls', async () => {
     mount(`${base}/settings/permissions`, {}, workspaceResponse);
     const radio = (await screen.findByRole('radio', {
-      name: /All workspace members/,
+      name: /All members/,
     })) as HTMLInputElement;
     expect(radio.checked).toBe(true);
     expect(radio.matches(':disabled')).toBe(true);

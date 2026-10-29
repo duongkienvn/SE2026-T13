@@ -22,7 +22,7 @@ const POLICIES: {
     options: [
       [
         false,
-        'All workspace members',
+        'All members',
         'Any member can create or move boards into this workspace.',
       ],
       [
@@ -164,46 +164,52 @@ function PolicyForm({
         {update.isError && (
           <Alert variant="error">{saveError(update.error)}</Alert>
         )}
-        {POLICIES.map((item) => (
-          <fieldset
-            key={item.field}
-            className="rounded-lg border border-line p-4"
-            disabled={!canEdit || update.isPending}
-          >
-            <legend className="px-1 text-sm font-semibold text-ink">
-              {item.title}
-            </legend>
-            <div className="mt-1 grid gap-2 sm:grid-cols-2">
-              {item.options.map(([option, label, hint]) => {
-                const checked = value[item.field] === option;
-                return (
-                  <label
-                    key={label}
-                    className={`flex min-h-11 cursor-pointer gap-3 rounded-lg border p-3 has-[:disabled]:cursor-not-allowed has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-primary ${checked ? 'border-primary bg-primary-soft/40' : 'border-line'}`}
-                  >
-                    <input
-                      type="radio"
-                      name={item.field}
-                      checked={checked}
-                      onChange={() =>
-                        setEdits({ ...edits, [item.field]: option })
-                      }
-                      className="mt-0.5 size-4 shrink-0 accent-[var(--color-primary)]"
-                    />
-                    <span>
-                      <span className="block text-sm font-medium text-ink">
+        <div className="divide-y divide-line rounded-lg border border-line">
+          {POLICIES.map((item) => {
+            const current = item.options.find(
+              ([option]) => option === value[item.field],
+            );
+            return (
+              <fieldset
+                key={item.field}
+                disabled={!canEdit || update.isPending}
+                className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <legend className="float-left text-sm font-semibold text-ink">
+                    {item.title}
+                  </legend>
+                  <p className="clear-left pt-0.5 text-xs leading-relaxed text-muted">
+                    {current?.[2]}
+                  </p>
+                </div>
+                {/* Two-option segmented control; each option is a real radio. */}
+                <div className="inline-flex shrink-0 self-start rounded-lg border border-line bg-app/50 p-0.5 sm:self-center">
+                  {item.options.map(([option, label]) => {
+                    const checked = value[item.field] === option;
+                    return (
+                      <label
+                        key={label}
+                        className={`flex min-h-10 cursor-pointer items-center rounded-md px-3 text-sm whitespace-nowrap has-[:disabled]:cursor-not-allowed has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-primary ${checked ? 'bg-surface font-medium text-primary shadow-card' : 'text-muted hover:text-ink'}`}
+                      >
+                        <input
+                          type="radio"
+                          name={item.field}
+                          checked={checked}
+                          onChange={() =>
+                            setEdits({ ...edits, [item.field]: option })
+                          }
+                          className="sr-only"
+                        />
                         {label}
-                      </span>
-                      <span className="mt-0.5 block text-xs leading-relaxed text-muted">
-                        {hint}
-                      </span>
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-          </fieldset>
-        ))}
+                      </label>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            );
+          })}
+        </div>
         <p className="text-xs leading-relaxed text-muted">
           These rules can only limit what board owners do. They never let a
           workspace admin open a private board, and a workspace-visible board is
