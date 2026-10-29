@@ -1,4 +1,6 @@
-import { LayersIcon, UserIcon } from '../../../components/icons';
+import { Link } from 'react-router';
+import { LayersIcon, PlusIcon, UserIcon } from '../../../components/icons';
+import { workspacePath } from '../navigation';
 import type { WorkspaceSummary } from '../types';
 
 export function WorkspaceAvatar({
@@ -63,12 +65,34 @@ export function WorkspaceIdentity({
             ? `${memberCount} ${memberCount === 1 ? 'member' : 'members'}`
             : 'Member summary unavailable'}
         </span>
-        <span
-          aria-disabled="true"
-          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-line px-3 text-xs"
-        >
-          Invite <span className="text-muted">Soon</span>
-        </span>
+        {workspace?.type === 'TEAM' && workspace.role === 'ADMIN' ? (
+          <Link
+            to={`${workspacePath(workspace.id)}/members?invite=1`}
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-line bg-surface px-3 text-sm font-medium text-primary hover:bg-primary-soft/40 focus-visible:outline-2 focus-visible:outline-primary"
+          >
+            <PlusIcon className="size-4" />
+            Invite
+          </Link>
+        ) : (
+          <span
+            aria-disabled="true"
+            title={
+              workspace?.type === 'PERSONAL'
+                ? 'Personal workspaces are just for you.'
+                : 'Only workspace admins can invite people.'
+            }
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-line px-3 text-xs"
+          >
+            <PlusIcon className="size-4" />
+            Invite
+            <span className="sr-only">
+              , unavailable:{' '}
+              {workspace?.type === 'PERSONAL'
+                ? 'personal workspaces are just for you'
+                : 'only workspace admins can invite people'}
+            </span>
+          </span>
+        )}
       </div>
     </header>
   );

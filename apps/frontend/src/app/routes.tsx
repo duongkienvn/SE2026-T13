@@ -25,6 +25,7 @@ import { WorkspaceLayout } from '../features/workspaces/components/WorkspaceLayo
 import { WorkspaceOverviewPage } from '../features/workspaces/pages/WorkspaceOverviewPage';
 import { WorkspacesPage } from '../features/workspaces/pages/WorkspacesPage';
 import { WorkspaceBoardsPage } from '../features/workspaces/pages/WorkspaceBoardsPage';
+import { WorkspaceMembersPage } from '../features/workspaces/pages/WorkspaceMembersPage';
 import { PublicOnly, RequireAuth } from './guards';
 import { AuthenticatedLayout } from './layout/AuthenticatedLayout';
 
@@ -59,6 +60,7 @@ export const routes: RouteObject[] = [
                 children: [
                   { index: true, element: <WorkspaceOverviewPage /> },
                   { path: 'boards', element: <WorkspaceBoardsPage /> },
+                  { path: 'members', element: <WorkspaceMembersPage /> },
                 ],
               },
               { path: 'boards', element: <BoardsPage /> },

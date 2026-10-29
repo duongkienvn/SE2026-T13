@@ -210,7 +210,11 @@ describe('Workspace Boards route and capabilities', () => {
         .getByRole('link', { name: 'Boards' })
         .getAttribute('aria-current'),
     ).toBe('page');
-    expect(within(nav).queryByRole('link', { name: 'Members' })).toBeNull();
+    expect(
+      within(nav)
+        .getByRole('link', { name: 'Members' })
+        .getAttribute('aria-current'),
+    ).toBeNull();
   });
   it('keeps all unavailable toolbar/grid/create/pagination slots without guessed requests', async () => {
     const { calls } = mount(undefined, workspaceBoardsGateway);
