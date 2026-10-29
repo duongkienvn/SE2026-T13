@@ -26,6 +26,11 @@ import { WorkspaceOverviewPage } from '../features/workspaces/pages/WorkspaceOve
 import { WorkspacesPage } from '../features/workspaces/pages/WorkspacesPage';
 import { WorkspaceBoardsPage } from '../features/workspaces/pages/WorkspaceBoardsPage';
 import { AcceptInvitationPage } from '../features/workspaces/invitations/AcceptInvitationPage';
+import { WorkspaceSettingsLayout } from '../features/workspaces/settings/WorkspaceSettingsLayout';
+import { GeneralSettings } from '../features/workspaces/settings/GeneralSettings';
+import { MembersSettings } from '../features/workspaces/settings/MembersSettings';
+import { PermissionsSettings } from '../features/workspaces/settings/PermissionsSettings';
+import { DangerZone } from '../features/workspaces/settings/DangerZone';
 import { WorkspaceMembersPage } from '../features/workspaces/pages/WorkspaceMembersPage';
 import { PublicOnly, RequireAuth } from './guards';
 import { AuthenticatedLayout } from './layout/AuthenticatedLayout';
@@ -64,6 +69,17 @@ export const routes: RouteObject[] = [
                   { index: true, element: <WorkspaceOverviewPage /> },
                   { path: 'boards', element: <WorkspaceBoardsPage /> },
                   { path: 'members', element: <WorkspaceMembersPage /> },
+                  {
+                    path: 'settings',
+                    element: <WorkspaceSettingsLayout />,
+                    children: [
+                      { index: true, element: null },
+                      { path: 'general', element: <GeneralSettings /> },
+                      { path: 'members', element: <MembersSettings /> },
+                      { path: 'permissions', element: <PermissionsSettings /> },
+                      { path: 'danger', element: <DangerZone /> },
+                    ],
+                  },
                 ],
               },
               { path: 'boards', element: <BoardsPage /> },

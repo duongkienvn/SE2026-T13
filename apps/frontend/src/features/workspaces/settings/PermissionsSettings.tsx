@@ -1,0 +1,236 @@
+import { useState, type FormEvent } from 'react';
+import { useParams } from 'react-router';
+import { Alert } from '../../../components/Alert';
+import { Button } from '../../../components/Button';
+import { UnsavedChangesGuard } from '../../../components/UnsavedChangesGuard';
+import { isApiError } from '../../../lib/api-client';
+import { useWorkspacePage } from '../components/WorkspaceLayout';
+import { WorkspaceState } from '../components/WorkspaceState';
+import type { PolicyFields, WorkspacePolicy } from './api';
+import { useUpdateWorkspacePolicy, useWorkspacePolicy } from './hooks';
+import { SettingsPanel } from './WorkspaceSettingsLayout';
+
+/** Only the four policies P2-05 supports; each choice is a true/false field. */
+const POLICIES: {
+  field: keyof PolicyFields;
+  title: string;
+  options: [value: boolean, label: string, hint: string][];
+}[] = [
+  {
+    field: 'boardCreationAdminOnly',
+    title: 'Who can create boards',
+    options: [
+      [
+        false,
+        'All workspace members',
+        'Any member can create or move boards into this workspace.',
+      ],
+      [
+        true,
+        'Admins only',
+        'Existing boards stay; only admins can add new ones.',
+      ],
+    ],
+  },
+  {
+    field: 'boardInvitesEnabled',
+    title: 'Board owners can add board members',
+    options: [
+      [true, 'Allowed', 'Board owners add people to their own boards.'],
+      [
+        false,
+        'Not allowed',
+        'Owners cannot add anyone. Workspace membership is never given through a board.',
+      ],
+    ],
+  },
+  {
+    field: 'boardMembershipChangesEnabled',
+    title: 'Board owners can change board members',
+    options: [
+      [
+        true,
+        'Allowed',
+        'Owners change roles and remove people on their boards.',
+      ],
+      [
+        false,
+        'Not allowed',
+        'Current board members keep their access and roles.',
+      ],
+    ],
+  },
+  {
+    field: 'boardVisibilityChangesEnabled',
+    title: 'Board owners can change board visibility',
+    options: [
+      [
+        true,
+        'Allowed',
+        'Owners can share a board read-only with the whole workspace.',
+      ],
+      [false, 'Not allowed', 'Each board keeps its current visibility.'],
+    ],
+  },
+];
+
+const fieldsOf = (policy: WorkspacePolicy): PolicyFields => ({
+  boardCreationAdminOnly: policy.boardCreationAdminOnly,
+  boardInvitesEnabled: policy.boardInvitesEnabled,
+  boardMembershipChangesEnabled: policy.boardMembershipChangesEnabled,
+  boardVisibilityChangesEnabled: policy.boardVisibilityChangesEnabled,
+});
+
+function saveError(error: unknown): string {
+  if (isApiError(error)) {
+    if (error.status === 403)
+      return 'Only workspace admins can change permissions. Your role may have changed.';
+    if (error.status === 409)
+      return 'These permissions changed meanwhile. Your choices are kept; review and save again.';
+  }
+  return 'Could not save permissions. Your choices are kept; try again.';
+}
+
+export function PermissionsSettings() {
+  const { workspaceId = '' } = useParams();
+  const workspace = useWorkspacePage();
+  const policy = useWorkspacePolicy(workspaceId, workspace.state);
+  if (policy.state !== 'ready' || !policy.value)
+    return workspace.state === 'ready' ? (
+      <WorkspaceState
+        state={policy.state}
+        retry={() => void policy.refetch()}
+      />
+    ) : null;
+  return (
+    <PolicyForm
+      key={workspaceId}
+      workspaceId={workspaceId}
+      policy={policy.value}
+    />
+  );
+}
+
+function PolicyForm({
+  workspaceId,
+  policy,
+}: {
+  workspaceId: string;
+  policy: WorkspacePolicy;
+}) {
+  const saved = fieldsOf(policy);
+  const [edits, setEdits] = useState<Partial<PolicyFields>>({});
+  const [notice, setNotice] = useState<string>();
+  const update = useUpdateWorkspacePolicy(workspaceId);
+  const canEdit = policy.canManagePolicies;
+  // Only fields that differ from the latest server values are sent.
+  const changes = Object.fromEntries(
+    Object.entries(edits).filter(
+      ([field, value]) => saved[field as keyof PolicyFields] !== value,
+    ),
+  ) as Partial<PolicyFields>;
+  const dirty = canEdit && Object.keys(changes).length > 0;
+  const value = { ...saved, ...changes };
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!dirty || update.isPending) return;
+    setNotice(undefined);
+    update.mutate(changes, {
+      onSuccess: () => {
+        setEdits({});
+        setNotice('Permissions saved.');
+      },
+    });
+  };
+
+  return (
+    <SettingsPanel
+      title="Permissions"
+      description="Decide what board owners and members may do in this workspace."
+    >
+      <form noValidate onSubmit={submit} className="space-y-5">
+        {!canEdit && (
+          <p className="rounded-lg border border-line bg-app/50 px-3 py-2 text-sm text-muted">
+            Only workspace admins can change permissions. These are the current
+            rules.
+          </p>
+        )}
+        {notice && !update.isError && (
+          <Alert variant="success">
+            <span role="status">{notice}</span>
+          </Alert>
+        )}
+        {update.isError && (
+          <Alert variant="error">{saveError(update.error)}</Alert>
+        )}
+        {POLICIES.map((item) => (
+          <fieldset
+            key={item.field}
+            className="rounded-lg border border-line p-4"
+            disabled={!canEdit || update.isPending}
+          >
+            <legend className="px-1 text-sm font-semibold text-ink">
+              {item.title}
+            </legend>
+            <div className="mt-1 grid gap-2 sm:grid-cols-2">
+              {item.options.map(([option, label, hint]) => {
+                const checked = value[item.field] === option;
+                return (
+                  <label
+                    key={label}
+                    className={`flex min-h-11 cursor-pointer gap-3 rounded-lg border p-3 has-[:disabled]:cursor-not-allowed has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-primary ${checked ? 'border-primary bg-primary-soft/40' : 'border-line'}`}
+                  >
+                    <input
+                      type="radio"
+                      name={item.field}
+                      checked={checked}
+                      onChange={() =>
+                        setEdits({ ...edits, [item.field]: option })
+                      }
+                      className="mt-0.5 size-4 shrink-0 accent-[var(--color-primary)]"
+                    />
+                    <span>
+                      <span className="block text-sm font-medium text-ink">
+                        {label}
+                      </span>
+                      <span className="mt-0.5 block text-xs leading-relaxed text-muted">
+                        {hint}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+        ))}
+        <p className="text-xs leading-relaxed text-muted">
+          These rules can only limit what board owners do. They never let a
+          workspace admin open a private board, and a workspace-visible board is
+          read-only for members who are not on it.
+        </p>
+        {canEdit && (
+          <div className="flex flex-col-reverse gap-3 border-t border-line pt-5 sm:flex-row sm:justify-end">
+            <Button
+              variant="secondary"
+              disabled={!dirty || update.isPending}
+              onClick={() => {
+                setEdits({});
+                update.reset();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!dirty || update.isPending}>
+              {update.isPending ? 'Saving…' : 'Save Changes'}
+            </Button>
+          </div>
+        )}
+      </form>
+      <UnsavedChangesGuard
+        when={dirty}
+        description="Your permission changes are not saved yet."
+      />
+    </SettingsPanel>
+  );
+}

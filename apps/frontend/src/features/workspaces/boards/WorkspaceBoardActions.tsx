@@ -12,6 +12,7 @@ import { boardAccessVersion } from '../../boards/access-version';
 import { workspaceKeys } from '../query-keys';
 import type { WorkspaceOverview } from '../types';
 import type { WorkspaceBoardSummary } from './types';
+import { BoardVisibilityDialog, MoveBoardDialog } from './BoardOwnerDialogs';
 
 /** Board OWNER and archive state, independent of Workspace ADMIN. */
 export function WorkspaceBoardActions({
@@ -22,6 +23,7 @@ export function WorkspaceBoardActions({
   workspaceId: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [owner, setOwner] = useState<'visibility' | 'move' | null>(null);
   const { user, runAuthorized } = useAuth();
   const scope = useAuthSession();
   const client = useQueryClient();
@@ -109,23 +111,52 @@ export function WorkspaceBoardActions({
       void client.invalidateQueries({ queryKey: overviewKey });
     },
   });
-  if (!allowed) return null;
+  // Explicit Board OWNER only, never inferred from Workspace ADMIN.
+  const ownsActive = board.currentUserRole === 'OWNER' && !board.isArchived;
+  if (!allowed && !ownsActive) return null;
   return (
     <>
       <ActionMenu
         label={`Actions for ${board.name}`}
         className="[&>button]:size-11 [&_button]:min-h-11"
         items={[
-          {
-            label: `${action} board`,
-            tone: board.isArchived ? 'default' : 'danger',
-            onSelect: () => {
-              mutation.reset();
-              setOpen(true);
-            },
-          },
+          ...(ownsActive
+            ? [
+                {
+                  label: 'Change visibility',
+                  onSelect: () => setOwner('visibility'),
+                },
+                {
+                  label: 'Move to workspace',
+                  onSelect: () => setOwner('move'),
+                },
+              ]
+            : []),
+          ...(allowed
+            ? [
+                {
+                  label: `${action} board`,
+                  tone: (board.isArchived ? 'default' : 'danger') as
+                    'default' | 'danger',
+                  onSelect: () => {
+                    mutation.reset();
+                    setOpen(true);
+                  },
+                },
+              ]
+            : []),
         ]}
       />
+      {owner === 'visibility' && (
+        <BoardVisibilityDialog board={board} onClose={() => setOwner(null)} />
+      )}
+      {owner === 'move' && (
+        <MoveBoardDialog
+          board={board}
+          workspaceId={workspaceId}
+          onClose={() => setOwner(null)}
+        />
+      )}
       <ConfirmDialog
         open={open}
         title={`${action} “${board.name}”?`}

@@ -123,8 +123,8 @@ describe('Workspace runtime and navigation', () => {
       within(nav)
         .getAllByRole('link')
         .map((item) => item.textContent),
-    ).toEqual(['Overview', 'Boards', 'Members']);
-    expect(within(nav).getAllByText(/coming soon/)).toHaveLength(1);
+    ).toEqual(['Overview', 'Boards', 'Members', 'Settings']);
+    expect(within(nav).queryAllByText(/coming soon/)).toHaveLength(0);
     expect(calls.some((call) => /workspaces|boards/.test(call.path))).toBe(
       false,
     );
@@ -252,7 +252,7 @@ describe('Workspace runtime and navigation', () => {
   });
 
   it('does not invent downstream page routes', async () => {
-    mount(`/workspaces/${team.id}/settings`);
+    mount(`/workspaces/${team.id}/activity`);
     expect(
       await screen.findByRole('heading', { name: /not found/i }),
     ).toBeTruthy();
