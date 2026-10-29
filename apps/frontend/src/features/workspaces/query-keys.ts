@@ -20,4 +20,14 @@ export const workspaceKeys = {
       ...workspaceKeys.resource(userId, generation, workspaceId),
       'boards',
     ] as const,
+  members: (userId: string, generation: number, workspaceId: string) =>
+    [
+      ...workspaceKeys.resource(userId, generation, workspaceId),
+      'members',
+    ] as const,
+  invitations: (userId: string, generation: number, workspaceId: string) =>
+    [
+      ...workspaceKeys.resource(userId, generation, workspaceId),
+      'invitations',
+    ] as const,
 };
