@@ -8,6 +8,8 @@ export interface WorkspaceSummary {
   type: WorkspaceType;
   role: WorkspaceRole;
   canCreateBoards: boolean;
+  /** Optional approved icon; the initial letter is shown without one. */
+  icon?: 'briefcase' | 'users' | 'code' | 'palette' | 'layers' | null;
 }
 
 export interface RecentWorkspaceBoard {
