@@ -1,6 +1,7 @@
 import {
   RealtimeServerEvent,
   RealtimePresenceEvent,
+  RealtimeAccessEvent,
   type RealtimeServerEvents,
   type RealtimeClientEvents,
 } from '../src/index.js';
@@ -13,6 +14,7 @@ const exactKeys: Equal<
   keyof RealtimeServerEvents,
   | (typeof RealtimeServerEvent)[keyof typeof RealtimeServerEvent]
   | (typeof RealtimePresenceEvent)[keyof typeof RealtimePresenceEvent]
+  | (typeof RealtimeAccessEvent)[keyof typeof RealtimeAccessEvent]
 > = true;
 void exactKeys;
 
