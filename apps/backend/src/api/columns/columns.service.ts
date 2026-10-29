@@ -64,7 +64,7 @@ export class ColumnsService {
     boardId: string,
     query: PageQueryDto,
   ): Promise<PaginatedResponse<ColumnResponseDto>> {
-    await this.authorization.requireMember(userId, boardId);
+    await this.authorization.requireRead(userId, boardId);
     try {
       pageOffset(query);
     } catch {

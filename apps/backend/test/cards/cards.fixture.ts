@@ -80,6 +80,7 @@ export function cardsHarness() {
   const transaction = jest.fn(async (callback) => callback(manager));
   const boards = { manager: { transaction } };
   const authorization = {
+    requireRead: jest.fn().mockResolvedValue({}),
     requireMember: jest
       .fn()
       .mockResolvedValue({ board: { isArchived: false } }),

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Param,
@@ -43,6 +44,7 @@ export class CommentsController {
   constructor(private readonly comments: CommentsService) {}
 
   @Get()
+  @Header('Cache-Control', 'no-store')
   @SerializeResponse(CommentResponseDto)
   @ApiBearerToken()
   @ApiPaginated(CommentResponseDto, {

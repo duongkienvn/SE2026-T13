@@ -51,6 +51,9 @@ const PUBLIC_FIELDS = [
   'createdAt',
   'updatedAt',
   'currentUserRole',
+  'workspaceId',
+  'visibility',
+  'capabilities',
 ];
 
 describe('boards HTTP contract (mock repositories, real service and JWT)', () => {
@@ -61,7 +64,15 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
   let roles: Map<string, BoardMemberRole>;
   const txBoards = { findOne: jest.fn(), create: jest.fn(), save: jest.fn() };
   const txMembers = { findOne: jest.fn(), create: jest.fn(), save: jest.fn() };
-  const members = { findOne: jest.fn() };
+  const readBoard = {
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    getOne: jest.fn().mockResolvedValue(null),
+  };
+  const members = {
+    findOne: jest.fn(),
+    manager: { getRepository: () => ({ createQueryBuilder: () => readBoard }) },
+  };
   const boards = {
     manager: { transaction: jest.fn() },
     createQueryBuilder: jest.fn(),
@@ -139,6 +150,8 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
     board = Object.assign(new Board(), {
       id: BOARD_ID,
       name: 'Board',
+      workspaceId: BOARD_ID,
+      visibility: 'PRIVATE',
       description: 'Keep',
       createdById: OWNER,
       isArchived: false,
@@ -413,8 +426,9 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
 
   it('wraps list data and pagination meta without serializing relations', async () => {
     const builder = {
-      innerJoinAndSelect: jest.fn().mockReturnThis(),
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
       clone: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       addOrderBy: jest.fn().mockReturnThis(),

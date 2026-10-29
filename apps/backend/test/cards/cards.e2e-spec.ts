@@ -201,6 +201,14 @@ describe('Card HTTP API with real JWT, authorization, services and envelopes', (
     );
     const boards = {
       ...h.boards,
+      createQueryBuilder: () => {
+        const reader = {
+          where: () => reader,
+          andWhere: () => reader,
+          getOne: async () => null,
+        };
+        return reader;
+      },
       findOne: jest.fn(async ({ where }: { where: { id: string } }) =>
         [ID.board, FOREIGN_BOARD].includes(where.id) ? board(where.id) : null,
       ),
@@ -250,7 +258,10 @@ describe('Card HTTP API with real JWT, authorization, services and envelopes', (
         { provide: 'CardRepository', useValue: h.cards },
         { provide: 'BoardRepository', useValue: boards },
         { provide: 'BoardColumnRepository', useValue: h.columns },
-        { provide: 'BoardMemberRepository', useValue: h.members },
+        {
+          provide: 'BoardMemberRepository',
+          useValue: { ...h.members, manager: h.manager },
+        },
         {
           provide: 'UserRepository',
           useValue: {

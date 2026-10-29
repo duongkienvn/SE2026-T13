@@ -25,6 +25,10 @@ import { BoardAuthorizationService } from '../board-members/board-authorization.
 import { BoardEventPublisher } from '../../realtime/board-event-publisher.service';
 import { BoardVisibility, RealtimeServerEvent } from '@kanban/shared';
 import { WorkspacesService } from '../workspaces/workspaces.service';
+import {
+  readableBoardPredicate,
+  readableBoardParameters,
+} from '../board-members/board-permissions';
 
 @Injectable()
 export class BoardsService {
@@ -134,11 +138,11 @@ export class BoardsService {
   }
 
   async getDetail(userId: string, boardId: string): Promise<BoardResponseDto> {
-    const { board, member } = await this.authorization.requireMember(
+    const { board, member } = await this.authorization.requireRead(
       userId,
       boardId,
     );
-    return toBoardResponseDto(board, member.role);
+    return toBoardResponseDto(board, member?.role ?? null);
   }
 
   private notFound(): ApplicationException {
@@ -166,13 +170,14 @@ export class BoardsService {
     const page = await paginateQueryBuilder(
       this.boards
         .createQueryBuilder('board')
-        .innerJoinAndSelect(
+        .leftJoinAndSelect(
           'board.members',
           'member',
           'member.userId = :userId',
           { userId },
         )
-        .where('board.isArchived = :isArchived', {
+        .where(readableBoardPredicate, readableBoardParameters(userId))
+        .andWhere('board.isArchived = :isArchived', {
           isArchived: query.status === 'archived',
         }),
       query,
@@ -181,7 +186,7 @@ export class BoardsService {
     );
     return paginate(
       page.data.map((board) =>
-        toBoardResponseDto(board, board.members[0].role),
+        toBoardResponseDto(board, board.members[0]?.role ?? null),
       ),
       page.meta.total,
       query,

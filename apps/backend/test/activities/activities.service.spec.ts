@@ -62,6 +62,7 @@ function harness() {
   };
   const builder = {
     where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
     orderBy: jest.fn().mockReturnThis(),
     addOrderBy: jest.fn().mockReturnThis(),
     skip: jest.fn().mockReturnThis(),
@@ -70,7 +71,7 @@ function harness() {
   };
   activityRepository.createQueryBuilder.mockReturnValue(builder);
   const authorization = {
-    requireMember: jest.fn().mockResolvedValue({ board: { isArchived: true } }),
+    requireRead: jest.fn().mockResolvedValue({ board: { isArchived: true } }),
   };
   const manager = {
     getRepository: jest.fn().mockReturnValue(activityRepository),
@@ -84,6 +85,18 @@ function harness() {
 }
 
 describe('ActivitiesService', () => {
+  it('filters membership administration before counting a Workspace viewer feed', async () => {
+    const h = harness();
+    h.authorization.requireRead.mockResolvedValue({ member: null });
+    await h.service.list(ID.actor, ID.board, { page: 1, limit: 20 });
+    expect(h.builder.andWhere).toHaveBeenCalledWith(
+      'activity.entityType <> :memberEntityType',
+      { memberEntityType: 'MEMBER' },
+    );
+    expect(h.builder.andWhere.mock.invocationCallOrder[0]).toBeLessThan(
+      h.builder.getManyAndCount.mock.invocationCallOrder[0],
+    );
+  });
   it('lists only the requested board in newest-first deterministic order', async () => {
     const h = harness();
 
@@ -93,7 +106,7 @@ describe('ActivitiesService', () => {
       data: [expect.objectContaining({ boardId: ID.board })],
       meta: { page: 2, limit: 20, total: 1, totalPages: 1 },
     });
-    expect(h.authorization.requireMember).toHaveBeenCalledWith(
+    expect(h.authorization.requireRead).toHaveBeenCalledWith(
       ID.actor,
       ID.board,
     );

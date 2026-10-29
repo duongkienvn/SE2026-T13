@@ -44,7 +44,7 @@ export class CommentsService {
     cardId: string,
     query: PageQuery,
   ): Promise<PaginatedResponse<CommentResponseDto>> {
-    await this.authorization.requireMember(userId, boardId);
+    await this.authorization.requireRead(userId, boardId);
     await this.requireCard(this.cards, boardId, cardId);
     let offset: number;
     try {

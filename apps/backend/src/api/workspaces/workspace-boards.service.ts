@@ -19,6 +19,10 @@ import {
 import { paginateQueryBuilder } from '../../utils/offset-pagination';
 import { toResponseDto } from '../../common/dto/to-response-dto';
 import { readWorkspaceSnapshot } from './workspace-read';
+import {
+  readableBoardPredicate,
+  readableBoardParameters,
+} from '../board-members/board-permissions';
 
 @Injectable()
 export class WorkspaceBoardsService {
@@ -28,14 +32,14 @@ export class WorkspaceBoardsService {
   ) {}
 
   private readableBoards(member: WorkspaceMember, manager: EntityManager) {
-    // Direct Board membership is the deployed read grant. P2-04 owns widening it.
     return manager
       .getRepository(Board)
       .createQueryBuilder('board')
-      .innerJoinAndSelect('board.members', 'actor', 'actor.userId = :userId', {
+      .leftJoinAndSelect('board.members', 'actor', 'actor.userId = :userId', {
         userId: member.userId,
       })
-      .where('board.workspaceId = :workspaceId', {
+      .where(readableBoardPredicate, readableBoardParameters(member.userId))
+      .andWhere('board.workspaceId = :workspaceId', {
         workspaceId: member.workspaceId,
       });
   }
@@ -69,7 +73,7 @@ export class WorkspaceBoardsService {
       );
       return paginate(
         page.data.map((board) =>
-          toWorkspaceBoardResponseDto(board, board.members[0].role),
+          toWorkspaceBoardResponseDto(board, board.members[0]?.role ?? null),
         ),
         page.meta.total,
         query,
@@ -108,7 +112,7 @@ export class WorkspaceBoardsService {
         archivedBoardCount,
         memberCount,
         recentBoards: recent.map((board) =>
-          toWorkspaceBoardResponseDto(board, board.members[0].role),
+          toWorkspaceBoardResponseDto(board, board.members[0]?.role ?? null),
         ),
       });
     });

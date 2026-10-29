@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   HttpStatus,
   HttpCode,
   Post,
@@ -105,12 +106,14 @@ export class BoardsController {
   }
 
   @Get(':boardId')
+  @Header('Cache-Control', 'no-store')
   @SerializeResponse(BoardResponseDto)
   @ApiBearerToken()
   @ApiParam({ name: 'boardId', format: 'uuid' })
   @ApiSuccess({
     type: BoardResponseDto,
-    summary: 'Get a board as OWNER or MEMBER, including archived boards',
+    summary:
+      'Read an authorized Board, including Workspace-derived and archived read access',
   })
   @ApiCommonErrors([400, 401, 404, 429, 500])
   getDetail(
@@ -121,6 +124,7 @@ export class BoardsController {
   }
 
   @Get()
+  @Header('Cache-Control', 'no-store')
   @SerializeResponse(BoardResponseDto)
   @ApiBearerToken()
   @ApiPaginated(BoardResponseDto, {
