@@ -42,14 +42,12 @@ async function openLiveBoard(extra: Record<string, Handler> = {}) {
   await waitFor(() => expect(createdSockets).toHaveLength(1));
   const { socket } = createdSockets[0];
   act(() => socket.open());
+  await main.findByRole('heading', { name: 'Launch' });
+  await waitFor(() =>
+    expect(socket.requests('board:join').length).toBeGreaterThan(0),
+  );
   act(() => socket.lastJoin().reply(joined(board.id)));
   return { main, socket };
-}
-
-/** Returns each response in turn, repeating the last one. */
-function sequence(...responses: MockResponse[]) {
-  let calls = 0;
-  return () => responses[Math.min(calls++, responses.length - 1)];
 }
 
 afterEach(() => focusManager.setFocused(undefined));
@@ -101,12 +99,15 @@ describe('BoardDetailPage realtime', () => {
       isArchived: true,
       archivedAt: new Date().toISOString(),
     };
+    let current = board;
     const { main, socket } = await openLiveBoard({
-      [BOARD]: sequence(ok(board), ok(board), ok(archived), ok(board)),
+      [BOARD]: () => ok(current),
     });
+    current = archived;
     act(() => socket.push('board:archived', { boardId: board.id }));
     expect(await main.findByText(/This board is archived/)).toBeTruthy();
     expect(main.queryByRole('button', { name: 'Add column' })).toBeNull();
+    current = board;
     act(() => socket.push('board:restored', { boardId: board.id }));
     await waitFor(() =>
       expect(main.queryByText(/This board is archived/)).toBeNull(),
@@ -139,15 +140,13 @@ describe('BoardDetailPage realtime', () => {
   });
 
   it('updates the role chip when the signed-in role changes elsewhere', async () => {
+    let current = board;
     const { main, socket } = await openLiveBoard({
-      [BOARD]: sequence(
-        ok(board),
-        ok(board),
-        ok({ ...board, currentUserRole: 'MEMBER' }),
-      ),
+      [BOARD]: () => ok(current),
     });
     await waitFor(() => expect(main.getByText('Owner')).toBeTruthy());
 
+    current = { ...board, currentUserRole: 'MEMBER' };
     act(() =>
       socket.push('member:role-changed', {
         boardId: board.id,
@@ -164,9 +163,12 @@ describe('BoardDetailPage realtime', () => {
     expect(main.queryByText('Reconnecting…')).toBeNull();
 
     act(() => socket.drop());
-    expect(main.getByText('Reconnecting…').getAttribute('role')).toBe('status');
+    expect(main.getByText('Loading board…').getAttribute('role')).toBeNull();
 
     act(() => socket.open());
+    await waitFor(() =>
+      expect(socket.requests('board:join').length).toBeGreaterThan(1),
+    );
     act(() => socket.lastJoin().reply(joined(board.id)));
     await waitFor(() => expect(main.queryByText('Reconnecting…')).toBeNull());
   });
@@ -174,8 +176,9 @@ describe('BoardDetailPage realtime', () => {
   it('hides the board and leaves its room once REST says access is gone', async () => {
     // A removed member gets no event of their own; returning to the tab
     // refetches the board, which now answers 404.
+    let allowed = true;
     const { main, socket } = await openLiveBoard({
-      [BOARD]: sequence(ok(board), ok(board), fail(404, 'BOARD_NOT_FOUND')),
+      [BOARD]: () => (allowed ? ok(board) : fail(404, 'BOARD_NOT_FOUND')),
     });
     act(() =>
       socket.push('presence:sync', {
@@ -187,6 +190,7 @@ describe('BoardDetailPage realtime', () => {
       main.getByRole('button', { name: '1 person viewing. Show viewers' }),
     ).toBeTruthy();
 
+    allowed = false;
     act(() => {
       focusManager.setFocused(false);
       focusManager.setFocused(true);

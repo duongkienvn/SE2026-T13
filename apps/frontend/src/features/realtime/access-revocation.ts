@@ -6,7 +6,27 @@ import type { WorkspaceSummary } from '../workspaces/types';
 import type { Board } from '../boards/types';
 import { boardKeys } from '../boards/query-keys';
 import { avatarKeys } from '../auth/avatar-query-keys';
-import { changeBoardAccessVersion } from '../boards/access-version';
+import {
+  changeAllBoardAccessVersions,
+  changeBoardAccessVersion,
+} from '../boards/access-version';
+
+/** Drop potentially stale protected data before asking REST to authorize it again. */
+export function clearAccessSnapshots(client: QueryClient): void {
+  changeAllBoardAccessVersions(client);
+  for (const key of [boardKeys.all, workspaceKeys.all, avatarKeys.all]) {
+    void client.cancelQueries({ queryKey: key });
+    for (const query of client.getQueryCache().findAll({ queryKey: key })) {
+      query.setState({ data: undefined, status: 'pending', error: null });
+    }
+  }
+}
+
+export function refreshAccessSnapshots(client: QueryClient): void {
+  clearAccessSnapshots(client);
+  for (const key of [boardKeys.all, workspaceKeys.all, avatarKeys.all])
+    void client.invalidateQueries({ queryKey: key });
+}
 
 export function reduceBoardToReadOnly(client: QueryClient, boardId: string) {
   changeBoardAccessVersion(client, boardId);

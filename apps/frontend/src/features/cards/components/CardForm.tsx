@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useBeforeUnload, useBlocker } from 'react-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
 import { TextAreaField } from '../../../components/TextAreaField';
@@ -13,6 +14,7 @@ import { TextField } from '../../../components/TextField';
 import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
 import { toFormErrors } from '../../../lib/form-errors';
 import type { Card, UpdateCardRequest } from '../types';
+import { cardDraftKey, type CardDraft } from '../card-draft';
 import {
   CARD_DESCRIPTION_MAX_LENGTH,
   dueDateFromInput,
@@ -40,6 +42,7 @@ const valuesOf = (card: Card): CardValues => ({
 });
 
 interface CardFormProps {
+  boardId: string;
   card: Card;
   readOnly: boolean;
   pending: boolean;
@@ -50,6 +53,7 @@ interface CardFormProps {
 }
 
 export function CardForm({
+  boardId,
   card,
   readOnly,
   pending,
@@ -58,11 +62,18 @@ export function CardForm({
   side,
 }: CardFormProps) {
   const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
+  const client = useQueryClient();
+  const key = cardDraftKey(boardId, card.id);
+  const draft = client.getQueryData<CardDraft>(key);
   // What was last saved; edits are compared against it.
-  const [saved, setSaved] = useState(() => valuesOf(card));
-  const [title, setTitle] = useState(card.title);
-  const [description, setDescription] = useState(card.description ?? '');
-  const [dueDay, setDueDay] = useState(dueDateToInput(card.dueDate));
+  const [saved, setSaved] = useState(() => draft?.saved ?? valuesOf(card));
+  const [title, setTitle] = useState(() => draft?.title ?? card.title);
+  const [description, setDescription] = useState(
+    () => draft?.description ?? card.description ?? '',
+  );
+  const [dueDay, setDueDay] = useState(
+    () => draft?.dueDay ?? dueDateToInput(card.dueDate),
+  );
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<Field, string>>
   >({});
@@ -77,6 +88,22 @@ export function CardForm({
     patch.description = normalizeCardDescription(description);
   if (dueChanged) patch.dueDate = dueDateFromInput(dueDay);
   const changed = Object.keys(patch).length > 0;
+  useEffect(() => {
+    client.setQueryDefaults(['card-draft'], { gcTime: Infinity });
+    if (changed && !readOnly)
+      client.setQueryData(key, { saved, title, description, dueDay });
+    else client.removeQueries({ queryKey: key, exact: true });
+  }, [
+    client,
+    boardId,
+    card.id,
+    changed,
+    readOnly,
+    saved,
+    title,
+    description,
+    dueDay,
+  ]);
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       !readOnly &&
@@ -191,7 +218,13 @@ export function CardForm({
                 <Button variant="secondary" onClick={() => blocker.reset()}>
                   Keep editing
                 </Button>
-                <Button variant="danger" onClick={() => blocker.proceed()}>
+                <Button
+                  variant="danger"
+                  onClick={() => {
+                    client.removeQueries({ queryKey: key, exact: true });
+                    blocker.proceed();
+                  }}
+                >
                   Discard changes
                 </Button>
               </div>

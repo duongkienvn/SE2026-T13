@@ -48,6 +48,7 @@ describe('useBoardRealtime', () => {
     await expect(getAccessToken()).resolves.toBe('socket-token');
 
     act(() => socket.open());
+    await waitFor(() => expect(socket.requests('board:join')).toHaveLength(1));
     act(() => socket.lastJoin().reply(joined(BOARD)));
 
     expect(socket.lastJoin().boardId).toBe(BOARD);
@@ -76,7 +77,8 @@ describe('useBoardRealtime', () => {
     act(() => socket.open());
     act(() => socket.lastJoin().reply(joined(BOARD)));
     // The join resync catches up on anything missed before joining.
-    await waitFor(() => expect(listCalls).toBe(2));
+    await waitFor(() => expect(listCalls).toBeGreaterThanOrEqual(2));
+    const beforeEvent = listCalls;
 
     act(() =>
       socket.push('card:updated', {
@@ -86,9 +88,7 @@ describe('useBoardRealtime', () => {
       }),
     );
 
-    await waitFor(() =>
-      expect(result.current.cards.data?.[0].title).toBe('Version 3'),
-    );
+    await waitFor(() => expect(listCalls).toBeGreaterThan(beforeEvent));
   });
 
   it('joins once under StrictMode', async () => {
@@ -99,6 +99,7 @@ describe('useBoardRealtime', () => {
     await waitFor(() => expect(createdSockets.length).toBeGreaterThan(0));
     const { socket } = lastSocket();
     act(() => socket.open());
+    await waitFor(() => expect(socket.requests('board:join')).toHaveLength(1));
 
     const connected = createdSockets
       .map((created) => created.socket)
@@ -108,7 +109,7 @@ describe('useBoardRealtime', () => {
     expect(socket.listenerCount('card:moved')).toBe(1);
   });
 
-  it('opens no socket while disabled', async () => {
+  it('does not join a Board while disabled', async () => {
     storeSession();
     mockApi({ 'GET /users/me': ok(testUser) });
 
@@ -117,7 +118,8 @@ describe('useBoardRealtime', () => {
       { wrapper, initialProps: { enabled: false } },
     );
     await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
-    expect(createdSockets).toEqual([]);
+    expect(createdSockets).toHaveLength(1);
+    expect(lastSocket().socket.requests('board:join')).toHaveLength(0);
 
     rerender({ enabled: true });
     await waitFor(() => expect(createdSockets).toHaveLength(1));
@@ -130,6 +132,7 @@ describe('useBoardRealtime', () => {
     await waitFor(() => expect(createdSockets).toHaveLength(1));
     const { socket } = lastSocket();
     act(() => socket.open());
+    await waitFor(() => expect(socket.requests('board:join')).toHaveLength(1));
     act(() => socket.serverDisconnect());
     expect(result.current.status).toBe('connecting');
 

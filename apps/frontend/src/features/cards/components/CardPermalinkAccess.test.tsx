@@ -139,6 +139,10 @@ describe('card permalink access and synchronization', () => {
     const input =
       within(dialog).getByLabelText<HTMLTextAreaElement>('Description');
     fireEvent.change(input, { target: { value: 'My draft' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close card' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Keep editing' }),
+    );
     const socket = await connect();
     refuseCard(ok({ ...card, description: 'Someone else edited this' }));
     act(() =>
@@ -148,8 +152,23 @@ describe('card permalink access and synchronization', () => {
       focusManager.setFocused(false);
       focusManager.setFocused(true);
     });
-    expect(screen.getByLabelText('Description')).toBe(input);
-    expect(input.value).toBe('My draft');
+    const restored = await screen.findByLabelText<HTMLTextAreaElement>(
+      'Description',
+      {},
+      { timeout: 6000 },
+    );
+    expect(restored.value).toBe('My draft');
+    act(() => socket.drop());
+    const pendingUnload = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(pendingUnload);
+    expect(pendingUnload.defaultPrevented).toBe(true);
+    act(() => socket.open());
+    const reconnected = await screen.findByLabelText<HTMLTextAreaElement>(
+      'Description',
+      {},
+      { timeout: 6000 },
+    );
+    expect(reconnected.value).toBe('My draft');
     const unload = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(unload);
     expect(unload.defaultPrevented).toBe(true);
