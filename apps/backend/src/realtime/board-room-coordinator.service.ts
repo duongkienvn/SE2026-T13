@@ -28,11 +28,39 @@ export class BoardRoomCoordinator implements OnApplicationShutdown {
 
   notifyWorkspaceRevoked(workspaceId: string, userId: string): void {
     for (const socket of this.server?.sockets.sockets.values() ?? []) {
-      if (socket.data.identity?.userId !== userId) continue;
+      const identity = socket.data.identity;
+      if (
+        !socket.connected ||
+        !identity ||
+        identity.expiresAt <= Date.now() ||
+        identity.userId !== userId
+      )
+        continue;
       try {
         socket.emit(RealtimeAccessEvent.WORKSPACE_REVOKED, { workspaceId });
+        socket.emit(RealtimeAccessEvent.ACCESS_CHANGED);
       } catch {
         this.logger.error('Workspace access notification failed');
+      }
+    }
+  }
+
+  /** An identifier-free hint only to affected, unexpired authenticated sessions. */
+  notifyAccessChanged(userIds: readonly string[]): void {
+    const recipients = new Set(userIds);
+    for (const socket of this.server?.sockets.sockets.values() ?? []) {
+      const identity = socket.data.identity;
+      if (
+        !socket.connected ||
+        !identity ||
+        identity.expiresAt <= Date.now() ||
+        !recipients.has(identity.userId)
+      )
+        continue;
+      try {
+        socket.emit(RealtimeAccessEvent.ACCESS_CHANGED);
+      } catch {
+        this.logger.error('Access change notification failed');
       }
     }
   }

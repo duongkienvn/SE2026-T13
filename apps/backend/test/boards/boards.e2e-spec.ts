@@ -30,6 +30,7 @@ import { BoardMemberRole } from '../../src/common/enums/database-enums';
 import { BoardEventPublisher } from '../../src/realtime/board-event-publisher.service';
 import { User } from '../../src/api/users/entities/user.entity';
 import { WorkspacesService } from '../../src/api/workspaces/workspaces.service';
+import { Workspace } from '../../src/api/workspaces/entities/workspace.entity';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: (entity: { name: string }) =>
@@ -64,7 +65,15 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
   let roles: Map<string, BoardMemberRole>;
   const txBoards = { findOne: jest.fn(), create: jest.fn(), save: jest.fn() };
   const txMembers = { findOne: jest.fn(), create: jest.fn(), save: jest.fn() };
+  const workspace = {
+    id: 'personal-workspace',
+    boardCreationAdminOnly: false,
+    boardInvitesEnabled: true,
+    boardMembershipChangesEnabled: true,
+  };
+  const txWorkspace = { findOneByOrFail: jest.fn(async () => workspace) };
   const readBoard = {
+    innerJoinAndSelect: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
     getOne: jest.fn().mockResolvedValue(null),
@@ -74,7 +83,7 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
     manager: { getRepository: () => ({ createQueryBuilder: () => readBoard }) },
   };
   const boards = {
-    manager: { transaction: jest.fn() },
+    manager: { transaction: jest.fn(), getRepository: () => txWorkspace },
     createQueryBuilder: jest.fn(),
   };
   const users = { findOne: jest.fn() };
@@ -104,6 +113,7 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
           provide: WorkspacesService,
           useValue: {
             ensurePersonalWorkspace: async () => ({ id: 'personal-workspace' }),
+            requireMember: async () => ({ workspace }),
           },
         },
         { provide: ActivityWriterService, useValue: { record: jest.fn() } },
@@ -151,6 +161,7 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
       id: BOARD_ID,
       name: 'Board',
       workspaceId: BOARD_ID,
+      workspace,
       visibility: 'PRIVATE',
       description: 'Keep',
       createdById: OWNER,
@@ -191,7 +202,11 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
     boards.manager.transaction.mockImplementation(async (callback) =>
       callback({
         getRepository: (entity: unknown) =>
-          entity === Board ? txBoards : txMembers,
+          entity === Board
+            ? txBoards
+            : entity === Workspace
+              ? txWorkspace
+              : txMembers,
       }),
     );
   });
@@ -426,6 +441,7 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
 
   it('wraps list data and pagination meta without serializing relations', async () => {
     const builder = {
+      innerJoinAndSelect: jest.fn().mockReturnThis(),
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),

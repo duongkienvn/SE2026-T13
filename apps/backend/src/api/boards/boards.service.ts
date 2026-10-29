@@ -25,6 +25,8 @@ import { BoardAuthorizationService } from '../board-members/board-authorization.
 import { BoardEventPublisher } from '../../realtime/board-event-publisher.service';
 import { BoardVisibility, RealtimeServerEvent } from '@kanban/shared';
 import { WorkspacesService } from '../workspaces/workspaces.service';
+import { Workspace } from '../workspaces/entities/workspace.entity';
+import { requireBoardCreation } from '../workspaces/workspace-policy';
 import {
   readableBoardPredicate,
   readableBoardParameters,
@@ -80,6 +82,9 @@ export class BoardsService {
           'Board is not archived',
         );
       }
+      board.workspace = await manager
+        .getRepository(Workspace)
+        .findOneByOrFail({ id: board.workspaceId });
       board.isArchived = false;
       board.archivedAt = null;
       const saved = await manager.getRepository(Board).save(board);
@@ -116,6 +121,9 @@ export class BoardsService {
         boardId,
         manager,
       );
+      board.workspace = await manager
+        .getRepository(Workspace)
+        .findOneByOrFail({ id: board.workspaceId });
       const changed =
         (input.name !== undefined && input.name !== board.name) ||
         (input.description !== undefined &&
@@ -142,6 +150,10 @@ export class BoardsService {
       userId,
       boardId,
     );
+    if (member?.role === BoardMemberRole.OWNER && !board.isArchived)
+      board.workspace = await this.boards.manager
+        .getRepository(Workspace)
+        .findOneByOrFail({ id: board.workspaceId });
     return toBoardResponseDto(board, member?.role ?? null);
   }
 
@@ -170,6 +182,7 @@ export class BoardsService {
     const page = await paginateQueryBuilder(
       this.boards
         .createQueryBuilder('board')
+        .innerJoinAndSelect('board.workspace', 'boardWorkspace')
         .leftJoinAndSelect(
           'board.members',
           'member',
@@ -200,16 +213,16 @@ export class BoardsService {
     return this.boards.manager.transaction(async (manager) => {
       const boards = manager.getRepository(Board);
       const members = manager.getRepository(BoardMember);
-      const workspace =
-        input.workspaceId === undefined
-          ? await this.workspaces.ensurePersonalWorkspace(userId, manager)
-          : (
-              await this.workspaces.requireMember(
-                userId,
-                input.workspaceId,
-                manager,
-              )
-            ).workspace;
+      const workspaceId =
+        input.workspaceId ??
+        (await this.workspaces.ensurePersonalWorkspace(userId, manager)).id;
+      const workspaceMember = await this.workspaces.requireMember(
+        userId,
+        workspaceId,
+        manager,
+      );
+      requireBoardCreation(workspaceMember);
+      const workspace = workspaceMember.workspace;
       const board = await boards.save(
         boards.create({
           name: input.name,
@@ -226,6 +239,7 @@ export class BoardsService {
           role: BoardMemberRole.OWNER,
         }),
       );
+      board.workspace = workspace;
       return toBoardResponseDto(board, member.role);
     });
   }

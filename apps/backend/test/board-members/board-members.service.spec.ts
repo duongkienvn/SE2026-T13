@@ -12,6 +12,7 @@ import { RealtimeAccessModule } from '../../src/realtime/realtime-access.module'
 import { BoardRoomCoordinator } from '../../src/realtime/board-room-coordinator.service';
 import { BoardEventPublisher } from '../../src/realtime/board-event-publisher.service';
 import { ActivityWriterService } from '../../src/api/activities/activity-writer.service';
+import { Workspace } from '../../src/api/workspaces/entities/workspace.entity';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: (entity: { name: string }) =>
@@ -45,6 +46,7 @@ describe('BoardMembersService', () => {
     delete: jest.fn(),
   };
   const txUsers = { findOne: jest.fn() };
+  const txWorkspace = { findOne: jest.fn() };
   const query = {
     delete: jest.fn(),
     from: jest.fn(),
@@ -70,9 +72,14 @@ describe('BoardMembersService', () => {
     manager.getRepository.mockImplementation((entity) => {
       if (entity === BoardMember) return txMembers;
       if (entity === User) return txUsers;
+      if (entity === Workspace) return txWorkspace;
       return txAssignments;
     });
     transaction.mockImplementation(async (callback) => callback(manager));
+    txWorkspace.findOne.mockResolvedValue({
+      boardInvitesEnabled: true,
+      boardMembershipChangesEnabled: true,
+    });
     txAssignments.createQueryBuilder.mockReturnValue(query);
     query.delete.mockReturnValue(query);
     query.from.mockReturnValue(query);

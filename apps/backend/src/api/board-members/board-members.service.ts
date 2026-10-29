@@ -31,6 +31,7 @@ import { BoardAuthorizationService } from './board-authorization.service';
 import { BoardMember } from './entities/board-member.entity';
 import { BoardRoomCoordinator } from '../../realtime/board-room-coordinator.service';
 import { WorkspaceMember } from '../workspaces/entities/workspace-member.entity';
+import { requireBoardPolicy } from '../workspaces/workspace-policy';
 
 @Injectable()
 export class BoardMembersService {
@@ -82,7 +83,16 @@ export class BoardMembersService {
     input: AddBoardMemberDto,
   ): Promise<BoardMemberResponseDto> {
     const result = await this.boards.manager.transaction(async (manager) => {
-      await this.authorization.requireMutableOwner(userId, boardId, manager);
+      const { board } = await this.authorization.requireMutableOwner(
+        userId,
+        boardId,
+        manager,
+      );
+      await requireBoardPolicy(
+        manager,
+        board.workspaceId,
+        'boardInvitesEnabled',
+      );
       const email = input.email.trim().toLowerCase();
       const users = manager.getRepository(User);
       const members = manager.getRepository(BoardMember);
@@ -130,6 +140,11 @@ export class BoardMembersService {
         actorId,
         boardId,
         manager,
+      );
+      await requireBoardPolicy(
+        manager,
+        board.workspaceId,
+        'boardMembershipChangesEnabled',
       );
       const members = manager.getRepository(BoardMember);
       const member = await members.findOne({
@@ -193,6 +208,11 @@ export class BoardMembersService {
           actorId,
           boardId,
           manager,
+        );
+        await requireBoardPolicy(
+          manager,
+          board.workspaceId,
+          'boardMembershipChangesEnabled',
         );
         const members = manager.getRepository(BoardMember);
         const member = await members.findOne({

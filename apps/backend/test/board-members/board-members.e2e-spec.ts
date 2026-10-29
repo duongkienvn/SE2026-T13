@@ -15,6 +15,7 @@ import { BoardMembersService } from '../../src/api/board-members/board-members.s
 import { ActivityWriterService } from '../../src/api/activities/activity-writer.service';
 import { BoardMember } from '../../src/api/board-members/entities/board-member.entity';
 import { Board } from '../../src/api/boards/entities/board.entity';
+import { Workspace } from '../../src/api/workspaces/entities/workspace.entity';
 import { AuthService } from '../../src/api/auth/auth.service';
 import { WelcomeOnboardingService } from '../../src/api/auth/welcome-onboarding.service';
 import { WorkspacesService } from '../../src/api/workspaces/workspaces.service';
@@ -184,6 +185,13 @@ describe('board-members HTTP contract', () => {
           if (entity === Board)
             return { findOne: jest.fn().mockResolvedValue(board) };
           if (entity === User) return txUsers;
+          if (entity === Workspace)
+            return {
+              findOne: jest.fn().mockResolvedValue({
+                boardInvitesEnabled: true,
+                boardMembershipChangesEnabled: true,
+              }),
+            };
           return txMembers;
         },
       }),

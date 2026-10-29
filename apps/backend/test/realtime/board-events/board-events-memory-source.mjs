@@ -58,6 +58,13 @@ export function boardEventsMemorySource() {
           return result;
         },
         async findOne(options) {
+          if (name === 'Workspace')
+            return {
+              id: options.where.id,
+              boardInvitesEnabled: true,
+              boardMembershipChangesEnabled: true,
+              boardVisibilityChangesEnabled: true,
+            };
           const row = (await this.find(options))[0];
           if (!row) return null;
           if (name === 'BoardMember') {
@@ -74,6 +81,11 @@ export function boardEventsMemorySource() {
             row.assignees = await source
               .getRepository('CardAssignee')
               .find({ where: { cardId: row.id } });
+          return row;
+        },
+        async findOneByOrFail(where) {
+          const row = await this.findOne({ where });
+          if (!row) throw new Error('Fixture row not found');
           return row;
         },
         async count(options) {
@@ -100,6 +112,9 @@ export function boardEventsMemorySource() {
         createQueryBuilder() {
           const filters = {};
           return {
+            innerJoinAndSelect() {
+              return this;
+            },
             delete() {
               return this;
             },

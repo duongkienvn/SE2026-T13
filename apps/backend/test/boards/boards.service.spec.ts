@@ -10,6 +10,7 @@ import { ActivityWriterService } from '../../src/api/activities/activity-writer.
 import { BoardEventPublisher } from '../../src/realtime/board-event-publisher.service';
 import { ActivityActionType } from '../../src/common/enums/database-enums';
 import { WorkspacesService } from '../../src/api/workspaces/workspaces.service';
+import { Workspace } from '../../src/api/workspaces/entities/workspace.entity';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: (entity: { name: string }) =>
@@ -25,6 +26,10 @@ const boardFixture = () =>
     name: 'Board',
     description: null,
     createdById: USER_ID,
+    workspace: {
+      boardInvitesEnabled: true,
+      boardMembershipChangesEnabled: true,
+    },
     isArchived: false,
     archivedAt: null,
     createdAt: new Date('2026-10-13T00:00:00Z'),
@@ -36,10 +41,15 @@ describe('BoardsService', () => {
   let board: Board;
   const txBoards = { create: jest.fn(), save: jest.fn(), findOne: jest.fn() };
   const txMembers = { create: jest.fn(), save: jest.fn(), findOne: jest.fn() };
+  const txWorkspace = { findOneByOrFail: jest.fn() };
   const manager = { getRepository: jest.fn() };
   const transaction = jest.fn();
-  const boards = { manager: { transaction }, createQueryBuilder: jest.fn() };
+  const boards = {
+    manager: { transaction, getRepository: () => txWorkspace },
+    createQueryBuilder: jest.fn(),
+  };
   const readBoard = {
+    innerJoinAndSelect: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
     getOne: jest.fn().mockResolvedValue(null),
@@ -50,16 +60,32 @@ describe('BoardsService', () => {
   };
   const activities = { record: jest.fn() };
   const events = { publish: jest.fn() };
-  const workspaces = { ensurePersonalWorkspace: jest.fn() };
+  const workspaces = {
+    ensurePersonalWorkspace: jest.fn(),
+    requireMember: jest.fn(),
+  };
 
   beforeEach(async () => {
     jest.resetAllMocks();
     board = boardFixture();
     readBoard.getOne.mockResolvedValue(null);
     readBoard.where.mockReturnThis();
+    readBoard.innerJoinAndSelect.mockReturnThis();
     readBoard.andWhere.mockReturnThis();
     workspaces.ensurePersonalWorkspace.mockResolvedValue({
       id: 'personal-workspace',
+    });
+    workspaces.requireMember.mockResolvedValue({
+      workspace: {
+        id: 'personal-workspace',
+        boardCreationAdminOnly: false,
+        boardInvitesEnabled: true,
+        boardMembershipChangesEnabled: true,
+      },
+    });
+    txWorkspace.findOneByOrFail.mockResolvedValue({
+      boardInvitesEnabled: true,
+      boardMembershipChangesEnabled: true,
     });
     txBoards.create.mockImplementation((value) => value);
     txBoards.save.mockImplementation(async (value) =>
@@ -68,7 +94,11 @@ describe('BoardsService', () => {
     txMembers.create.mockImplementation((value) => value);
     txMembers.save.mockImplementation(async (value) => value);
     manager.getRepository.mockImplementation((entity) =>
-      entity === Board ? txBoards : txMembers,
+      entity === Board
+        ? txBoards
+        : entity === Workspace
+          ? txWorkspace
+          : txMembers,
     );
     transaction.mockImplementation(async (callback) => callback(manager));
     const module = await Test.createTestingModule({
@@ -114,8 +144,35 @@ describe('BoardsService', () => {
     expect(result).not.toHaveProperty('members');
   });
 
+  it('returns policy-aware membership capabilities for owner detail, update and restore', async () => {
+    txWorkspace.findOneByOrFail.mockResolvedValue({
+      boardInvitesEnabled: false,
+      boardMembershipChangesEnabled: false,
+    });
+    board.workspace = Object.assign(new Workspace(), {
+      boardInvitesEnabled: false,
+      boardMembershipChangesEnabled: false,
+    });
+    members.findOne.mockResolvedValue({ board, role: BoardMemberRole.OWNER });
+    expect(
+      (await service.getDetail(USER_ID, BOARD_ID)).capabilities
+        .canManageMembers,
+    ).toBe(false);
+    txBoards.findOne.mockResolvedValue(board);
+    txMembers.findOne.mockResolvedValue({ role: BoardMemberRole.OWNER });
+    expect(
+      (await service.update(USER_ID, BOARD_ID, { name: 'Changed' }))
+        .capabilities.canManageMembers,
+    ).toBe(false);
+    board.isArchived = true;
+    expect(
+      (await service.restore(USER_ID, BOARD_ID)).capabilities.canManageMembers,
+    ).toBe(false);
+  });
+
   it('filters by membership and archive state, uses stable ordering and preserves page metadata', async () => {
     const builder = {
+      innerJoinAndSelect: jest.fn().mockReturnThis(),
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),

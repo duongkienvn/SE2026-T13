@@ -11,6 +11,11 @@ import { RealtimeDeliveryModule } from '../../realtime/realtime-delivery.module'
 import { WorkspacesModule } from '../workspaces/workspaces.module';
 import { BoardVisibilityService } from './board-visibility.service';
 import { BoardVisibilityController } from './board-visibility.controller';
+import { BoardMoveController } from './board-move.controller';
+import { BoardMoveService } from './board-move.service';
+import { BoardPolicyController } from './board-policy.controller';
+import { BoardPolicyService } from './board-policy.service';
+import { Workspace } from '../workspaces/entities/workspace.entity';
 
 @Module({
   imports: [
@@ -19,9 +24,19 @@ import { BoardVisibilityController } from './board-visibility.controller';
     BoardMembersModule,
     ActivityWriterModule,
     RealtimeDeliveryModule,
-    TypeOrmModule.forFeature([Board, BoardMember]),
+    TypeOrmModule.forFeature([Board, BoardMember, Workspace]),
   ],
-  controllers: [BoardsController, BoardVisibilityController],
-  providers: [BoardsService, BoardVisibilityService],
+  controllers: [
+    BoardsController,
+    BoardVisibilityController,
+    BoardMoveController,
+    BoardPolicyController,
+  ],
+  providers: [
+    BoardsService,
+    BoardVisibilityService,
+    BoardMoveService,
+    BoardPolicyService,
+  ],
 })
 export class BoardsModule {}

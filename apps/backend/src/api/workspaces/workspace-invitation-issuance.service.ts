@@ -135,7 +135,13 @@ export class WorkspaceInvitationIssuanceService {
       const sendState = await this.dispatch(reserved.payload);
       // Never hold a transaction across transport I/O. Revoke/rotation wins over completion.
       await this.workspaces.manager.transaction(async (manager) => {
-        await lockWorkspace(manager, workspaceId);
+        const workspace = await lockWorkspace(manager, workspaceId);
+        if (!workspace)
+          throw new ApplicationException(
+            409,
+            ErrorCode.CONFLICT,
+            'Workspace invitation is no longer available',
+          );
         const repository = manager.getRepository(WorkspaceInvitation);
         await repository
           .createQueryBuilder()
@@ -184,9 +190,13 @@ export class WorkspaceInvitationIssuanceService {
     const [counts]: { actor: number; workspace: number; recipient: number }[] =
       await manager.query(
         `SELECT
-      count(*) FILTER (WHERE invited_by_id = $1)::int AS actor,
+      (count(*) FILTER (WHERE invited_by_id = $1) +
+        (SELECT count(*) FROM deleted_workspace_invitation_quota
+         WHERE actor_id = $1 AND created_at > $4))::int AS actor,
       count(*) FILTER (WHERE workspace_id = $2)::int AS workspace,
-      count(*) FILTER (WHERE email = $3)::int AS recipient
+      (count(*) FILTER (WHERE email = $3) +
+        (SELECT count(*) FROM deleted_workspace_invitation_quota
+         WHERE recipient_hash = encode(sha256(convert_to($3, 'UTF8')), 'hex') AND created_at > $4))::int AS recipient
       FROM workspace_invitations WHERE created_at > $4`,
         [actor, workspaceId, email, new Date(now.getTime() - 3600000)],
       );

@@ -3,6 +3,33 @@ import { BoardRoomCoordinator } from '../../src/realtime/board-room-coordinator.
 import type { RealtimeServer } from '../../src/realtime/realtime.types';
 
 describe('BoardRoomCoordinator', () => {
+  it('sends identifier-free access hints only to affected unexpired sessions', () => {
+    const coordinator = new BoardRoomCoordinator(new BoardPresenceService());
+    const socket = (userId: string, expiresAt: number, connected = true) => ({
+      connected,
+      data: { identity: { userId, expiresAt } },
+      emit: jest.fn(),
+    });
+    const allowed = socket('allowed', Date.now() + 60_000);
+    const other = socket('other', Date.now() + 60_000);
+    const expired = socket('allowed', Date.now() - 1);
+    const offline = socket('allowed', Date.now() + 60_000, false);
+    coordinator.server = {
+      sockets: {
+        sockets: new Map([
+          ['allowed', allowed],
+          ['other', other],
+          ['expired', expired],
+          ['offline', offline],
+        ]),
+      },
+    } as unknown as RealtimeServer;
+    coordinator.notifyAccessChanged(['allowed']);
+    expect(allowed.emit).toHaveBeenCalledWith('access:changed');
+    expect(other.emit).not.toHaveBeenCalled();
+    expect(expired.emit).not.toHaveBeenCalled();
+    expect(offline.emit).not.toHaveBeenCalled();
+  });
   it('evicts every socket of a revoked user only from the target board', async () => {
     const coordinator = new BoardRoomCoordinator(new BoardPresenceService());
     const makeSocket = (userId: string) => ({
