@@ -3,6 +3,17 @@ import { Expose } from 'class-transformer';
 import { toResponseDto } from '../../../common/dto/to-response-dto';
 import { BoardMemberRole } from '../../../common/enums/database-enums';
 import { Board } from '../entities/board.entity';
+import { BoardVisibility, type BoardCapabilities } from '@kanban/shared';
+import { Type } from 'class-transformer';
+import { boardCapabilities } from '../../board-members/board-permissions';
+
+export class BoardCapabilitiesDto implements BoardCapabilities {
+  @Expose() @ApiProperty() canReadBoard!: boolean;
+  @Expose() @ApiProperty() canWriteBoard!: boolean;
+  @Expose() @ApiProperty() canManageBoard!: boolean;
+  @Expose() @ApiProperty() canManageMembers!: boolean;
+  @Expose() @ApiProperty() canRestoreBoard!: boolean;
+}
 
 export class BoardResponseDto {
   @Expose()
@@ -38,13 +49,26 @@ export class BoardResponseDto {
   updatedAt!: string;
 
   @Expose()
-  @ApiProperty({ enum: BoardMemberRole, enumName: 'BoardMemberRole' })
-  currentUserRole!: BoardMemberRole;
+  @ApiProperty({
+    enum: BoardMemberRole,
+    enumName: 'BoardMemberRole',
+    nullable: true,
+  })
+  currentUserRole!: BoardMemberRole | null;
+
+  @Expose() @ApiProperty({ format: 'uuid' }) workspaceId!: string;
+  @Expose()
+  @ApiProperty({ enum: BoardVisibility })
+  visibility!: BoardVisibility;
+  @Expose()
+  @Type(() => BoardCapabilitiesDto)
+  @ApiProperty({ type: BoardCapabilitiesDto })
+  capabilities!: BoardCapabilitiesDto;
 }
 
 export function toBoardResponseDto(
   board: Board,
-  currentUserRole: BoardMemberRole,
+  currentUserRole: BoardMemberRole | null,
 ): BoardResponseDto {
   return toResponseDto(BoardResponseDto, {
     id: board.id,
@@ -56,5 +80,8 @@ export function toBoardResponseDto(
     createdAt: board.createdAt.toISOString(),
     updatedAt: board.updatedAt.toISOString(),
     currentUserRole,
+    workspaceId: board.workspaceId,
+    visibility: board.visibility,
+    capabilities: boardCapabilities(board, currentUserRole),
   });
 }
