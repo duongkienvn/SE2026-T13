@@ -13,6 +13,8 @@ import {
 } from './api';
 import type { AddMemberRequest, UpdateMemberRoleRequest } from './types';
 import { refreshWorkspaceGuests } from '../workspaces/members/refresh-guests';
+import { refreshWorkspaceBoardSummaries } from '../workspaces/refresh-board-summaries';
+import { useAuthSession } from '../auth/auth-session-context';
 
 export function useBoardMembers(boardId: string, { enabled = true } = {}) {
   const { runAuthorized } = useAuth();
@@ -56,7 +58,10 @@ function useRefreshDeniedPolicy(boardId: string) {
  */
 function useInvalidateBoard(boardId: string) {
   const queryClient = useQueryClient();
+  const scope = useAuthSession();
   return () => {
+    if (!scope.isCurrent()) return;
+    refreshWorkspaceBoardSummaries(queryClient, boardId);
     refreshWorkspaceGuests(queryClient);
     return Promise.all([
       queryClient.invalidateQueries({ queryKey: boardKeys.detail(boardId) }),

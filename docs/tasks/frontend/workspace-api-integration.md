@@ -8,6 +8,11 @@ the checkout and local verification, not a deployment.
 
 ## Implemented behavior
 
+P2-C08 updates the original summary behavior below: joined ADMIN and MEMBER
+receive numeric Workspace counts, and Board cards/recents preserve numeric
+Board counts or a privacy-aware null state. See the
+[authorized-count implementation record](../backend/workspace-authorized-member-counts.md).
+
 - Both production gateways are available and use the existing REST utilities.
   Discovery loads every `/workspaces` page (`limit=100`) for the directory and
   selector; it never infers Workspace membership from Board membership.

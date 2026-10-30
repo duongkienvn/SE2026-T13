@@ -1,10 +1,13 @@
 import {
+  ApiError,
+  ClientErrorCode,
   apiRequest,
   apiRequestPage,
   fetchAllPages,
   MAX_PAGE_LIMIT,
 } from '../../lib/api-client';
 import {
+  isMemberCount,
   mapWorkspace,
   mapWorkspaceBoard,
   type WorkspaceResponse,
@@ -54,6 +57,12 @@ export const workspaceGateway: WorkspaceGateway = {
       `/workspaces/${encodeURIComponent(workspaceId)}/overview`,
       { accessToken, signal },
     );
+    if (!isMemberCount(response.memberCount))
+      throw new ApiError(
+        200,
+        ClientErrorCode.INVALID_RESPONSE,
+        'Invalid Workspace member count.',
+      );
     return {
       workspace: mapWorkspace(response.workspace),
       visibleBoardCount: response.visibleBoardCount,
@@ -65,6 +74,7 @@ export const workspaceGateway: WorkspaceGateway = {
           name: board.name,
           updatedAt: item.updatedAt,
           archived: board.isArchived,
+          memberCount: board.memberCount,
         };
       }),
     };

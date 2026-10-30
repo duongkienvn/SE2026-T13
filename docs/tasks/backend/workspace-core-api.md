@@ -78,6 +78,12 @@ Không move Board hiện hữu hoặc đổi visibility.
 Timestamps response là ISO 8601 UTC. Không trả creator User, email, invitation,
 member roster hay thông tin Board ẩn trong summary/detail.
 
+P2-C08 supersedes this record's original member-summary contract: see
+[authorized counts](workspace-authorized-member-counts.md). Workspace ADMIN and
+MEMBER now receive numeric Workspace counts; Workspace Board summaries include
+`memberCount: number | null`, numeric only for explicit Board members. The
+historical verification below is unchanged.
+
 `WorkspaceBoardResponseDto` tái sử dụng allowlist của `BoardResponseDto`:
 `id`, `name`, `description`, `createdById`, `isArchived`, `archivedAt`, `createdAt`,
 `updatedAt`, `currentUserRole` (Board OWNER/MEMBER), cộng `workspaceId`,

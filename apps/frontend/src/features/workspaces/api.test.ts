@@ -57,7 +57,7 @@ describe('Workspace HTTP adapters', () => {
     );
   });
 
-  it('maps nullable Overview fields and archived recents without deriving metrics', async () => {
+  it('maps numeric Overview fields and archived recents without deriving metrics', async () => {
     mockApi({
       [`GET /workspaces/${workspace.id}/overview`]: ok({
         ...overview,
@@ -69,7 +69,7 @@ describe('Workspace HTTP adapters', () => {
       workspace.id,
       signal(),
     );
-    expect(result.memberCount).toBeNull();
+    expect(result.memberCount).toBe(2);
     expect(result.visibleBoardCount).toBe(21);
     expect(result.recentBoards).toEqual([
       {
@@ -77,8 +77,70 @@ describe('Workspace HTTP adapters', () => {
         name: board.name,
         updatedAt: board.updatedAt,
         archived: true,
+        memberCount: 1,
       },
     ]);
+  });
+
+  it.each([0, 1, 8, null])(
+    'preserves Board count %s in lists and recent summaries',
+    async (memberCount) => {
+      mockApi({
+        [`GET ${boardPath}`]: workspacePage([{ ...board, memberCount }]),
+        [`GET /workspaces/${workspace.id}/overview`]: ok({
+          ...overview,
+          recentBoards: [{ ...board, memberCount }],
+        }),
+      });
+      const list = await workspaceBoardsGateway.list(
+        'token',
+        workspace.id,
+        filters,
+        signal(),
+      );
+      const recent = await workspaceGateway.overview(
+        'token',
+        workspace.id,
+        signal(),
+      );
+      expect(list.items[0].memberCount).toBe(memberCount);
+      expect(recent.recentBoards[0].memberCount).toBe(memberCount);
+    },
+  );
+
+  it.each([-1, 1.2, '2', false, undefined, Number.MAX_SAFE_INTEGER + 1])(
+    'rejects invalid count %s',
+    async (memberCount) => {
+      mockApi({
+        [`GET ${boardPath}`]: workspacePage([{ ...board, memberCount }]),
+        [`GET /workspaces/${workspace.id}/overview`]: ok({
+          ...overview,
+          memberCount,
+        }),
+      });
+      await expect(
+        workspaceBoardsGateway.list('token', workspace.id, filters, signal()),
+      ).rejects.toMatchObject({ code: 'INVALID_RESPONSE' });
+      await expect(
+        workspaceGateway.overview('token', workspace.id, signal()),
+      ).rejects.toMatchObject({ code: 'INVALID_RESPONSE' });
+    },
+  );
+
+  it('fails closed if a Workspace-only reader is accidentally supplied a numeric Board count', async () => {
+    mockApi({
+      [`GET ${boardPath}`]: workspacePage([
+        {
+          ...board,
+          visibility: 'WORKSPACE_VISIBLE',
+          currentUserRole: null,
+          memberCount: 42,
+        },
+      ]),
+    });
+    await expect(
+      workspaceBoardsGateway.list('token', workspace.id, filters, signal()),
+    ).rejects.toMatchObject({ code: 'INVALID_RESPONSE' });
   });
 
   it('creates a Team using only supported fields and never automatically retries a failed POST', async () => {
@@ -136,7 +198,7 @@ describe('Workspace HTTP adapters', () => {
       currentUserRole: 'OWNER',
       canArchive: false,
       canRestore: true,
-      memberCount: null,
+      memberCount: 1,
     });
   });
 
@@ -222,6 +284,7 @@ describe('Workspace HTTP adapters', () => {
       ...board,
       visibility: 'WORKSPACE_VISIBLE',
       currentUserRole: null,
+      memberCount: null,
     };
     mockApi({
       [`GET ${boardPath}`]: workspacePage([future]),
@@ -239,6 +302,7 @@ describe('Workspace HTTP adapters', () => {
     expect(list.items[0]).toMatchObject({
       visibility: 'WORKSPACE_VISIBLE',
       currentUserRole: null,
+      memberCount: null,
       canArchive: false,
       canRestore: false,
     });

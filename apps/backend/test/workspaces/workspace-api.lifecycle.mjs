@@ -156,4 +156,14 @@ export async function verifyLifecycle(ctx) {
   const docs = await http.get('/api-docs-json').expect(200);
   assert.ok(docs.body.paths['/api/workspaces/{workspaceId}/overview']);
   assert.ok(docs.body.components.schemas.WorkspaceOverviewDto);
+  assert.equal(
+    docs.body.components.schemas.WorkspaceBoardResponseDto.properties
+      .memberCount.nullable,
+    true,
+  );
+  assert.equal(
+    docs.body.components.schemas.WorkspaceOverviewDto.properties.memberCount
+      .type,
+    'number',
+  );
 }

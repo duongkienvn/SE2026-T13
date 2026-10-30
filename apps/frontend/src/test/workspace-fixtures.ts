@@ -24,13 +24,14 @@ export const workspaceBoardResponse: WorkspaceBoardResponse = {
   workspaceId: workspaceResponse.id,
   visibility: 'PRIVATE',
   canEdit: true,
+  memberCount: 1,
 };
 export const workspaceOverviewResponse: WorkspaceOverviewResponse = {
   workspace: workspaceResponse,
   visibleBoardCount: 21,
   activeBoardCount: 20,
   archivedBoardCount: 1,
-  memberCount: null,
+  memberCount: 2,
   recentBoards: [workspaceBoardResponse],
 };
 export function workspacePage<T>(

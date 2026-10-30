@@ -42,6 +42,7 @@ const overview: WorkspaceOverview = {
       name: 'Allowed board',
       updatedAt: '2026-10-27T09:00:00Z',
       archived: true,
+      memberCount: null,
     },
   ],
 };
@@ -107,6 +108,43 @@ afterEach(() => {
 });
 
 describe('Workspace runtime and navigation', () => {
+  it.each(['ADMIN', 'MEMBER'] as const)(
+    'shows numeric Workspace and recent Board counts for %s',
+    async (role) => {
+      mount(
+        `/workspaces/${team.id}`,
+        makeGateway({
+          overview: async () => ({
+            ...overview,
+            workspace: { ...team, role },
+            memberCount: 5,
+            recentBoards: [{ ...overview.recentBoards[0], memberCount: 1 }],
+          }),
+        }),
+      );
+      await loaded();
+      expect(main().getByText('5 members')).toBeTruthy();
+      expect(main().getByText('1 member')).toBeTruthy();
+      const summary = main().getByRole('region', { name: 'Workspace summary' });
+      expect(within(summary).getByText('5')).toBeTruthy();
+    },
+  );
+  it.each([0, 1])(
+    'keeps Workspace member count %s numeric and correctly pluralized',
+    async (memberCount) => {
+      mount(
+        `/workspaces/${team.id}`,
+        makeGateway({ overview: async () => ({ ...overview, memberCount }) }),
+      );
+      await loaded();
+      expect(
+        main().getByText(
+          `${memberCount} ${memberCount === 1 ? 'member' : 'members'}`,
+        ),
+      ).toBeTruthy();
+      expect(main().getByText('Board member count private')).toBeTruthy();
+    },
+  );
   it('renders the entire unavailable composition without calling a speculative API', async () => {
     const { calls } = mount('/workspaces/unknown', {
       ...workspaceGateway,
@@ -338,7 +376,13 @@ describe('Workspace states and access isolation', () => {
     await act(() => router.navigate(`/workspaces/${personal.id}`));
     await main().findByRole('heading', { level: 1, name: personal.name });
     expect(signal?.aborted).toBe(true);
-    await act(async () => pending.resolve(overview));
+    await act(async () =>
+      pending.resolve({
+        ...overview,
+        memberCount: 77,
+        recentBoards: [{ ...overview.recentBoards[0], memberCount: 99 }],
+      }),
+    );
     expect(
       main().queryByRole('heading', { level: 1, name: team.name }),
     ).toBeNull();
@@ -452,14 +496,26 @@ describe('Workspace states and access isolation', () => {
     await act(async () => pending.resolve(overview));
     expect(document.body.textContent).not.toContain(team.name);
     expect(document.body.textContent).not.toContain('Allowed board');
+    expect(document.body.textContent).not.toContain('77 members');
+    expect(document.body.textContent).not.toContain('99 members');
     expect(
       client.getQueryData(workspaceKeys.list(testUser.id, 0)),
     ).toBeUndefined();
   });
 
   it('clears private data on cross-tab logout', async () => {
-    const { client, router } = mount(`/workspaces/${team.id}`);
+    const { client, router } = mount(
+      `/workspaces/${team.id}`,
+      makeGateway({
+        overview: async () => ({
+          ...overview,
+          memberCount: 77,
+          recentBoards: [{ ...overview.recentBoards[0], memberCount: 99 }],
+        }),
+      }),
+    );
     await loaded();
+    await screen.findByText('77 members');
     await act(async () => {
       localStorage.removeItem('kanban.session');
       window.dispatchEvent(
@@ -468,6 +524,8 @@ describe('Workspace states and access isolation', () => {
     });
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
     expect(document.body.textContent).not.toContain(team.name);
+    expect(document.body.textContent).not.toContain('77 members');
+    expect(document.body.textContent).not.toContain('99 members');
     expect(
       client.getQueryData(workspaceKeys.overview(testUser.id, 0, team.id)),
     ).toBeUndefined();

@@ -28,6 +28,7 @@ import {
 import { AuthProvider } from '../auth/AuthProvider';
 import { RealtimeProvider } from '../realtime/RealtimeProvider';
 import { workspaceKeys } from './query-keys';
+import { createdSockets } from '../../test/fake-socket';
 
 function mount(
   path = `/workspaces/${workspace.id}/boards`,
@@ -71,6 +72,49 @@ function mount(
 }
 
 describe('Workspace routes using production HTTP adapters', () => {
+  it('removes cached roster counts immediately on a membership event and reloads privacy-aware summaries', async () => {
+    let count: number | null = 9;
+    let role: 'OWNER' | null = 'OWNER';
+    const { calls } = mount(undefined, {
+      [`GET /workspaces/${workspace.id}/overview`]: () =>
+        ok({
+          ...overview,
+          recentBoards: [
+            {
+              ...board,
+              visibility: 'WORKSPACE_VISIBLE',
+              currentUserRole: role,
+              memberCount: count,
+            },
+          ],
+        }),
+      [`GET /workspaces/${workspace.id}/boards?page=1&limit=20&status=active&sort=updatedAt`]:
+        () =>
+          workspacePage([
+            {
+              ...board,
+              visibility: 'WORKSPACE_VISIBLE',
+              currentUserRole: role,
+              memberCount: count,
+            },
+          ]),
+    });
+    await screen.findByText('9 members');
+    await act(async () => {
+      count = null;
+      role = null;
+      createdSockets.at(-1)!.socket.push('member:removed', {
+        boardId: board.id,
+        userId: testUser.id,
+        retainsReadAccess: true,
+      });
+    });
+    await screen.findByText('Board member count private');
+    expect(screen.queryByText('9 members')).toBeNull();
+    expect(calls.some((c) => c.path === `/boards/${board.id}/members`)).toBe(
+      false,
+    );
+  });
   it('discovers a Workspace, creates a Team and opens its confirmed Overview', async () => {
     const { calls, router } = mount('/workspaces', {
       'POST /workspaces': ok(workspace, 201),
@@ -92,7 +136,7 @@ describe('Workspace routes using production HTTP adapters', () => {
       name: 'New Team',
       description: '',
     });
-    expect(screen.getByText('Member summary unavailable')).toBeTruthy();
+    expect(screen.getByText('2 members')).toBeTruthy();
   });
 
   it('creates a Board as a Workspace MEMBER and navigates to the existing Board route', async () => {

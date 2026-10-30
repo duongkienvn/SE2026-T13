@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { WorkspaceRole } from '@kanban/shared';
 import { EntityManager, Repository } from 'typeorm';
 import { Board } from '../boards/entities/board.entity';
+import { BoardMember } from '../board-members/entities/board-member.entity';
 import { WorkspaceMember } from './entities/workspace-member.entity';
 import { WorkspacesService } from './workspaces.service';
 import { WorkspaceBoardsQueryDto } from './dto/workspace-boards-query.dto';
@@ -45,6 +45,33 @@ export class WorkspaceBoardsService {
       });
   }
 
+  /** One aggregate over only returned Boards whose roster this actor may read. */
+  private async summaries(boards: Board[], manager: EntityManager) {
+    const boardIds = boards
+      .filter((board) => board.members[0] !== undefined)
+      .map((board) => board.id);
+    const counts = boardIds.length
+      ? await manager
+          .getRepository(BoardMember)
+          .createQueryBuilder('summaryMember')
+          .select('summaryMember.boardId', 'boardId')
+          .addSelect('COUNT(*)::int', 'memberCount')
+          .where('summaryMember.boardId IN (:...boardIds)', { boardIds })
+          .groupBy('summaryMember.boardId')
+          .getRawMany<{ boardId: string; memberCount: number }>()
+      : [];
+    const byBoard = new Map(
+      counts.map((row) => [row.boardId, row.memberCount]),
+    );
+    return boards.map((board) =>
+      toWorkspaceBoardResponseDto(
+        board,
+        board.members[0]?.role ?? null,
+        byBoard.get(board.id) ?? null,
+      ),
+    );
+  }
+
   list(
     userId: string,
     workspaceId: string,
@@ -73,9 +100,7 @@ export class WorkspaceBoardsService {
         query.sort === 'name' ? 'ASC' : 'DESC',
       );
       return paginate(
-        page.data.map((board) =>
-          toWorkspaceBoardResponseDto(board, board.members[0]?.role ?? null),
-        ),
+        await this.summaries(page.data, manager),
         page.meta.total,
         query,
       );
@@ -100,21 +125,16 @@ export class WorkspaceBoardsService {
         .addOrderBy('board.id', 'DESC')
         .take(5)
         .getMany();
-      const memberCount =
-        member.role === WorkspaceRole.ADMIN
-          ? await manager
-              .getRepository(WorkspaceMember)
-              .countBy({ workspaceId: member.workspaceId })
-          : null;
+      const memberCount = await manager
+        .getRepository(WorkspaceMember)
+        .countBy({ workspaceId: member.workspaceId });
       return toResponseDto(WorkspaceOverviewDto, {
         workspace: toWorkspaceResponseDto(member),
         visibleBoardCount,
         activeBoardCount: visibleBoardCount - archivedBoardCount,
         archivedBoardCount,
         memberCount,
-        recentBoards: recent.map((board) =>
-          toWorkspaceBoardResponseDto(board, board.members[0]?.role ?? null),
-        ),
+        recentBoards: await this.summaries(recent, manager),
       });
     });
   }

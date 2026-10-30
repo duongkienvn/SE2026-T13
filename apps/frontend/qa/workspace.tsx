@@ -126,6 +126,7 @@ const gateway: WorkspaceGateway =
                     name,
                     updatedAt: '2026-10-27T09:00:00Z',
                     archived: index === 2,
+                    memberCount: index === 2 ? null : index + 1,
                   })),
           };
         },

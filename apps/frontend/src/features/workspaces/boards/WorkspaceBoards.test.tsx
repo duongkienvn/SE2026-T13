@@ -309,13 +309,34 @@ describe('Workspace Boards route and capabilities', () => {
     const { calls } = mount();
     await ready();
     expect(main().getByText('Private')).toBeTruthy();
-    expect(main().getByText('Member details unavailable')).toBeTruthy();
+    expect(main().getByText('Board member count private')).toBeTruthy();
     expect(calls.some((c) => /members|background/.test(c.path))).toBe(false);
     expect(main().queryByText(/WORKSPACE_VISIBLE/)).toBeNull();
     expect(
       main().getByText('Star board, coming soon').closest('a, button'),
     ).toBeNull();
   });
+
+  it.each([0, 1, 7, null])(
+    'renders the authorized Board count %s without roster requests',
+    async (memberCount) => {
+      const { calls } = mount(
+        undefined,
+        gateway({
+          list: async () => ({ ...page, items: [{ ...board, memberCount }] }),
+        }),
+      );
+      await ready();
+      expect(
+        main().getByText(
+          memberCount === null
+            ? 'Board member count private'
+            : `${memberCount} ${memberCount === 1 ? 'member' : 'members'}`,
+        ),
+      ).toBeTruthy();
+      expect(calls.some((c) => c.path.includes('/members'))).toBe(false);
+    },
+  );
 
   it('shows a Workspace-visible read-only Board without owner actions', async () => {
     mount(
@@ -750,6 +771,7 @@ describe('Existing archive and restore REST integration', () => {
             name: board.name,
             updatedAt: board.updatedAt!,
             archived: false,
+            memberCount: null,
           },
         ],
       }),
@@ -869,8 +891,11 @@ describe('Access revocation and session isolation', () => {
     await screen.findByRole('heading', {
       name: 'Workspace access unavailable',
     });
-    await act(async () => pending.resolve(page));
+    await act(async () =>
+      pending.resolve({ ...page, items: [{ ...board, memberCount: 99 }] }),
+    );
     expect(document.body.textContent).not.toContain(board.name);
+    expect(document.body.textContent).not.toContain('99 members');
     expect(
       client.getQueryData(workspaceKeys.overview(testUser.id, 0, space.id)),
     ).toBeUndefined();

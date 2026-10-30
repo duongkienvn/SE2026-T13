@@ -12,7 +12,7 @@ export interface WorkspaceBoardSummary {
   currentUserRole: BoardRole | null;
   canArchive: boolean;
   canRestore: boolean;
-  /** Only a permitted server-provided summary; null means withheld/unsupported. */
+  /** Explicit Board roster count; null is withheld for privacy. */
   memberCount: number | null;
 }
 

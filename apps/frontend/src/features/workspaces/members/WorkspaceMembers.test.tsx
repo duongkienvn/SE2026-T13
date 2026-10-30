@@ -251,8 +251,19 @@ describe('Workspace Members page', () => {
   it('removes a member only after the server confirms', async () => {
     let removed = false;
     const { calls } = mount(`${base}/members`, {
+      [`GET ${base}/overview`]: () =>
+        ok({
+          ...workspaceOverviewResponse,
+          workspace: admin,
+          memberCount: removed ? 2 : 3,
+        }),
       [membersPath]: () =>
-        workspacePage(removed ? [self, linus] : [self, grace, linus], 1, 3, 10),
+        workspacePage(
+          removed ? [self, linus] : [self, grace, linus],
+          1,
+          removed ? 2 : 3,
+          10,
+        ),
       [`DELETE ${base}/members/${grace.userId}`]: () => {
         removed = true;
         return { status: 204 };
@@ -274,6 +285,10 @@ describe('Workspace Members page', () => {
     ).toBeTruthy();
     expect(calls.filter((call) => call.method === 'DELETE')).toHaveLength(1);
     await waitFor(() => expect(screen.queryByText('Grace Hopper')).toBeNull());
+    await waitFor(() =>
+      expect(screen.getAllByText('2 members').length).toBeGreaterThan(0),
+    );
+    expect(screen.queryByText('3 members')).toBeNull();
   });
 
   it('refreshes a missing member without revoking readable Workspace data', async () => {
@@ -301,7 +316,13 @@ describe('Workspace Members page', () => {
     await within(dialog).findByText(
       /This member is no longer in the workspace/,
     );
-    await waitFor(() => expect(screen.getByText('2 members')).toBeTruthy());
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('tabpanel', { name: 'Members' })).getByText(
+          '2 members',
+        ),
+      ).toBeTruthy(),
+    );
     expect(within(await table()).queryByText('Grace Hopper')).toBeNull();
     expect(screen.queryByText('Workspace not found')).toBeNull();
     await waitFor(() =>
