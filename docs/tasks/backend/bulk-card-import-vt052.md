@@ -37,7 +37,7 @@ cd apps/backend
 npx jest --runInBand test/cards                   # unit + API (TC01–TC13), 70 tests
 npx pnpm test:cards-import:database               # PostgreSQL TC14–TC17
 npx pnpm test:cards-import:load                   # 100 concurrent users, p95 vs 3.0 s
-npx pnpm test:cards-import:mutants                # true/false mutants M1–M5 (+M3b)
+npx pnpm test:cards-import:mutants                # true/false mutants M1–M5 (+M3b, M6)
 npx pnpm test:cards:database                      # existing Card regression suite
 ```
 

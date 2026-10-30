@@ -1,0 +1,22 @@
+## M6 before strengthening TC05 (all card suites)
+M6 SURVIVED — supplementary (AI review): publish inside the transaction, before commit
+   70 passed, 70 total
+## M6 after strengthening TC05 (all card suites)
+M6 KILLED — supplementary (AI review): publish inside the transaction, before commit
+   1 failed, 69 passed, 70 total
+   killed by: TC05 persists ACCEPTED rows as ACTIVE cards after the last active card and reports REJECTED rows
+## full mutant set rerun
+M1 KILLED — only valid rows are ACCEPTED
+   17 failed, 53 passed, 70 total
+M2 KILLED — imported cards enter the ACTIVE state
+   3 failed, 67 passed, 70 total
+M3 KILLED — import appends after the last ACTIVE card (archived cards ignored)
+   3 failed, 67 passed, 70 total
+M3b KILLED — supplementary: drop the ACTIVE filter from the append lookup
+   2 failed, 68 passed, 70 total
+M4 KILLED — archived boards are read-only (shared mutate guard, old behaviour)
+   5 failed, 65 passed, 70 total
+M5 KILLED — overflowing append triggers one rebalance
+   1 failed, 69 passed, 70 total
+M6 KILLED — supplementary (AI review): publish inside the transaction, before commit
+   1 failed, 69 passed, 70 total

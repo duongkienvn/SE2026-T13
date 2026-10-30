@@ -117,6 +117,18 @@ describe('CardsService.importCards', () => {
   });
 
   it('TC05 persists ACCEPTED rows as ACTIVE cards after the last active card and reports REJECTED rows', async () => {
+    let committed = false;
+    h.transaction.mockImplementation(
+      async (callback: (manager: unknown) => Promise<unknown>) => {
+        const value = await callback(h.manager);
+        committed = true;
+        return value;
+      },
+    );
+    const publishedAfterCommit: boolean[] = [];
+    h.events.publish.mockImplementation(async () => {
+      publishedAfterCommit.push(committed);
+    });
     const result = await h.service.importCards(ID.user, ID.board, {
       columnId: ID.column,
       items: [{ title: 'A' }, { title: 'x'.repeat(121) }, { title: 'C' }],
@@ -152,9 +164,8 @@ describe('CardsService.importCards', () => {
       RealtimeServerEvent.CARD_CREATED,
       expect.objectContaining({ boardId: ID.board, columnId: ID.column }),
     );
-    expect(h.events.publish.mock.invocationCallOrder[0]).toBeGreaterThan(
-      h.cards.save.mock.invocationCallOrder[0],
-    );
+    // Events are hints for committed data only (AGENTS.md: commit before broadcast).
+    expect(publishedAfterCommit).toEqual([true, true]);
   });
 
   it('TC06 all rows REJECTED: still authorises and checks the column, writes and publishes nothing', async () => {

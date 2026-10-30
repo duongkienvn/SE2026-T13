@@ -52,6 +52,13 @@ const MUTANTS = [
     from: '          overflow = true;',
     to: '          overflow = false;',
   },
+  {
+    id: 'M6',
+    rule: 'supplementary (AI review): publish inside the transaction, before commit',
+    file: SERVICE,
+    from: '      return saved.map(toCardResponseDto);\n    });\n    // Reuse card:created so existing clients refresh without a contract change.\n    for (const card of created)\n',
+    to: '      for (const card of saved)\n        await this.events.publish(RealtimeServerEvent.CARD_CREATED, {\n          boardId: card.boardId,\n          cardId: card.id,\n          columnId: card.columnId,\n        });\n      return saved.map(toCardResponseDto);\n    });\n    for (const card of [] as CardResponseDto[])\n',
+  },
 ];
 
 const suites = process.env.MUTANT_SUITES ?? 'test/cards';
