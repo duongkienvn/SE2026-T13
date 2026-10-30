@@ -554,4 +554,97 @@ describe('Card HTTP API with real JWT, authorization, services and envelopes', (
       required: ['toColumnId', 'beforeCardId'],
     });
   });
+
+  describe('POST /boards/:boardId/cards/import (VT-052)', () => {
+    const importPath = `${base}/import`;
+
+    it('TC10 keeps valid rows when other rows are invalid and appends them after existing cards', async () => {
+      const response = await http(ID.target)
+        .post(importPath)
+        .send({
+          columnId: ID.column,
+          items: [
+            { title: ' Imported A ' },
+            { title: '' },
+            { title: 'Imported C', dueDate: '2000-01-01T07:00:00+07:00' },
+            'not-an-object',
+          ],
+        })
+        .expect(200);
+      expect(response.body).toMatchObject({
+        success: true,
+        statusCode: 200,
+        data: {
+          createdCount: 2,
+          rejectedCount: 2,
+          created: [
+            {
+              title: 'Imported A',
+              position: '200.0000000000',
+              createdById: ID.target,
+              isArchived: false,
+            },
+            {
+              title: 'Imported C',
+              position: '300.0000000000',
+              dueDate: '2000-01-01T00:00:00.000Z',
+            },
+          ],
+          rejected: [{ index: 1 }, { index: 3 }],
+        },
+      });
+      expect(response.body.data.rejected[0].details[0]).toMatch(/title/);
+      const listed = await http()
+        .get(`${base}?columnId=${ID.column}`)
+        .expect(200);
+      expect(listed.body.data.map((card: Card) => card.title)).toEqual([
+        'Card',
+        'Imported A',
+        'Imported C',
+      ]);
+      expect(h.events.publish).toHaveBeenCalledTimes(2);
+    });
+
+    it('TC11 rejects the whole request only for request-level errors, before any write', async () => {
+      const before = rows.size;
+      await http()
+        .post(importPath)
+        .send({
+          columnId: ID.column,
+          items: Array.from({ length: 101 }, () => ({ title: 'A' })),
+        })
+        .expect(400);
+      await http()
+        .post(importPath)
+        .send({ columnId: ID.column, items: [] })
+        .expect(400);
+      await http(OUTSIDER)
+        .post(importPath)
+        .send({ columnId: ID.column, items: [{ title: 'A' }] })
+        .expect(404);
+      await http()
+        .post(importPath)
+        .send({ columnId: FOREIGN_COLUMN, items: [{ title: 'A' }] })
+        .expect(404);
+      archivedBoard = true;
+      const archived = await http()
+        .post(importPath)
+        .send({ columnId: ID.column, items: [{ title: 'A' }] })
+        .expect(409);
+      expect(archived.body.code).toBe('BOARD_ARCHIVED');
+      await request(app.getHttpServer())
+        .post(importPath)
+        .send({ columnId: ID.column, items: [{ title: 'A' }] })
+        .expect(401);
+      expect(rows.size).toBe(before);
+      expect(h.events.publish).not.toHaveBeenCalled();
+    });
+
+    it('TC12 an outsider gets 404 even when every row is invalid (no validation oracle)', async () => {
+      await http(OUTSIDER)
+        .post(importPath)
+        .send({ columnId: ID.column, items: [{ title: '' }] })
+        .expect(404);
+    });
+  });
 });

@@ -24,6 +24,10 @@ import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
 import { MoveCardDto } from './dto/move-card.dto';
 import { AssignCardDto } from './dto/assign-card.dto';
+import {
+  ImportCardsDto,
+  ImportCardsResponseDto,
+} from './dto/import-cards.dto';
 import { CardAssignee } from './entities/card-assignee.entity';
 import { BoardMember } from '../board-members/entities/board-member.entity';
 import {
@@ -435,6 +439,21 @@ export class CardsService {
     await this.events.publish(
       RealtimeServerEvent.CARD_ASSIGNEES_CHANGED,
       payload,
+    );
+  }
+
+  // Test-first seam: behaviour is specified in test/cards/cards-import.spec.ts.
+  importCards(
+    _userId: string,
+    _boardId: string,
+    _input: ImportCardsDto,
+  ): Promise<ImportCardsResponseDto> {
+    return Promise.reject(
+      new ApplicationException(
+        HttpStatus.NOT_IMPLEMENTED,
+        'NOT_IMPLEMENTED',
+        'Card import is not implemented',
+      ),
     );
   }
 
