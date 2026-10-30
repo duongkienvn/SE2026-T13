@@ -10,6 +10,8 @@ import { verifyWorkspaceGuests } from './workspace-guests.integration.mjs';
 import { verifyGuestLifecycle } from './workspace-guests.lifecycle.mjs';
 import { verifyGuestRaces } from './workspace-guests.concurrency.mjs';
 import { verifyInvitations } from './workspace-invitations.lifecycle.mjs';
+import { verifyDeclineMigration } from './workspace-invitation-decline.migration.mjs';
+import { verifyDecline } from './workspace-invitation-decline.integration.mjs';
 import { verifyInvitationRaces } from './workspace-invitations.concurrency.mjs';
 import { verifyInvitationMigration } from './workspace-invitations.migration.mjs';
 import { verifyQuotaContention } from './workspace-invitations.quotas.mjs';
@@ -124,6 +126,7 @@ try {
   }
   assert(source);
   await verifyInvitationMigration(source);
+  await verifyDeclineMigration(source);
   const { AppModule } = require('../../dist/app.module.js');
   const {
     configureHttpApplication,
@@ -179,24 +182,29 @@ try {
     fake,
   };
   await verifyMembers(context);
-  await verifyGuestLifecycle(await verifyWorkspaceGuests(context));
-  await verifyGuestRaces(context);
+  if (!process.argv.includes('--invitations-only')) {
+    await verifyGuestLifecycle(await verifyWorkspaceGuests(context));
+    await verifyGuestRaces(context);
+  }
   await verifyInvitations(context);
   await verifyInvitationRaces(context);
   await verifyQuotaContention(context);
   await verifyDispatchLease(context);
   await verifyAcceptRemoval(context);
-  await verifyBoardAccess(context);
-  await verifyWorkspacePolicies(context);
-  await verifyDeletedWorkspaceInvitations(context);
-  await verifyBoardAccessRealtime(context);
-  await verifyBoardMemberWriteRace(context);
-  await verifyWorkspaceSnapshotRace(context);
-  if (process.argv.includes('--browser-qa'))
-    await verifyBoardAccessBrowser(context);
-  console.log(
-    'PASS: P2-04 Board ACL actor/visibility/archive matrix, nested REST, aggregates, Socket.IO, revocation and races',
-  );
+  await verifyDecline(context);
+  if (!process.argv.includes('--invitations-only')) {
+    await verifyBoardAccess(context);
+    await verifyWorkspacePolicies(context);
+    await verifyDeletedWorkspaceInvitations(context);
+    await verifyBoardAccessRealtime(context);
+    await verifyBoardMemberWriteRace(context);
+    await verifyWorkspaceSnapshotRace(context);
+    if (process.argv.includes('--browser-qa'))
+      await verifyBoardAccessBrowser(context);
+    console.log(
+      'PASS: P2-04 Board ACL actor/visibility/archive matrix, nested REST, aggregates, Socket.IO, revocation and races',
+    );
+  }
   await verifyInvitationMailDelivery({
     source,
     AppModule,
@@ -208,6 +216,7 @@ try {
     ['/api/workspaces/{workspaceId}/members/{userId}', 'delete', '204'],
     ['/api/workspaces/{workspaceId}/invitations', 'post', '202'],
     ['/api/workspace-invitations/accept', 'post', '200'],
+    ['/api/workspace-invitations/decline', 'post', '204'],
   ])
     assert(swagger.body.paths[path][method].responses[status]);
   // Default rollout gate preserves UNAVAILABLE until a working destination is configured.
@@ -230,20 +239,22 @@ try {
         (payload) => payload.invitationId === unavailable.body.data.id,
       ),
     );
-    for (let attempt = 0; attempt < 20; attempt++) {
-      const rejected = await request(unwiredApp.getHttpServer())
-        .post('/api/workspace-invitations/accept')
+    for (const action of ['accept', 'decline']) {
+      for (let attempt = 0; attempt < 20; attempt++) {
+        const rejected = await request(unwiredApp.getHttpServer())
+          .post(`/api/workspace-invitations/${action}`)
+          .set('Authorization', `Bearer ${tokens.admin}`)
+          .send({ proof: 'a'.repeat(43) })
+          .expect(410);
+        assert.equal(rejected.body.code, 'INVALID_WORKSPACE_INVITATION');
+      }
+      const limited = await request(unwiredApp.getHttpServer())
+        .post(`/api/workspace-invitations/${action}`)
         .set('Authorization', `Bearer ${tokens.admin}`)
         .send({ proof: 'a'.repeat(43) })
-        .expect(410);
-      assert.equal(rejected.body.code, 'INVALID_WORKSPACE_INVITATION');
+        .expect(429);
+      assert.equal(limited.body.code, 'TOO_MANY_REQUESTS');
     }
-    const limited = await request(unwiredApp.getHttpServer())
-      .post('/api/workspace-invitations/accept')
-      .set('Authorization', `Bearer ${tokens.admin}`)
-      .send({ proof: 'a'.repeat(43) })
-      .expect(429);
-    assert.equal(limited.body.code, 'TOO_MANY_REQUESTS');
   } finally {
     await unwiredApp.close();
   }

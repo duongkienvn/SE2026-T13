@@ -27,6 +27,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Backend tasks
 
+- [Secure Workspace invitation decline](backend/workspace-invitation-decline.md)
 - [ACL-safe Workspace Guests Directory API](backend/workspace-guests-directory-api.md)
 - [Workspace policies, Board move and deletion](backend/workspace-policies-board-move.md)
 - [Board visibility, authorization and realtime access enforcement](backend/board-visibility-access-control.md)

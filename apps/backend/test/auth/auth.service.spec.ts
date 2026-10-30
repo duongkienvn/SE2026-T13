@@ -366,6 +366,30 @@ describe('AuthService', () => {
     });
   });
 
+  it('supports decline-specific verification errors without weakening JWT or session checks', async () => {
+    const user = userFixture();
+    user.emailVerifiedAt = null;
+    repository.findOne.mockResolvedValue(user);
+    const token = await jwt.signAsync({ sub: user.id });
+    await expect(
+      service.authenticateAccessToken(token, 403),
+    ).rejects.toMatchObject({
+      status: 403,
+      response: { code: 'EMAIL_NOT_VERIFIED' },
+    });
+    await expect(
+      service.authenticateAccessToken(`${token}tampered`, 403),
+    ).rejects.toMatchObject({ status: 401 });
+    user.authVersion = 1;
+    await expect(
+      service.authenticateAccessToken(token, 403),
+    ).rejects.toMatchObject({ status: 401 });
+    repository.findOne.mockResolvedValue(null);
+    await expect(
+      service.authenticateAccessToken(token, 403),
+    ).rejects.toMatchObject({ status: 401 });
+  });
+
   it('verifies JWT claims and loads the authenticated user from the database', async () => {
     const user = userFixture();
     repository.findOne.mockResolvedValue(user);

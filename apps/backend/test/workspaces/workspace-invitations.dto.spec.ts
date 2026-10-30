@@ -5,6 +5,7 @@ import { validate } from 'class-validator';
 import {
   CreateWorkspaceInvitationDto,
   AcceptWorkspaceInvitationDto,
+  DeclineWorkspaceInvitationDto,
   WorkspaceInvitationsQueryDto,
   toWorkspaceInvitationDto,
 } from '../../src/api/workspaces/dto/workspace-invitations.dto';
@@ -79,6 +80,34 @@ describe('Workspace invitation and member trust boundaries', () => {
   });
 
   it('bounds pages, filters and search and rejects foreign Board roles', async () => {
+    expect(
+      await validate(
+        plainToInstance(WorkspaceInvitationsQueryDto, { status: 'DECLINED' }),
+      ),
+    ).toEqual([]);
+    expect(
+      await validate(
+        plainToInstance(DeclineWorkspaceInvitationDto, {
+          proof: 'a'.repeat(43),
+        }),
+      ),
+    ).toEqual([]);
+    for (const input of [
+      {},
+      { proof: null },
+      { proof: 'x'.repeat(42) },
+      { proof: '/'.repeat(43) },
+      { proof: ['a'.repeat(43)] },
+      { proof: 'a'.repeat(43), email: 'injected@example.test' },
+    ])
+      expect(
+        (
+          await validate(
+            plainToInstance(DeclineWorkspaceInvitationDto, input),
+            { whitelist: true, forbidNonWhitelisted: true },
+          )
+        ).length,
+      ).toBeGreaterThan(0);
     for (const [kind, input] of [
       [WorkspaceInvitationsQueryDto, { status: 'SENT' }],
       [WorkspaceInvitationsQueryDto, { limit: '101' }],
@@ -118,6 +147,7 @@ describe('Workspace invitation and member trust boundaries', () => {
         expiresAt: expiry,
         revokedAt: null,
         consumedAt: null,
+        declinedAt: null,
       },
     );
     expect(toWorkspaceInvitationDto(invitation, created).status).toBe(
@@ -127,9 +157,16 @@ describe('Workspace invitation and member trust boundaries', () => {
     invitation.revokedAt = created;
     expect(toWorkspaceInvitationDto(invitation, expiry).status).toBe('REVOKED');
     invitation.revokedAt = null;
+    invitation.declinedAt = created;
+    expect(toWorkspaceInvitationDto(invitation, expiry)).toMatchObject({
+      status: 'DECLINED',
+      declinedAt: created.toISOString(),
+    });
+    invitation.declinedAt = null;
     invitation.consumedAt = created;
     const result = toWorkspaceInvitationDto(invitation, expiry);
     expect(result.status).toBe('ACCEPTED');
+    expect(result.declinedAt).toBeNull();
     expect(result).not.toHaveProperty('tokenHash');
     expect(result).not.toHaveProperty('proof');
   });

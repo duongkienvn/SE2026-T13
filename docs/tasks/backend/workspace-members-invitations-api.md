@@ -156,7 +156,10 @@ the ACL-limited read contract and local verification evidence for Issue #135.
 Signed-out return intent and account-switch UI belong to P2-08; keep proof in
 ephemeral browser state/URL fragment, exclude it from logs/analytics and send it
 only in the authenticated accept body. P2-10 owns the actual public link format.
-Optional decline is deferred; ADMIN revoke and TTL remain available.
+Recipient decline was deferred by P2-03. The later
+[P2-C03 decline lifecycle](workspace-invitation-decline.md) adds the explicit
+recipient endpoint, DECLINED status/declinedAt history contract and safe migration
+for #136; ADMIN revoke and TTL remain available.
 
 P2-04 must add workspace-derived Board authorization and invalidation/Socket.IO
 eviction at the existing Board coordination boundary before enabling

@@ -20,6 +20,7 @@ export const INVITATION_STATUSES = [
   'ACCEPTED',
   'EXPIRED',
   'REVOKED',
+  'DECLINED',
 ] as const;
 export type InvitationStatus = (typeof INVITATION_STATUSES)[number];
 
@@ -39,6 +40,8 @@ export class AcceptWorkspaceInvitationDto {
   @Matches(/^[A-Za-z0-9_-]{43}$/)
   proof!: string;
 }
+
+export class DeclineWorkspaceInvitationDto extends AcceptWorkspaceInvitationDto {}
 
 export class WorkspaceInvitationsQueryDto extends WorkspacePageQueryDto {
   @StringFieldOptional()
@@ -66,6 +69,9 @@ export class WorkspaceInvitationResponseDto {
     string | null;
   @Expose() @ApiProperty({ nullable: true, type: String }) revokedAt!:
     string | null;
+  @Expose()
+  @ApiProperty({ nullable: true, type: String, format: 'date-time' })
+  declinedAt!: string | null;
 }
 
 export function invitationStatus(
@@ -74,6 +80,7 @@ export function invitationStatus(
 ): InvitationStatus {
   if (invitation.consumedAt) return 'ACCEPTED';
   if (invitation.revokedAt) return 'REVOKED';
+  if (invitation.declinedAt) return 'DECLINED';
   return invitation.expiresAt <= now ? 'EXPIRED' : 'PENDING';
 }
 
@@ -94,5 +101,6 @@ export function toWorkspaceInvitationDto(
     updatedAt: invitation.updatedAt.toISOString(),
     consumedAt: invitation.consumedAt?.toISOString() ?? null,
     revokedAt: invitation.revokedAt?.toISOString() ?? null,
+    declinedAt: invitation.declinedAt?.toISOString() ?? null,
   });
 }

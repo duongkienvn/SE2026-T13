@@ -412,7 +412,7 @@ try {
       'workspaces',
     ],
   );
-  assert.equal(source.migrations.length, 14);
+  assert.equal(source.migrations.length, 15);
 
   const originalDatabase = process.env.DATABASE_NAME;
   process.env.DATABASE_NAME = testDatabase;
@@ -424,7 +424,7 @@ try {
     try {
       const nestDataSource = app.get(DataSource);
       assert.equal(nestDataSource.entityMetadatas.length, 17);
-      assert.equal(nestDataSource.migrations.length, 14);
+      assert.equal(nestDataSource.migrations.length, 15);
       assert.equal(nestDataSource.options.poolSize, source.options.poolSize);
       assert.equal(
         nestDataSource.options.connectTimeoutMS,
@@ -440,7 +440,9 @@ try {
 
   const allMigrations = source.migrations;
   source.migrations = allMigrations.filter(
-    (m) => !m.name.startsWith('WorkspacePolicies'),
+    (m) =>
+      !m.name.startsWith('WorkspacePolicies') &&
+      !m.name.startsWith('WorkspaceInvitationDecline'),
   );
   assert.equal((await source.runMigrations()).length, 13);
   const cliOutput = execFileSync(
@@ -466,7 +468,7 @@ try {
       '-e',
       `const dataSource = require('./src/database/data-source.ts').default;
        dataSource.initialize().then(async () => {
-         if (dataSource.entityMetadatas.length !== 17 || dataSource.migrations.length !== 14) {
+         if (dataSource.entityMetadatas.length !== 17 || dataSource.migrations.length !== 15) {
            throw new Error('TypeScript DataSource discovery mismatch');
          }
          await dataSource.destroy();
@@ -514,15 +516,17 @@ try {
   assert.equal((await source.runMigrations()).length, 10);
   await inspectSchema();
   source.migrations = allMigrations;
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 2);
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries,
     [],
   );
+  await source.undoLastMigration(); // Empty decline history; test the older policy boundary.
   await assert.rejects(
     source.undoLastMigration(),
     /Workspace policies require a forward fix/,
   );
+  assert.equal((await source.runMigrations()).length, 1);
   console.log(
     'Enum rollback retains existing values/history; idempotent reapply: PASS',
   );

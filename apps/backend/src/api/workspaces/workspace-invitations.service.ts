@@ -16,7 +16,10 @@ import {
   WorkspaceInvitationsQueryDto,
   toWorkspaceInvitationDto,
 } from './dto/workspace-invitations.dto';
-import { toWorkspaceMemberDto } from './dto/workspace-members.dto';
+import {
+  toWorkspaceMemberDto,
+  WorkspaceMemberResponseDto,
+} from './dto/workspace-members.dto';
 import { paginate } from '../../common/dto/paginated-response';
 import { paginateQueryBuilder } from '../../utils/offset-pagination';
 import { ErrorCode } from '../../common/dto/api-error';
@@ -46,9 +49,11 @@ export class WorkspaceInvitationsService {
         builder.andWhere('invitation.consumedAt IS NOT NULL');
       if (query.status === 'REVOKED')
         builder.andWhere('invitation.revokedAt IS NOT NULL');
+      if (query.status === 'DECLINED')
+        builder.andWhere('invitation.declinedAt IS NOT NULL');
       if (query.status === 'PENDING' || query.status === 'EXPIRED') {
         builder.andWhere(
-          'invitation.consumedAt IS NULL AND invitation.revokedAt IS NULL',
+          'invitation.consumedAt IS NULL AND invitation.revokedAt IS NULL AND invitation.declinedAt IS NULL',
         );
         builder.andWhere(
           `invitation.expiresAt ${query.status === 'PENDING' ? '>' : '<='} :now`,
@@ -90,6 +95,12 @@ export class WorkspaceInvitationsService {
           ErrorCode.CONFLICT,
           'Accepted invitation cannot be revoked; remove membership explicitly',
         );
+      if (invitation.declinedAt)
+        throw new ApplicationException(
+          409,
+          ErrorCode.CONFLICT,
+          'Declined invitation cannot be revoked',
+        );
       if (!invitation.revokedAt)
         await repository.update(invitation.id, {
           revokedAt: await invitationTime(manager),
@@ -97,7 +108,29 @@ export class WorkspaceInvitationsService {
     });
   }
 
-  async accept(actor: string, proof: string) {
+  accept(actor: string, proof: string) {
+    return this.respond(actor, proof, 'accept');
+  }
+
+  decline(actor: string, proof: string) {
+    return this.respond(actor, proof, 'decline');
+  }
+
+  private respond(
+    actor: string,
+    proof: string,
+    action: 'accept',
+  ): Promise<WorkspaceMemberResponseDto>;
+  private respond(
+    actor: string,
+    proof: string,
+    action: 'decline',
+  ): Promise<void>;
+  private async respond(
+    actor: string,
+    proof: string,
+    action: 'accept' | 'decline',
+  ): Promise<WorkspaceMemberResponseDto | void> {
     if (!/^[A-Za-z0-9_-]{43}$/.test(proof)) throw this.invalid();
     const tokenHash = invitationHash(proof);
     const candidate = await this.workspaces.manager
@@ -109,15 +142,16 @@ export class WorkspaceInvitationsService {
       if (!workspace) throw this.invalid();
       requireTeam(workspace);
       const repository = manager.getRepository(WorkspaceInvitation);
-      const invitation = await repository.findOneBy({
-        id: candidate.id,
-        tokenHash,
+      const invitation = await repository.findOne({
+        where: { id: candidate.id, tokenHash },
+        lock: { mode: 'pessimistic_write' },
       });
       const now = await invitationTime(manager);
       if (
         !invitation ||
         invitation.revokedAt ||
         invitation.consumedAt ||
+        invitation.declinedAt ||
         invitation.expiresAt <= now
       )
         throw this.invalid();
@@ -128,7 +162,7 @@ export class WorkspaceInvitationsService {
         throw new ApplicationException(
           403,
           ErrorCode.EMAIL_NOT_VERIFIED,
-          'Verify your email before accepting an invitation',
+          'Verify your email before responding to an invitation',
         );
       if (user.email.trim().toLowerCase() !== invitation.email)
         throw this.invalid();
@@ -138,6 +172,19 @@ export class WorkspaceInvitationsService {
           ErrorCode.CONFLICT,
           'Invitation delivery is not confirmed; ask an ADMIN to retry',
         );
+      if (action === 'decline') {
+        const declined = await repository
+          .createQueryBuilder()
+          .update()
+          .set({ declinedAt: () => 'clock_timestamp()' })
+          .where(
+            'id = :id AND token_hash = :tokenHash AND send_state = :sent AND consumed_at IS NULL AND revoked_at IS NULL AND declined_at IS NULL AND expires_at > clock_timestamp()',
+            { id: invitation.id, tokenHash, sent: 'SENT' },
+          )
+          .execute();
+        if (declined.affected !== 1) throw this.invalid();
+        return;
+      }
       const members = manager.getRepository(WorkspaceMember);
       let member = await members.findOneBy({
         workspaceId: workspace.id,
@@ -156,7 +203,7 @@ export class WorkspaceInvitationsService {
         .update()
         .set({ consumedAt: () => 'clock_timestamp()' })
         .where(
-          'id = :id AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > clock_timestamp()',
+          'id = :id AND consumed_at IS NULL AND revoked_at IS NULL AND declined_at IS NULL AND expires_at > clock_timestamp()',
           { id: invitation.id },
         )
         .execute();

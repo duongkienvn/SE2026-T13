@@ -26,8 +26,10 @@ import {
 import { SerializeResponse } from '../../decorators/response.decorators';
 import { WorkspaceInvitationsService } from './workspace-invitations.service';
 import { WorkspaceInvitationIssuanceService } from './workspace-invitation-issuance.service';
+import { WorkspaceInvitationDeclineGuard } from './workspace-invitation-decline.guard';
 import {
   AcceptWorkspaceInvitationDto,
+  DeclineWorkspaceInvitationDto,
   CreateWorkspaceInvitationDto,
   WorkspaceInvitationResponseDto,
   WorkspaceInvitationsQueryDto,
@@ -94,12 +96,12 @@ export class WorkspaceInvitationsController {
 }
 
 @ApiTags('workspace-invitations')
-@UseGuards(JwtAuthGuard)
 @Controller('workspace-invitations')
 export class WorkspaceInvitationAcceptanceController {
   constructor(private readonly invitations: WorkspaceInvitationsService) {}
 
   @Post('accept')
+  @UseGuards(JwtAuthGuard)
   @ApiBearerToken()
   @ApiCommonErrors([400, 401, 403, 409, 410, 429, 500])
   @HttpCode(200)
@@ -116,5 +118,23 @@ export class WorkspaceInvitationAcceptanceController {
     @Body() input: AcceptWorkspaceInvitationDto,
   ) {
     return this.invitations.accept(user.userId, input.proof);
+  }
+
+  @Post('decline')
+  @UseGuards(WorkspaceInvitationDeclineGuard)
+  @ApiBearerToken()
+  @ApiCommonErrors([400, 401, 403, 409, 410, 429, 500])
+  @HttpCode(204)
+  @Header('Cache-Control', 'no-store')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @ApiNoContent({
+    summary:
+      'Decline a delivered proof as its matching verified recipient; never creates membership',
+  })
+  decline(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() input: DeclineWorkspaceInvitationDto,
+  ) {
+    return this.invitations.decline(user.userId, input.proof);
   }
 }

@@ -39,10 +39,12 @@ try {
   created = true;
   source = await new DataSource({ ...options, database: name }).initialize();
   await source.runMigrations();
+  await source.undoLastMigration(); // No decline history yet; exercise the policy boundary below.
   await assert.rejects(
     source.undoLastMigration(),
     /Workspace policies require a forward fix/,
   );
+  assert.equal((await source.runMigrations()).length, 1);
   assert.deepEqual(await source.runMigrations(), []);
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries,
