@@ -316,7 +316,13 @@ describe('Workspace Members page', () => {
     await within(dialog).findByText(
       /This member is no longer in the workspace/,
     );
-    await waitFor(() => expect(screen.getByText('2 members')).toBeTruthy());
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('tabpanel', { name: 'Members' })).getByText(
+          '2 members',
+        ),
+      ).toBeTruthy(),
+    );
     expect(within(await table()).queryByText('Grace Hopper')).toBeNull();
     expect(screen.queryByText('Workspace not found')).toBeNull();
     await waitFor(() =>
