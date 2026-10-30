@@ -20,11 +20,13 @@ export function useWorkspacePage() {
 export function WorkspaceLayout() {
   const { workspaceId = '' } = useParams();
   const { pathname } = useLocation();
+  const current = pathname.replace(/\/+$/, '');
   const section =
     workspaceSections(workspaceId).find(
       (item) =>
         item.availability === 'available' &&
-        item.path === pathname.replace(/\/+$/, ''),
+        (item.path === current ||
+          (item.id !== 'overview' && current.startsWith(`${item.path}/`))),
     )?.label ?? 'Overview';
   const query = useWorkspaceOverview(workspaceId);
   const workspace = query.overview?.workspace;

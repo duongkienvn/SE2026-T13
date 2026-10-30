@@ -30,7 +30,7 @@ export function WorkspaceSections({
             <li key={item.id} className="min-w-0">
               {item.availability === 'available' ? (
                 <NavLink
-                  end
+                  end={item.id === 'overview'}
                   to={item.path}
                   className={({ isActive }) =>
                     `${classes} focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary ${isActive ? 'border-primary bg-primary-soft/40 font-medium text-primary' : 'border-transparent text-muted hover:text-ink'}`

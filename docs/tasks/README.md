@@ -64,6 +64,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 - [Workspace Shell, Navigation and Overview UI V1](frontend/workspace-shell-overview.md)
 - [Workspace Boards UI V1, Filters and Create Board](frontend/workspace-boards-ui.md)
 - [Workspace Members, Guests and Invitations UI V1](frontend/workspace-members-invitations-ui.md)
+- [Workspace Settings, policies and safe management UI V1](frontend/workspace-settings-ui.md)
 - [Frontend application foundation](frontend/frontend-foundation.md)
 - [Kanvexa branding](frontend/kanvexa-branding.md)
 - [Frontend authentication](frontend/frontend-auth.md)

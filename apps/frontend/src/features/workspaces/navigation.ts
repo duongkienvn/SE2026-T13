@@ -12,7 +12,7 @@ export function workspacePath(workspaceId: string) {
 
 /** Keep the current delivered section when switching workspaces. */
 export function workspaceDestination(workspaceId: string, pathname: string) {
-  return `${workspacePath(workspaceId)}${pathname.match(/\/workspaces\/[^/]+(\/(?:boards|members))\/?$/)?.[1] ?? ''}`;
+  return `${workspacePath(workspaceId)}${pathname.match(/\/workspaces\/[^/]+(\/(?:boards|members|settings))\/?$/)?.[1] ?? ''}`;
 }
 
 /** Downstream owners activate a slot only when their real route exists. */
@@ -43,7 +43,8 @@ export function workspaceSections(workspaceId: string): NavItem[] {
       id: 'settings',
       label: 'Settings',
       icon: SettingsIcon,
-      availability: 'soon',
+      availability: 'available',
+      path: `${workspacePath(workspaceId)}/settings`,
     },
   ];
 }

@@ -36,6 +36,7 @@ export function mapWorkspace(item: WorkspaceResponse): WorkspaceSummary {
     type: item.type,
     role: item.role,
     canCreateBoards: item.canCreateBoards,
+    icon: item.icon,
   };
 }
 

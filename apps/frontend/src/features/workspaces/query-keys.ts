@@ -25,6 +25,16 @@ export const workspaceKeys = {
       ...workspaceKeys.resource(userId, generation, workspaceId),
       'members',
     ] as const,
+  detail: (userId: string, generation: number, workspaceId: string) =>
+    [
+      ...workspaceKeys.resource(userId, generation, workspaceId),
+      'detail',
+    ] as const,
+  policies: (userId: string, generation: number, workspaceId: string) =>
+    [
+      ...workspaceKeys.resource(userId, generation, workspaceId),
+      'policies',
+    ] as const,
   invitations: (userId: string, generation: number, workspaceId: string) =>
     [
       ...workspaceKeys.resource(userId, generation, workspaceId),

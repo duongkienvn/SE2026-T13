@@ -474,3 +474,11 @@ export function MoonIcon(props: IconProps) {
     </StrokeSvg>
   );
 }
+
+export function CodeIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="m8 8-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14" />
+    </StrokeSvg>
+  );
+}

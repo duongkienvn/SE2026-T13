@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router';
 import { LayersIcon, PlusIcon, UserIcon } from '../../../components/icons';
 import { workspacePath } from '../navigation';
+import { WorkspaceIconGlyph } from '../settings/icons';
 import type { WorkspaceSummary } from '../types';
 
 export function WorkspaceAvatar({
@@ -15,7 +16,9 @@ export function WorkspaceAvatar({
       aria-hidden="true"
       className={`grid shrink-0 place-items-center rounded-xl bg-primary-solid font-semibold text-white ${className}`}
     >
-      {workspace ? (
+      {workspace?.icon ? (
+        <WorkspaceIconGlyph icon={workspace.icon} className="size-1/2" />
+      ) : workspace ? (
         workspace.name.trim().slice(0, 1).toLocaleUpperCase()
       ) : (
         <LayersIcon className="size-1/2" />

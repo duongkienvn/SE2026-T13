@@ -45,6 +45,7 @@ describe('Workspace HTTP adapters', () => {
       type: 'TEAM',
       role: 'MEMBER',
       canCreateBoards: true,
+      icon: null,
     });
     expect(
       calls.every(
