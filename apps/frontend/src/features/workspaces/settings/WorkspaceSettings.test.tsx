@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -16,7 +17,9 @@ import {
   ok,
   storeSession,
   testUser,
+  type MockResponse,
 } from '../../../test/mock-api';
+import { createdSockets } from '../../../test/fake-socket';
 import {
   workspaceBoardResponse,
   workspaceOverviewResponse,
@@ -26,6 +29,7 @@ import {
 import { AuthProvider } from '../../auth/AuthProvider';
 import { RealtimeProvider } from '../../realtime/RealtimeProvider';
 import type { WorkspaceResponse } from '../response';
+import { workspaceKeys } from '../query-keys';
 import type { WorkspacePolicy } from './api';
 
 const admin: WorkspaceResponse = {
@@ -99,13 +103,138 @@ function mount(
       </AuthProvider>
     </QueryClientProvider>,
   );
-  return { calls, router };
+  return { calls, router, client };
 }
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
+const formCases = [
+  {
+    section: 'general',
+    endpoint: base,
+    initial: admin,
+    field: () => screen.findByLabelText('Workspace name'),
+    edit: (element: HTMLElement) =>
+      fireEvent.change(element, { target: { value: 'Private draft' } }),
+    check: (edited: boolean) =>
+      expect(
+        (screen.getByLabelText('Workspace name') as HTMLInputElement).value,
+      ).toBe(edited ? 'Private draft' : admin.name),
+    changes: { name: 'Private draft' },
+  },
+  {
+    section: 'permissions',
+    endpoint: `${base}/policies`,
+    initial: policy,
+    field: () => screen.findByRole('radio', { name: /Admins only/ }),
+    edit: (element: HTMLElement) => fireEvent.click(element),
+    check: (edited: boolean) =>
+      expect(
+        (screen.getByRole('radio', { name: /Admins only/ }) as HTMLInputElement)
+          .checked,
+      ).toBe(edited),
+    changes: { boardCreationAdminOnly: true },
+  },
+];
 
 const sections = () =>
   screen.getByRole('navigation', { name: 'Workspace settings sections' });
 
 describe('Workspace Settings — General', () => {
+  it('does not clear newer field edits when an earlier save completes', async () => {
+    const pending = deferred<MockResponse>();
+    let server = admin;
+    const { client, calls } = mount(`${base}/settings/general`, {
+      [`GET ${base}`]: () => ok(server),
+      [`PATCH ${base}`]: () => pending.promise,
+    });
+    const name = await screen.findByLabelText('Workspace name');
+    fireEvent.change(name, { target: { value: 'First edit' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+    await screen.findByRole('button', { name: 'Saving…' });
+    fireEvent.change(name, { target: { value: 'Newer edit' } });
+    server = { ...admin, name: 'First edit' };
+    await act(async () => pending.resolve(ok(server)));
+    await waitFor(() => expect(client.isMutating()).toBe(0));
+    expect(
+      (screen.getByLabelText('Workspace name') as HTMLInputElement).value,
+    ).toBe('Newer edit');
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Save Changes',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(false);
+    expect(calls.find((call) => call.method === 'PATCH')?.body).toEqual({
+      name: 'First edit',
+    });
+  });
+  it.each(['name', 'description', 'icon'] as const)(
+    'merges explicit %s edits over concurrent server metadata and PATCHes only that field',
+    async (field) => {
+      let server = {
+        ...admin,
+        description: 'Original description',
+        icon: 'briefcase' as WorkspaceResponse['icon'],
+      };
+      const { client, calls } = mount(`${base}/settings/general`, {
+        [`GET ${base}`]: () => ok(server),
+        [`PATCH ${base}`]: (request) => {
+          server = { ...server, ...(request.body as object) };
+          return ok(server);
+        },
+      });
+      await screen.findByLabelText('Workspace name');
+      if (field === 'name')
+        fireEvent.change(screen.getByLabelText('Workspace name'), {
+          target: { value: 'My edit' },
+        });
+      else if (field === 'description')
+        fireEvent.change(screen.getByLabelText('Description'), {
+          target: { value: 'My edit' },
+        });
+      else fireEvent.click(screen.getByRole('radio', { name: 'Code' }));
+      server = {
+        ...server,
+        name: 'Concurrent name',
+        description: 'Concurrent description',
+        icon: 'palette',
+      };
+      await act(() =>
+        client.refetchQueries({
+          queryKey: workspaceKeys.detail(testUser.id, 0, id),
+        }),
+      );
+      await waitFor(() => {
+        expect(
+          (screen.getByLabelText('Workspace name') as HTMLInputElement).value,
+        ).toBe(field === 'name' ? 'My edit' : 'Concurrent name');
+        expect(
+          (screen.getByLabelText('Description') as HTMLTextAreaElement).value,
+        ).toBe(field === 'description' ? 'My edit' : 'Concurrent description');
+        expect(
+          screen
+            .getByRole('radio', { name: field === 'icon' ? 'Code' : 'Palette' })
+            .getAttribute('aria-checked'),
+        ).toBe('true');
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+      await screen.findByText('Workspace settings saved.');
+      expect(calls.find((call) => call.method === 'PATCH')?.body).toEqual({
+        [field]: field === 'icon' ? 'code' : 'My edit',
+      });
+      expect(server.description).toBe(
+        field === 'description' ? 'My edit' : 'Concurrent description',
+      );
+    },
+  );
   it('opens General and saves only changed fields after confirmation', async () => {
     const { calls, router } = mount(`${base}/settings`, {
       [`PATCH ${base}`]: (request) =>
@@ -177,6 +306,288 @@ describe('Workspace Settings — General', () => {
     ).toBe(true);
   });
 });
+
+describe.each(formCases)(
+  'Workspace Settings draft boundaries — $section',
+  (form) => {
+    it('does not let a save from revoked access clear a newly authorized draft', async () => {
+      const pending = deferred<MockResponse>();
+      const { client } = mount(`${base}/settings/${form.section}`, {
+        [`PATCH ${form.endpoint}`]: () => pending.promise,
+      });
+      form.edit(await form.field());
+      fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+      await screen.findByRole('button', { name: 'Saving…' });
+      await act(async () =>
+        createdSockets
+          .at(-1)!
+          .socket.push('workspace:access-revoked', { workspaceId: id }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('button', { name: 'Save Changes' }),
+        ).toBeNull(),
+      );
+      await act(() =>
+        client.refetchQueries({
+          queryKey: workspaceKeys.resource(testUser.id, 0, id),
+        }),
+      );
+      form.edit(await form.field());
+      await act(async () =>
+        pending.resolve(ok({ ...form.initial, ...form.changes })),
+      );
+      await waitFor(() => expect(client.isMutating()).toBe(0));
+      form.check(true);
+      expect(
+        screen.queryByText(/^(Workspace settings|Permissions) saved\.$/),
+      ).toBeNull();
+      expect(
+        (
+          screen.getByRole('button', {
+            name: 'Save Changes',
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(false);
+    });
+    it.each(['disconnect', 'access:changed'] as const)(
+      'hides protected fields during %s and restores edits over fresh server values',
+      async (event) => {
+        const pending = deferred<MockResponse>();
+        let hold = false;
+        const fresh = {
+          ...form.initial,
+          description: 'Remote description',
+          icon: 'palette',
+          boardInvitesEnabled: false,
+        };
+        const { calls } = mount(`${base}/settings/${form.section}`, {
+          [`GET ${form.endpoint}`]: () =>
+            hold ? pending.promise : ok(form.initial),
+          [`PATCH ${form.endpoint}`]: ok({ ...fresh, ...form.changes }),
+        });
+        await form.field();
+        const socket = createdSockets.at(-1)!.socket;
+        await act(async () => socket.open());
+        form.edit(await form.field());
+        hold = true;
+        await act(async () => {
+          if (event === 'disconnect') socket.drop();
+          else socket.push('access:changed', {});
+        });
+        await waitFor(() =>
+          expect(
+            screen.queryByRole('button', { name: 'Save Changes' }),
+          ).toBeNull(),
+        );
+        expect(screen.queryByDisplayValue('Private draft')).toBeNull();
+        expect(screen.queryByRole('radio', { name: /Admins only/ })).toBeNull();
+        if (event === 'disconnect') await act(async () => socket.open());
+        await act(async () => pending.resolve(ok(fresh)));
+        await form.field();
+        form.check(true);
+        if (form.section === 'general')
+          expect(
+            (screen.getByLabelText('Description') as HTMLTextAreaElement).value,
+          ).toBe('Remote description');
+        else
+          expect(
+            (
+              within(
+                screen
+                  .getByText('Board owners can add board members')
+                  .closest('fieldset')!,
+              ).getByRole('radio', { name: /Not allowed/ }) as HTMLInputElement
+            ).checked,
+          ).toBe(true);
+        fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+        await waitFor(() =>
+          expect(calls.some((call) => call.method === 'PATCH')).toBe(true),
+        );
+        expect(calls.find((call) => call.method === 'PATCH')?.body).toEqual(
+          form.changes,
+        );
+      },
+    );
+
+    it('keeps edits after a transient failed refetch and retry', async () => {
+      let failing = false;
+      const { client } = mount(`${base}/settings/${form.section}`, {
+        [`GET ${form.endpoint}`]: () =>
+          failing ? fail(500, 'INTERNAL_SERVER_ERROR') : ok(form.initial),
+      });
+      form.edit(await form.field());
+      failing = true;
+      await act(() =>
+        client.refetchQueries({
+          queryKey: workspaceKeys.resource(testUser.id, 0, id),
+        }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('button', { name: 'Save Changes' }),
+        ).toBeNull(),
+      );
+      failing = false;
+      await act(() =>
+        client.refetchQueries({
+          queryKey: workspaceKeys.resource(testUser.id, 0, id),
+        }),
+      );
+      await form.field();
+      form.check(true);
+    });
+
+    it.each(['socket', '403', '404'])(
+      'clears edits on confirmed %s access loss even if access is later restored',
+      async (source) => {
+        let denial: string | undefined;
+        const { client } = mount(`${base}/settings/${form.section}`, {
+          [`GET ${form.endpoint}`]: () =>
+            denial ? fail(Number(denial), 'DENIED') : ok(form.initial),
+        });
+        form.edit(await form.field());
+        if (source === 'socket')
+          await act(async () =>
+            createdSockets
+              .at(-1)!
+              .socket.push('workspace:access-revoked', { workspaceId: id }),
+          );
+        else {
+          denial = source;
+          await act(() =>
+            client.refetchQueries({
+              queryKey: workspaceKeys.resource(testUser.id, 0, id),
+            }),
+          );
+        }
+        await waitFor(() =>
+          expect(
+            screen.queryByRole('button', { name: 'Save Changes' }),
+          ).toBeNull(),
+        );
+        expect(screen.queryByDisplayValue('Private draft')).toBeNull();
+        denial = undefined;
+        await act(() =>
+          client.refetchQueries({
+            queryKey: workspaceKeys.resource(testUser.id, 0, id),
+          }),
+        );
+        await form.field();
+        form.check(false);
+        expect(
+          (
+            screen.getByRole('button', {
+              name: 'Save Changes',
+            }) as HTMLButtonElement
+          ).disabled,
+        ).toBe(true);
+      },
+    );
+
+    it('clears edits on loss of editing permission without displaying drafts in the read-only form', async () => {
+      let canEdit = true;
+      const { client } = mount(`${base}/settings/${form.section}`, {
+        [`GET ${form.endpoint}`]: () =>
+          ok({
+            ...form.initial,
+            canManage: canEdit,
+            canManagePolicies: canEdit,
+          }),
+      });
+      form.edit(await form.field());
+      canEdit = false;
+      await act(() =>
+        client.refetchQueries({
+          queryKey: workspaceKeys.resource(testUser.id, 0, id),
+        }),
+      );
+      await waitFor(() => form.check(false));
+      expect(screen.queryByRole('button', { name: 'Save Changes' })).toBeNull();
+      canEdit = true;
+      await act(() =>
+        client.refetchQueries({
+          queryKey: workspaceKeys.resource(testUser.id, 0, id),
+        }),
+      );
+      await screen.findByRole('button', { name: 'Save Changes' });
+      form.check(false);
+    });
+
+    it.each(['same-user', 'other-user', 'logout'])(
+      'does not carry edits across a %s authentication boundary',
+      async (change) => {
+        let currentUser = testUser;
+        const { client, router } = mount(`${base}/settings/${form.section}`, {
+          'GET /users/me': () => ok(currentUser),
+        });
+        form.edit(await form.field());
+        await act(async () => {
+          if (change === 'logout') localStorage.removeItem('kanban.session');
+          else {
+            if (change === 'other-user')
+              currentUser = {
+                ...testUser,
+                id: 'another-user',
+                email: 'other@example.com',
+              };
+            storeSession('replacement-session');
+          }
+          window.dispatchEvent(
+            new StorageEvent('storage', { key: 'kanban.session' }),
+          );
+        });
+        if (change === 'logout') {
+          await waitFor(() =>
+            expect(router.state.location.pathname).toBe('/login'),
+          );
+          expect(screen.queryByDisplayValue('Private draft')).toBeNull();
+          await act(async () => {
+            storeSession('new-login-session');
+            window.dispatchEvent(
+              new StorageEvent('storage', { key: 'kanban.session' }),
+            );
+          });
+        }
+        await form.field();
+        form.check(false);
+        expect(
+          client.getQueryData(workspaceKeys.detail(testUser.id, 0, id)),
+        ).toBeUndefined();
+      },
+    );
+
+    it('settles a save while hidden without retaining an already-saved draft', async () => {
+      const pending = deferred<MockResponse>();
+      let server: object = form.initial;
+      mount(`${base}/settings/${form.section}`, {
+        [`GET ${form.endpoint}`]: () => ok(server),
+        [`PATCH ${form.endpoint}`]: () => pending.promise,
+      });
+      await form.field();
+      const socket = createdSockets.at(-1)!.socket;
+      await act(async () => socket.open());
+      form.edit(await form.field());
+      fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+      await screen.findByRole('button', { name: 'Saving…' });
+      await act(async () => socket.drop());
+      server = { ...form.initial, ...form.changes };
+      await act(async () => pending.resolve(ok(server)));
+      // A later authoritative update must not be masked by the completed draft.
+      server = form.initial;
+      await act(async () => socket.open());
+      await form.field();
+      form.check(false);
+      expect(
+        (
+          screen.getByRole('button', {
+            name: 'Save Changes',
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(true);
+    });
+  },
+);
 
 describe('Workspace Settings — Permissions', () => {
   it('sends only the changed policy and explains the effect', async () => {

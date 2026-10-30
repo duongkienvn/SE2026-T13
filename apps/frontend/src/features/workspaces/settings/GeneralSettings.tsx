@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { useParams } from 'react-router';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
@@ -6,10 +6,13 @@ import { TextAreaField } from '../../../components/TextAreaField';
 import { TextField } from '../../../components/TextField';
 import { UnsavedChangesGuard } from '../../../components/UnsavedChangesGuard';
 import { isApiError } from '../../../lib/api-client';
+import { useAuthSession } from '../../auth/auth-session-context';
+import { useAuth } from '../../auth/useAuth';
 import { WorkspaceAvatar } from '../components/WorkspaceIdentity';
 import { useWorkspacePage } from '../components/WorkspaceLayout';
 import { WorkspaceState } from '../components/WorkspaceState';
 import type { WorkspaceResponse } from '../response';
+import type { WorkspaceViewState } from '../types';
 import {
   WORKSPACE_ICONS,
   type WorkspaceIcon,
@@ -21,16 +24,30 @@ import { SettingsPanel } from './WorkspaceSettingsLayout';
 
 export function GeneralSettings() {
   const { workspaceId = '' } = useParams();
+  const { user } = useAuth();
+  const { generation } = useAuthSession();
   const workspace = useWorkspacePage();
   const detail = useWorkspaceDetail(workspaceId, workspace.state);
-  if (detail.state !== 'ready' || !detail.value)
-    return workspace.state === 'ready' ? (
-      <WorkspaceState
-        state={detail.state}
-        retry={() => void detail.refetch()}
-      />
-    ) : null;
-  return <GeneralForm key={workspaceId} workspace={detail.value} />;
+  const revoked =
+    detail.state === 'forbidden' ||
+    detail.state === 'not-found' ||
+    detail.value?.canManage === false;
+  return (
+    <GeneralForm
+      key={`${user?.id}:${generation}:${workspaceId}:${revoked}`}
+      workspaceId={workspaceId}
+      workspace={detail.value}
+      state={detail.state}
+      fallback={
+        workspace.state === 'ready' ? (
+          <WorkspaceState
+            state={detail.state}
+            retry={() => void detail.refetch()}
+          />
+        ) : null
+      }
+    />
+  );
 }
 
 function toInput(workspace: WorkspaceResponse): WorkspaceMetadataInput {
@@ -53,22 +70,34 @@ function saveError(error: unknown): string {
   return 'Could not save. Your edits are kept; check your connection and try again.';
 }
 
-function GeneralForm({ workspace }: { workspace: WorkspaceResponse }) {
-  const saved = toInput(workspace);
-  // Untouched fields follow the server; edits survive background refetches.
-  const [edits, setDraft] = useState<WorkspaceMetadataInput | null>(null);
-  const draft = edits ?? saved;
+function GeneralForm({
+  workspaceId,
+  workspace,
+  state,
+  fallback,
+}: {
+  workspaceId: string;
+  workspace?: WorkspaceResponse;
+  state: WorkspaceViewState;
+  fallback: ReactNode;
+}) {
+  // This session/Workspace owner stays mounted while protected reads revalidate.
+  const [edits, setEdits] = useState<Partial<WorkspaceMetadataInput>>({});
   const [nameError, setNameError] = useState<string>();
   const [notice, setNotice] = useState<string>();
-  const update = useUpdateWorkspace(workspace.id);
+  const update = useUpdateWorkspace(workspaceId);
+  if (state !== 'ready' || !workspace) return fallback;
+  const saved = toInput(workspace);
   const canEdit = workspace.canManage;
+  // Untouched fields always come from the latest authoritative response.
+  const draft = { ...saved, ...(canEdit ? edits : {}) };
   const name = draft.name.trim();
   const description = (draft.description ?? '').trim();
   const changes: Partial<WorkspaceMetadataInput> = {};
-  if (name !== saved.name) changes.name = name;
-  if (description !== (saved.description ?? ''))
+  if ('name' in edits && name !== saved.name) changes.name = name;
+  if ('description' in edits && description !== (saved.description ?? ''))
     changes.description = description || null;
-  if (draft.icon !== saved.icon) changes.icon = draft.icon;
+  if ('icon' in edits && draft.icon !== saved.icon) changes.icon = draft.icon;
   const dirty = canEdit && Object.keys(changes).length > 0;
 
   const submit = (event: FormEvent) => {
@@ -81,7 +110,16 @@ function GeneralForm({ workspace }: { workspace: WorkspaceResponse }) {
     setNotice(undefined);
     update.mutate(changes, {
       onSuccess: () => {
-        setDraft(null);
+        if (!update.isCurrent()) return;
+        // Do not discard newer input typed while this request was pending.
+        setEdits((current) =>
+          Object.fromEntries(
+            Object.entries(current).filter(
+              ([field, value]) =>
+                edits[field as keyof WorkspaceMetadataInput] !== value,
+            ),
+          ),
+        );
         setNotice('Workspace settings saved.');
       },
     });
@@ -115,7 +153,7 @@ function GeneralForm({ workspace }: { workspace: WorkspaceResponse }) {
           error={nameError}
           onChange={(event) => {
             setNameError(undefined);
-            setDraft({ ...draft, name: event.target.value });
+            setEdits({ ...edits, name: event.target.value });
           }}
         />
         <TextAreaField
@@ -127,7 +165,7 @@ function GeneralForm({ workspace }: { workspace: WorkspaceResponse }) {
           value={draft.description ?? ''}
           hint={canEdit ? 'Optional. Up to 2,000 characters.' : undefined}
           onChange={(event) =>
-            setDraft({ ...draft, description: event.target.value })
+            setEdits({ ...edits, description: event.target.value })
           }
         />
         <fieldset>
@@ -156,7 +194,7 @@ function GeneralForm({ workspace }: { workspace: WorkspaceResponse }) {
                     aria-label={label}
                     title={label}
                     disabled={!canEdit}
-                    onClick={() => setDraft({ ...draft, icon })}
+                    onClick={() => setEdits({ ...edits, icon })}
                     className={`grid size-11 place-items-center rounded-lg border text-sm font-semibold focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed ${selected ? 'border-primary bg-primary-soft text-primary' : 'border-line text-muted hover:text-ink disabled:hover:text-muted'}`}
                   >
                     {icon ? (
@@ -185,7 +223,7 @@ function GeneralForm({ workspace }: { workspace: WorkspaceResponse }) {
               variant="secondary"
               disabled={!dirty || update.isPending}
               onClick={() => {
-                setDraft(null);
+                setEdits({});
                 setNameError(undefined);
                 update.reset();
               }}

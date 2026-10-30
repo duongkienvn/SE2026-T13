@@ -1,11 +1,14 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { useParams } from 'react-router';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
 import { UnsavedChangesGuard } from '../../../components/UnsavedChangesGuard';
 import { isApiError } from '../../../lib/api-client';
+import { useAuthSession } from '../../auth/auth-session-context';
+import { useAuth } from '../../auth/useAuth';
 import { useWorkspacePage } from '../components/WorkspaceLayout';
 import { WorkspaceState } from '../components/WorkspaceState';
+import type { WorkspaceViewState } from '../types';
 import type { PolicyFields, WorkspacePolicy } from './api';
 import { useUpdateWorkspacePolicy, useWorkspacePolicy } from './hooks';
 import { SettingsPanel } from './WorkspaceSettingsLayout';
@@ -93,20 +96,28 @@ function saveError(error: unknown): string {
 
 export function PermissionsSettings() {
   const { workspaceId = '' } = useParams();
+  const { user } = useAuth();
+  const { generation } = useAuthSession();
   const workspace = useWorkspacePage();
   const policy = useWorkspacePolicy(workspaceId, workspace.state);
-  if (policy.state !== 'ready' || !policy.value)
-    return workspace.state === 'ready' ? (
-      <WorkspaceState
-        state={policy.state}
-        retry={() => void policy.refetch()}
-      />
-    ) : null;
+  const revoked =
+    policy.state === 'forbidden' ||
+    policy.state === 'not-found' ||
+    policy.value?.canManagePolicies === false;
   return (
     <PolicyForm
-      key={workspaceId}
+      key={`${user?.id}:${generation}:${workspaceId}:${revoked}`}
       workspaceId={workspaceId}
       policy={policy.value}
+      state={policy.state}
+      fallback={
+        workspace.state === 'ready' ? (
+          <WorkspaceState
+            state={policy.state}
+            retry={() => void policy.refetch()}
+          />
+        ) : null
+      }
     />
   );
 }
@@ -114,18 +125,24 @@ export function PermissionsSettings() {
 function PolicyForm({
   workspaceId,
   policy,
+  state,
+  fallback,
 }: {
   workspaceId: string;
-  policy: WorkspacePolicy;
+  policy?: WorkspacePolicy;
+  state: WorkspaceViewState;
+  fallback: ReactNode;
 }) {
-  const saved = fieldsOf(policy);
+  // Keep only local choices while authoritative reads are temporarily hidden.
   const [edits, setEdits] = useState<Partial<PolicyFields>>({});
   const [notice, setNotice] = useState<string>();
   const update = useUpdateWorkspacePolicy(workspaceId);
+  if (state !== 'ready' || !policy) return fallback;
+  const saved = fieldsOf(policy);
   const canEdit = policy.canManagePolicies;
   // Only fields that differ from the latest server values are sent.
   const changes = Object.fromEntries(
-    Object.entries(edits).filter(
+    Object.entries(canEdit ? edits : {}).filter(
       ([field, value]) => saved[field as keyof PolicyFields] !== value,
     ),
   ) as Partial<PolicyFields>;
@@ -138,6 +155,7 @@ function PolicyForm({
     setNotice(undefined);
     update.mutate(changes, {
       onSuccess: () => {
+        if (!update.isCurrent()) return;
         setEdits({});
         setNotice('Permissions saved.');
       },
