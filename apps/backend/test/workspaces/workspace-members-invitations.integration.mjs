@@ -8,6 +8,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { verifyMembers } from './workspace-members.lifecycle.mjs';
 import { verifyWorkspaceGuests } from './workspace-guests.integration.mjs';
 import { verifyGuestLifecycle } from './workspace-guests.lifecycle.mjs';
+import { verifyGuestRaces } from './workspace-guests.concurrency.mjs';
 import { verifyInvitations } from './workspace-invitations.lifecycle.mjs';
 import { verifyInvitationRaces } from './workspace-invitations.concurrency.mjs';
 import { verifyInvitationMigration } from './workspace-invitations.migration.mjs';
@@ -179,6 +180,7 @@ try {
   };
   await verifyMembers(context);
   await verifyGuestLifecycle(await verifyWorkspaceGuests(context));
+  await verifyGuestRaces(context);
   await verifyInvitations(context);
   await verifyInvitationRaces(context);
   await verifyQuotaContention(context);
