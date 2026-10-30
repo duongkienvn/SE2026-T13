@@ -1,0 +1,13 @@
+## behavioural API level only (MUTANT_SUITES=test/cards/cards.e2e-spec.ts)
+M2 KILLED — imported cards enter the ACTIVE state
+   1 failed, 9 passed, 10 total
+   killed by: POST /boards/:boardId/cards/import (VT-052) › TC10 keeps valid rows when other rows are invalid and appends them after existing cards
+M3 KILLED — import appends after the last ACTIVE card (archived cards ignored)
+   1 failed, 9 passed, 10 total
+   killed by: POST /boards/:boardId/cards/import (VT-052) › TC10 keeps valid rows when other rows are invalid and appends them after existing cards
+M3b SURVIVED — supplementary: drop the ACTIVE filter from the append lookup
+   10 passed, 10 total
+## full card suites
+M3b KILLED — supplementary: drop the ACTIVE filter from the append lookup
+   1 failed, 68 passed, 69 total
+   killed by: TC05 persists ACCEPTED rows as ACTIVE cards after the last active card and reports REJECTED rows

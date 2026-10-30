@@ -640,6 +640,29 @@ describe('Card HTTP API with real JWT, authorization, services and envelopes', (
       expect(h.events.publish).not.toHaveBeenCalled();
     });
 
+    it('TC13 appends after the last ACTIVE card even when an archived card sits later in the column', async () => {
+      const archivedId = 'a7ba7134-97ef-4c1b-a342-001a982a7721';
+      rows.set(
+        archivedId,
+        cardFixture({
+          id: archivedId,
+          title: 'Archived later',
+          position: '900.0000000000',
+          isArchived: true,
+          archivedAt: new Date('2026-10-20T00:00:00Z'),
+        }),
+      );
+      const response = await http()
+        .post(importPath)
+        .send({ columnId: ID.column, items: [{ title: 'After active' }] })
+        .expect(200);
+      expect(response.body.data.created[0].position).toBe('200.0000000000');
+      const restored = await http()
+        .post(`${base}/${archivedId}/restore`)
+        .expect(200);
+      expect(restored.body.data.position).toBe('300.0000000000');
+    });
+
     it('TC12 an outsider gets 404 even when every row is invalid (no validation oracle)', async () => {
       await http(OUTSIDER)
         .post(importPath)

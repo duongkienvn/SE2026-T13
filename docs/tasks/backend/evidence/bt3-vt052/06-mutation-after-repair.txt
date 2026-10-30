@@ -1,0 +1,56 @@
+## after adding TC13 — API level only
+M2 KILLED — imported cards enter the ACTIVE state
+   2 failed, 9 passed, 11 total
+   killed by: POST /boards/:boardId/cards/import (VT-052) › TC10 keeps valid rows when other rows are invalid and appends them after existing cards
+   killed by: POST /boards/:boardId/cards/import (VT-052) › TC13 appends after the last ACTIVE card even when an archived card sits later in the column
+M3 KILLED — import appends after the last ACTIVE card (archived cards ignored)
+   2 failed, 9 passed, 11 total
+   killed by: POST /boards/:boardId/cards/import (VT-052) › TC10 keeps valid rows when other rows are invalid and appends them after existing cards
+   killed by: POST /boards/:boardId/cards/import (VT-052) › TC13 appends after the last ACTIVE card even when an archived card sits later in the column
+M3b KILLED — supplementary: drop the ACTIVE filter from the append lookup
+   1 failed, 10 passed, 11 total
+   killed by: POST /boards/:boardId/cards/import (VT-052) › TC13 appends after the last ACTIVE card even when an archived card sits later in the column
+## all mutants, all card suites
+M1 KILLED — only valid rows are ACCEPTED
+   17 failed, 53 passed, 70 total
+   killed by: POST /boards/:boardId/cards/import (VT-052) › TC10 keeps valid rows when other rows are invalid and appends them after existing cards
+   killed by: POST /boards/:boardId/cards/import (VT-052) › TC13 appends after the last ACTIVE card even when an archived card sits later in the column
+   killed by: TC01 accepts valid rows, keeps their index and reuses CreateCardDto normalisation
+   killed by: TC02 a rejected row between valid rows does not displace or drop them
+   killed by: TC03 rejects null row with a field-level detail
+   killed by: TC03 rejects string row with a field-level detail
+   killed by: TC03 rejects array row with a field-level detail
+   killed by: TC03 rejects missing title with a field-level detail
+   killed by: TC03 rejects blank title after trim with a field-level detail
+   killed by: TC03 rejects title just above boundary (121) with a field-level detail
+   killed by: TC03 rejects description above boundary with a field-level detail
+   killed by: TC03 rejects deadline without timezone with a field-level detail
+   killed by: TC03 rejects unknown field (whitelist) with a field-level detail
+   killed by: TC05 persists ACCEPTED rows as ACTIVE cards after the last active card and reports REJECTED rows
+   killed by: TC06 all rows REJECTED: still authorises and checks the column, writes and publishes nothing
+   killed by: TC08 failure path: a write error rolls the batch back (ACCEPTED -> ROLLED_BACK) and publishes nothing
+   killed by: TC09 rebalances the column once when appending overflows NUMERIC(20,10)
+M2 KILLED — imported cards enter the ACTIVE state
+   3 failed, 67 passed, 70 total
+   killed by: POST /boards/:boardId/cards/import (VT-052) › TC10 keeps valid rows when other rows are invalid and appends them after existing cards
+   killed by: POST /boards/:boardId/cards/import (VT-052) › TC13 appends after the last ACTIVE card even when an archived card sits later in the column
+   killed by: TC05 persists ACCEPTED rows as ACTIVE cards after the last active card and reports REJECTED rows
+M3 KILLED — import appends after the last ACTIVE card (archived cards ignored)
+   3 failed, 67 passed, 70 total
+   killed by: POST /boards/:boardId/cards/import (VT-052) › TC10 keeps valid rows when other rows are invalid and appends them after existing cards
+   killed by: POST /boards/:boardId/cards/import (VT-052) › TC13 appends after the last ACTIVE card even when an archived card sits later in the column
+   killed by: TC05 persists ACCEPTED rows as ACTIVE cards after the last active card and reports REJECTED rows
+M3b KILLED — supplementary: drop the ACTIVE filter from the append lookup
+   2 failed, 68 passed, 70 total
+   killed by: POST /boards/:boardId/cards/import (VT-052) › TC13 appends after the last ACTIVE card even when an archived card sits later in the column
+   killed by: TC05 persists ACCEPTED rows as ACTIVE cards after the last active card and reports REJECTED rows
+M4 KILLED — archived boards are read-only (shared mutate guard, old behaviour)
+   5 failed, 65 passed, 70 total
+   killed by: allows archived-board reads but denies all mutations
+   killed by: POST /boards/:boardId/cards/import (VT-052) › TC11 rejects the whole request only for request-level errors, before any write
+   killed by: TC06 all rows REJECTED: still authorises and checks the column, writes and publishes nothing
+   killed by: creates at the end with server-controlled identity and nullable defaults
+   killed by: assigns only current board members using the actor identity under the board lock
+M5 KILLED — overflowing append triggers one rebalance
+   1 failed, 69 passed, 70 total
+   killed by: TC09 rebalances the column once when appending overflows NUMERIC(20,10)
