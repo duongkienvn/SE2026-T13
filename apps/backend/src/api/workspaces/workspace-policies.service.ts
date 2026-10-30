@@ -9,6 +9,7 @@ import { canCreateBoard } from './workspace-policy';
 import { UpdateWorkspacePolicyDto } from './dto/workspace-policy.dto';
 import { ApplicationException } from '../../exceptions/application.exception';
 import { BoardRoomCoordinator } from '../../realtime/board-room-coordinator.service';
+import { recordWorkspaceActivity } from './workspace-activity-writer';
 
 @Injectable()
 export class WorkspacePoliciesService {
@@ -73,6 +74,12 @@ export class WorkspacePoliciesService {
           workspace.boardVisibilityChangesEnabled =
             input.boardVisibilityChangesEnabled;
         await manager.getRepository(Workspace).save(workspace);
+        if (changed)
+          await recordWorkspaceActivity(manager, {
+            workspaceId,
+            actorId: actor,
+            eventType: 'POLICY_UPDATED',
+          });
         const recipients: { userId: string }[] = changed
           ? await manager.query(
               `SELECT user_id AS "userId" FROM workspace_members WHERE workspace_id = $1

@@ -19,6 +19,7 @@ import { ApplicationException } from '../../exceptions/application.exception';
 import { Board } from '../boards/entities/board.entity';
 import { BoardAuthorizationService } from '../board-members/board-authorization.service';
 import { BoardRoomCoordinator } from '../../realtime/board-room-coordinator.service';
+import { recordWorkspaceActivity } from './workspace-activity-writer';
 
 @Injectable()
 export class WorkspaceMembersService {
@@ -98,6 +99,11 @@ export class WorkspaceMembersService {
           );
         await this.protectLastAdmin(manager, target);
         await repository.update(target.id, { role });
+        await recordWorkspaceActivity(manager, {
+          workspaceId,
+          actorId: actor,
+          eventType: 'MEMBER_ROLE_CHANGED',
+        });
         target.role = role;
       }
       return toWorkspaceMemberDto(target);
@@ -120,7 +126,12 @@ export class WorkspaceMembersService {
             ErrorCode.CONFLICT,
             'Use Leave Workspace to remove yourself',
           );
-        await this.deleteMember(manager, workspaceId, userId);
+        if (await this.deleteMember(manager, workspaceId, userId))
+          await recordWorkspaceActivity(manager, {
+            workspaceId,
+            actorId: actor,
+            eventType: 'MEMBER_REMOVED',
+          });
       }),
     );
   }
@@ -135,7 +146,12 @@ export class WorkspaceMembersService {
           .findOneBy({ workspaceId, userId: actor });
         if (!member) return;
         requireTeam(workspace);
-        await this.deleteMember(manager, workspaceId, actor);
+        if (await this.deleteMember(manager, workspaceId, actor))
+          await recordWorkspaceActivity(manager, {
+            workspaceId,
+            actorId: actor,
+            eventType: 'MEMBER_LEFT',
+          });
       }),
     );
   }
@@ -172,7 +188,7 @@ export class WorkspaceMembersService {
   ) {
     const repository = manager.getRepository(WorkspaceMember);
     const member = await repository.findOneBy({ workspaceId, userId });
-    if (!member) return;
+    if (!member) return false;
     await this.protectLastAdmin(manager, member);
     const user = await manager
       .getRepository(User)
@@ -184,6 +200,7 @@ export class WorkspaceMembersService {
       [workspaceId, user.email, userId],
     );
     await repository.delete(member.id);
+    return true;
   }
 
   private async protectLastAdmin(
