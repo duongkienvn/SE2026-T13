@@ -24,6 +24,7 @@ import { paginate } from '../../common/dto/paginated-response';
 import { paginateQueryBuilder } from '../../utils/offset-pagination';
 import { ErrorCode } from '../../common/dto/api-error';
 import { ApplicationException } from '../../exceptions/application.exception';
+import { recordWorkspaceActivity } from './workspace-activity-writer';
 
 @Injectable()
 export class WorkspaceInvitationsService {
@@ -101,10 +102,16 @@ export class WorkspaceInvitationsService {
           ErrorCode.CONFLICT,
           'Declined invitation cannot be revoked',
         );
-      if (!invitation.revokedAt)
+      if (!invitation.revokedAt) {
         await repository.update(invitation.id, {
           revokedAt: await invitationTime(manager),
         });
+        await recordWorkspaceActivity(manager, {
+          workspaceId,
+          actorId: actor,
+          eventType: 'INVITATION_REVOKED',
+        });
+      }
     });
   }
 
@@ -183,6 +190,11 @@ export class WorkspaceInvitationsService {
           )
           .execute();
         if (declined.affected !== 1) throw this.invalid();
+        await recordWorkspaceActivity(manager, {
+          workspaceId: workspace.id,
+          actorId: actor,
+          eventType: 'INVITATION_DECLINED',
+        });
         return;
       }
       const members = manager.getRepository(WorkspaceMember);
@@ -190,6 +202,7 @@ export class WorkspaceInvitationsService {
         workspaceId: workspace.id,
         userId: actor,
       });
+      const joined = !member;
       if (!member)
         member = await members.save(
           members.create({
@@ -208,6 +221,12 @@ export class WorkspaceInvitationsService {
         )
         .execute();
       if (consumed.affected !== 1) throw this.invalid();
+      if (joined)
+        await recordWorkspaceActivity(manager, {
+          workspaceId: workspace.id,
+          actorId: actor,
+          eventType: 'MEMBER_JOINED',
+        });
       member.user = user;
       return toWorkspaceMemberDto(member);
     });

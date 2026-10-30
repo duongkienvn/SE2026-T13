@@ -21,6 +21,7 @@ import {
 } from './workspace-invitation-mailer';
 import { ErrorCode } from '../../common/dto/api-error';
 import { ApplicationException } from '../../exceptions/application.exception';
+import { recordWorkspaceActivity } from './workspace-activity-writer';
 
 export function invitationHash(proof: string): string {
   return createHash('sha256').update(proof).digest('hex');
@@ -130,6 +131,11 @@ export class WorkspaceInvitationIssuanceService {
           expiresAt: invitation.expiresAt,
           idempotencyKey: `workspace-invitation/${invitation.id}`,
         };
+        await recordWorkspaceActivity(manager, {
+          workspaceId,
+          actorId: actor,
+          eventType: 'INVITATION_REQUESTED',
+        });
         return { invitation, payload };
       },
     );
