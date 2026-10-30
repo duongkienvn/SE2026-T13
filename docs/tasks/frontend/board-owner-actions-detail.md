@@ -14,7 +14,7 @@ This records local implementation and verification on 2026-10-30, not deployment
   **Move to workspace**. Existing Edit, Archive, Restore and Archived cards
   actions and the header layout remain in place.
 - Both entry points reuse `BoardVisibilityDialog`, `MoveBoardDialog` and their
-  `useOwnerCommand` hook. `BoardOwnerActionModel` requires just the Board identity,
+  page-owned `useBoardOwnerActions` hook. `BoardOwnerActionModel` requires just the Board identity,
   visibility, archive state, explicit Board role, source Workspace ID and effective
   management flag. No new client, mutation endpoint, dependency or backend change.
 - Effective visibility authority comes from
@@ -52,8 +52,10 @@ closes the dialog and Board Detail announces confirmation only after REST succes
 disable resubmission until reopening and refresh authority; 404 purges Board
 access. Messages do not display private backend error details. Role/archive
 changes and access loss unmount unauthorized dialogs. Session generation,
-`boardAccessVersion` and mounted checks suppress stale completion effects after
-logout, replacement login, realtime revocation or leaving the dialog.
+explicit Board grant versions, route identity and parent-mounted checks suppress
+stale completion effects after logout, replacement login, realtime revocation or
+leaving the page. General access resynchronization preserves the pending command
+but hides protected dialogs until their Board authority is verified again.
 
 Settled commands refresh only this Board's detail subtree (including policy),
 Board lists and source/destination Workspace resource prefixes (including Boards,
@@ -137,5 +139,66 @@ and APIs. This task does not rewrite that historical document or expand scope.
 
 The target branch already existed, clean and exactly at freshly fetched
 `origin/main` on entry. No unmerged feature changes were carried into this work.
-All implementation, tests and evidence belong to the single requested local
-commit; no push, PR, merge or deployment is included.
+The initial implementation, tests and evidence belong to its single requested local
+commit. The PR repair below adds one further local commit; neither operation
+includes a push, PR creation, merge or deployment.
+
+## PR #143 P2 repair — access notification before REST completion
+
+The [Codex review finding](https://github.com/duongkienvn/SE2026-T13/pull/143#discussion_r4422128496)
+is valid. Visibility/Move notify the acting owner through `access:changed` before
+returning REST success. Its handler clears protected snapshots and advances the
+general access version. Previously this unmounted the dialog-owned mutation;
+mounted/version guards discarded its completion, while retained dialog selection
+could reopen the dialog with a new, idle mutation.
+
+`useBoardOwnerActions` now owns selection and the shared mutation in
+`BoardDetailPage` / `WorkspaceBoardsContent`, above the conditional dialogs and
+Board cards. Clearing snapshots still hides protected content immediately.
+The mutation and pending state survive that temporary unmount, including when
+a moved Board disappears from its source Workspace list. Confirmation clears the
+same parent selection before refreshed dialogs can reopen. The dialogs remain
+shared forms; no endpoints, backend authorization or styling changed.
+
+`boardGrantVersion` exposes the existing per-Board grant counter separately from
+the general resync counter. Existing `boardAccessVersion` consumers and realtime
+snapshot clearing retain their original strict behavior. Completion still rejects
+explicit revocation/role transitions and old sessions. If a general resync occurred
+or the current Board snapshot is absent, a fresh authenticated `GET /boards/:id`
+must confirm active OWNER management authority before completion. Another resync
+during that read requires another fresh check. A denied read purges Board access;
+late mutation DTOs never repopulate protected caches. Route/selection identity and
+parent lifetime checks prevent an old request from closing another Board's dialog.
+Relevant source/destination invalidations still run after accepted completion.
+
+Focused regression coverage uses the actual `RealtimeProvider` event handler:
+
+- Visibility and Move through both entry points, with `access:changed` before REST
+  and with the Board/list reload finishing either before or after the REST response.
+- Pending state and duplicate-submit prevention across modal/card remounts; a
+  moved Board disappearing from the source list; completion and query invalidation.
+- Genuine Board revocation, role change, denied revalidation, session loss,
+  repeated resync during authority verification and navigation to another Board.
+- Existing account-switch, archived/role transitions and stale-response tests;
+  general snapshot clearing advances access versions without changing grant versions.
+
+Repair verification (2026-10-30):
+
+- Pass: `pnpm --filter @kanban/frontend test src/features/boards/pages/BoardDetailPage.test.tsx src/features/workspaces/settings/WorkspaceSettings.test.tsx src/features/workspaces/boards/WorkspaceBoards.test.tsx src/features/boards/access-version.test.tsx src/features/realtime/access-revocation.test.ts --maxWorkers=2`
+  — **139/139** tests across five relevant files.
+- Pass after the final route/grant refinements:
+  `pnpm --filter @kanban/frontend test src/features/boards/pages/BoardDetailPage.test.tsx src/features/workspaces/settings/WorkspaceSettings.test.tsx src/features/realtime/access-revocation.test.ts --testNamePattern='access:changed|different Board route|clears stale protected caches' --maxWorkers=2`
+  — **20/20** selected tests, 88 intentionally filtered out. These incremental
+  runs cover 141 distinct passing cases; 17 are newly added race/lifecycle cases.
+- Pass: scoped ESLint for changed TS/TSX, `pnpm exec tsc -b apps/frontend`,
+  frontend TypeScript/Vite build, modified-file Prettier and `git diff --check`.
+  Build retains the previously reported nonfatal environment and size warnings.
+- Chrome DevTools: the existing isolated QA entry now accepts
+  `scenario=resync-race`, invoking the real snapshot-refresh function before
+  delaying mutation responses by 500ms. Inspected pending preservation, no early
+  success, eventual completion/closed dialog and unchanged Board link on mobile
+  Dark (375×812); desktop Light (1280×800) confirmed visibility completion and no
+  horizontal overflow. No application console errors/warnings. Existing layout
+  evidence above remains applicable; no additional layout screenshots needed.
+- Not run: full frontend/monorepo, backend/database or unrelated suites; live
+  backend/transport QA and deployment. All repair fixtures remain DEV-only.

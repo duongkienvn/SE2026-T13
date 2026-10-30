@@ -3,13 +3,20 @@ import type { QueryClient } from '@tanstack/react-query';
 const versions = new WeakMap<QueryClient, Map<string, number>>();
 const sessionVersions = new WeakMap<QueryClient, number>();
 
+/** Explicit Board grant changes, independent of a general access recheck. */
+export function boardGrantVersion(
+  client: QueryClient,
+  boardId: string,
+): number {
+  return versions.get(client)?.get(boardId.toLowerCase()) ?? 0;
+}
+
 export function boardAccessVersion(
   client: QueryClient,
   boardId: string,
 ): number {
   return (
-    (versions.get(client)?.get(boardId.toLowerCase()) ?? 0) +
-    (sessionVersions.get(client) ?? 0)
+    boardGrantVersion(client, boardId) + (sessionVersions.get(client) ?? 0)
   );
 }
 

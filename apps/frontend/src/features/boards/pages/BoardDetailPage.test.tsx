@@ -671,6 +671,123 @@ describe('Board Detail OWNER visibility and move', () => {
     },
   );
 
+  it.each([
+    ['visibility', true],
+    ['visibility', false],
+    ['move', true],
+    ['move', false],
+  ] as const)(
+    'completes %s after access:changed before REST (reload first: %s)',
+    async (action, reloadFirst) => {
+      const board = owner();
+      const saved = {
+        ...board,
+        visibility:
+          action === 'visibility'
+            ? ('WORKSPACE_VISIBLE' as const)
+            : ('PRIVATE' as const),
+        workspaceId: action === 'move' ? destination.id : board.workspaceId,
+      };
+      const pending = deferred<MockResponse>();
+      const recheck = deferred<MockResponse>();
+      let resync = false;
+      const method = action === 'visibility' ? 'PATCH' : 'POST';
+      const { calls } = setup(board, {
+        [`GET /boards/${board.id}`]: () =>
+          resync ? recheck.promise : ok(board),
+        [`${method} /boards/${board.id}/${action === 'visibility' ? 'visibility' : 'move-workspace'}`]:
+          () => pending.promise,
+      });
+      const dialog = await openAction(
+        board,
+        action === 'visibility' ? 'Change visibility' : 'Move to workspace',
+      );
+      if (action === 'visibility') await chooseWorkspace(dialog);
+      else await chooseDestination(dialog);
+      fireEvent.submit(dialog.querySelector('form')!);
+      const pendingLabel = action === 'visibility' ? 'Saving…' : 'Moving…';
+      await within(dialog).findByRole('button', { name: pendingLabel });
+      act(() => {
+        resync = true;
+        createdSockets.at(-1)!.socket.push('access:changed', {});
+      });
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      if (reloadFirst) {
+        await act(async () => recheck.resolve(ok(saved)));
+        const reopened = await screen.findByRole('dialog');
+        expect(
+          within(reopened).getByRole('button', { name: pendingLabel }),
+        ).toBeTruthy();
+        fireEvent.submit(reopened.querySelector('form')!);
+        fireEvent.keyDown(document, { key: 'Escape' });
+        expect(screen.getByRole('dialog')).toBeTruthy();
+      }
+      await act(async () => pending.resolve(ok(saved)));
+      if (!reloadFirst) {
+        expect(
+          screen.queryByText(/Board visibility updated\.|^Board moved\./),
+        ).toBeNull();
+        await act(async () => recheck.resolve(ok(saved)));
+      }
+      await screen.findByText(
+        action === 'visibility'
+          ? 'Board visibility updated.'
+          : /^Board moved\./,
+      );
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      refocusWindow();
+      await screen.findByRole('heading', { name: board.name });
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(calls.filter((c) => c.method === method)).toHaveLength(1);
+    },
+  );
+
+  it.each(['revoked', 'role', 'session', 'denied-recheck'] as const)(
+    'rejects late completion after access:changed followed by %s',
+    async (transition) => {
+      const board = owner();
+      const pending = deferred<MockResponse>();
+      let deny = false;
+      setup(board, {
+        [`GET /boards/${board.id}`]: () =>
+          deny ? fail(403, 'FORBIDDEN') : ok(board),
+        [`POST /boards/${board.id}/move-workspace`]: () => pending.promise,
+      });
+      const dialog = await openAction(board, 'Move to workspace');
+      await chooseDestination(dialog);
+      fireEvent.submit(dialog.querySelector('form')!);
+      await within(dialog).findByRole('button', { name: 'Moving…' });
+      act(() => createdSockets.at(-1)!.socket.push('access:changed', {}));
+      await screen.findByRole('heading', { name: board.name });
+      act(() => {
+        if (transition === 'revoked')
+          createdSockets
+            .at(-1)!
+            .socket.push('board:access-revoked', { boardId: board.id });
+        if (transition === 'role')
+          createdSockets.at(-1)!.socket.push('member:role-changed', {
+            boardId: board.id,
+            userId: testUser.id,
+            role: 'MEMBER',
+          });
+        if (transition === 'session') {
+          localStorage.removeItem('kanban.session');
+          window.dispatchEvent(
+            new StorageEvent('storage', { key: 'kanban.session' }),
+          );
+        }
+        if (transition === 'denied-recheck') deny = true;
+      });
+      await act(async () => pending.resolve(ok(board)));
+      await waitFor(() =>
+        expect(screen.queryByRole('button', { name: 'Moving…' })).toBeNull(),
+      );
+      expect(screen.queryByText(/^Board moved\./)).toBeNull();
+      if (transition === 'revoked' || transition === 'denied-recheck')
+        await screen.findByRole('heading', { name: 'Board not found' });
+    },
+  );
+
   it.each(['role', 'archive', 'access'] as const)(
     'closes owner dialogs after a refreshed %s change and ignores late success',
     async (change) => {
@@ -735,6 +852,61 @@ describe('Board Detail OWNER visibility and move', () => {
         expect(router.state.location.pathname).toBe('/login');
     },
   );
+
+  it('rechecks authority again if access:changed interrupts the completion read', async () => {
+    const board = owner();
+    const pending = deferred<MockResponse>();
+    const firstCheck = deferred<MockResponse>();
+    let checks = 0;
+    let resync = false;
+    const { calls } = setup(board, {
+      [`GET /boards/${board.id}`]: () => {
+        if (!resync) return ok(board);
+        return ++checks <= 2 ? firstCheck.promise : fail(403, 'FORBIDDEN');
+      },
+      [`POST /boards/${board.id}/move-workspace`]: () => pending.promise,
+    });
+    const dialog = await openAction(board, 'Move to workspace');
+    await chooseDestination(dialog);
+    fireEvent.submit(dialog.querySelector('form')!);
+    await within(dialog).findByRole('button', { name: 'Moving…' });
+    act(() => {
+      resync = true;
+      createdSockets.at(-1)!.socket.push('access:changed', {});
+    });
+    await waitFor(() => expect(checks).toBe(1));
+    await act(async () => pending.resolve(ok(board)));
+    await waitFor(() => expect(checks).toBe(2));
+    act(() => createdSockets.at(-1)!.socket.push('access:changed', {}));
+    await act(async () => firstCheck.resolve(ok(board)));
+    await screen.findByRole('heading', { name: 'Board not found' });
+    expect(calls.filter((c) => c.method === 'POST')).toHaveLength(1);
+    expect(screen.queryByText(/^Board moved\./)).toBeNull();
+  });
+
+  it('does not deliver old completion into a different Board route or close its dialog', async () => {
+    const board = owner();
+    const other = owner({ name: 'Other board' });
+    const pending = deferred<MockResponse>();
+    const { router } = setup(board, {
+      [`POST /boards/${board.id}/move-workspace`]: () => pending.promise,
+      [`GET /boards/${other.id}`]: ok(other),
+      [`GET /boards/${other.id}/columns?page=1&limit=100`]: okPage([]),
+      [`GET /boards/${other.id}/cards?page=1&limit=100`]: okPage([]),
+      [`GET /boards/${other.id}/members?page=1&limit=100`]: okPage([]),
+      [`GET /boards/${other.id}/policy-capabilities`]: policy(),
+    });
+    const dialog = await openAction(board, 'Move to workspace');
+    await chooseDestination(dialog);
+    fireEvent.submit(dialog.querySelector('form')!);
+    await within(dialog).findByRole('button', { name: 'Moving…' });
+    await act(() => router.navigate(`/boards/${other.id}`));
+    const next = await openAction(other, 'Change visibility');
+    await chooseWorkspace(next);
+    await act(async () => pending.resolve(ok(board)));
+    expect(screen.getByRole('dialog')).toBe(next);
+    expect(screen.queryByText(/^Board moved\./)).toBeNull();
+  });
 
   it('ends an expired session on 401 without a success notice', async () => {
     const board = owner();

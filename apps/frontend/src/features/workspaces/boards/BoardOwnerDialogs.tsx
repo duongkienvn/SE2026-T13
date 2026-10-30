@@ -1,84 +1,18 @@
 import type { BoardVisibility } from '@kanban/shared';
-import { useEffect, useRef, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
 import { Dialog } from '../../../components/Dialog';
-import { ApiError, isApiError } from '../../../lib/api-client';
-import { useAuth } from '../../auth/useAuth';
-import { useAuthSession } from '../../auth/auth-session-context';
+import { isApiError } from '../../../lib/api-client';
 import { useBoardPolicyCapabilities } from '../../board-members/hooks';
-import { boardKeys } from '../../boards/query-keys';
-import { boardAccessVersion } from '../../boards/access-version';
-import { revokeBoardAccess } from '../../boards/revoke-board-access';
 import { useWorkspaceDirectory } from '../hooks';
-import { workspaceKeys } from '../query-keys';
-import { changeBoardVisibility, moveBoardToWorkspace } from '../settings/api';
 import { canUseBoardOwnerActions, type BoardOwnerActionModel } from './types';
 
-/** Board OWNER commands; success only after the server confirms. */
-function useOwnerCommand<Input>(
-  board: BoardOwnerActionModel,
-  run: (token: string, input: Input) => Promise<unknown>,
-  onSaved?: () => void,
-  destinationId?: (input: Input) => string,
-) {
-  const { user, runAuthorized } = useAuth();
-  const scope = useAuthSession();
-  const client = useQueryClient();
-  const latest = useRef(board);
-  latest.current = board;
-  const mounted = useRef(true);
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
-  const current = (version: number | undefined) =>
-    scope.isCurrent() && version === boardAccessVersion(client, board.id);
-  return useMutation({
-    retry: false,
-    mutationFn: (input: Input) => {
-      if (!canUseBoardOwnerActions(latest.current) || !scope.isCurrent())
-        throw new ApiError(403, 'FORBIDDEN', 'Board action unavailable.');
-      return runAuthorized((token) => run(token, input));
-    },
-    onMutate: () => boardAccessVersion(client, board.id),
-    onSuccess: (_data, _input, version) => {
-      if (
-        current(version) &&
-        mounted.current &&
-        canUseBoardOwnerActions(latest.current) &&
-        latest.current.workspaceId === board.workspaceId
-      )
-        onSaved?.();
-    },
-    onSettled: (_data, error, input, version) => {
-      if (!current(version)) return;
-      if (isApiError(error) && error.status === 404) {
-        revokeBoardAccess(client, board.id);
-        return;
-      }
-      // Only this Board and the source/destination Workspace resources.
-      for (const id of new Set([board.workspaceId, destinationId?.(input)])) {
-        if (id)
-          void client.invalidateQueries({
-            queryKey: workspaceKeys.resource(
-              user?.id ?? '',
-              scope.generation,
-              id,
-            ),
-          });
-      }
-      if (destinationId)
-        void client.invalidateQueries({
-          queryKey: workspaceKeys.list(user?.id ?? '', scope.generation),
-        });
-      void client.invalidateQueries({ queryKey: boardKeys.detail(board.id) });
-      void client.invalidateQueries({ queryKey: boardKeys.lists() });
-    },
-  });
+export interface OwnerCommandState {
+  isPending: boolean;
+  isError: boolean;
+  error: unknown;
+  submit: (value: string) => void;
 }
 
 function commandError(error: unknown, action: string): string {
@@ -103,25 +37,16 @@ function requiresRecheck(error: unknown) {
 export function BoardVisibilityDialog({
   board,
   onClose,
-  onSaved,
+  command: change,
 }: {
   board: BoardOwnerActionModel;
   onClose: () => void;
-  onSaved?: () => void;
+  command: OwnerCommandState;
 }) {
   const [value, setValue] = useState<BoardVisibility>(board.visibility);
   const policy = useBoardPolicyCapabilities(
     board.id,
     canUseBoardOwnerActions(board),
-  );
-  const change = useOwnerCommand(
-    board,
-    (token, visibility: BoardVisibility) =>
-      changeBoardVisibility(token, board.id, visibility),
-    () => {
-      onSaved?.();
-      onClose();
-    },
   );
   const allowed =
     canUseBoardOwnerActions(board) &&
@@ -147,7 +72,7 @@ export function BoardVisibilityDialog({
           event.preventDefault();
           if (!allowed || value === board.visibility || change.isPending)
             return;
-          change.mutate(value);
+          change.submit(value);
         }}
       >
         {policy.isError && (
@@ -242,11 +167,11 @@ export function BoardVisibilityDialog({
 export function MoveBoardDialog({
   board,
   onClose,
-  onSaved,
+  command: move,
 }: {
   board: BoardOwnerActionModel;
   onClose: () => void;
-  onSaved?: () => void;
+  command: OwnerCommandState;
 }) {
   const directory = useWorkspaceDirectory();
   // Only joined Workspaces that let this account create Boards.
@@ -254,16 +179,6 @@ export function MoveBoardDialog({
     (item) => item.id !== board.workspaceId && item.canCreateBoards,
   );
   const [target, setTarget] = useState('');
-  const move = useOwnerCommand(
-    board,
-    (token, destination: string) =>
-      moveBoardToWorkspace(token, board.id, destination),
-    () => {
-      onSaved?.();
-      onClose();
-    },
-    (destination) => destination,
-  );
   const allowed =
     canUseBoardOwnerActions(board) &&
     directory.state === 'ready' &&
@@ -284,7 +199,7 @@ export function MoveBoardDialog({
         onSubmit={(event) => {
           event.preventDefault();
           if (!allowed || move.isPending) return;
-          move.mutate(target);
+          move.submit(target);
         }}
       >
         {move.isError && (

@@ -11,10 +11,20 @@ import { AuthSessionContext } from '../src/features/auth/auth-session-context';
 import { BoardDetailPage } from '../src/features/boards/pages/BoardDetailPage';
 import type { Board } from '../src/features/boards/types';
 import { env } from '../src/lib/env';
+import { refreshAccessSnapshots } from '../src/features/realtime/access-revocation';
 import '../src/style.css';
 
 const params = new URLSearchParams(location.search);
 const scenario = params.get('scenario') ?? 'guest-owner';
+const client = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+async function accessChangeBeforeResponse() {
+  if (scenario === 'resync-race') {
+    refreshAccessSnapshots(client);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+}
 document.documentElement.dataset.theme =
   params.get('theme') === 'dark' ? 'dark' : 'light';
 const board: Board = {
@@ -98,6 +108,7 @@ window.fetch = async (input, init) => {
     });
   if (path === `/boards/${board.id}/visibility` && init?.method === 'PATCH') {
     board.visibility = JSON.parse(String(init.body)).visibility;
+    await accessChangeBeforeResponse();
     return response(board);
   }
   if (
@@ -106,6 +117,7 @@ window.fetch = async (input, init) => {
   ) {
     board.workspaceId = JSON.parse(String(init.body)).destinationWorkspaceId;
     board.visibility = 'PRIVATE';
+    await accessChangeBeforeResponse();
     return response(board);
   }
   if (path === `/boards/${board.id}`) return response(board);
@@ -141,11 +153,7 @@ const router = createMemoryRouter(
 );
 if (import.meta.env.DEV)
   createRoot(document.getElementById('root')!).render(
-    <QueryClientProvider
-      client={
-        new QueryClient({ defaultOptions: { queries: { retry: false } } })
-      }
-    >
+    <QueryClientProvider client={client}>
       <AuthSessionContext.Provider
         value={{ generation: 0, isCurrent: () => true }}
       >
