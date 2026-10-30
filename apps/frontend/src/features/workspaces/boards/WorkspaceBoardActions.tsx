@@ -113,6 +113,7 @@ export function WorkspaceBoardActions({
   });
   // Explicit Board OWNER only, never inferred from Workspace ADMIN.
   const ownsActive = board.currentUserRole === 'OWNER' && !board.isArchived;
+  const ownerBoard = { ...board, workspaceId, canManageBoard: ownsActive };
   if (!allowed && !ownsActive) return null;
   return (
     <>
@@ -147,15 +148,14 @@ export function WorkspaceBoardActions({
             : []),
         ]}
       />
-      {owner === 'visibility' && (
-        <BoardVisibilityDialog board={board} onClose={() => setOwner(null)} />
-      )}
-      {owner === 'move' && (
-        <MoveBoardDialog
-          board={board}
-          workspaceId={workspaceId}
+      {ownsActive && owner === 'visibility' && (
+        <BoardVisibilityDialog
+          board={ownerBoard}
           onClose={() => setOwner(null)}
         />
+      )}
+      {ownsActive && owner === 'move' && (
+        <MoveBoardDialog board={ownerBoard} onClose={() => setOwner(null)} />
       )}
       <ConfirmDialog
         open={open}

@@ -9,7 +9,7 @@ import {
 } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { flushSync } from 'react-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { routes } from '../../../app/routes';
 import {
   fail,
@@ -31,6 +31,7 @@ import { RealtimeProvider } from '../../realtime/RealtimeProvider';
 import type { WorkspaceResponse } from '../response';
 import { workspaceKeys } from '../query-keys';
 import type { WorkspacePolicy } from './api';
+import { boardKeys } from '../../boards/query-keys';
 
 const admin: WorkspaceResponse = {
   ...workspaceResponse,
@@ -780,10 +781,11 @@ describe('Board OWNER visibility and move', () => {
   });
 
   it('moves only to workspaces that allow new boards', async () => {
-    const { calls } = mount(`${base}/boards`, {
+    const { calls, client } = mount(`${base}/boards`, {
       [boardsPath]: workspacePage([board]),
       [`POST /boards/${board.id}/move-workspace`]: ok(board),
     });
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
     await openMenu();
     fireEvent.click(screen.getByRole('button', { name: 'Move to workspace' }));
     const dialog = await screen.findByRole('dialog', { name: 'Move board' });
@@ -799,6 +801,18 @@ describe('Board OWNER visibility and move', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(calls.find((call) => call.method === 'POST')?.body).toEqual({
       destinationWorkspaceId: other.id,
+    });
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: boardKeys.detail(board.id),
+    });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: boardKeys.lists() });
+    for (const workspaceId of [id, other.id])
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: workspaceKeys.resource(testUser.id, 0, workspaceId),
+      });
+    expect(invalidate).not.toHaveBeenCalledWith({ queryKey: boardKeys.all });
+    expect(invalidate).not.toHaveBeenCalledWith({
+      queryKey: workspaceKeys.session(testUser.id, 0),
     });
   });
 

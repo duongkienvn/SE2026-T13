@@ -1,5 +1,5 @@
 import type { BoardVisibility } from '@kanban/shared';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
@@ -9,36 +9,74 @@ import { useAuth } from '../../auth/useAuth';
 import { useAuthSession } from '../../auth/auth-session-context';
 import { useBoardPolicyCapabilities } from '../../board-members/hooks';
 import { boardKeys } from '../../boards/query-keys';
+import { boardAccessVersion } from '../../boards/access-version';
 import { revokeBoardAccess } from '../../boards/revoke-board-access';
 import { useWorkspaceDirectory } from '../hooks';
 import { workspaceKeys } from '../query-keys';
 import { changeBoardVisibility, moveBoardToWorkspace } from '../settings/api';
-import type { WorkspaceBoardSummary } from './types';
+import { canUseBoardOwnerActions, type BoardOwnerActionModel } from './types';
 
 /** Board OWNER commands; success only after the server confirms. */
 function useOwnerCommand<Input>(
-  board: WorkspaceBoardSummary,
+  board: BoardOwnerActionModel,
   run: (token: string, input: Input) => Promise<unknown>,
+  onSaved?: () => void,
+  destinationId?: (input: Input) => string,
 ) {
   const { user, runAuthorized } = useAuth();
   const scope = useAuthSession();
   const client = useQueryClient();
+  const latest = useRef(board);
+  latest.current = board;
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const current = (version: number | undefined) =>
+    scope.isCurrent() && version === boardAccessVersion(client, board.id);
   return useMutation({
     retry: false,
     mutationFn: (input: Input) => {
-      if (board.currentUserRole !== 'OWNER' || !scope.isCurrent())
+      if (!canUseBoardOwnerActions(latest.current) || !scope.isCurrent())
         throw new ApiError(403, 'FORBIDDEN', 'Board action unavailable.');
       return runAuthorized((token) => run(token, input));
     },
-    onSettled: (_data, error) => {
-      if (!scope.isCurrent()) return;
-      if (isApiError(error) && error.status === 404)
+    onMutate: () => boardAccessVersion(client, board.id),
+    onSuccess: (_data, _input, version) => {
+      if (
+        current(version) &&
+        mounted.current &&
+        canUseBoardOwnerActions(latest.current) &&
+        latest.current.workspaceId === board.workspaceId
+      )
+        onSaved?.();
+    },
+    onSettled: (_data, error, input, version) => {
+      if (!current(version)) return;
+      if (isApiError(error) && error.status === 404) {
         revokeBoardAccess(client, board.id);
-      // Old and new Workspace lists, Overview counts and Board pages.
-      void client.invalidateQueries({
-        queryKey: workspaceKeys.session(user?.id ?? '', scope.generation),
-      });
-      void client.invalidateQueries({ queryKey: boardKeys.all });
+        return;
+      }
+      // Only this Board and the source/destination Workspace resources.
+      for (const id of new Set([board.workspaceId, destinationId?.(input)])) {
+        if (id)
+          void client.invalidateQueries({
+            queryKey: workspaceKeys.resource(
+              user?.id ?? '',
+              scope.generation,
+              id,
+            ),
+          });
+      }
+      if (destinationId)
+        void client.invalidateQueries({
+          queryKey: workspaceKeys.list(user?.id ?? '', scope.generation),
+        });
+      void client.invalidateQueries({ queryKey: boardKeys.detail(board.id) });
+      void client.invalidateQueries({ queryKey: boardKeys.lists() });
     },
   });
 }
@@ -48,7 +86,7 @@ function commandError(error: unknown, action: string): string {
     if (error.status === 403)
       return `Workspace rules or your board role no longer allow you to ${action}.`;
     if (error.status === 409)
-      return 'This board changed meanwhile (for example it was archived). The list has been refreshed.';
+      return 'This board changed meanwhile (for example it was archived). Close and try again after refreshing.';
     if (error.status === 404)
       return 'This board is no longer available to you.';
   }
@@ -58,19 +96,40 @@ function commandError(error: unknown, action: string): string {
 const choice =
   'flex min-h-11 cursor-pointer gap-3 rounded-lg border p-3 has-[:disabled]:cursor-not-allowed has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-primary';
 
+function requiresRecheck(error: unknown) {
+  return isApiError(error) && [403, 404, 409].includes(error.status);
+}
+
 export function BoardVisibilityDialog({
   board,
   onClose,
+  onSaved,
 }: {
-  board: WorkspaceBoardSummary;
+  board: BoardOwnerActionModel;
   onClose: () => void;
+  onSaved?: () => void;
 }) {
   const [value, setValue] = useState<BoardVisibility>(board.visibility);
-  const policy = useBoardPolicyCapabilities(board.id, true);
-  const change = useOwnerCommand(board, (token, visibility: BoardVisibility) =>
-    changeBoardVisibility(token, board.id, visibility),
+  const policy = useBoardPolicyCapabilities(
+    board.id,
+    canUseBoardOwnerActions(board),
   );
-  const allowed = policy.data?.canChangeVisibility === true;
+  const change = useOwnerCommand(
+    board,
+    (token, visibility: BoardVisibility) =>
+      changeBoardVisibility(token, board.id, visibility),
+    () => {
+      onSaved?.();
+      onClose();
+    },
+  );
+  const allowed =
+    canUseBoardOwnerActions(board) &&
+    policy.isSuccess &&
+    policy.isFetchedAfterMount &&
+    !policy.isFetching &&
+    policy.data.canChangeVisibility &&
+    !requiresRecheck(change.error);
   const widening =
     value === 'WORKSPACE_VISIBLE' && board.visibility === 'PRIVATE';
   return (
@@ -88,7 +147,7 @@ export function BoardVisibilityDialog({
           event.preventDefault();
           if (!allowed || value === board.visibility || change.isPending)
             return;
-          change.mutate(value, { onSuccess: onClose });
+          change.mutate(value);
         }}
       >
         {policy.isError && (
@@ -96,7 +155,7 @@ export function BoardVisibilityDialog({
             Could not check the workspace rules. Close and try again.
           </Alert>
         )}
-        {policy.data && !allowed && (
+        {policy.isSuccess && !policy.data.canChangeVisibility && (
           <Alert variant="error">
             This workspace does not let board owners change visibility.
           </Alert>
@@ -148,6 +207,12 @@ export function BoardVisibilityDialog({
             columns, cards and comments.
           </p>
         )}
+        {value === 'PRIVATE' && board.visibility === 'WORKSPACE_VISIBLE' && (
+          <p className="text-xs leading-relaxed text-muted">
+            Workspace members who were not added to this board will lose their
+            read-only access.
+          </p>
+        )}
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button
             variant="secondary"
@@ -176,22 +241,35 @@ export function BoardVisibilityDialog({
 
 export function MoveBoardDialog({
   board,
-  workspaceId,
   onClose,
+  onSaved,
 }: {
-  board: WorkspaceBoardSummary;
-  workspaceId: string;
+  board: BoardOwnerActionModel;
   onClose: () => void;
+  onSaved?: () => void;
 }) {
   const directory = useWorkspaceDirectory();
   // Only joined Workspaces that let this account create Boards.
   const destinations = directory.workspaces.filter(
-    (item) => item.id !== workspaceId && item.canCreateBoards,
+    (item) => item.id !== board.workspaceId && item.canCreateBoards,
   );
   const [target, setTarget] = useState('');
-  const move = useOwnerCommand(board, (token, destination: string) =>
-    moveBoardToWorkspace(token, board.id, destination),
+  const move = useOwnerCommand(
+    board,
+    (token, destination: string) =>
+      moveBoardToWorkspace(token, board.id, destination),
+    () => {
+      onSaved?.();
+      onClose();
+    },
+    (destination) => destination,
   );
+  const allowed =
+    canUseBoardOwnerActions(board) &&
+    directory.state === 'ready' &&
+    !directory.isFetching &&
+    destinations.some((item) => item.id === target) &&
+    !requiresRecheck(move.error);
   return (
     <Dialog
       open
@@ -205,12 +283,23 @@ export function MoveBoardDialog({
         className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault();
-          if (!target || move.isPending) return;
-          move.mutate(target, { onSuccess: onClose });
+          if (!allowed || move.isPending) return;
+          move.mutate(target);
         }}
       >
         {move.isError && (
           <Alert variant="error">{commandError(move.error, 'move it')}</Alert>
+        )}
+        {directory.state !== 'ready' && directory.state !== 'loading' && (
+          <Alert variant="error">
+            Could not load your joined workspaces. Close and try again.
+          </Alert>
+        )}
+        {directory.state === 'ready' && !destinations.length && (
+          <p className="text-sm text-muted">
+            No eligible destination workspace. Join another workspace that
+            allows you to create boards, then try again.
+          </p>
         )}
         <label className="block">
           <span className="text-sm font-medium text-ink">
@@ -218,7 +307,11 @@ export function MoveBoardDialog({
           </span>
           <select
             value={target}
-            disabled={move.isPending || directory.state !== 'ready'}
+            disabled={
+              move.isPending ||
+              directory.state !== 'ready' ||
+              !destinations.length
+            }
             onChange={(event) => setTarget(event.target.value)}
             className="mt-1.5 h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:text-muted"
           >
@@ -250,7 +343,7 @@ export function MoveBoardDialog({
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={!target || move.isPending}>
+          <Button type="submit" disabled={!allowed || move.isPending}>
             {move.isPending ? 'Moving…' : 'Move board'}
           </Button>
         </div>

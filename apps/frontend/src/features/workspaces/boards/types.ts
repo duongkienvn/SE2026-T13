@@ -15,6 +15,20 @@ export interface WorkspaceBoardSummary {
   /** Only a permitted server-provided summary; null means withheld/unsupported. */
   memberCount: number | null;
 }
+
+/** Safe Board fields only; no source Workspace membership or metadata needed. */
+export type BoardOwnerActionModel = Pick<
+  WorkspaceBoardSummary,
+  'id' | 'name' | 'visibility' | 'currentUserRole' | 'isArchived'
+> & { workspaceId: string; canManageBoard: boolean };
+
+export function canUseBoardOwnerActions(board: BoardOwnerActionModel) {
+  return (
+    board.currentUserRole === 'OWNER' &&
+    !board.isArchived &&
+    board.canManageBoard
+  );
+}
 export type WorkspaceBoardSort = 'updated-desc' | 'name-asc';
 export interface WorkspaceBoardFilters {
   search: string;

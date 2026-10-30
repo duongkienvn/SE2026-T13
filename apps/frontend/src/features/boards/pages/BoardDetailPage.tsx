@@ -29,6 +29,15 @@ import { useVerifiedBoard } from '../useVerifiedBoard';
 import { revokeBoardAccess } from '../revoke-board-access';
 import type { BoardsLocationState } from './BoardsPage';
 import { ArchivedCardsDialog } from '../../cards/components/ArchivedCardsDialog';
+import { useBoardPolicyCapabilities } from '../../board-members/hooks';
+import {
+  BoardVisibilityDialog,
+  MoveBoardDialog,
+} from '../../workspaces/boards/BoardOwnerDialogs';
+import {
+  canUseBoardOwnerActions,
+  type BoardOwnerActionModel,
+} from '../../workspaces/boards/types';
 
 /** 403 and 404 both mean "not available to you"; never reveal which. */
 export function isBoardUnavailable(error: unknown): boolean {
@@ -72,6 +81,20 @@ export function BoardDetailPage() {
   const [showingArchivedCards, setShowingArchivedCards] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [notice, setNotice] = useState<string>();
+  const [ownerAction, setOwnerAction] = useState<'visibility' | 'move' | null>(
+    null,
+  );
+  const ownerBoard: BoardOwnerActionModel | undefined =
+    verified && !unavailable && board.data?.workspaceId && board.data.visibility
+      ? {
+          ...board.data,
+          workspaceId: board.data.workspaceId,
+          visibility: board.data.visibility,
+          canManageBoard: board.data.capabilities?.canManageBoard === true,
+        }
+      : undefined;
+  const ownsActive = !!ownerBoard && canUseBoardOwnerActions(ownerBoard);
+  const policy = useBoardPolicyCapabilities(boardId, ownsActive);
   const checkingAccess = !verified && !board.isError;
   usePageTitle(
     !unavailable && verified ? (board.data?.name ?? 'Board') : 'Board',
@@ -166,6 +189,26 @@ export function BoardDetailPage() {
                               label: 'Edit board',
                               onSelect: () => setEditing(true),
                             },
+                            ...(ownsActive
+                              ? [
+                                  {
+                                    label: 'Change visibility',
+                                    disabledReason: policy.isError
+                                      ? 'Could not check workspace rules. Try again later.'
+                                      : !policy.data
+                                        ? 'Checking workspace rules…'
+                                        : !policy.data.canChangeVisibility
+                                          ? 'Workspace rules do not allow visibility changes.'
+                                          : undefined,
+                                    onSelect: () =>
+                                      setOwnerAction('visibility'),
+                                  },
+                                  {
+                                    label: 'Move to workspace',
+                                    onSelect: () => setOwnerAction('move'),
+                                  },
+                                ]
+                              : []),
                             {
                               label: 'Archive board',
                               onSelect: () => setArchiving(true),
@@ -229,6 +272,26 @@ export function BoardDetailPage() {
             setEditing(false);
             setNotice(`Board “${saved.name}” updated.`);
           }}
+        />
+      )}
+      {ownsActive && ownerBoard && ownerAction === 'visibility' && (
+        <BoardVisibilityDialog
+          key={`${data.id}:${data.workspaceId}:${data.visibility}`}
+          board={ownerBoard}
+          onClose={() => setOwnerAction(null)}
+          onSaved={() => setNotice('Board visibility updated.')}
+        />
+      )}
+      {ownsActive && ownerBoard && ownerAction === 'move' && (
+        <MoveBoardDialog
+          key={`${data.id}:${data.workspaceId}`}
+          board={ownerBoard}
+          onClose={() => setOwnerAction(null)}
+          onSaved={() =>
+            setNotice(
+              'Board moved. Its link and board memberships are unchanged; visibility is now Private.',
+            )
+          }
         />
       )}
       {canManage && archiving && (
