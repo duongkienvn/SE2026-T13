@@ -7,8 +7,40 @@ import {
 import { WorkspaceBoardsQueryDto } from '../../src/api/workspaces/dto/workspace-boards-query.dto';
 import { CreateBoardDto } from '../../src/api/boards/dto/create-board.dto';
 import { WorkspacePageQueryDto } from '../../src/api/workspaces/dto/workspace-page-query.dto';
+import { toWorkspaceBoardResponseDto } from '../../src/api/workspaces/dto/workspace-board-response.dto';
+import { Board } from '../../src/api/boards/entities/board.entity';
+import { BoardMemberRole } from '../../src/common/enums/database-enums';
+import { BoardVisibility } from '@kanban/shared';
 
 describe('Workspace API validation', () => {
+  it.each([0, 1, 8, null])(
+    'serializes authorized member count %p and withholds it without Board membership',
+    (memberCount) => {
+      const board = Object.assign(new Board(), {
+        id: 'board',
+        name: 'Summary',
+        workspaceId: 'workspace',
+        createdAt: new Date(0),
+        updatedAt: new Date(0),
+        isArchived: false,
+        visibility: BoardVisibility.PRIVATE,
+      });
+      const owned = toWorkspaceBoardResponseDto(
+        board,
+        BoardMemberRole.OWNER,
+        memberCount,
+      );
+      expect(owned.memberCount).toBe(memberCount);
+      expect(
+        toWorkspaceBoardResponseDto(board, BoardMemberRole.MEMBER, memberCount)
+          .memberCount,
+      ).toBe(memberCount);
+      expect(
+        toWorkspaceBoardResponseDto(board, null, memberCount).memberCount,
+      ).toBeNull();
+      expect(owned).not.toHaveProperty('members');
+    },
+  );
   describe.each([
     ['WorkspacePageQueryDto', WorkspacePageQueryDto],
     ['WorkspaceBoardsQueryDto', WorkspaceBoardsQueryDto],

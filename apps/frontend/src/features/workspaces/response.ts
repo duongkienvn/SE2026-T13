@@ -17,6 +17,7 @@ export interface WorkspaceBoardResponse extends Board {
   workspaceId: string;
   visibility: BoardVisibility;
   canEdit: boolean;
+  memberCount: number | null;
 }
 
 export interface WorkspaceOverviewResponse {
@@ -24,7 +25,7 @@ export interface WorkspaceOverviewResponse {
   visibleBoardCount: number;
   activeBoardCount: number;
   archivedBoardCount: number;
-  memberCount: number | null;
+  memberCount: number;
   recentBoards: WorkspaceBoardResponse[];
 }
 
@@ -46,7 +47,10 @@ export function mapWorkspaceBoard(
   if (
     !['PRIVATE', 'WORKSPACE_VISIBLE'].includes(item.visibility) ||
     ![null, 'OWNER', 'MEMBER'].includes(item.currentUserRole) ||
-    (item.currentUserRole === null && item.visibility !== 'WORKSPACE_VISIBLE')
+    (item.currentUserRole === null &&
+      item.visibility !== 'WORKSPACE_VISIBLE') ||
+    (item.memberCount !== null &&
+      (!isMemberCount(item.memberCount) || item.currentUserRole === null))
   ) {
     throw new ApiError(
       200,
@@ -65,6 +69,10 @@ export function mapWorkspaceBoard(
     // Archive/restore are OWNER actions; canEdit describes collaboration only.
     canArchive: item.currentUserRole === 'OWNER' && !item.isArchived,
     canRestore: item.currentUserRole === 'OWNER' && item.isArchived,
-    memberCount: null,
+    memberCount: item.memberCount,
   };
+}
+
+export function isMemberCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 }

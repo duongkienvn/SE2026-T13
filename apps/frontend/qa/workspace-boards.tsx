@@ -89,11 +89,11 @@ const boards: WorkspaceBoardSummary[] = Array.from(
     description: null,
     updatedAt: '2026-10-27T09:00:00Z',
     isArchived: scenario === 'archived',
-    visibility: 'PRIVATE',
-    currentUserRole: index % 2 ? 'MEMBER' : 'OWNER',
+    visibility: index % 4 === 3 ? 'WORKSPACE_VISIBLE' : 'PRIVATE',
+    currentUserRole: index % 4 === 3 ? null : index % 2 ? 'MEMBER' : 'OWNER',
     canArchive: false,
     canRestore: false,
-    memberCount: index % 3 ? null : 4,
+    memberCount: [0, 1, 7, null][index % 4],
   }),
 );
 const workspace: WorkspaceGateway =

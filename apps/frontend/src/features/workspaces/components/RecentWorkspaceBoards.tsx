@@ -81,6 +81,11 @@ export function RecentWorkspaceBoards({
                       {formatRelativeTime(board.updatedAt)}
                     </time>
                   </p>
+                  <p className="mt-1 text-xs text-muted">
+                    {board.memberCount == null
+                      ? 'Board member count private'
+                      : `${board.memberCount} ${board.memberCount === 1 ? 'member' : 'members'}`}
+                  </p>
                 </div>
                 <ArrowRightIcon className="size-4 shrink-0 text-muted group-hover:text-primary" />
               </Link>

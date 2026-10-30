@@ -11,8 +11,13 @@ export class WorkspaceOverviewDto {
   @Expose() @ApiProperty() visibleBoardCount!: number;
   @Expose() @ApiProperty() activeBoardCount!: number;
   @Expose() @ApiProperty() archivedBoardCount!: number;
-  @Expose() @ApiProperty({ type: Number, nullable: true }) memberCount!:
-    number | null;
+  @Expose()
+  @ApiProperty({
+    type: Number,
+    description:
+      'Explicit Workspace members, including the Personal owner; Board-only guests are excluded.',
+  })
+  memberCount!: number;
   @Expose()
   @Type(() => WorkspaceBoardResponseDto)
   @ApiProperty({ type: [WorkspaceBoardResponseDto] })

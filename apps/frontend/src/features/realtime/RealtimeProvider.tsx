@@ -16,6 +16,7 @@ import { RealtimeContext } from './realtime-context';
 import { createRealtimeSocket } from './socket-client';
 import { changeBoardAccessVersion } from '../boards/access-version';
 import { refreshWorkspaceGuests } from '../workspaces/members/refresh-guests';
+import { refreshWorkspaceBoardSummaries } from '../workspaces/refresh-board-summaries';
 
 /**
  * Owns the realtime client of the signed-in session. A new session (sign-in,
@@ -59,8 +60,11 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
               typeof payload === 'object' &&
               'boardId' in payload &&
               typeof payload.boardId === 'string'
-            )
+            ) {
               refreshWorkspaceGuests(queryClient);
+              if (event.startsWith('member:'))
+                refreshWorkspaceBoardSummaries(queryClient, payload.boardId);
+            }
           });
         }
         socket.on('member:removed', (payload: unknown) => {

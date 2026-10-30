@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-30",
+  "source": "Chrome DevTools, isolated DEV-only Workspace fixtures; live HTTP/database behavior tested separately in disposable PostgreSQL suite",
+  "widths": [320, 375, 768, 1280],
+  "themes": ["light", "dark"],
+  "boardCards": {
+    "cases": 8,
+    "labels": [
+      "0 members",
+      "1 member",
+      "7 members",
+      "Board member count private"
+    ],
+    "horizontalOverflow": false
+  },
+  "overview": {
+    "cases": 8,
+    "actor": "Workspace MEMBER",
+    "workspaceCount": 5,
+    "recentLabels": ["1 member", "2 members", "Board member count private"],
+    "horizontalOverflow": false
+  },
+  "accessibility": "Count text appears in the accessibility tree; recent Board links include count/privacy text; no new controls introduced",
+  "console": "No application errors or warnings in inspected fixture pages",
+  "screenshots": ["boards-desktop-light.png", "overview-mobile-dark.png"]
+}

@@ -8,6 +8,7 @@ import {
 } from './access-revocation';
 import { boardKeys } from '../boards/query-keys';
 import { workspaceKeys } from '../workspaces/query-keys';
+import { refreshWorkspaceBoardSummaries } from '../workspaces/refresh-board-summaries';
 import { makeBoard } from '../../test/board-fixtures';
 import { activityKeys } from '../activities/query-keys';
 import {
@@ -16,6 +17,38 @@ import {
 } from '../boards/access-version';
 
 describe('access-loss cache isolation', () => {
+  it('clears every affected summary filter, cancels stale counts and keeps other Workspaces', async () => {
+    const client = new QueryClient();
+    const board = makeBoard({ workspaceId: 'team' });
+    client.setQueryData(boardKeys.detail(board.id), board);
+    const overview = workspaceKeys.overview('actor', 1, 'team');
+    const page = [...workspaceKeys.boards('actor', 1, 'team'), { page: 2 }];
+    const other = workspaceKeys.overview('actor', 1, 'other');
+    const summary = {
+      memberCount: 3,
+      recentBoards: [{ id: board.id, memberCount: 9 }],
+    };
+    client.setQueryData(overview, summary);
+    client.setQueryData(page, { items: [{ id: board.id, memberCount: 9 }] });
+    client.setQueryData(other, { memberCount: 4, recentBoards: [] });
+    let finish!: (value: typeof summary) => void;
+    const pending = new Promise<typeof summary>((resolve) => {
+      finish = resolve;
+    });
+    const stale = client
+      .fetchQuery({ queryKey: overview, queryFn: () => pending, staleTime: 0 })
+      .catch(() => undefined);
+    refreshWorkspaceBoardSummaries(client, board.id);
+    finish(summary);
+    await stale;
+    expect(client.getQueryData(overview)).toBeUndefined();
+    expect(client.getQueryData(page)).toBeUndefined();
+    expect(client.getQueryData(other)).toEqual({
+      memberCount: 4,
+      recentBoards: [],
+    });
+    client.clear();
+  });
   it('clears stale protected caches and cancels pending reads when access may have changed', async () => {
     const client = new QueryClient();
     const board = boardKeys.detail('board');

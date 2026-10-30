@@ -17,6 +17,7 @@ export interface RecentWorkspaceBoard {
   name: string;
   updatedAt: string;
   archived: boolean;
+  memberCount: number | null;
 }
 
 export interface WorkspaceOverview {

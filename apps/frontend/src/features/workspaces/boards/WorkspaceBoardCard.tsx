@@ -72,7 +72,7 @@ export function WorkspaceBoardCard({
           <UsersIcon className="size-4 shrink-0" />
           <span>
             {board.memberCount == null
-              ? 'Member details unavailable'
+              ? 'Board member count private'
               : `${board.memberCount} ${board.memberCount === 1 ? 'member' : 'members'}`}
           </span>
         </span>

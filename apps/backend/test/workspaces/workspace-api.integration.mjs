@@ -4,7 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
 import process from 'node:process';
 import { verifyLifecycle } from './workspace-api.lifecycle.mjs';
-import { verifyPrivacy } from './workspace-api.privacy.mjs';
+import { verifyPrivacy, verifyMemberCounts } from './workspace-api.privacy.mjs';
 import { verifyConcurrency } from './workspace-api.concurrency.mjs';
 
 // Never load connection credentials from .env; only an explicitly opted-in local server.
@@ -100,6 +100,7 @@ try {
   };
   await verifyLifecycle(context);
   await verifyPrivacy(context);
+  await verifyMemberCounts(context);
   await verifyConcurrency(context);
   console.log(
     'Workspace API PostgreSQL/HTTP lifecycle, ACL, rollback, races and compatibility: PASS',
