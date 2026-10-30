@@ -34,6 +34,7 @@ import { AssignCardDto } from './dto/assign-card.dto';
 import { CardAssigneeResponseDto } from './dto/card-assignee-response.dto';
 import { CardResponseDto } from './dto/card-response.dto';
 import { CreateCardDto } from './dto/create-card.dto';
+import { ImportCardsDto, ImportCardsResponseDto } from './dto/import-cards.dto';
 import { ListCardsDto } from './dto/list-cards.dto';
 import { MoveCardDto } from './dto/move-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
@@ -115,6 +116,25 @@ export class CardsController {
     @Body() input: CreateCardDto,
   ): Promise<CardResponseDto> {
     return this.cards.create(user.userId, boardId, input);
+  }
+
+  @Post('import')
+  @HttpCode(HttpStatus.OK)
+  @SerializeResponse(ImportCardsResponseDto)
+  @ResponseMessage('Cards imported')
+  @ApiBearerToken()
+  @ApiSuccess({
+    type: ImportCardsResponseDto,
+    summary:
+      'Append up to 100 cards to one column; invalid rows are reported without blocking valid rows',
+  })
+  @ApiCommonErrors()
+  importCards(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+    @Body() input: ImportCardsDto,
+  ): Promise<ImportCardsResponseDto> {
+    return this.cards.importCards(user.userId, boardId, input);
   }
 
   @Patch(':cardId')

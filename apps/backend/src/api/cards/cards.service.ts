@@ -24,10 +24,7 @@ import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
 import { MoveCardDto } from './dto/move-card.dto';
 import { AssignCardDto } from './dto/assign-card.dto';
-import {
-  ImportCardsDto,
-  ImportCardsResponseDto,
-} from './dto/import-cards.dto';
+import { ImportCardsDto, ImportCardsResponseDto } from './dto/import-cards.dto';
 import { CardAssignee } from './entities/card-assignee.entity';
 import { BoardMember } from '../board-members/entities/board-member.entity';
 import {
@@ -35,6 +32,8 @@ import {
   toCardAssigneeResponseDto,
 } from './dto/card-assignee-response.dto';
 import { cardInsertionPosition } from './cards-ordering';
+import { classifyImportRows } from './cards-import';
+import { toResponseDto } from '../../common/dto/to-response-dto';
 import { rebalancePositions } from '../columns/columns-ordering';
 
 @Injectable()
@@ -442,19 +441,87 @@ export class CardsService {
     );
   }
 
-  // Test-first seam: behaviour is specified in test/cards/cards-import.spec.ts.
-  importCards(
-    _userId: string,
-    _boardId: string,
-    _input: ImportCardsDto,
+  /** Rejected rows are reported; accepted rows commit together or not at all. */
+  async importCards(
+    userId: string,
+    boardId: string,
+    input: ImportCardsDto,
   ): Promise<ImportCardsResponseDto> {
-    return Promise.reject(
-      new ApplicationException(
-        HttpStatus.NOT_IMPLEMENTED,
-        'NOT_IMPLEMENTED',
-        'Card import is not implemented',
-      ),
-    );
+    const { accepted, rejected } = await classifyImportRows(input.items);
+    const created = await this.mutate(userId, boardId, async (manager) => {
+      const column = await this.requireColumn(
+        manager.getRepository(BoardColumn),
+        boardId,
+        input.columnId,
+      );
+      if (accepted.length === 0) return [];
+      const cards = manager.getRepository(Card);
+      const fresh = accepted.map(({ row }) =>
+        cards.create({
+          boardId,
+          columnId: column.id,
+          createdById: userId,
+          title: row.title,
+          description: row.description ?? null,
+          dueDate: row.dueDate ? new Date(row.dueDate) : null,
+          isArchived: false,
+          archivedAt: null,
+          position: '0.0000000000',
+        }),
+      );
+      const last = await cards.findOne({
+        where: { boardId, columnId: column.id, isArchived: false },
+        order: { position: 'DESC', id: 'DESC' },
+      });
+      let previous = last?.position;
+      let overflow = false;
+      for (const card of fresh) {
+        const position = cardInsertionPosition(previous);
+        if (!position) {
+          overflow = true;
+          break;
+        }
+        card.position = previous = position;
+      }
+      let saved: Card[];
+      if (overflow) {
+        const ordered = await cards.find({
+          where: { boardId, columnId: column.id, isArchived: false },
+          order: { position: 'ASC', id: 'ASC' },
+        });
+        const all = [...ordered, ...fresh];
+        const positions = rebalancePositions(all.length);
+        all.forEach((row, index) => {
+          row.position = positions[index];
+        });
+        saved = (await cards.save(all)).slice(ordered.length);
+      } else {
+        saved = await cards.save(fresh);
+      }
+      for (const card of saved)
+        await this.activities.record(manager, {
+          boardId: card.boardId,
+          actorId: userId,
+          actionType: ActivityActionType.CARD_CREATED,
+          entityType: ActivityEntityType.CARD,
+          entityId: card.id,
+          metadata: null,
+        });
+      return saved.map(toCardResponseDto);
+    });
+    // Reuse card:created so existing clients refresh without a contract change.
+    for (const card of created)
+      await this.events.publish(RealtimeServerEvent.CARD_CREATED, {
+        boardId: card.boardId,
+        cardId: card.id,
+        columnId: card.columnId,
+      });
+    return toResponseDto(ImportCardsResponseDto, {
+      createdCount: created.length,
+      rejectedCount: rejected.length,
+      created,
+      rejected,
+    });
   }
 
   private mutate<T>(

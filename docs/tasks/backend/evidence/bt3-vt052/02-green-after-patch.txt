@@ -1,0 +1,15 @@
+# after patch 2026-10-30T23:43:29+07:00
+Test Suites: 6 passed, 6 total
+Tests:       69 passed, 69 total
+## full unit
+Test Suites: 53 passed, 53 total
+Tests:       589 passed, 589 total
+Snapshots:   0 total
+Time:        40.2 s, estimated 52 s
+Ran all test suites.
+## full e2e
+Test Suites: 18 passed, 18 total
+Tests:       139 passed, 139 total
+Snapshots:   0 total
+Time:        64.602 s, estimated 66 s
+Ran all test suites matching /e2e-spec/i.

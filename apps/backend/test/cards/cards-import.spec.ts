@@ -67,7 +67,10 @@ describe('Card import row transitions RECEIVED -> ACCEPTED | REJECTED', () => {
     ['missing title', {}],
     ['blank title after trim', { title: '   ' }],
     ['title just above boundary (121)', { title: 'x'.repeat(121) }],
-    ['description above boundary', { title: 'Ok', description: 'x'.repeat(2001) }],
+    [
+      'description above boundary',
+      { title: 'Ok', description: 'x'.repeat(2001) },
+    ],
     ['deadline without timezone', { title: 'Ok', dueDate: '2026-10-01' }],
     ['unknown field (whitelist)', { title: 'Ok', columnId: ID.column }],
   ])('TC03 rejects %s with a field-level detail', async (_name, row) => {

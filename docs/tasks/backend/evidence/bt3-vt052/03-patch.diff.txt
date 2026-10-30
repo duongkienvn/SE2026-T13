@@ -1,0 +1,215 @@
+diff --git a/apps/backend/src/api/cards/cards-import.ts b/apps/backend/src/api/cards/cards-import.ts
+index a7c31d7..a74d692 100644
+--- a/apps/backend/src/api/cards/cards-import.ts
++++ b/apps/backend/src/api/cards/cards-import.ts
+@@ -1,3 +1,5 @@
++import { BadRequestException } from '@nestjs/common';
++import { createValidationPipe } from '../../config/validation';
+ import { ImportCardRowDto } from './dto/import-cards.dto';
+ 
+ export interface AcceptedImportRow {
+@@ -10,9 +12,38 @@ export interface RejectedImportRow {
+   details: string[];
+ }
+ 
+-/** Test-first seam: behaviour is specified in test/cards/cards-import.spec.ts. */
++// Same pipe options as the HTTP layer, so a row obeys exactly the CreateCardDto rules.
++const rowPipe = createValidationPipe();
++
++async function rowErrors(
++  item: unknown,
++): Promise<{ row: ImportCardRowDto | null; details: string[] }> {
++  if (typeof item !== 'object' || item === null || Array.isArray(item))
++    return { row: null, details: ['row: must be an object'] };
++  try {
++    const row = (await rowPipe.transform(item, {
++      type: 'body',
++      metatype: ImportCardRowDto,
++    })) as ImportCardRowDto;
++    return { row, details: [] };
++  } catch (error) {
++    if (!(error instanceof BadRequestException)) throw error;
++    const { details } = error.getResponse() as { details?: string[] };
++    return { row: null, details: details ?? ['row: invalid'] };
++  }
++}
++
++/** RECEIVED -> ACCEPTED | REJECTED; only ACCEPTED rows may become cards. */
+ export async function classifyImportRows(
+-  _items: unknown[],
++  items: unknown[],
+ ): Promise<{ accepted: AcceptedImportRow[]; rejected: RejectedImportRow[] }> {
+-  return { accepted: [], rejected: [] };
++  const accepted: AcceptedImportRow[] = [];
++  const rejected: RejectedImportRow[] = [];
++  for (const [index, item] of items.entries()) {
++    const { row, details } = await rowErrors(item);
++    const isValid = row !== null && details.length === 0;
++    if (isValid) accepted.push({ index, row: row as ImportCardRowDto });
++    else rejected.push({ index, details });
++  }
++  return { accepted, rejected };
+ }
+diff --git a/apps/backend/src/api/cards/cards.controller.ts b/apps/backend/src/api/cards/cards.controller.ts
+index 39c0cfa..599753d 100644
+--- a/apps/backend/src/api/cards/cards.controller.ts
++++ b/apps/backend/src/api/cards/cards.controller.ts
+@@ -34,6 +34,7 @@ import { AssignCardDto } from './dto/assign-card.dto';
+ import { CardAssigneeResponseDto } from './dto/card-assignee-response.dto';
+ import { CardResponseDto } from './dto/card-response.dto';
+ import { CreateCardDto } from './dto/create-card.dto';
++import { ImportCardsDto, ImportCardsResponseDto } from './dto/import-cards.dto';
+ import { ListCardsDto } from './dto/list-cards.dto';
+ import { MoveCardDto } from './dto/move-card.dto';
+ import { UpdateCardDto } from './dto/update-card.dto';
+@@ -117,6 +118,25 @@ export class CardsController {
+     return this.cards.create(user.userId, boardId, input);
+   }
+ 
++  @Post('import')
++  @HttpCode(HttpStatus.OK)
++  @SerializeResponse(ImportCardsResponseDto)
++  @ResponseMessage('Cards imported')
++  @ApiBearerToken()
++  @ApiSuccess({
++    type: ImportCardsResponseDto,
++    summary:
++      'Append up to 100 cards to one column; invalid rows are reported without blocking valid rows',
++  })
++  @ApiCommonErrors()
++  importCards(
++    @CurrentUser() user: AuthenticatedUser,
++    @Param('boardId', ParseUUIDPipe) boardId: string,
++    @Body() input: ImportCardsDto,
++  ): Promise<ImportCardsResponseDto> {
++    return this.cards.importCards(user.userId, boardId, input);
++  }
++
+   @Patch(':cardId')
+   @SerializeResponse(CardResponseDto)
+   @ApiBearerToken()
+diff --git a/apps/backend/src/api/cards/cards.service.ts b/apps/backend/src/api/cards/cards.service.ts
+index e6c16e2..fb17b66 100644
+--- a/apps/backend/src/api/cards/cards.service.ts
++++ b/apps/backend/src/api/cards/cards.service.ts
+@@ -24,10 +24,7 @@ import { CreateCardDto } from './dto/create-card.dto';
+ import { UpdateCardDto } from './dto/update-card.dto';
+ import { MoveCardDto } from './dto/move-card.dto';
+ import { AssignCardDto } from './dto/assign-card.dto';
+-import {
+-  ImportCardsDto,
+-  ImportCardsResponseDto,
+-} from './dto/import-cards.dto';
++import { ImportCardsDto, ImportCardsResponseDto } from './dto/import-cards.dto';
+ import { CardAssignee } from './entities/card-assignee.entity';
+ import { BoardMember } from '../board-members/entities/board-member.entity';
+ import {
+@@ -35,6 +32,8 @@ import {
+   toCardAssigneeResponseDto,
+ } from './dto/card-assignee-response.dto';
+ import { cardInsertionPosition } from './cards-ordering';
++import { classifyImportRows } from './cards-import';
++import { toResponseDto } from '../../common/dto/to-response-dto';
+ import { rebalancePositions } from '../columns/columns-ordering';
+ 
+ @Injectable()
+@@ -442,19 +441,87 @@ export class CardsService {
+     );
+   }
+ 
+-  // Test-first seam: behaviour is specified in test/cards/cards-import.spec.ts.
+-  importCards(
+-    _userId: string,
+-    _boardId: string,
+-    _input: ImportCardsDto,
++  /** Rejected rows are reported; accepted rows commit together or not at all. */
++  async importCards(
++    userId: string,
++    boardId: string,
++    input: ImportCardsDto,
+   ): Promise<ImportCardsResponseDto> {
+-    return Promise.reject(
+-      new ApplicationException(
+-        HttpStatus.NOT_IMPLEMENTED,
+-        'NOT_IMPLEMENTED',
+-        'Card import is not implemented',
+-      ),
+-    );
++    const { accepted, rejected } = await classifyImportRows(input.items);
++    const created = await this.mutate(userId, boardId, async (manager) => {
++      const column = await this.requireColumn(
++        manager.getRepository(BoardColumn),
++        boardId,
++        input.columnId,
++      );
++      if (accepted.length === 0) return [];
++      const cards = manager.getRepository(Card);
++      const fresh = accepted.map(({ row }) =>
++        cards.create({
++          boardId,
++          columnId: column.id,
++          createdById: userId,
++          title: row.title,
++          description: row.description ?? null,
++          dueDate: row.dueDate ? new Date(row.dueDate) : null,
++          isArchived: false,
++          archivedAt: null,
++          position: '0.0000000000',
++        }),
++      );
++      const last = await cards.findOne({
++        where: { boardId, columnId: column.id, isArchived: false },
++        order: { position: 'DESC', id: 'DESC' },
++      });
++      let previous = last?.position;
++      let overflow = false;
++      for (const card of fresh) {
++        const position = cardInsertionPosition(previous);
++        if (!position) {
++          overflow = true;
++          break;
++        }
++        card.position = previous = position;
++      }
++      let saved: Card[];
++      if (overflow) {
++        const ordered = await cards.find({
++          where: { boardId, columnId: column.id, isArchived: false },
++          order: { position: 'ASC', id: 'ASC' },
++        });
++        const all = [...ordered, ...fresh];
++        const positions = rebalancePositions(all.length);
++        all.forEach((row, index) => {
++          row.position = positions[index];
++        });
++        saved = (await cards.save(all)).slice(ordered.length);
++      } else {
++        saved = await cards.save(fresh);
++      }
++      for (const card of saved)
++        await this.activities.record(manager, {
++          boardId: card.boardId,
++          actorId: userId,
++          actionType: ActivityActionType.CARD_CREATED,
++          entityType: ActivityEntityType.CARD,
++          entityId: card.id,
++          metadata: null,
++        });
++      return saved.map(toCardResponseDto);
++    });
++    // Reuse card:created so existing clients refresh without a contract change.
++    for (const card of created)
++      await this.events.publish(RealtimeServerEvent.CARD_CREATED, {
++        boardId: card.boardId,
++        cardId: card.id,
++        columnId: card.columnId,
++      });
++    return toResponseDto(ImportCardsResponseDto, {
++      createdCount: created.length,
++      rejectedCount: rejected.length,
++      created,
++      rejected,
++    });
+   }
+ 
+   private mutate<T>(

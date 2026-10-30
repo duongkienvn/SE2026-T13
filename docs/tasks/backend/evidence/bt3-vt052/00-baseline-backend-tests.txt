@@ -1,0 +1,23 @@
+# baseline d0b8ffa30bec0950056bb7769fe718a72e2eb998 2026-10-30T23:35:53+07:00
+PASS test/columns/columns-ordering.spec.ts
+PASS test/cards/cards-ordering.spec.ts
+
+Test Suites: 52 passed, 52 total
+Tests:       572 passed, 572 total
+Snapshots:   0 total
+Time:        46.487 s
+Ran all test suites.
+PASS test/health/health.e2e-spec.ts
+PASS test/foundation/rate-limit.e2e-spec.ts
+
+Test Suites: 18 passed, 18 total
+Tests:       136 passed, 136 total
+Snapshots:   0 total
+Time:        67.494 s, estimated 75 s
+Ran all test suites matching /e2e-spec/i.
+PASS: deterministic assign-vs-remove-member races in both lock acquisition orders leave no stale assignment
+PASS: create-vs-E1-column-delete races obey the shared Board lock and preserve references
+PASS: real AppModule/REST login/Card HTTP and joined-assignee pagination match persisted SQL ordering
+PASS: archived REST filters, stable paging, permissions, concurrent restore, preserved relations, dense rebalance and archived Board
+PASS: archived Board remains readable and blocks every Card mutation
+Card PostgreSQL integration: 13 groups PASS
