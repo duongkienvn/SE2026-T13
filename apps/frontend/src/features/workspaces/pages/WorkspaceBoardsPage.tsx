@@ -13,6 +13,7 @@ import { CreateWorkspaceBoardDialog } from '../boards/CreateWorkspaceBoardDialog
 import { WorkspaceBoardActions } from '../boards/WorkspaceBoardActions';
 import { useWorkspacePage } from '../components/WorkspaceLayout';
 import { WorkspaceState } from '../components/WorkspaceState';
+import { useBoardOwnerActions } from '../boards/useBoardOwnerActions';
 
 export function WorkspaceBoardsPage() {
   const { workspaceId = '' } = useParams();
@@ -45,6 +46,14 @@ function WorkspaceBoardsContent({ workspaceId }: { workspaceId: string }) {
   const canCreate =
     query.state === 'ready' &&
     workspace.overview?.workspace.canCreateBoards === true;
+  const ownerActions = useBoardOwnerActions(
+    workspaceId,
+    (query.pageData?.items ?? []).map((board) => ({
+      ...board,
+      workspaceId,
+      canManageBoard: board.currentUserRole === 'OWNER' && !board.isArchived,
+    })),
+  );
   const disabledReason = canCreate
     ? undefined
     : !gateway.available
@@ -101,9 +110,14 @@ function WorkspaceBoardsContent({ workspaceId }: { workspaceId: string }) {
         state={query.state}
         filtered={control.filtered}
         actions={(board) => (
-          <WorkspaceBoardActions board={board} workspaceId={workspaceId} />
+          <WorkspaceBoardActions
+            board={board}
+            workspaceId={workspaceId}
+            onOwnerAction={ownerActions.open}
+          />
         )}
       />
+      {ownerActions.dialog}
       {query.pageData && (
         <div className="space-y-3">
           <p role="status" className="text-xs text-muted">

@@ -11,19 +11,23 @@ import { revokeBoardAccess } from '../../boards/revoke-board-access';
 import { boardAccessVersion } from '../../boards/access-version';
 import { workspaceKeys } from '../query-keys';
 import type { WorkspaceOverview } from '../types';
-import type { WorkspaceBoardSummary } from './types';
-import { BoardVisibilityDialog, MoveBoardDialog } from './BoardOwnerDialogs';
+import type { BoardOwnerActionModel, WorkspaceBoardSummary } from './types';
+import type { BoardOwnerAction } from './useBoardOwnerActions';
 
 /** Board OWNER and archive state, independent of Workspace ADMIN. */
 export function WorkspaceBoardActions({
   board,
   workspaceId,
+  onOwnerAction,
 }: {
   board: WorkspaceBoardSummary;
   workspaceId: string;
+  onOwnerAction: (
+    board: BoardOwnerActionModel,
+    action: BoardOwnerAction,
+  ) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [owner, setOwner] = useState<'visibility' | 'move' | null>(null);
   const { user, runAuthorized } = useAuth();
   const scope = useAuthSession();
   const client = useQueryClient();
@@ -113,6 +117,7 @@ export function WorkspaceBoardActions({
   });
   // Explicit Board OWNER only, never inferred from Workspace ADMIN.
   const ownsActive = board.currentUserRole === 'OWNER' && !board.isArchived;
+  const ownerBoard = { ...board, workspaceId, canManageBoard: ownsActive };
   if (!allowed && !ownsActive) return null;
   return (
     <>
@@ -124,11 +129,11 @@ export function WorkspaceBoardActions({
             ? [
                 {
                   label: 'Change visibility',
-                  onSelect: () => setOwner('visibility'),
+                  onSelect: () => onOwnerAction(ownerBoard, 'visibility'),
                 },
                 {
                   label: 'Move to workspace',
-                  onSelect: () => setOwner('move'),
+                  onSelect: () => onOwnerAction(ownerBoard, 'move'),
                 },
               ]
             : []),
@@ -147,16 +152,6 @@ export function WorkspaceBoardActions({
             : []),
         ]}
       />
-      {owner === 'visibility' && (
-        <BoardVisibilityDialog board={board} onClose={() => setOwner(null)} />
-      )}
-      {owner === 'move' && (
-        <MoveBoardDialog
-          board={board}
-          workspaceId={workspaceId}
-          onClose={() => setOwner(null)}
-        />
-      )}
       <ConfirmDialog
         open={open}
         title={`${action} “${board.name}”?`}

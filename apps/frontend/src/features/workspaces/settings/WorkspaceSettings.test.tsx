@@ -9,7 +9,7 @@ import {
 } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { flushSync } from 'react-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { routes } from '../../../app/routes';
 import {
   fail,
@@ -31,6 +31,7 @@ import { RealtimeProvider } from '../../realtime/RealtimeProvider';
 import type { WorkspaceResponse } from '../response';
 import { workspaceKeys } from '../query-keys';
 import type { WorkspacePolicy } from './api';
+import { boardKeys } from '../../boards/query-keys';
 
 const admin: WorkspaceResponse = {
   ...workspaceResponse,
@@ -780,10 +781,11 @@ describe('Board OWNER visibility and move', () => {
   });
 
   it('moves only to workspaces that allow new boards', async () => {
-    const { calls } = mount(`${base}/boards`, {
+    const { calls, client } = mount(`${base}/boards`, {
       [boardsPath]: workspacePage([board]),
       [`POST /boards/${board.id}/move-workspace`]: ok(board),
     });
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
     await openMenu();
     fireEvent.click(screen.getByRole('button', { name: 'Move to workspace' }));
     const dialog = await screen.findByRole('dialog', { name: 'Move board' });
@@ -800,6 +802,18 @@ describe('Board OWNER visibility and move', () => {
     expect(calls.find((call) => call.method === 'POST')?.body).toEqual({
       destinationWorkspaceId: other.id,
     });
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: boardKeys.detail(board.id),
+    });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: boardKeys.lists() });
+    for (const workspaceId of [id, other.id])
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: workspaceKeys.resource(testUser.id, 0, workspaceId),
+      });
+    expect(invalidate).not.toHaveBeenCalledWith({ queryKey: boardKeys.all });
+    expect(invalidate).not.toHaveBeenCalledWith({
+      queryKey: workspaceKeys.session(testUser.id, 0),
+    });
   });
 
   it('offers nothing to a Board MEMBER, even a Workspace ADMIN', async () => {
@@ -811,4 +825,151 @@ describe('Board OWNER visibility and move', () => {
       screen.queryByRole('button', { name: `Actions for ${board.name}` }),
     ).toBeNull();
   });
+
+  it.each([
+    ['visibility', true],
+    ['visibility', false],
+    ['move', true],
+    ['move', false],
+  ] as const)(
+    'completes Workspace %s after access:changed before REST (reload first: %s)',
+    async (action, reloadFirst) => {
+      const pending = deferred<MockResponse>();
+      const recheck = deferred<void>();
+      let resync = false;
+      const saved = {
+        ...board,
+        workspaceId: action === 'move' ? other.id : id,
+        visibility:
+          action === 'visibility'
+            ? ('WORKSPACE_VISIBLE' as const)
+            : ('PRIVATE' as const),
+        capabilities: {
+          canReadBoard: true,
+          canWriteBoard: true,
+          canManageBoard: true,
+          canManageMembers: true,
+          canRestoreBoard: false,
+        },
+      };
+      const method = action === 'visibility' ? 'PATCH' : 'POST';
+      const { client, calls } = mount(`${base}/boards`, {
+        [boardsPath]: () =>
+          resync
+            ? recheck.promise.then(() =>
+                workspacePage(action === 'move' ? [] : [saved]),
+              )
+            : workspacePage([board]),
+        [capabilities]: ok({
+          canInviteMembers: true,
+          canChangeMembership: true,
+          canChangeVisibility: true,
+        }),
+        [`GET /boards/${board.id}`]: () =>
+          recheck.promise.then(() => ok(saved)),
+        [`${method} /boards/${board.id}/${action === 'visibility' ? 'visibility' : 'move-workspace'}`]:
+          () => pending.promise,
+      });
+      const invalidate = vi.spyOn(client, 'invalidateQueries');
+      await openMenu();
+      fireEvent.click(
+        screen.getByRole('button', {
+          name:
+            action === 'visibility' ? 'Change visibility' : 'Move to workspace',
+        }),
+      );
+      const dialog = await screen.findByRole('dialog');
+      if (action === 'visibility') {
+        const radio = within(dialog).getByRole('radio', { name: /Workspace/ });
+        await waitFor(() => expect(radio.matches(':disabled')).toBe(false));
+        fireEvent.click(radio);
+      } else {
+        await within(dialog).findByRole('option', { name: other.name });
+        fireEvent.change(within(dialog).getByRole('combobox'), {
+          target: { value: other.id },
+        });
+      }
+      fireEvent.submit(dialog.querySelector('form')!);
+      await within(dialog).findByRole('button', {
+        name: action === 'visibility' ? 'Saving…' : 'Moving…',
+      });
+      act(() => {
+        resync = true;
+        createdSockets.at(-1)!.socket.push('access:changed', {});
+      });
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      if (reloadFirst) {
+        await act(async () => recheck.resolve(undefined));
+        if (action === 'visibility') {
+          const restored = await screen.findByRole('dialog');
+          expect(
+            within(restored).getByRole('button', { name: 'Saving…' }),
+          ).toBeTruthy();
+          fireEvent.submit(restored.querySelector('form')!);
+        } else
+          await screen.findByRole('heading', {
+            name: 'No accessible boards yet',
+          });
+      }
+      await act(async () => pending.resolve(ok(saved)));
+      if (!reloadFirst) await act(async () => recheck.resolve(undefined));
+      await waitFor(() => expect(client.isMutating()).toBe(0));
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: boardKeys.detail(board.id),
+      });
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: workspaceKeys.resource(testUser.id, 0, id),
+      });
+      if (action === 'move')
+        expect(invalidate).toHaveBeenCalledWith({
+          queryKey: workspaceKeys.resource(testUser.id, 0, other.id),
+        });
+      expect(calls.filter((c) => c.method === method)).toHaveLength(1);
+    },
+  );
+
+  it.each(['revoked', 'recheck-denied', 'session'] as const)(
+    'suppresses Workspace completion after access:changed and %s',
+    async (transition) => {
+      const pending = deferred<MockResponse>();
+      const { client } = mount(`${base}/boards`, {
+        [boardsPath]: workspacePage([board]),
+        [`GET /boards/${board.id}`]: fail(404, 'NOT_FOUND'),
+        [`POST /boards/${board.id}/move-workspace`]: () => pending.promise,
+      });
+      await openMenu();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Move to workspace' }),
+      );
+      const dialog = await screen.findByRole('dialog');
+      await within(dialog).findByRole('option', { name: other.name });
+      fireEvent.change(within(dialog).getByRole('combobox'), {
+        target: { value: other.id },
+      });
+      fireEvent.submit(dialog.querySelector('form')!);
+      await within(dialog).findByRole('button', { name: 'Moving…' });
+      act(() => createdSockets.at(-1)!.socket.push('access:changed', {}));
+      await screen.findByRole('button', { name: `Actions for ${board.name}` });
+      act(() => {
+        if (transition === 'revoked')
+          createdSockets
+            .at(-1)!
+            .socket.push('board:access-revoked', { boardId: board.id });
+        if (transition === 'session') {
+          localStorage.removeItem('kanban.session');
+          window.dispatchEvent(
+            new StorageEvent('storage', { key: 'kanban.session' }),
+          );
+        }
+      });
+      const invalidate = vi.spyOn(client, 'invalidateQueries');
+      await act(async () => pending.resolve(ok(board)));
+      await waitFor(() => expect(client.isMutating()).toBe(0));
+      expect(invalidate).not.toHaveBeenCalledWith({
+        queryKey: workspaceKeys.resource(testUser.id, 0, other.id),
+      });
+      expect(client.getQueryData(boardKeys.detail(board.id))).toBeUndefined();
+    },
+  );
 });

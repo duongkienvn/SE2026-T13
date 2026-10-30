@@ -1,0 +1,181 @@
+{
+  "environment": "Chrome DevTools, isolated DEV-only fixture; no live backend or deployment",
+  "date": "2026-10-30",
+  "visibility": [
+    {
+      "width": 320,
+      "theme": "light",
+      "menuFits": true,
+      "dialogFits": true,
+      "overflow": false,
+      "warning": true,
+      "submit": true
+    },
+    {
+      "width": 320,
+      "theme": "dark",
+      "menuFits": true,
+      "dialogFits": true,
+      "overflow": false,
+      "warning": true,
+      "submit": true
+    },
+    {
+      "width": 375,
+      "theme": "light",
+      "menuFits": true,
+      "dialogFits": true,
+      "overflow": false,
+      "warning": true,
+      "submit": true
+    },
+    {
+      "width": 375,
+      "theme": "dark",
+      "menuFits": true,
+      "dialogFits": true,
+      "overflow": false,
+      "warning": true,
+      "submit": true
+    },
+    {
+      "width": 768,
+      "theme": "light",
+      "menuFits": true,
+      "dialogFits": true,
+      "overflow": false,
+      "warning": true,
+      "submit": true
+    },
+    {
+      "width": 768,
+      "theme": "dark",
+      "menuFits": true,
+      "dialogFits": true,
+      "overflow": false,
+      "warning": true,
+      "submit": true
+    },
+    {
+      "width": 1280,
+      "theme": "light",
+      "menuFits": true,
+      "dialogFits": true,
+      "overflow": false,
+      "warning": true,
+      "submit": true
+    },
+    {
+      "width": 1280,
+      "theme": "dark",
+      "menuFits": true,
+      "dialogFits": true,
+      "overflow": false,
+      "warning": true,
+      "submit": true
+    },
+    {
+      "width": 1440,
+      "theme": "light",
+      "menuFits": true,
+      "dialogFits": true,
+      "overflow": false,
+      "warning": true,
+      "submit": true
+    },
+    {
+      "width": 1440,
+      "theme": "dark",
+      "menuFits": true,
+      "dialogFits": true,
+      "overflow": false,
+      "warning": true,
+      "submit": true
+    }
+  ],
+  "move": [
+    {
+      "width": 320,
+      "theme": "light",
+      "dialogFits": true,
+      "overflow": false,
+      "options": ["Choose a workspace", "Joined destination"],
+      "warnings": true
+    },
+    {
+      "width": 320,
+      "theme": "dark",
+      "dialogFits": true,
+      "overflow": false,
+      "options": ["Choose a workspace", "Joined destination"],
+      "warnings": true
+    },
+    {
+      "width": 375,
+      "theme": "light",
+      "dialogFits": true,
+      "overflow": false,
+      "options": ["Choose a workspace", "Joined destination"],
+      "warnings": true
+    },
+    {
+      "width": 375,
+      "theme": "dark",
+      "dialogFits": true,
+      "overflow": false,
+      "options": ["Choose a workspace", "Joined destination"],
+      "warnings": true
+    },
+    {
+      "width": 768,
+      "theme": "light",
+      "dialogFits": true,
+      "overflow": false,
+      "options": ["Choose a workspace", "Joined destination"],
+      "warnings": true
+    },
+    {
+      "width": 768,
+      "theme": "dark",
+      "dialogFits": true,
+      "overflow": false,
+      "options": ["Choose a workspace", "Joined destination"],
+      "warnings": true
+    },
+    {
+      "width": 1280,
+      "theme": "light",
+      "dialogFits": true,
+      "overflow": false,
+      "options": ["Choose a workspace", "Joined destination"],
+      "warnings": true
+    },
+    {
+      "width": 1280,
+      "theme": "dark",
+      "dialogFits": true,
+      "overflow": false,
+      "options": ["Choose a workspace", "Joined destination"],
+      "warnings": true
+    },
+    {
+      "width": 1440,
+      "theme": "light",
+      "dialogFits": true,
+      "overflow": false,
+      "options": ["Choose a workspace", "Joined destination"],
+      "warnings": true
+    },
+    {
+      "width": 1440,
+      "theme": "dark",
+      "dialogFits": true,
+      "overflow": false,
+      "options": ["Choose a workspace", "Joined destination"],
+      "warnings": true
+    }
+  ],
+  "keyboard": "Tab/Shift+Tab cycle inside Move dialog; Escape closes and restores menu trigger focus",
+  "roles": "Reader/MEMBER hide owner actions; archived OWNER keeps Restore only; denied visibility policy disables visibility independently of Move; empty destinations show guidance",
+  "console": "No application errors or warnings in inspected fixture scenarios"
+}

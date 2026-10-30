@@ -10,7 +10,10 @@ import { boardKeys } from '../boards/query-keys';
 import { workspaceKeys } from '../workspaces/query-keys';
 import { makeBoard } from '../../test/board-fixtures';
 import { activityKeys } from '../activities/query-keys';
-import { boardAccessVersion } from '../boards/access-version';
+import {
+  boardAccessVersion,
+  boardGrantVersion,
+} from '../boards/access-version';
 
 describe('access-loss cache isolation', () => {
   it('clears stale protected caches and cancels pending reads when access may have changed', async () => {
@@ -18,6 +21,7 @@ describe('access-loss cache isolation', () => {
     const board = boardKeys.detail('board');
     const workspace = workspaceKeys.overview('user', 1, 'team');
     const pendingListOnlyBoardVersion = boardAccessVersion(client, 'list-only');
+    const grantVersion = boardGrantVersion(client, 'list-only');
     client.setQueryData(board, { name: 'Private Board' });
     client.setQueryData(workspace, { recentBoards: ['Private Board'] });
     let finish: (value: object) => void = () => undefined;
@@ -35,6 +39,7 @@ describe('access-loss cache isolation', () => {
     expect(boardAccessVersion(client, 'list-only')).not.toBe(
       pendingListOnlyBoardVersion,
     );
+    expect(boardGrantVersion(client, 'list-only')).toBe(grantVersion);
     client.clear();
   });
   it('prevents an in-flight privileged Activity read from restoring cleared history', async () => {
