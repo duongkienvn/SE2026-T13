@@ -61,6 +61,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Frontend tasks
 
+- [ACL-scoped Workspace Guests tab](frontend/workspace-guests-directory-ui.md)
 - [Workspace frontend API integration](frontend/workspace-api-integration.md)
 - [Workspace Shell, Navigation and Overview UI V1](frontend/workspace-shell-overview.md)
 - [Workspace Boards UI V1, Filters and Create Board](frontend/workspace-boards-ui.md)

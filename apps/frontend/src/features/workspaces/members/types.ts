@@ -1,4 +1,22 @@
-import type { WorkspaceRole } from '@kanban/shared';
+import type { BoardRole, WorkspaceRole } from '@kanban/shared';
+
+/** Exact #132 allowlist; Board roles belong to each association, never the Workspace. */
+export interface WorkspaceGuest {
+  user: { id: string; displayName: string; avatarUrl: string | null };
+  boards: {
+    boardId: string;
+    name: string;
+    role: BoardRole;
+    isArchived: boolean;
+  }[];
+  visibleBoardCount: number;
+}
+
+export interface GuestFilters {
+  search: string;
+  page: number;
+  limit: number;
+}
 
 /** Wire DTOs from docs/tasks/backend/workspace-members-invitations-api.md. */
 export interface WorkspaceMember {

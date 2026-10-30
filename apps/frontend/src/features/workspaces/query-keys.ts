@@ -25,6 +25,11 @@ export const workspaceKeys = {
       ...workspaceKeys.resource(userId, generation, workspaceId),
       'members',
     ] as const,
+  guests: (userId: string, generation: number, workspaceId: string) =>
+    [
+      ...workspaceKeys.resource(userId, generation, workspaceId),
+      'guests',
+    ] as const,
   detail: (userId: string, generation: number, workspaceId: string) =>
     [
       ...workspaceKeys.resource(userId, generation, workspaceId),

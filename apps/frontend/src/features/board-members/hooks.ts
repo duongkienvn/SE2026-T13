@@ -12,6 +12,7 @@ import {
   updateMemberRole,
 } from './api';
 import type { AddMemberRequest, UpdateMemberRoleRequest } from './types';
+import { refreshWorkspaceGuests } from '../workspaces/members/refresh-guests';
 
 export function useBoardMembers(boardId: string, { enabled = true } = {}) {
   const { runAuthorized } = useAuth();
@@ -55,11 +56,13 @@ function useRefreshDeniedPolicy(boardId: string) {
  */
 function useInvalidateBoard(boardId: string) {
   const queryClient = useQueryClient();
-  return () =>
-    Promise.all([
+  return () => {
+    refreshWorkspaceGuests(queryClient);
+    return Promise.all([
       queryClient.invalidateQueries({ queryKey: boardKeys.detail(boardId) }),
       queryClient.invalidateQueries({ queryKey: boardKeys.lists() }),
     ]);
+  };
 }
 
 export function useAddMember(boardId: string) {
