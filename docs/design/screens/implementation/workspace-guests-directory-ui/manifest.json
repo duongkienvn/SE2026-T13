@@ -1,0 +1,134 @@
+{
+  "date": "2026-10-30",
+  "issue": 135,
+  "backend": "Merged #132 API; real AppModule and isolated PostgreSQL 16",
+  "viewportChecks": [
+    {
+      "width": 320,
+      "height": 812,
+      "theme": "light",
+      "pageOverflow": false,
+      "mainOverflow": false,
+      "tabOverflow": false,
+      "hiddenGuestVisible": false,
+      "privateBoardVisible": false,
+      "file": "guests-320-light.png"
+    },
+    {
+      "width": 320,
+      "height": 812,
+      "theme": "dark",
+      "pageOverflow": false,
+      "mainOverflow": false,
+      "tabOverflow": false,
+      "hiddenGuestVisible": false,
+      "privateBoardVisible": false,
+      "file": "guests-320-dark.png"
+    },
+    {
+      "width": 375,
+      "height": 812,
+      "theme": "light",
+      "pageOverflow": false,
+      "mainOverflow": false,
+      "tabOverflow": false,
+      "hiddenGuestVisible": false,
+      "privateBoardVisible": false,
+      "file": "guests-375-light.png"
+    },
+    {
+      "width": 375,
+      "height": 812,
+      "theme": "dark",
+      "pageOverflow": false,
+      "mainOverflow": false,
+      "tabOverflow": false,
+      "hiddenGuestVisible": false,
+      "privateBoardVisible": false,
+      "file": "guests-375-dark.png"
+    },
+    {
+      "width": 768,
+      "height": 1024,
+      "theme": "light",
+      "pageOverflow": false,
+      "mainOverflow": false,
+      "tabOverflow": false,
+      "hiddenGuestVisible": false,
+      "privateBoardVisible": false,
+      "file": "guests-768-light.png"
+    },
+    {
+      "width": 768,
+      "height": 1024,
+      "theme": "dark",
+      "pageOverflow": false,
+      "mainOverflow": false,
+      "tabOverflow": false,
+      "hiddenGuestVisible": false,
+      "privateBoardVisible": false,
+      "file": "guests-768-dark.png"
+    },
+    {
+      "width": 1280,
+      "height": 800,
+      "theme": "light",
+      "pageOverflow": false,
+      "mainOverflow": false,
+      "tabOverflow": false,
+      "hiddenGuestVisible": false,
+      "privateBoardVisible": false,
+      "file": "guests-1280-light.png"
+    },
+    {
+      "width": 1280,
+      "height": 800,
+      "theme": "dark",
+      "pageOverflow": false,
+      "mainOverflow": false,
+      "tabOverflow": false,
+      "hiddenGuestVisible": false,
+      "privateBoardVisible": false,
+      "file": "guests-1280-dark.png"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "pageOverflow": false,
+      "mainOverflow": false,
+      "tabOverflow": false,
+      "hiddenGuestVisible": false,
+      "privateBoardVisible": false,
+      "file": "guests-1440-light.png"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "pageOverflow": false,
+      "mainOverflow": false,
+      "tabOverflow": false,
+      "hiddenGuestVisible": false,
+      "privateBoardVisible": false,
+      "file": "guests-1440-dark.png"
+    }
+  ],
+  "checks": {
+    "historyAndRefresh": "pass",
+    "searchAndPageReset": "pass",
+    "inviteEscapeAndFocus": "pass",
+    "keyboardHomeEnd": "pass",
+    "archivedBoardLink": "pass",
+    "adminWithoutExplicitMembership": "pass",
+    "boardOnlyGuestDenied": "pass",
+    "liveWorkspaceRevocationAcrossBrowsers": "pass: directory with 12 permitted Guests and protected Board labels cleared without reload",
+    "consoleDuringGuestRendering": "no errors/warnings"
+  },
+  "notes": [
+    "Synthetic QA records only; no production DB or real email.",
+    "Body/main scroll allowed; no horizontal page or tab overflow.",
+    "System preference changed to exercise both themes.",
+    "Error/loading/session/late-response cases additionally covered in component tests."
+  ]
+}

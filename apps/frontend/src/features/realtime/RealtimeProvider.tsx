@@ -15,6 +15,7 @@ import { createInvalidationQueue } from './invalidation-queue';
 import { RealtimeContext } from './realtime-context';
 import { createRealtimeSocket } from './socket-client';
 import { changeBoardAccessVersion } from '../boards/access-version';
+import { refreshWorkspaceGuests } from '../workspaces/members/refresh-guests';
 
 /**
  * Owns the realtime client of the signed-in session. A new session (sign-in,
@@ -41,6 +42,27 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         const socket = createRealtimeSocket(() =>
           runAuthorized((token) => Promise.resolve(token)),
         );
+        // Guests may be removed without losing Board read access. Clear roster
+        // snapshots immediately, before the ordinary batched invalidation queue.
+        for (const event of [
+          'member:added',
+          'member:removed',
+          'member:role-changed',
+          'board:access-changed',
+          'board:archived',
+          'board:restored',
+        ] as const) {
+          socket.on(event, (payload: unknown) => {
+            if (
+              isCurrent() &&
+              payload &&
+              typeof payload === 'object' &&
+              'boardId' in payload &&
+              typeof payload.boardId === 'string'
+            )
+              refreshWorkspaceGuests(queryClient);
+          });
+        }
         socket.on('member:removed', (payload: unknown) => {
           if (!isCurrent() || !payload || typeof payload !== 'object') return;
           if (!('boardId' in payload) || typeof payload.boardId !== 'string')

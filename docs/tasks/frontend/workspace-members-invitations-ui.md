@@ -51,8 +51,10 @@ and the Workspace switcher (`workspaceDestination` keeps `/members`).
   (the same POST; the backend rotates the proof). No decline/resend endpoint
   exists, so there are none. Both lists accept positive integer page values
   up to 1,000,000; invalid values fall back to page 1.
-- **Guests tab**: Coming soon, non-interactive. No backend Guest projection
-  exists and the browser must not enumerate PRIVATE Board membership.
+- **Guests tab**: originally Coming soon in P2-08. The later
+  [P2-C02 Guests implementation](workspace-guests-directory-ui.md) activates
+  the merged ACL-scoped directory; the browser never enumerates PRIVATE Board
+  membership to construct it.
 - **Leave Workspace** is not on this page; it belongs to P2-09 Settings Danger
   Zone (#118).
 

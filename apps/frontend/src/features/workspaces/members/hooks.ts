@@ -14,10 +14,11 @@ import {
   inviteWorkspaceMember,
   listWorkspaceInvitations,
   listWorkspaceMembers,
+  listWorkspaceGuests,
   removeWorkspaceMember,
   revokeWorkspaceInvitation,
 } from './api';
-import type { InvitationFilters, MemberFilters } from './types';
+import type { GuestFilters, InvitationFilters, MemberFilters } from './types';
 
 function viewState(
   parent: WorkspaceViewState,
@@ -39,6 +40,7 @@ function useScope(workspaceId: string) {
     resource: workspaceKeys.resource(userId, scope.generation, workspaceId),
     overview: workspaceKeys.overview(userId, scope.generation, workspaceId),
     members: workspaceKeys.members(userId, scope.generation, workspaceId),
+    guests: workspaceKeys.guests(userId, scope.generation, workspaceId),
     invitations: workspaceKeys.invitations(
       userId,
       scope.generation,
@@ -56,6 +58,48 @@ function useScope(workspaceId: string) {
       sourceKey,
     );
   return { user, runAuthorized, scope, client, keys, revoke };
+}
+
+export function useWorkspaceGuests(
+  workspaceId: string,
+  filters: GuestFilters,
+  workspaceState: WorkspaceViewState,
+) {
+  const { user, runAuthorized, scope, keys, revoke } = useScope(workspaceId);
+  const queryKey = [...keys.guests, filters] as const;
+  const query = useQuery({
+    queryKey,
+    queryFn: async ({ signal }) => {
+      try {
+        return await runAuthorized((token) =>
+          listWorkspaceGuests(token, workspaceId, filters, signal),
+        );
+      } catch (error) {
+        if (
+          scope.isCurrent() &&
+          isApiError(error) &&
+          [403, 404].includes(error.status)
+        )
+          await revoke(error, queryKey);
+        throw error;
+      }
+    },
+    enabled: !!user && workspaceState === 'ready',
+    retry: false,
+    refetchOnMount: 'always',
+    // A cached association may no longer be permitted. No placeholders or stale rows during revalidation.
+    placeholderData: undefined,
+  });
+  const state = viewState(
+    workspaceState,
+    query,
+    query.isFetchedAfterMount && !query.isFetching && scope.isCurrent(),
+  );
+  return {
+    ...query,
+    state,
+    pageData: state === 'ready' ? query.data : undefined,
+  };
 }
 
 export function useWorkspaceMembers(

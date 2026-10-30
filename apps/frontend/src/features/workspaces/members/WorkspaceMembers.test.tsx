@@ -483,15 +483,17 @@ describe('Workspace Members page', () => {
     expect(screen.queryByRole('button', { name: /Actions for/ })).toBeNull();
   });
 
-  it('keeps Guests as a non-interactive Coming soon tab', async () => {
+  it('offers Guests without requesting its protected data until selected', async () => {
     const { calls } = mount();
     await table();
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
       'Members',
       'Invitations',
+      'Guests',
     ]);
-    const guests = screen.getByText('Guests').closest('[aria-disabled]');
-    expect(guests?.textContent).toContain('coming soon');
+    expect(
+      screen.getByRole('tab', { name: 'Guests' }).getAttribute('aria-selected'),
+    ).toBe('false');
     expect(calls.some((call) => /guest/i.test(call.path))).toBe(false);
   });
 

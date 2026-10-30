@@ -6,6 +6,8 @@ import type {
   PageData,
   WorkspaceInvitation,
   WorkspaceMember,
+  WorkspaceGuest,
+  GuestFilters,
 } from './types';
 
 const base = (workspaceId: string) =>
@@ -18,6 +20,26 @@ function toPageData<T>({ items, meta }: Page<T>): PageData<T> {
     page: meta.page,
     pageCount: meta.totalPages,
   };
+}
+
+/** One server-scoped page; never build a directory by enumerating Board rosters. */
+export async function listWorkspaceGuests(
+  accessToken: string,
+  workspaceId: string,
+  filters: GuestFilters,
+  signal?: AbortSignal,
+) {
+  const query = new URLSearchParams({
+    page: String(filters.page),
+    limit: String(filters.limit),
+  });
+  if (filters.search.trim()) query.set('search', filters.search.trim());
+  return toPageData(
+    await apiRequestPage<WorkspaceGuest>(
+      `${base(workspaceId)}/guests?${query}`,
+      { accessToken, signal },
+    ),
+  );
 }
 
 export async function listWorkspaceMembers(
