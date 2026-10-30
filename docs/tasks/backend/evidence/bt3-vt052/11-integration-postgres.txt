@@ -1,0 +1,20 @@
+PASS: TC14 partial success persists only ACCEPTED rows with activities
+PASS: TC15 mid-batch failure rolls back every row and publishes nothing
+PASS: TC16 10 concurrent imports + 10 creates keep unique, contiguous order
+PASS: TC17 imported card archive/restore and archived/restored Board guard
+Card import PostgreSQL integration: 4 groups PASS
+## regression: existing cards PostgreSQL integration
+PASS: clean migrations and existing NUMERIC(20,10) schema
+PASS: OWNER/MEMBER access, deadline UTC and cross-board isolation even for members of both boards
+PASS: concurrent create/cross-column move: unique active positions, no lost cards, preserved source order
+PASS: fresh reads persist front/middle/no-op movement and reject invalid anchors
+PASS: gap exhaustion/overflow rebalancing and real database rollback of multi-row moves
+PASS: multi-assignee persistence, concurrent duplicate assignment, exact unassign and FK/UNIQUE constraints
+PASS: archive retains comments/assignments and blocks all mutations, anchors and E1 column deletion
+PASS: member removal cleans active/archived assignments only within its board
+PASS: deterministic assign-vs-remove-member races in both lock acquisition orders leave no stale assignment
+PASS: create-vs-E1-column-delete races obey the shared Board lock and preserve references
+PASS: real AppModule/REST login/Card HTTP and joined-assignee pagination match persisted SQL ordering
+PASS: archived REST filters, stable paging, permissions, concurrent restore, preserved relations, dense rebalance and archived Board
+PASS: archived Board remains readable and blocks every Card mutation
+Card PostgreSQL integration: 13 groups PASS

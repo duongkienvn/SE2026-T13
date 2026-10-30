@@ -1,0 +1,125 @@
+idle read p95 (no import load): 42ms
+A: 100 users spread over 10 boards run 1: ok=100 errors=0 persisted=1800/1800 p50=1367ms p95=2083ms max=2287ms wall=2304ms readP95=2271ms -> MEETS p95<=3000ms
+A: 100 users spread over 10 boards run 2: ok=100 errors=0 persisted=1800/1800 p50=1232ms p95=1880ms max=2069ms wall=2087ms readP95=2043ms -> MEETS p95<=3000ms
+A: 100 users spread over 10 boards run 3: ok=100 errors=0 persisted=1800/1800 p50=1038ms p95=1786ms max=1994ms wall=2005ms readP95=1964ms -> MEETS p95<=3000ms
+B: 100 users on 1 hot board (worst-case lock) run 1: ok=100 errors=0 persisted=1800/1800 p50=2752ms p95=4941ms max=5205ms wall=5216ms readP95=4877ms -> MISSES p95<=3000ms
+B: 100 users on 1 hot board (worst-case lock) run 2: ok=100 errors=0 persisted=1800/1800 p50=2664ms p95=4885ms max=5137ms wall=5147ms readP95=4811ms -> MISSES p95<=3000ms
+B: 100 users on 1 hot board (worst-case lock) run 3: ok=100 errors=0 persisted=1800/1800 p50=2635ms p95=4904ms max=5161ms wall=5168ms readP95=4831ms -> MISSES p95<=3000ms
+{
+  "environment": {
+    "node": "v24.18.0",
+    "cpus": 16,
+    "cpuModel": "AMD Ryzen 7 4800H with Radeon Graphics         ",
+    "memoryGb": 7,
+    "users": 100,
+    "rowsPerRequest": 20,
+    "invalidRowsPerRequest": 2,
+    "runs": 3,
+    "targetP95Ms": 3000
+  },
+  "scenarios": [
+    {
+      "scenario": "A: 100 users spread over 10 boards",
+      "run": 1,
+      "ok": 100,
+      "errors": 0,
+      "createdReported": 1800,
+      "rejectedReported": 200,
+      "persisted": 1800,
+      "expectedCreated": 1800,
+      "p50Ms": 1367,
+      "p95Ms": 2083,
+      "maxMs": 2287,
+      "wallMs": 2304,
+      "readP95Ms": 2271,
+      "readErrors": 0,
+      "meetsTarget": true
+    },
+    {
+      "scenario": "A: 100 users spread over 10 boards",
+      "run": 2,
+      "ok": 100,
+      "errors": 0,
+      "createdReported": 1800,
+      "rejectedReported": 200,
+      "persisted": 1800,
+      "expectedCreated": 1800,
+      "p50Ms": 1232,
+      "p95Ms": 1880,
+      "maxMs": 2069,
+      "wallMs": 2087,
+      "readP95Ms": 2043,
+      "readErrors": 0,
+      "meetsTarget": true
+    },
+    {
+      "scenario": "A: 100 users spread over 10 boards",
+      "run": 3,
+      "ok": 100,
+      "errors": 0,
+      "createdReported": 1800,
+      "rejectedReported": 200,
+      "persisted": 1800,
+      "expectedCreated": 1800,
+      "p50Ms": 1038,
+      "p95Ms": 1786,
+      "maxMs": 1994,
+      "wallMs": 2005,
+      "readP95Ms": 1964,
+      "readErrors": 0,
+      "meetsTarget": true
+    },
+    {
+      "scenario": "B: 100 users on 1 hot board (worst-case lock)",
+      "run": 1,
+      "ok": 100,
+      "errors": 0,
+      "createdReported": 1800,
+      "rejectedReported": 200,
+      "persisted": 1800,
+      "expectedCreated": 1800,
+      "p50Ms": 2752,
+      "p95Ms": 4941,
+      "maxMs": 5205,
+      "wallMs": 5216,
+      "readP95Ms": 4877,
+      "readErrors": 0,
+      "meetsTarget": false
+    },
+    {
+      "scenario": "B: 100 users on 1 hot board (worst-case lock)",
+      "run": 2,
+      "ok": 100,
+      "errors": 0,
+      "createdReported": 1800,
+      "rejectedReported": 200,
+      "persisted": 1800,
+      "expectedCreated": 1800,
+      "p50Ms": 2664,
+      "p95Ms": 4885,
+      "maxMs": 5137,
+      "wallMs": 5147,
+      "readP95Ms": 4811,
+      "readErrors": 0,
+      "meetsTarget": false
+    },
+    {
+      "scenario": "B: 100 users on 1 hot board (worst-case lock)",
+      "run": 3,
+      "ok": 100,
+      "errors": 0,
+      "createdReported": 1800,
+      "rejectedReported": 200,
+      "persisted": 1800,
+      "expectedCreated": 1800,
+      "p50Ms": 2635,
+      "p95Ms": 4904,
+      "maxMs": 5161,
+      "wallMs": 5168,
+      "readP95Ms": 4831,
+      "readErrors": 0,
+      "meetsTarget": false
+    }
+  ],
+  "idleReadP95Ms": 42
+}

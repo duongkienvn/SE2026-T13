@@ -1,0 +1,20 @@
+﻿## TIME: same suites under three process time zones
+TZ=UTC  ->  Tests:       28 passed, 28 total
+TZ=Asia/Ho_Chi_Minh  ->  Tests:       28 passed, 28 total
+TZ=America/Los_Angeles  ->  Tests:       28 passed, 28 total
+## ORDER: randomized test order, 5 seeds
+seed=1  ->  Tests:       70 passed, 70 total
+seed=42  ->  Tests:       70 passed, 70 total
+seed=2026  ->  Tests:       70 passed, 70 total
+seed=52  ->  Tests:       70 passed, 70 total
+seed=23001885  ->  Tests:       70 passed, 70 total
+## TIME sanity: TZ really reaches node (offset minutes for 2000-01-01)
+TZ=UTC offset=0
+TZ=Asia/Ho_Chi_Minh offset=-420
+TZ=America/Los_Angeles offset=480
+## CONCURRENCY: PostgreSQL import integration repeated 5x (fresh random DB each run)
+run 1 -> Card import PostgreSQL integration: 4 groups PASS
+run 2 -> Card import PostgreSQL integration: 4 groups PASS
+run 3 -> Card import PostgreSQL integration: 4 groups PASS
+run 4 -> Card import PostgreSQL integration: 4 groups PASS
+run 5 -> Card import PostgreSQL integration: 4 groups PASS

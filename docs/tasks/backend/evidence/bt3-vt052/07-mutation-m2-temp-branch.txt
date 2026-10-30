@@ -1,0 +1,34 @@
+# temporary mutation branch mutation/vt052-m2-tmp, commit 506df79 (parent fc15ebf)
+506df79 tmp(mutation): M2 imported cards start archived (DO NOT MERGE)
+
+ apps/backend/src/api/cards/cards.service.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -464,7 +464,7 @@ export class CardsService {
+           title: row.title,
+           description: row.description ?? null,
+           dueDate: row.dueDate ? new Date(row.dueDate) : null,
+-          isArchived: false,
++          isArchived: true,
+           archivedAt: null,
+           position: '0.0000000000',
+         }),
+## npx jest --runInBand test/cards
+  ● CardsService.importCards › TC05 persists ACCEPTED rows as ACTIVE cards after the last active card and reports REJECTED rows
+    - Expected  -  4
+    + Received  + 21
+    -     "isArchived": false,
+    +     "isArchived": true,
+    -     "isArchived": false,
+    +     "isArchived": true,
+  ● Card HTTP API with real JWT, authorization, services and envelopes › POST /boards/:boardId/cards/import (VT-052) › TC10 keeps valid rows when other rows are invalid and appends them after existing cards
+    - Expected  - 1
+    + Received  + 1
+    -         "isArchived": false,
+    +         "isArchived": true,
+  ● Card HTTP API with real JWT, authorization, services and envelopes › POST /boards/:boardId/cards/import (VT-052) › TC13 appends after the last ACTIVE card even when an archived card sits later in the column
+    Expected: "300.0000000000"
+    Received: "200.0000000000"
+Test Suites: 2 failed, 4 passed, 6 total
+Tests:       3 failed, 67 passed, 70 total
+## branch deleted; submission branch HEAD fc15ebf; mutant absent:
+0

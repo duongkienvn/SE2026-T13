@@ -57,6 +57,7 @@ const MUTANTS = [
 const suites = process.env.MUTANT_SUITES ?? 'test/cards';
 const selected = process.argv.slice(2);
 const results = [];
+const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
 
 for (const mutant of MUTANTS.filter(
   (m) => !selected.length || selected.includes(m.id),
@@ -72,10 +73,7 @@ for (const mutant of MUTANTS.filter(
       encoding: 'utf8',
       shell: true,
     });
-    const output = `${run.stdout}\n${run.stderr}`.replace(
-      /\x1b\[[0-9;]*m/g,
-      '',
-    );
+    const output = `${run.stdout}\n${run.stderr}`.replace(ANSI, '');
     const killers = [...output.matchAll(/● (.+?) › (.+)$/gm)].map((match) =>
       match[2].trim(),
     );

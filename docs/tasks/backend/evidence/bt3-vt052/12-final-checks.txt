@@ -1,0 +1,32 @@
+# final checks 2026-10-31T00:02:36+07:00 on fc15ebf + uncommitted harness/docs
+## pnpm lint
+> eslint apps packages
+
+## pnpm test (root: shared + backend + frontend)
+apps/frontend test:  Test Files  102 passed (102)
+apps/frontend test:       Tests  1075 passed (1075)
+apps/backend test: [Nest] 26960  - 10/31/2026, 12:04:27 AM   ERROR [BoardRoomCoordinator] Board room eviction failed; disconnecting socket
+apps/backend test: [Nest] 26960  - 10/31/2026, 12:04:27 AM   ERROR [BoardRoomCoordinator] Socket disconnect failed; board receive access remains revoked
+apps/backend test: [Nest] 26960  - 10/31/2026, 12:04:27 AM   ERROR [BoardRoomCoordinator] Board room eviction failed; disconnecting socket
+apps/backend test: [Nest] 26960  - 10/31/2026, 12:04:27 AM   ERROR [BoardRoomCoordinator] Socket disconnect failed; board receive access remains revoked
+apps/backend test: [Nest] 26960  - 10/31/2026, 12:04:27 AM   ERROR [BoardEventPublisher] Board event delivery failed
+apps/backend test: [Nest] 26960  - 10/31/2026, 12:04:27 AM   ERROR [BoardEventPublisher] Board event delivery failed
+apps/backend test: [Nest] 47208  - 10/31/2026, 12:04:48 AM   ERROR [BoardRoomCoordinator] Board room eviction failed; disconnecting socket
+apps/backend test: [Nest] 47208  - 10/31/2026, 12:04:48 AM   ERROR [BoardRoomCoordinator] Socket disconnect failed; board receive access remains revoked
+apps/backend test: [Nest] 19360  - 10/31/2026, 12:04:59 AM   ERROR [BoardPresenceService] Board presence delivery failed
+apps/backend test: [Nest] 19360  - 10/31/2026, 12:04:59 AM   ERROR [BoardRoomCoordinator] Board room eviction failed; disconnecting socket
+apps/backend test: [Nest] 19360  - 10/31/2026, 12:04:59 AM   ERROR [BoardRoomCoordinator] Socket disconnect failed; board receive access remains revoked
+apps/backend test: [Nest] 19360  - 10/31/2026, 12:04:59 AM   ERROR [BoardRoomCoordinator] Board room eviction failed; disconnecting socket
+apps/backend test: [Nest] 19360  - 10/31/2026, 12:04:59 AM   ERROR [BoardRoomCoordinator] Socket disconnect failed; board receive access remains revoked
+apps/backend test: Test Suites: 71 passed, 71 total
+apps/backend test: Tests:       729 passed, 729 total
+## pnpm build
+packages/shared build: Done
+apps/backend build: Done
+apps/frontend build: Done
+## prettier on changed files (--end-of-line auto, Windows CRLF checkout)
+warning: in the working copy of 'apps/backend/package.json', LF will be replaced by CRLF the next time Git touches it
+All matched files use Prettier code style!
+## note: an earlier root `pnpm test` run (same commit) reported 1 failure in
+## apps/frontend/src/features/workspaces/members/WorkspaceGuests.test.tsx (22 s file under parallel load);
+## re-run alone: 28/28 passed; this full re-run: 102/102 files passed. Frontend untouched by this branch -> pre-existing timing flake, out of scope.

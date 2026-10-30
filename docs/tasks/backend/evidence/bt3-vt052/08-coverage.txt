@@ -1,0 +1,28 @@
+PASS test/cards/cards-import.spec.ts (8.016 s)
+PASS test/cards/cards.e2e-spec.ts
+PASS test/cards/cards.service.spec.ts
+PASS test/cards/cards-restore.spec.ts
+PASS test/cards/cards.dto.spec.ts
+PASS test/cards/cards-ordering.spec.ts
+--------------------------------|---------|----------|---------|---------|-------------------
+File                            | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+--------------------------------|---------|----------|---------|---------|-------------------
+ cards                          |   92.06 |    94.38 |   97.82 |   93.35 |                   
+  cards-import.ts               |   95.65 |    81.81 |     100 |     100 | 30-32             
+  cards-ordering.ts             |     100 |      100 |     100 |     100 |                   
+  cards.controller.ts           |     100 |      100 |     100 |     100 |                   
+  cards.module.ts               |       0 |      100 |     100 |       0 | 1-32              
+  cards.service.ts              |   96.56 |    95.58 |   96.87 |   97.33 | 238-247           
+ cards/dto                      |     100 |    83.33 |     100 |     100 |                   
+  assign-card.dto.ts            |     100 |      100 |     100 |     100 |                   
+  card-assignee-response.dto.ts |     100 |      100 |     100 |     100 |                   
+  card-response.dto.ts          |     100 |    83.33 |     100 |     100 | 51                
+  create-card.dto.ts            |     100 |      100 |     100 |     100 |                   
+  import-cards.dto.ts           |     100 |      100 |     100 |     100 |                   
+  list-cards.dto.ts             |     100 |      100 |     100 |     100 |                   
+  move-card.dto.ts              |     100 |      100 |     100 |     100 |                   
+  update-card.dto.ts            |     100 |      100 |     100 |     100 |                   
+ cards/entities                 |   71.42 |      100 |       0 |   83.72 |                   
+--------------------------------|---------|----------|---------|---------|-------------------
+Tests:       70 passed, 70 total
+Ran all test suites matching /test\\cards/i.
