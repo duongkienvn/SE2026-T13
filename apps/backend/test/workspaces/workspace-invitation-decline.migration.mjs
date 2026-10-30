@@ -3,6 +3,10 @@ import console from 'node:console';
 import { randomBytes } from 'node:crypto';
 
 export async function verifyDeclineMigration(source) {
+  const allMigrations = source.migrations;
+  source.migrations = allMigrations.filter(
+    (m) => !m.name.startsWith('WorkspaceActivity'),
+  );
   const before = await source.query(
     'SELECT * FROM workspace_invitations ORDER BY id',
   );
@@ -44,10 +48,6 @@ export async function verifyDeclineMigration(source) {
       m.name.startsWith('WorkspaceInvitationDecline'),
     ).length,
     1,
-  );
-  assert.deepEqual(
-    (await source.driver.createSchemaBuilder().log()).upQueries,
-    [],
   );
   const open = before.find((row) => !row.revoked_at && !row.consumed_at);
   const insert = () =>
@@ -105,6 +105,12 @@ export async function verifyDeclineMigration(source) {
     history,
   );
   assert.deepEqual(await source.runMigrations(), []);
+  source.migrations = allMigrations;
+  assert.equal((await source.runMigrations()).length, 1);
+  assert.deepEqual(
+    (await source.driver.createSchemaBuilder().log()).upQueries,
+    [],
+  );
   console.log(
     'PASS: Decline migration populated up/down/up, legacy preservation, terminal timestamps/exclusivity, open uniqueness, metadata and guarded rollback',
   );

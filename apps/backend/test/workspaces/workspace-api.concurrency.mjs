@@ -9,6 +9,9 @@ const {
 const {
   WorkspaceBoardsService,
 } = require('../../dist/api/workspaces/workspace-boards.service.js');
+const {
+  WorkspaceActivityService,
+} = require('../../dist/api/workspaces/workspace-activity.service.js');
 const { BoardsService } = require('../../dist/api/boards/boards.service.js');
 const {
   WorkspacesService,
@@ -31,6 +34,7 @@ export async function verifyConcurrency(ctx) {
   const service = app.get(WorkspaceApiService);
   const boardService = app.get(BoardsService);
   const queries = app.get(WorkspaceBoardsService);
+  const activity = app.get(WorkspaceActivityService);
   const foundation = app.get(WorkspacesService);
   const memberRepo = source.getRepository('WorkspaceMember');
   await memberRepo.insert({
@@ -119,9 +123,13 @@ export async function verifyConcurrency(ctx) {
       queries.overview(actors.member, team.id),
       (e) => e.getStatus?.() === 404,
     );
-    await waitForBlocked(source, pid, 2);
+    const activityRejected = assert.rejects(
+      activity.list(actors.member, team.id, { page: 1, limit: 20 }),
+      (e) => e.getStatus?.() === 404,
+    );
+    await waitForBlocked(source, pid, 3);
     await runner.commitTransaction();
-    await Promise.all([createRejected, readRejected]);
+    await Promise.all([createRejected, readRejected, activityRejected]);
     assert.equal(
       await source
         .getRepository('Board')
