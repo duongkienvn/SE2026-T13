@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import process from 'node:process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { verifyMembers } from './workspace-members.lifecycle.mjs';
+import { verifyWorkspaceGuests } from './workspace-guests.integration.mjs';
 import { verifyInvitations } from './workspace-invitations.lifecycle.mjs';
 import { verifyInvitationRaces } from './workspace-invitations.concurrency.mjs';
 import { verifyInvitationMigration } from './workspace-invitations.migration.mjs';
@@ -176,6 +177,7 @@ try {
     fake,
   };
   await verifyMembers(context);
+  await verifyWorkspaceGuests(context);
   await verifyInvitations(context);
   await verifyInvitationRaces(context);
   await verifyQuotaContention(context);
