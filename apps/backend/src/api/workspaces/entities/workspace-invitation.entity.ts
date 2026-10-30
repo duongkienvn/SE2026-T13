@@ -27,7 +27,11 @@ import type { InvitationSendState } from '../workspace-invitation-mailer';
 @Check('CK_workspace_invitations_expiry', `"expires_at" > "created_at"`)
 @Check(
   'CK_workspace_invitations_terminal',
-  `("consumed_at" IS NULL OR ("consumed_at" >= "created_at" AND "consumed_at" < "expires_at")) AND ("revoked_at" IS NULL OR "revoked_at" >= "created_at") AND NOT ("consumed_at" IS NOT NULL AND "revoked_at" IS NOT NULL)`,
+  `("consumed_at" IS NULL OR ("consumed_at" >= "created_at" AND "consumed_at" < "expires_at")) AND ("revoked_at" IS NULL OR "revoked_at" >= "created_at") AND num_nonnulls("consumed_at", "revoked_at", "declined_at") <= 1`,
+)
+@Check(
+  'CK_workspace_invitations_declined_at',
+  `"declined_at" IS NULL OR ("declined_at" >= "created_at" AND "declined_at" < "expires_at")`,
 )
 @Index('IDX_workspace_invitations_workspace_email', ['workspaceId', 'email'])
 @Index('IDX_workspace_invitations_expires_at', ['expiresAt'])
@@ -35,7 +39,8 @@ import type { InvitationSendState } from '../workspace-invitation-mailer';
 @Index('IDX_workspace_invitations_created_at', ['createdAt'])
 @Index('UQ_workspace_invitations_open_email', ['workspaceId', 'email'], {
   unique: true,
-  where: '"consumed_at" IS NULL AND "revoked_at" IS NULL',
+  where:
+    '"consumed_at" IS NULL AND "revoked_at" IS NULL AND "declined_at" IS NULL',
 })
 @Check(
   'CK_workspace_invitations_send_state',
@@ -66,6 +71,8 @@ export class WorkspaceInvitation {
   consumedAt!: Date | null;
   @Column({ name: 'revoked_at', type: 'timestamptz', nullable: true })
   revokedAt!: Date | null;
+  @Column({ name: 'declined_at', type: 'timestamptz', nullable: true })
+  declinedAt!: Date | null;
   @Column({ name: 'invited_by_id', type: 'uuid' }) invitedById!: string;
   @ManyToOne(() => User, { onDelete: 'NO ACTION' })
   @JoinColumn({

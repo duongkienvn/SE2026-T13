@@ -84,6 +84,7 @@ export class WorkspaceInvitationIssuanceService {
           (now.getTime() - prior.createdAt.getTime() < INVITATION_COOLDOWN_MS ||
             (!prior.revokedAt &&
               !prior.consumedAt &&
+              !prior.declinedAt &&
               prior.sendState === 'DISPATCHING' &&
               now.getTime() - prior.createdAt.getTime() <
                 INVITATION_DISPATCH_LEASE_MS))
@@ -98,7 +99,7 @@ export class WorkspaceInvitationIssuanceService {
           .update()
           .set({ revokedAt: now, updatedAt: now })
           .where(
-            'workspace_id = :workspaceId AND email = :email AND consumed_at IS NULL AND revoked_at IS NULL',
+            'workspace_id = :workspaceId AND email = :email AND consumed_at IS NULL AND revoked_at IS NULL AND declined_at IS NULL',
             { workspaceId, email },
           )
           .execute();
@@ -115,6 +116,7 @@ export class WorkspaceInvitationIssuanceService {
             expiresAt: new Date(now.getTime() + INVITATION_TTL_MS),
             consumedAt: null,
             revokedAt: null,
+            declinedAt: null,
             sendState: this.mailer ? 'DISPATCHING' : 'UNAVAILABLE',
           }),
         );
@@ -148,7 +150,7 @@ export class WorkspaceInvitationIssuanceService {
           .update()
           .set({ sendState })
           .where(
-            'id = :id AND send_state = :state AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > clock_timestamp()',
+            'id = :id AND send_state = :state AND consumed_at IS NULL AND revoked_at IS NULL AND declined_at IS NULL AND expires_at > clock_timestamp()',
             { id: reserved.invitation.id, state: 'DISPATCHING' },
           )
           .execute();

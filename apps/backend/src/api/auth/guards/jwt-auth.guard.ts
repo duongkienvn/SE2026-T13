@@ -11,12 +11,17 @@ interface AuthenticatedRequest extends Request {
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
+  /** Only the error status varies; JWT, session and verification checks remain mandatory. */
+  protected readonly unverifiedStatus: 401 | 403 = 401;
   constructor(private readonly authService: AuthService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const token = this.readBearerToken(request.headers.authorization);
-    request.user = await this.authService.authenticateAccessToken(token);
+    request.user = await this.authService.authenticateAccessToken(
+      token,
+      this.unverifiedStatus,
+    );
     return true;
   }
 

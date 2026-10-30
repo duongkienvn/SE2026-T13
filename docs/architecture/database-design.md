@@ -225,6 +225,11 @@ Workspace để bảo vệ verified-email binding, single-use, quota, rotate/rev
 last-admin; xem [member/invitation API](../tasks/backend/workspace-members-invitations-api.md).
 Migration dừng nguyên tử nếu có pending duplicates, không tự thu hồi dữ liệu cũ.
 
+P2-C03 adds nullable `declined_at timestamptz`, a bounded decline timestamp and
+at-most-one consumed/revoked/declined constraint. Open-row uniqueness excludes
+all three terminal outcomes. Legacy rows/hashes remain intact; rollback refuses
+once declined history exists. See [decline lifecycle and migration evidence](../tasks/backend/workspace-invitation-decline.md).
+
 Mọi FK mới dùng NO ACTION: xóa Workspace không cascade Board/Card/User.
 Workspace ADMIN không có Board grant. P2-03 triển khai last-admin protection và
 membership management; Workspace-visible read policy vẫn thuộc P2-04.

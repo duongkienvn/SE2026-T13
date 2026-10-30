@@ -134,7 +134,10 @@ export class AuthService {
     return user;
   }
 
-  async authenticateAccessToken(token: string): Promise<AuthenticatedUser> {
+  async authenticateAccessToken(
+    token: string,
+    unverifiedStatus: 401 | 403 = 401,
+  ): Promise<AuthenticatedUser> {
     let claims: JwtClaims;
     try {
       claims = await this.jwt.verifyAsync<JwtClaims>(token);
@@ -154,11 +157,17 @@ export class AuthService {
       throw this.unauthorized();
     }
     const user = await this.users.findOne({ where: { id: claims.sub } });
-    if (
-      !user?.emailVerifiedAt ||
-      (claims.authVersion ?? 0) !== user.authVersion
-    )
+    if (!user || (claims.authVersion ?? 0) !== user.authVersion)
       throw this.unauthorized();
+    if (!user.emailVerifiedAt) {
+      if (unverifiedStatus === 403)
+        throw new ApplicationException(
+          403,
+          ErrorCode.EMAIL_NOT_VERIFIED,
+          'Verify your email before responding to an invitation',
+        );
+      throw this.unauthorized();
+    }
     return {
       userId: user.id,
       authVersion: user.authVersion,

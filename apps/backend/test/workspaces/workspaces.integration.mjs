@@ -786,16 +786,20 @@ try {
     [],
     'Entity metadata must match final migrations',
   );
+  await source.undoLastMigration(); // Empty decline history; retain the policy rollback assertion.
   await assert.rejects(
     source.undoLastMigration(),
     /Workspace policies require a forward fix/,
   );
+  assert.equal((await source.runMigrations()).length, 1);
   await source.destroy();
 
   // Exercise historical rollback in a separate disposable database without P2-05.
   await openDatabase();
   source.migrations = source.migrations.filter(
-    (m) => !m.name.startsWith('WorkspacePolicies'),
+    (m) =>
+      !m.name.startsWith('WorkspacePolicies') &&
+      !m.name.startsWith('WorkspaceInvitationDecline'),
   );
   await source.runMigrations();
   // Revert invitation, icon, empty welcome ledger and both Workspace foundation stages.
@@ -815,7 +819,8 @@ try {
   source.migrations = source.migrations.filter(
     (m) =>
       !m.name.startsWith('WelcomeEmailOutbox') &&
-      !m.name.startsWith('WorkspacePolicies'),
+      !m.name.startsWith('WorkspacePolicies') &&
+      !m.name.startsWith('WorkspaceInvitationDecline'),
   );
   const atomicMigrations = [...source.migrations];
   source.migrations = atomicMigrations.filter(
@@ -869,7 +874,8 @@ try {
   source.migrations = source.migrations.filter(
     (m) =>
       !m.name.startsWith('WelcomeEmailOutbox') &&
-      !m.name.startsWith('WorkspacePolicies'),
+      !m.name.startsWith('WorkspacePolicies') &&
+      !m.name.startsWith('WorkspaceInvitationDecline'),
   );
   const migrations = [...source.migrations];
   source.migrations = migrations.filter(
@@ -1133,10 +1139,12 @@ try {
     board_membership_changes_enabled AND board_visibility_changes_enabled
   ) AS valid FROM workspaces`);
   assert.equal(defaults.valid, true);
+  await source.undoLastMigration(); // No declined history exists in this legacy fixture.
   await assert.rejects(
     source.undoLastMigration(),
     /Workspace policies require a forward fix/,
   );
+  assert.equal((await source.runMigrations()).length, 1);
   pass(
     'Policy upgrade preserves populated Board data and applies default policies',
   );

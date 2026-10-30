@@ -179,7 +179,7 @@ export class WorkspaceMembersService {
       .findOneByOrFail({ id: userId });
     await manager.query(
       `UPDATE workspace_invitations SET revoked_at = clock_timestamp(), updated_at = clock_timestamp()
-      WHERE workspace_id = $1 AND consumed_at IS NULL AND revoked_at IS NULL
+      WHERE workspace_id = $1 AND consumed_at IS NULL AND revoked_at IS NULL AND declined_at IS NULL
       AND (email = lower(btrim($2)) OR invited_by_id = $3)`,
       [workspaceId, user.email, userId],
     );

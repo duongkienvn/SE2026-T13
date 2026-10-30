@@ -13,6 +13,7 @@ import { WorkspaceGuestsService } from './workspace-guests.service';
 import { WorkspaceGuestsController } from './workspace-guests.controller';
 import { WorkspaceInvitationsService } from './workspace-invitations.service';
 import { WorkspaceInvitationIssuanceService } from './workspace-invitation-issuance.service';
+import { WorkspaceInvitationDeclineGuard } from './workspace-invitation-decline.guard';
 import { WorkspaceMembersController } from './workspace-members.controller';
 import { WorkspacePoliciesController } from './workspace-policies.controller';
 import { WorkspacePoliciesService } from './workspace-policies.service';
@@ -52,6 +53,7 @@ import {
     WorkspaceDeletionService,
     WorkspaceInvitationsService,
     WorkspaceInvitationIssuanceService,
+    WorkspaceInvitationDeclineGuard,
   ],
 })
 export class WorkspaceApiModule {}
