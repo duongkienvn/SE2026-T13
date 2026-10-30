@@ -150,7 +150,9 @@ roll application code back while new invitation writers remain active.
 
 P2-08/P2-09 may consume these routes and permissions. Guests tab is deferred:
 do not infer guest counts/identities by querying PRIVATE Boards the actor cannot
-read, and do not display fabricated guest rows. No Guests endpoint is added.
+read, and do not display fabricated guest rows. No Guests endpoint is added by P2-03.
+The later [P2-C01 Guests Directory API](workspace-guests-directory-api.md) supplies
+the ACL-limited read contract and local verification evidence for Issue #135.
 Signed-out return intent and account-switch UI belong to P2-08; keep proof in
 ephemeral browser state/URL fragment, exclude it from logs/analytics and send it
 only in the authenticated accept body. P2-10 owns the actual public link format.

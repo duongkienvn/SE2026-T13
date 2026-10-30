@@ -9,6 +9,8 @@ import { WorkspaceApiController } from './workspace-api.controller';
 import { WorkspaceApiService } from './workspace-api.service';
 import { WorkspaceBoardsService } from './workspace-boards.service';
 import { WorkspaceMembersService } from './workspace-members.service';
+import { WorkspaceGuestsService } from './workspace-guests.service';
+import { WorkspaceGuestsController } from './workspace-guests.controller';
 import { WorkspaceInvitationsService } from './workspace-invitations.service';
 import { WorkspaceInvitationIssuanceService } from './workspace-invitation-issuance.service';
 import { WorkspaceMembersController } from './workspace-members.controller';
@@ -35,6 +37,7 @@ import {
   controllers: [
     WorkspaceApiController,
     WorkspaceMembersController,
+    WorkspaceGuestsController,
     WorkspacePoliciesController,
     WorkspaceDeletionController,
     WorkspaceInvitationsController,
@@ -44,6 +47,7 @@ import {
     WorkspaceApiService,
     WorkspaceBoardsService,
     WorkspaceMembersService,
+    WorkspaceGuestsService,
     WorkspacePoliciesService,
     WorkspaceDeletionService,
     WorkspaceInvitationsService,
