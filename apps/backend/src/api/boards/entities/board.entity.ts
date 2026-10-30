@@ -38,6 +38,15 @@ export class Board {
   })
   createdBy!: User;
   @Column({ name: 'workspace_id', type: 'uuid' }) workspaceId!: string;
+  @Column({
+    name: 'activity_move_version',
+    type: 'integer',
+    default: 0,
+    select: false,
+    insert: false,
+    update: false,
+  })
+  activityMoveVersion!: number;
   @ManyToOne(() => Workspace, { onDelete: 'NO ACTION' })
   @JoinColumn({
     name: 'workspace_id',

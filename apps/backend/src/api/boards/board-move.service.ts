@@ -15,6 +15,7 @@ import {
   ActivityEntityType,
 } from '../../common/enums/database-enums';
 import { toBoardResponseDto } from './dto/board-response.dto';
+import { recordWorkspaceActivity } from '../workspaces/workspace-activity-writer';
 
 @Injectable()
 export class BoardMoveService {
@@ -87,6 +88,17 @@ export class BoardMoveService {
               entityType: ActivityEntityType.BOARD,
               entityId: board.id,
               metadata: null,
+            });
+            const [version]: { version: number }[] = await manager.query(
+              'SELECT activity_move_version AS version FROM boards WHERE id = $1',
+              [board.id],
+            );
+            await recordWorkspaceActivity(manager, {
+              workspaceId: destinationId,
+              actorId: actor,
+              eventType: 'BOARD_MOVED',
+              boardId: board.id,
+              boardMoveVersion: version.version,
             });
             return {
               board: toBoardResponseDto(board, member.role),

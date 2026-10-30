@@ -342,6 +342,8 @@ Cách này đủ cho nhiều tab hoặc nhiều socket cùng một user. Không 
 
 ## 7. Activity / Audit strategy
 
+Workspace Activity là nguồn riêng với Board Activity, có lọc quyền trước khi phân trang và ghi cùng transaction của thay đổi. Quyền đọc, vòng đời FK và hợp đồng API được mô tả trong [Workspace activity API](../tasks/backend/workspace-activity.md).
+
 `Activity` không được frontend tự tạo một rendered message để lưu audit. Backend là component duy nhất tạo activity khi business action đã thành công.
 
 `Activity` nên là structured data, ví dụ:

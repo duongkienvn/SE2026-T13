@@ -4,6 +4,8 @@ import { MailModule } from '../../mail/mail.module';
 import { AuthModule } from '../auth/auth.module';
 import { Board } from '../boards/entities/board.entity';
 import { Workspace } from './entities/workspace.entity';
+import { WorkspaceActivity } from './entities/workspace-activity.entity';
+import { WorkspaceActivityService } from './workspace-activity.service';
 import { WorkspacesModule } from './workspaces.module';
 import { WorkspaceApiController } from './workspace-api.controller';
 import { WorkspaceApiService } from './workspace-api.service';
@@ -33,7 +35,7 @@ import {
     AuthModule,
     MailModule,
     WorkspacesModule,
-    TypeOrmModule.forFeature([Workspace, Board]),
+    TypeOrmModule.forFeature([Workspace, Board, WorkspaceActivity]),
   ],
   controllers: [
     WorkspaceApiController,
@@ -46,6 +48,7 @@ import {
   ],
   providers: [
     WorkspaceApiService,
+    WorkspaceActivityService,
     WorkspaceBoardsService,
     WorkspaceMembersService,
     WorkspaceGuestsService,

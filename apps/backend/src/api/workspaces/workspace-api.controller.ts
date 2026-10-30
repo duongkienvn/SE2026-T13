@@ -32,6 +32,8 @@ import { WorkspacePageQueryDto } from './dto/workspace-page-query.dto';
 import { WorkspaceBoardsQueryDto } from './dto/workspace-boards-query.dto';
 import { WorkspaceBoardResponseDto } from './dto/workspace-board-response.dto';
 import { WorkspaceOverviewDto } from './dto/workspace-overview.dto';
+import { WorkspaceActivityDto } from './dto/workspace-activity.dto';
+import { WorkspaceActivityService } from './workspace-activity.service';
 
 @ApiTags('workspaces')
 @UseGuards(JwtAuthGuard)
@@ -40,6 +42,7 @@ export class WorkspaceApiController {
   constructor(
     private readonly workspaces: WorkspaceApiService,
     private readonly boards: WorkspaceBoardsService,
+    private readonly activity: WorkspaceActivityService,
   ) {}
 
   @Get()
@@ -101,6 +104,22 @@ export class WorkspaceApiController {
     @Query() query: WorkspaceBoardsQueryDto,
   ) {
     return this.boards.list(user.userId, workspaceId, query);
+  }
+
+  @Get(':workspaceId/activity')
+  @Header('Cache-Control', 'no-store')
+  @ApiBearerToken()
+  @ApiCommonErrors([400, 401, 404, 429, 500])
+  @SerializeResponse(WorkspaceActivityDto)
+  @ApiPaginated(WorkspaceActivityDto, {
+    summary: 'List accessible Workspace activity',
+  })
+  activityList(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @Query() query: WorkspacePageQueryDto,
+  ) {
+    return this.activity.list(user.userId, workspaceId, query);
   }
 
   @Get(':workspaceId/overview')

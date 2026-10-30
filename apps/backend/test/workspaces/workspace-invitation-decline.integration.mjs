@@ -100,6 +100,15 @@ export async function verifyDecline(base) {
   const endpoint = '/api/workspace-invitations/decline';
   const service = app.get(WorkspaceInvitationsService);
   const first = await invite();
+  const activityCounts = async () =>
+    Object.fromEntries(
+      (
+        await source.query(
+          `SELECT event_type, count(*)::int AS total FROM workspace_activities WHERE workspace_id=$1 GROUP BY event_type`,
+          [team.id],
+        )
+      ).map((event) => [event.event_type, event.total]),
+    );
   await http.post(endpoint).send({ proof: first.proof }).expect(401);
   for (const body of [
     {},
@@ -126,11 +135,13 @@ export async function verifyDecline(base) {
     .send({ proof: unverifiedInvite.proof })
     .expect(401); // Existing auth default unchanged.
   const mails = captured.length;
+  assert.equal((await activityCounts()).INVITATION_DECLINED, undefined);
   const declined = await send('recipient', 'post', endpoint)
     .send({ proof: first.proof })
     .expect(204);
   assert.equal(declined.text, '');
   assert.equal(declined.headers['cache-control'], 'no-store');
+  assert.equal((await activityCounts()).INVITATION_DECLINED, 1);
   assert.equal(captured.length, mails);
   assert.equal(await membershipCount('recipient'), 0);
   const saved = await row(first.id);
@@ -150,6 +161,7 @@ export async function verifyDecline(base) {
     assert.equal(replay.body.message, unknown.body.message);
   }
   await send('admin', 'delete', `${root}/${first.id}`).expect(409);
+  assert.equal((await activityCounts()).INVITATION_DECLINED, 1);
   assert.equal((await row(unverifiedInvite.id)).declined_at, null);
   await send('admin', 'post', root)
     .send({ email: emails.recipient })
@@ -165,6 +177,19 @@ export async function verifyDecline(base) {
   await send('recipient', 'post', '/api/workspace-invitations/accept')
     .send({ proof: fresh.proof })
     .expect(200);
+  assert.equal((await activityCounts()).MEMBER_JOINED, 1);
+  const memberActivity = (
+    await send(
+      'recipient',
+      'get',
+      `/api/workspaces/${team.id}/activity?limit=100`,
+    ).expect(200)
+  ).body;
+  assert(
+    !memberActivity.data.some((item) =>
+      item.eventType.startsWith('INVITATION_'),
+    ),
+  );
   assert.equal(await membershipCount('recipient'), 1);
   await send('recipient', 'post', endpoint)
     .send({ proof: fresh.proof })
@@ -197,6 +222,7 @@ export async function verifyDecline(base) {
   const revoked = await invite('revoked');
   for (let i = 0; i < 2; i++)
     await send('admin', 'delete', `${root}/${revoked.id}`).expect(204);
+  assert.equal((await activityCounts()).INVITATION_REVOKED, 1);
   await send('revoked', 'post', endpoint)
     .send({ proof: revoked.proof })
     .expect(410);

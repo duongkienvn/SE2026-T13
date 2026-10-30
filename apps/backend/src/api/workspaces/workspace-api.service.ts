@@ -22,6 +22,7 @@ import { paginateQueryBuilder } from '../../utils/offset-pagination';
 import { ApplicationException } from '../../exceptions/application.exception';
 import { ErrorCode } from '../../common/dto/api-error';
 import { readWorkspaceSnapshot } from './workspace-read';
+import { recordWorkspaceActivity } from './workspace-activity-writer';
 
 @Injectable()
 export class WorkspaceApiService {
@@ -99,6 +100,11 @@ export class WorkspaceApiService {
         }),
       );
       member.workspace = workspace;
+      await recordWorkspaceActivity(manager, {
+        workspaceId: workspace.id,
+        actorId: userId,
+        eventType: 'WORKSPACE_CREATED',
+      });
       return toWorkspaceResponseDto(member);
     });
   }
@@ -131,11 +137,22 @@ export class WorkspaceApiService {
         manager,
       );
       const workspace = member.workspace;
+      const changed =
+        (input.name !== undefined && input.name !== workspace.name) ||
+        (input.description !== undefined &&
+          input.description !== workspace.description) ||
+        (input.icon !== undefined && input.icon !== workspace.icon);
       if (input.name !== undefined) workspace.name = input.name;
       if (input.description !== undefined)
         workspace.description = input.description;
       if (input.icon !== undefined) workspace.icon = input.icon;
       member.workspace = await manager.getRepository(Workspace).save(workspace);
+      if (changed)
+        await recordWorkspaceActivity(manager, {
+          workspaceId,
+          actorId: userId,
+          eventType: 'WORKSPACE_UPDATED',
+        });
       return toWorkspaceResponseDto(member);
     });
   }

@@ -207,10 +207,16 @@ async function inspectConstraints(owner, guest, personalId) {
   };
   const [saved] = await invite();
   assert.equal(
+    source
+      .getRepository('WorkspaceInvitation')
+      .metadata.findColumnWithPropertyName('tokenHash').isSelect,
+    false,
+  );
+  assert.equal(
     (
       await source
         .getRepository('WorkspaceInvitation')
-        .findOneByOrFail({ id: saved.id })
+        .findOneOrFail({ where: { id: saved.id }, select: { id: true } })
     ).tokenHash,
     undefined,
   );
@@ -779,19 +785,20 @@ try {
   await openDatabase();
   assert.equal((await source.runMigrations()).length, source.migrations.length);
   assert.deepEqual(await source.runMigrations(), []);
-  assert.equal(source.entityMetadatas.length, 17);
+  assert.equal(source.entityMetadatas.length, 18);
   const drift = await source.driver.createSchemaBuilder().log();
   assert.deepEqual(
     drift.upQueries.map((q) => q.query),
     [],
     'Entity metadata must match final migrations',
   );
+  await source.undoLastMigration(); // Empty activity history.
   await source.undoLastMigration(); // Empty decline history; retain the policy rollback assertion.
   await assert.rejects(
     source.undoLastMigration(),
     /Workspace policies require a forward fix/,
   );
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 2);
   await source.destroy();
 
   // Exercise historical rollback in a separate disposable database without P2-05.
@@ -799,7 +806,8 @@ try {
   source.migrations = source.migrations.filter(
     (m) =>
       !m.name.startsWith('WorkspacePolicies') &&
-      !m.name.startsWith('WorkspaceInvitationDecline'),
+      !m.name.startsWith('WorkspaceInvitationDecline') &&
+      !m.name.startsWith('WorkspaceActivity'),
   );
   await source.runMigrations();
   // Revert invitation, icon, empty welcome ledger and both Workspace foundation stages.
@@ -820,7 +828,8 @@ try {
     (m) =>
       !m.name.startsWith('WelcomeEmailOutbox') &&
       !m.name.startsWith('WorkspacePolicies') &&
-      !m.name.startsWith('WorkspaceInvitationDecline'),
+      !m.name.startsWith('WorkspaceInvitationDecline') &&
+      !m.name.startsWith('WorkspaceActivity'),
   );
   const atomicMigrations = [...source.migrations];
   source.migrations = atomicMigrations.filter(
@@ -875,7 +884,8 @@ try {
     (m) =>
       !m.name.startsWith('WelcomeEmailOutbox') &&
       !m.name.startsWith('WorkspacePolicies') &&
-      !m.name.startsWith('WorkspaceInvitationDecline'),
+      !m.name.startsWith('WorkspaceInvitationDecline') &&
+      !m.name.startsWith('WorkspaceActivity'),
   );
   const migrations = [...source.migrations];
   source.migrations = migrations.filter(
@@ -1127,7 +1137,12 @@ try {
   );
   source.migrations = currentMigrations;
   await source.runMigrations();
-  assert.deepEqual(await snapshot(), beforePolicies);
+  const afterPolicies = await snapshot();
+  for (const { row } of afterPolicies.boards) {
+    assert.equal(row.activity_move_version, 0);
+    delete row.activity_move_version;
+  }
+  assert.deepEqual(afterPolicies, beforePolicies);
   assert.deepEqual(
     await source.query(
       'SELECT id, workspace_id, visibility FROM boards ORDER BY id',
@@ -1139,12 +1154,13 @@ try {
     board_membership_changes_enabled AND board_visibility_changes_enabled
   ) AS valid FROM workspaces`);
   assert.equal(defaults.valid, true);
+  await source.undoLastMigration(); // No activity history exists in this legacy fixture.
   await source.undoLastMigration(); // No declined history exists in this legacy fixture.
   await assert.rejects(
     source.undoLastMigration(),
     /Workspace policies require a forward fix/,
   );
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 2);
   pass(
     'Policy upgrade preserves populated Board data and applies default policies',
   );

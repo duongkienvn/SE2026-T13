@@ -187,14 +187,22 @@ async function inspectSchema() {
 
   const drift = await source.driver.createSchemaBuilder().log();
   assert.deepEqual(
-    drift.upQueries.map((query) => query.query),
+    drift.upQueries
+      .map((query) => query.query)
+      .filter(
+        (sql) =>
+          !sql.includes('workspace_activities') &&
+          !sql.includes('activity_move_version') &&
+          !sql.includes('declined_at') &&
+          !sql.includes('CK_workspace_invitations_declined_at'),
+      ),
     [
       'ALTER TABLE "workspaces" ADD "board_creation_admin_only" boolean NOT NULL DEFAULT false',
       'ALTER TABLE "workspaces" ADD "board_invites_enabled" boolean NOT NULL DEFAULT true',
       'ALTER TABLE "workspaces" ADD "board_membership_changes_enabled" boolean NOT NULL DEFAULT true',
       'ALTER TABLE "workspaces" ADD "board_visibility_changes_enabled" boolean NOT NULL DEFAULT true',
     ],
-    'Only P2-05 policy columns should differ before its migration',
+    'Only known later migrations should differ from the historical schema',
   );
 }
 
@@ -389,7 +397,7 @@ try {
   assert.equal(source.options.logging, false);
   assert.equal(source.options.synchronize, false);
   assert.equal(source.options.migrationsRun, false);
-  assert.equal(source.entityMetadatas.length, 17);
+  assert.equal(source.entityMetadatas.length, 18);
   assert.deepEqual(
     source.entityMetadatas.map((entity) => entity.tableName).sort(),
     [
@@ -407,12 +415,13 @@ try {
       'user_preferences',
       'users',
       'welcome_email_deliveries',
+      'workspace_activities',
       'workspace_invitations',
       'workspace_members',
       'workspaces',
     ],
   );
-  assert.equal(source.migrations.length, 15);
+  assert.equal(source.migrations.length, 16);
 
   const originalDatabase = process.env.DATABASE_NAME;
   process.env.DATABASE_NAME = testDatabase;
@@ -423,8 +432,8 @@ try {
     });
     try {
       const nestDataSource = app.get(DataSource);
-      assert.equal(nestDataSource.entityMetadatas.length, 17);
-      assert.equal(nestDataSource.migrations.length, 15);
+      assert.equal(nestDataSource.entityMetadatas.length, 18);
+      assert.equal(nestDataSource.migrations.length, 16);
       assert.equal(nestDataSource.options.poolSize, source.options.poolSize);
       assert.equal(
         nestDataSource.options.connectTimeoutMS,
@@ -442,7 +451,8 @@ try {
   source.migrations = allMigrations.filter(
     (m) =>
       !m.name.startsWith('WorkspacePolicies') &&
-      !m.name.startsWith('WorkspaceInvitationDecline'),
+      !m.name.startsWith('WorkspaceInvitationDecline') &&
+      !m.name.startsWith('WorkspaceActivity'),
   );
   assert.equal((await source.runMigrations()).length, 13);
   const cliOutput = execFileSync(
@@ -468,7 +478,7 @@ try {
       '-e',
       `const dataSource = require('./src/database/data-source.ts').default;
        dataSource.initialize().then(async () => {
-         if (dataSource.entityMetadatas.length !== 17 || dataSource.migrations.length !== 15) {
+         if (dataSource.entityMetadatas.length !== 18 || dataSource.migrations.length !== 16) {
            throw new Error('TypeScript DataSource discovery mismatch');
          }
          await dataSource.destroy();
@@ -516,17 +526,18 @@ try {
   assert.equal((await source.runMigrations()).length, 10);
   await inspectSchema();
   source.migrations = allMigrations;
-  assert.equal((await source.runMigrations()).length, 2);
+  assert.equal((await source.runMigrations()).length, 3);
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries,
     [],
   );
+  await source.undoLastMigration(); // Empty activity history.
   await source.undoLastMigration(); // Empty decline history; test the older policy boundary.
   await assert.rejects(
     source.undoLastMigration(),
     /Workspace policies require a forward fix/,
   );
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 2);
   console.log(
     'Enum rollback retains existing values/history; idempotent reapply: PASS',
   );
