@@ -1,15 +1,24 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { StrictMode } from 'react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { flushSync } from 'react-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { routes } from '../../../app/routes';
 import {
   fail,
+  loginResponse,
   mockApi,
   ok,
   storeSession,
   testUser,
+  type MockResponse,
 } from '../../../test/mock-api';
 import { workspacePage } from '../../../test/workspace-fixtures';
 import { AuthProvider } from '../../auth/AuthProvider';
@@ -35,18 +44,20 @@ function mount(
   });
   const router = createMemoryRouter(routes, { initialEntries: [path] });
   render(
-    <QueryClientProvider client={client}>
-      <AuthProvider>
-        <RealtimeProvider>
-          <RouterProvider
-            router={router}
-            flushSync={(callback) => {
-              flushSync(callback);
-            }}
-          />
-        </RealtimeProvider>
-      </AuthProvider>
-    </QueryClientProvider>,
+    <StrictMode>
+      <QueryClientProvider client={client}>
+        <AuthProvider>
+          <RealtimeProvider>
+            <RouterProvider
+              router={router}
+              flushSync={(callback) => {
+                flushSync(callback);
+              }}
+            />
+          </RealtimeProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </StrictMode>,
   );
   return { calls, router };
 }
@@ -94,7 +105,7 @@ describe('Workspace invitation acceptance', () => {
     const accept = calls.find((call) => call.path.includes('accept'))!;
     expect(accept.path).toBe('/workspace-invitations/accept');
     expect(accept.body).toEqual({ proof });
-    expect(invitationProof.get()).toBeNull();
+    expect(invitationProof.get(null)).toBeNull();
   });
 
   it('shows one generic message for invalid, expired or wrong-account proofs', async () => {
@@ -110,8 +121,10 @@ describe('Workspace invitation acceptance', () => {
     expect(
       await screen.findByText(/This invitation can’t be used/),
     ).toBeTruthy();
-    // Kept so the recipient can switch to the invited account and retry.
-    expect(invitationProof.get()).toBe(proof);
+    // Kept in the current flow so the recipient can switch accounts and retry.
+    expect(
+      screen.getByRole('button', { name: 'Use a different account' }),
+    ).toBeTruthy();
   });
 
   it('explains unconfirmed delivery without joining', async () => {
@@ -125,7 +138,13 @@ describe('Workspace invitation acceptance', () => {
   });
 
   it('keeps the proof in memory across sign-in for a signed-out recipient', async () => {
-    const { router, calls } = mount(link, {}, false);
+    const { router, calls } = mount(
+      link,
+      {
+        'POST /auth/login': ok(loginResponse()),
+      },
+      false,
+    );
     expect(
       await screen.findByRole('heading', {
         name: 'You’re invited to a workspace',
@@ -134,12 +153,157 @@ describe('Workspace invitation acceptance', () => {
     await waitFor(() => expect(router.state.location.hash).toBe(''));
     fireEvent.click(screen.getByRole('link', { name: 'Sign in' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
-    expect(router.state.location.state).toEqual({
-      from: '/invitations/workspace',
-    });
+    const from = router.state.location.state.from as string;
+    expect(from).toMatch(/^\/invitations\/workspace\?resume=/);
     expect(JSON.stringify(router.state.location)).not.toContain(proof);
     expect(calls.some((call) => call.path.includes('accept'))).toBe(false);
-    expect(invitationProof.get()).toBe(proof);
+    const returnId = new URLSearchParams(from.split('?')[1]).get('resume');
+    expect(invitationProof.get(returnId)).toBe(proof);
+    fireEvent.change(screen.getByLabelText('Email address'), {
+      target: { value: testUser.email },
+    });
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'Password123!' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Log In' }));
+    expect(
+      await screen.findByRole('button', { name: 'Accept invitation' }),
+    ).toBeTruthy();
+    expect(router.state.location.search).toBe('');
+    expect(invitationProof.get(returnId)).toBeNull();
+    expect(calls.some((call) => call.path.includes('accept'))).toBe(false);
+  });
+
+  it('uses a new link on the mounted page and resets the previous failure', async () => {
+    const nextProof = 'B'.repeat(43);
+    const { router, calls } = mount(link, {
+      'POST /workspace-invitations/accept': fail(
+        410,
+        'INVALID_WORKSPACE_INVITATION',
+      ),
+    });
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Accept invitation' }),
+    );
+    await screen.findByText(/This invitation can’t be used/);
+    await act(() =>
+      router.navigate(`/invitations/workspace#proof=${nextProof}`),
+    );
+    expect(screen.queryByText(/This invitation can’t be used/)).toBeNull();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Accept invitation' }),
+    );
+    await waitFor(() =>
+      expect(calls.filter((call) => call.path.includes('accept'))).toHaveLength(
+        2,
+      ),
+    );
+    expect(
+      calls
+        .filter((call) => call.path.includes('accept'))
+        .map((call) => call.body),
+    ).toEqual([{ proof }, { proof: nextProof }]);
+    expect(router.state.location.hash).toBe('');
+    expect(JSON.stringify(router.state.location.state)).not.toContain(
+      nextProof,
+    );
+  });
+
+  it('ignores an earlier acceptance result after a new link and account switch', async () => {
+    let resolve!: (response: MockResponse) => void;
+    const pending = new Promise<MockResponse>((done) => {
+      resolve = done;
+    });
+    const nextProof = 'B'.repeat(43);
+    const { router, calls } = mount(link, {
+      'POST /workspace-invitations/accept': () => pending,
+      'POST /auth/logout': ok(undefined),
+    });
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Accept invitation' }),
+    );
+    await screen.findByRole('button', { name: 'Joining…' });
+    await act(() =>
+      router.navigate(`/invitations/workspace#proof=${nextProof}`),
+    );
+    expect(
+      (
+        (await screen.findByRole('button', {
+          name: 'Accept invitation',
+        })) as HTMLButtonElement
+      ).disabled,
+    ).toBe(false);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Use a different account' }),
+    );
+    fireEvent.click(await screen.findByRole('link', { name: 'Sign in' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
+    const from = router.state.location.state.from as string;
+    const returnId = new URLSearchParams(from.split('?')[1]).get('resume');
+    await act(async () => resolve(ok({ userId: testUser.id })));
+    expect(invitationProof.get(returnId)).toBe(nextProof);
+    expect(
+      screen.queryByRole('heading', { name: 'You joined the workspace' }),
+    ).toBeNull();
+    expect(calls.filter((call) => call.path.includes('accept'))).toHaveLength(
+      1,
+    );
+  });
+
+  it.each(['/invitations/workspace', '/invitations/workspace#proof=invalid'])(
+    'does not reuse an abandoned proof at %s',
+    async (path) => {
+      const { router, calls } = mount();
+      await screen.findByRole('button', { name: 'Accept invitation' });
+      await act(() => router.navigate('/'));
+      await act(() => router.navigate(path));
+      expect(
+        await screen.findByRole('heading', {
+          name: 'Open your invitation link',
+        }),
+      ).toBeTruthy();
+      expect(calls.some((call) => call.path.includes('accept'))).toBe(false);
+    },
+  );
+
+  it('does not reuse a pending sign-in proof on an unrelated bare visit', async () => {
+    const { router } = mount(link, {}, false);
+    fireEvent.click(await screen.findByRole('link', { name: 'Sign in' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
+    const from = router.state.location.state.from as string;
+    await act(() => router.navigate('/invitations/workspace'));
+    expect(
+      await screen.findByRole('heading', { name: 'Open your invitation link' }),
+    ).toBeTruthy();
+    await act(() => router.navigate(from));
+    expect(
+      await screen.findByRole('heading', { name: 'Open your invitation link' }),
+    ).toBeTruthy();
+  });
+
+  it('keeps acceptance explicit after switching accounts and preserves verification refusal', async () => {
+    const { calls } = mount(link, {
+      'POST /auth/logout': ok(undefined),
+      'POST /workspace-invitations/accept': fail(403, 'FORBIDDEN'),
+    });
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Accept invitation' }),
+    );
+    expect(
+      await screen.findByText(/Verify your email address first/),
+    ).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Use a different account' }),
+    );
+    expect(
+      await screen.findByRole('heading', {
+        name: 'You’re invited to a workspace',
+      }),
+    ).toBeTruthy();
+    expect(calls.filter((call) => call.path.includes('accept'))).toHaveLength(
+      1,
+    );
+    expect(screen.queryByText(testUser.email)).toBeNull();
   });
 
   it('asks for the email link when no proof is available', async () => {

@@ -1,10 +1,11 @@
 /**
  * The invitation proof from the email link (`#proof=…`). It lives only in
- * this tab's memory: never in storage, the URL, router state or logs. A
- * reload or a full-page redirect (Google sign-in, email verification) drops
+ * this tab's memory during an explicit sign-in handoff: never in storage,
+ * query strings, router state or logs. A reload or a full-page redirect
+ * (Google sign-in, email verification) drops
  * it, and the recipient opens the email link again.
  */
-let current: string | null = null;
+let current: { proof: string; returnId: string } | null = null;
 
 const PROOF = /^[A-Za-z0-9_-]{43}$/;
 
@@ -15,9 +16,10 @@ export function readProofFragment(hash: string): string | null {
 }
 
 export const invitationProof = {
-  get: () => current,
-  set: (proof: string) => {
-    current = proof;
+  get: (returnId: string | null) =>
+    returnId && current?.returnId === returnId ? current.proof : null,
+  set: (proof: string, returnId: string) => {
+    current = { proof, returnId };
   },
   clear: () => {
     current = null;

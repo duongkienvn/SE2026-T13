@@ -67,20 +67,41 @@ function failure(error: unknown): string {
  */
 export function AcceptInvitationPage() {
   const location = useLocation();
+  const entry = (location.state as { invitationEntry?: string } | null)
+    ?.invitationEntry;
+  // Replacing the fragment keeps this entry mounted; a new link or bare visit
+  // starts a new flow, including fresh mutation state.
+  return (
+    <InvitationEntry
+      key={
+        location.hash || location.search
+          ? location.key
+          : (entry ?? location.key)
+      }
+    />
+  );
+}
+
+function InvitationEntry() {
+  const location = useLocation();
   const navigate = useNavigate();
   const { status, user, signOut, retry } = useAuth();
-  // Take the proof out of the fragment once, on first render.
-  const [proof] = useState(() => {
-    const fresh = readProofFragment(location.hash);
-    if (fresh) invitationProof.set(fresh);
-    return invitationProof.get();
-  });
+  const [proof] = useState(() =>
+    location.hash
+      ? readProofFragment(location.hash)
+      : invitationProof.get(new URLSearchParams(location.search).get('resume')),
+  );
+  const [returnId] = useState(() => crypto.randomUUID());
   usePageTitle('Workspace invitation');
   useEffect(() => {
-    // Drop the fragment from the address bar and this history entry.
-    if (location.hash)
-      void navigate(INVITATION_ACCEPT_PATH, { replace: true, state: null });
-  }, [location.hash, navigate]);
+    // A handoff is single-use. Only the non-secret entry marker reaches state.
+    invitationProof.clear();
+    if (location.hash || location.search)
+      void navigate(INVITATION_ACCEPT_PATH, {
+        replace: true,
+        state: { invitationEntry: location.key },
+      });
+  }, [location.hash, location.search, location.key, navigate]);
 
   if (status === 'error')
     return (
@@ -124,7 +145,9 @@ export function AcceptInvitationPage() {
     );
 
   if (status === 'anonymous') {
-    const state: RedirectState = { from: INVITATION_ACCEPT_PATH };
+    const state: RedirectState = {
+      from: `${INVITATION_ACCEPT_PATH}?resume=${returnId}`,
+    };
     return (
       <Card
         title="You’re invited to a workspace"
@@ -145,13 +168,14 @@ export function AcceptInvitationPage() {
           <Link
             to="/login"
             state={state}
+            onClick={() => invitationProof.set(proof, returnId)}
             className={`${linkClass} flex-1 bg-primary-solid text-white hover:bg-primary-solid-hover`}
           >
             Sign in
           </Link>
           <Link
             to="/register"
-            state={state}
+            state={{ from: INVITATION_ACCEPT_PATH } satisfies RedirectState}
             className={`${linkClass} flex-1 border border-line text-ink hover:bg-app`}
           >
             Create account
@@ -217,9 +241,7 @@ function AcceptInvitation({
         disabled={accept.isPending}
         onClick={() => {
           if (accept.isPending) return;
-          accept.mutate(proof, {
-            onSuccess: () => invitationProof.clear(),
-          });
+          accept.mutate(proof);
         }}
       >
         {accept.isPending ? 'Joining…' : 'Accept invitation'}

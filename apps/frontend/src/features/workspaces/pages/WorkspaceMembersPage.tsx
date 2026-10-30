@@ -48,10 +48,10 @@ function WorkspaceMembersContent({ workspaceId }: { workspaceId: string }) {
   usePageTitle(summary ? `${summary.name} · Members` : 'Workspace members');
 
   const go = (patch: Record<string, string | null>, replace = false) => {
-    const next = new URLSearchParams();
-    const keep = { tab: params.get('tab'), ...patch };
-    for (const [key, value] of Object.entries(keep))
+    const next = new URLSearchParams('tab' in patch ? undefined : params);
+    for (const [key, value] of Object.entries(patch))
       if (value) next.set(key, value);
+      else next.delete(key);
     void setParams(next, { replace });
   };
   const tabs = [

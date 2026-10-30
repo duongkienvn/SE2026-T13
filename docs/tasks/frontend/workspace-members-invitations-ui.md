@@ -33,19 +33,24 @@ and the Workspace switcher (`workspaceDestination` keeps `/members`).
   only after the server confirms, then the whole Workspace resource is
   invalidated (roster, invitations, Overview count). Refusals: 409 (last ADMIN,
   self change) shows the server reason and reloads; 403 reloads the Overview so
-  the role and controls update; 404 hides the Workspace through the existing
-  `revokeWorkspaceAccess`.
+  the role and controls update. A role-change 404 can mean the target member
+  disappeared, so it refreshes the roster and Overview to revalidate access.
+  Confirmed Workspace access loss hides the Workspace through the existing
+  `revokeWorkspaceAccess`. Refreshed member totals clamp an out-of-range page
+  to the last available page (at least page 1), preserving search and role.
 - **Invite dialog**: email only; role is fixed to Member (the API rejects ADMIN
   invitations — promote after joining). The 202 result is reported by
   `sendState`: `SENT` → "Invitation email sent", `UNAVAILABLE` → saved but **no
   email was sent**, `FAILED`/`UNKNOWN` → not confirmed, send again later. 429
-  distinguishes the 60-second cooldown from the hourly quota.
+  distinguishes the 60-second cooldown from the hourly quota. Opening/closing
+  the dialog preserves query filters; switching tabs resets them.
 - **Invitations tab** (ADMIN only; a MEMBER sees an explanation and no request
   is sent): status filter, status badge, delivery text only while Pending
   (terminal status first), "You"/"Another admin" as inviter (the DTO has only
   `invitedById`), expiry, Revoke (confirmation) and Send again / Invite again
   (the same POST; the backend rotates the proof). No decline/resend endpoint
-  exists, so there are none.
+  exists, so there are none. Both lists accept positive integer page values
+  up to 1,000,000; invalid values fall back to page 1.
 - **Guests tab**: Coming soon, non-interactive. No backend Guest projection
   exists and the browser must not enumerate PRIVATE Board membership.
 - **Leave Workspace** is not on this page; it belongs to P2-09 Settings Danger
@@ -53,19 +58,24 @@ and the Workspace switcher (`workspaceDestination` keeps `/members`).
 
 ## Invitation acceptance
 
-- The proof is read once from the fragment (`#proof=`, strict 43-char base64url),
-  kept only in module memory, and the fragment is removed immediately with a
-  `replace` navigation. Nothing goes to storage, query string, router state,
-  logs or analytics. Opening the link never calls the API.
-- Signed out: Sign in / Create account carry `from: /invitations/workspace`, so
-  sign-in returns to the page with the proof still in memory. Registration needs
-  email verification in another page load, so the page tells the recipient to
-  open the link again afterwards (the proof stays valid until used).
+- Each new invitation link reads its own fragment (`#proof=`, strict 43-char
+  base64url) and resets the acceptance state. The proof stays only in memory;
+  the fragment is removed immediately with a `replace` navigation. The proof
+  never goes to storage, query string, router state, logs or analytics. Opening
+  the link never calls the acceptance API.
+- Signed out: Sign in carries `from: /invitations/workspace?resume=<id>`.
+  The non-secret, one-time return marker matches the proof held in module
+  memory for that explicit sign-in flow; the return consumes the handoff and
+  removes the marker. A bare or malformed link never reuses an abandoned proof.
+  Create account carries `from: /invitations/workspace`; registration needs
+  email verification, so the recipient must open the email link again afterward.
+  Proofs expire after seven days and can be invalidated earlier by revocation,
+  reinvitation or successful acceptance.
 - Signed in: shows the account email; **Accept invitation** posts
-  `{ proof }` to `/workspace-invitations/accept`; success clears the proof and
+  `{ proof }` to `/workspace-invitations/accept`; success ends the flow and
   invalidates the Workspace list. 400/410 show one generic message (expired,
-  revoked, used or wrong account) and keep the proof so the user can switch
-  account; 403 asks for verification, 409 says delivery is unconfirmed, 429
+  revoked, used or wrong account) and keep the proof in the current flow so the
+  user can switch account; 403 asks for verification, 409 says delivery is unconfirmed, 429
   asks to wait. "Use a different account" signs out; "Not now" drops the proof.
 - No proof (reload, opened without fragment): "Open your invitation link".
 
@@ -115,12 +125,46 @@ Taken from a production build (`vite preview`) with Playwright route mocks.
   sent, fragment not cleared, invitations fetched for MEMBER, actions on own
   row, 409 not reloading).
 
+## PR #130 review follow-up (2026-10-30)
+
+All six inline CodeRabbit/Codex threads and CodeRabbit's review-body pagination
+nit were checked against the current code and addressed. The two member-level
+404 findings describe the same race. The changes above also preserve filters
+when the shared header's Invite link opens the dialog from Members.
+
+- Added 25 regressions across the two affected test files (47 tests total):
+  member-level 404 versus actual access loss; deletion/role-filter pagination
+  recovery, empty totals and placeholder data; both dialog entry points and tab
+  resets; invitation page bounds; new/abandoned proofs, explicit sign-in return,
+  verified-email refusals and late acceptance after an account switch.
+- `pnpm lint` and `pnpm build`: pass. Build retains the existing Vite
+  `NODE_ENV` and chunk-size warnings.
+- `pnpm test` with `VITEST_MAX_WORKERS=2` and
+  `npm_config_workspace_concurrency=1`: pass (shared 7, backend 687, frontend
+  937 before the final header-link extension). Final
+  `pnpm --filter @kanban/frontend test --maxWorkers=2`: 939/939 pass.
+  Default parallel runs encountered unrelated frontend timeouts; the initial
+  overlapping build/test run also raced the shared package rebuild. No test
+  configuration was changed.
+- `pnpm format:check`: fails on 787 untouched CRLF files in this Windows
+  checkout. All 10 changed files pass the configured Prettier check; the full
+  repository passes `pnpm exec prettier --check . --end-of-line auto`.
+  `git diff --check` and the record's local link/path checks pass.
+- Chrome QA with isolated fixtures: Members/Invitations dialog filters,
+  role-change page recovery, new invitation links and abandoned-proof rejection;
+  desktop 1440×900 and mobile 375×812, light/dark, no horizontal overflow or
+  console errors after a clean reload. Dialog cancellation retains filters and
+  restores focus. No style or markup changes; the temporary harness was removed.
+- Real PostgreSQL and backend/mail acceptance integration were not run: this
+  follow-up changes only frontend behavior and documentation. No remote review
+  replies or thread resolutions were performed.
+
 ## For the team
 
 - **P2-10 destination**: this page is the proposed acceptance path. Set
   `WORKSPACE_INVITATION_ACCEPT_PATH=/invitations/workspace` only after the
   owner of #119 agrees and the gate steps in its record are done. Until then
   the backend returns `sendState=UNAVAILABLE` and the UI says no email was sent.
-- Member DTO has no workspace id on accept, so success links to `/workspaces`
+- The invitation acceptance response has no Workspace id, so success links to `/workspaces`
   rather than the joined Workspace.
 - Deferred to #118: Leave Workspace, policies, Danger Zone.

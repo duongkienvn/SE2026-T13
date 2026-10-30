@@ -115,6 +115,14 @@ export function MembersPanel({
   const canManage = workspace?.type === 'TEAM' && workspace.role === 'ADMIN';
   const active = pending?.kind === 'remove' ? remove : changeRole;
   const ready = query.state === 'ready';
+  useEffect(() => {
+    const page = query.pageData;
+    // Placeholder rows belong to the previous filters/page. Only the current
+    // server response can tell us that deletion or a role change shrank it.
+    if (!page || query.isPlaceholderData || query.isFetching) return;
+    const lastPage = Math.max(1, page.pageCount);
+    if (control.filters.page > lastPage) control.page(lastPage);
+  }, [query.pageData, query.isPlaceholderData, query.isFetching, control]);
 
   const confirm = () => {
     if (!pending || active.isPending) return;

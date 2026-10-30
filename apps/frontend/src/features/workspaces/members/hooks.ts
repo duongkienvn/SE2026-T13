@@ -175,11 +175,15 @@ function useWorkspaceCommand<Input, Output>(
     },
     onError: async (error) => {
       if (!scope.isCurrent() || !isApiError(error)) return;
-      if (error.status === 404 && name !== 'revoke-invitation') {
+      if (
+        error.status === 404 &&
+        name !== 'revoke-invitation' &&
+        name !== 'change-role'
+      ) {
         await revoke(error, keys.overview);
         return;
       }
-      // 403: this account lost ADMIN; 404 (revoke): the invitation is gone;
+      // 403: this account lost ADMIN; 404: the member/invitation may be gone;
       // 409: another ADMIN changed membership first. Show the server's truth.
       if ([403, 404, 409].includes(error.status))
         void client.invalidateQueries({ queryKey: keys.resource });

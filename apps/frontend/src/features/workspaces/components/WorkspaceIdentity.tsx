@@ -1,4 +1,4 @@
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { LayersIcon, PlusIcon, UserIcon } from '../../../components/icons';
 import { workspacePath } from '../navigation';
 import type { WorkspaceSummary } from '../types';
@@ -33,6 +33,14 @@ export function WorkspaceIdentity({
   memberCount?: number | null;
   loading?: boolean;
 }) {
+  const location = useLocation();
+  const membersPath = workspace ? `${workspacePath(workspace.id)}/members` : '';
+  const inviteParams = new URLSearchParams(
+    location.pathname.replace(/\/+$/, '') === membersPath
+      ? location.search
+      : undefined,
+  );
+  inviteParams.set('invite', '1');
   return (
     <header className="flex flex-wrap items-center gap-4 py-6">
       <WorkspaceAvatar
@@ -67,7 +75,7 @@ export function WorkspaceIdentity({
         </span>
         {workspace?.type === 'TEAM' && workspace.role === 'ADMIN' ? (
           <Link
-            to={`${workspacePath(workspace.id)}/members?invite=1`}
+            to={`${membersPath}?${inviteParams}`}
             className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-line bg-surface px-3 text-sm font-medium text-primary hover:bg-primary-soft/40 focus-visible:outline-2 focus-visible:outline-primary"
           >
             <PlusIcon className="size-4" />

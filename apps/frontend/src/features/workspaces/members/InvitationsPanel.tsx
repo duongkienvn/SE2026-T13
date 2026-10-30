@@ -58,7 +58,9 @@ export function InvitationsPanel({
       ? (status as InvitationFilters['status'])
       : 'ALL',
     page:
-      Number.isSafeInteger(requestedPage) && requestedPage > 0
+      Number.isSafeInteger(requestedPage) &&
+      requestedPage > 0 &&
+      requestedPage <= 1000000
         ? requestedPage
         : 1,
     limit: MEMBERS_PAGE_SIZE,
