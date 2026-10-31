@@ -32,7 +32,7 @@ import { User } from '../../users/entities/user.entity';
 )
 @Check(
   'CHK_card_attachments_verified',
-  "(verified_at IS NULL AND mime_type IS NULL AND byte_size IS NULL) OR (kind = 'FILE' AND verified_at IS NOT NULL AND isfinite(verified_at) AND mime_type IS NOT NULL AND mime_type = requested_mime_type AND byte_size IS NOT NULL AND byte_size = reserved_bytes)",
+  "(verified_at IS NULL AND mime_type IS NULL AND byte_size IS NULL) OR (kind = 'FILE' AND verified_at IS NOT NULL AND isfinite(verified_at) AND mime_type IS NOT NULL AND mime_type = requested_mime_type AND byte_size IS NOT NULL AND byte_size BETWEEN 1 AND reserved_bytes)",
 )
 @Check(
   'CHK_card_attachments_file_state',
@@ -42,6 +42,17 @@ import { User } from '../../users/entities/user.entity';
   'CHK_card_attachments_idempotency',
   "(idempotency_key IS NULL AND request_hash IS NULL) OR (idempotency_key IS NOT NULL AND request_hash IS NOT NULL AND request_hash ~ '^[0-9a-f]{64}$')",
 )
+@Check(
+  'CHK_card_attachments_integrity',
+  "(kind = 'URL' AND declared_bytes IS NULL AND content_sha256 IS NULL AND intent_auth_version IS NULL) OR (kind = 'FILE' AND declared_bytes IS NOT NULL AND declared_bytes BETWEEN 1 AND reserved_bytes AND (content_sha256 IS NULL OR content_sha256 ~ '^[0-9a-f]{64}$') AND (intent_auth_version IS NULL OR intent_auth_version >= 0))",
+)
+@Check(
+  'CHK_card_attachments_verification_lease',
+  "(verification_token IS NULL AND verification_expires_at IS NULL) OR (kind = 'FILE' AND state = 'PENDING' AND verification_token IS NOT NULL AND verification_expires_at IS NOT NULL AND isfinite(verification_expires_at) AND verification_expires_at <= expires_at)",
+)
+@Index('IDX_card_attachments_pending_expiry', ['expiresAt', 'id'], {
+  where: "kind = 'FILE' AND state = 'PENDING'",
+})
 @Index('IDX_card_attachments_active_page', ['cardId', 'createdAt', 'id'], {
   where: "state = 'ACTIVE'",
 })
@@ -159,6 +170,42 @@ export class CardAttachment {
     select: false,
   })
   verifiedAt!: Date | null;
+  @Column({
+    name: 'declared_bytes',
+    type: 'bigint',
+    nullable: true,
+    select: false,
+  })
+  declaredBytes!: string | null;
+  @Column({
+    name: 'content_sha256',
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+    select: false,
+  })
+  contentSha256!: string | null;
+  @Column({
+    name: 'intent_auth_version',
+    type: 'integer',
+    nullable: true,
+    select: false,
+  })
+  intentAuthVersion!: number | null;
+  @Column({
+    name: 'verification_token',
+    type: 'uuid',
+    nullable: true,
+    select: false,
+  })
+  verificationToken!: string | null;
+  @Column({
+    name: 'verification_expires_at',
+    type: 'timestamptz',
+    nullable: true,
+    select: false,
+  })
+  verificationExpiresAt!: Date | null;
   @Column({ type: 'integer', default: 1 }) revision!: number;
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
