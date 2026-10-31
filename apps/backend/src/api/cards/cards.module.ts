@@ -1,3 +1,9 @@
+import { CardAttachmentFilesService } from './card-attachment-files.service';
+import {
+  CardAttachmentUploadsController,
+  LocalAttachmentUploadGuard,
+} from './card-attachment-uploads.controller';
+import { AttachmentContentService } from './attachments/attachment-content.service';
 import { Module } from '@nestjs/common';
 import { RealtimeDeliveryModule } from '../../realtime/realtime-delivery.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -42,11 +48,15 @@ import { attachmentStorageProvider } from './attachments/attachment-storage.prov
     CardsController,
     CardChecklistsController,
     CardAttachmentsController,
+    CardAttachmentUploadsController,
   ],
   providers: [
     CardsService,
     CardChecklistsService,
     CardAttachmentsService,
+    CardAttachmentFilesService,
+    AttachmentContentService,
+    LocalAttachmentUploadGuard,
     attachmentStorageProvider,
   ],
   exports: [CardChecklistsService],

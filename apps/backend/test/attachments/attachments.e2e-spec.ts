@@ -1,3 +1,4 @@
+import { CardAttachmentFilesService } from '../../src/api/cards/card-attachment-files.service';
 import { INestApplication } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
@@ -49,6 +50,10 @@ describe('Card attachment HTTP contracts', () => {
       controllers: [CardAttachmentsController],
       providers: [
         JwtAuthGuard,
+        {
+          provide: CardAttachmentFilesService,
+          useValue: { download: jest.fn() },
+        },
         { provide: CardAttachmentsService, useValue: h.service },
         {
           provide: AuthService,

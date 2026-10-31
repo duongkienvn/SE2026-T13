@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { RealtimeServerEvent } from '@kanban/shared';
 import { isUUID } from 'class-validator';
@@ -33,7 +33,10 @@ import {
   ATTACHMENT_CARD_SLOT_LIMIT,
   attachmentQuotaUsage,
 } from './attachments/attachment-policy';
-import { attachmentFilesUnavailable } from './attachments/attachment-storage';
+import {
+  AttachmentStorage,
+  attachmentFilesUnavailable,
+} from './attachments/attachment-storage';
 
 @Injectable()
 export class CardAttachmentsService {
@@ -41,6 +44,7 @@ export class CardAttachmentsService {
     @InjectRepository(Board) private readonly boards: Repository<Board>,
     private readonly authorization: BoardAuthorizationService,
     private readonly events: BoardEventPublisher,
+    @Optional() private readonly fileStorage?: AttachmentStorage,
   ) {}
 
   async list(
@@ -182,7 +186,11 @@ export class CardAttachmentsService {
         attachmentId,
       );
       if (row.state !== 'ACTIVE') return this.notFound();
-      if (row.kind === 'FILE') return attachmentFilesUnavailable();
+      if (row.kind === 'FILE') {
+        if (!this.fileStorage?.available) return attachmentFilesUnavailable();
+        if (input.url !== undefined)
+          return attachmentValidation('File URL cannot be edited');
+      }
       this.checkRevision(row, input.expectedRevision);
       if (input.url === undefined && input.displayName === undefined)
         return attachmentValidation('At least one editable field is required');
@@ -191,7 +199,10 @@ export class CardAttachmentsService {
       const displayName =
         input.displayName === undefined
           ? row.displayName
-          : attachmentDisplayName(input.displayName, url);
+          : attachmentDisplayName(
+              input.displayName,
+              url ?? 'https://attachment.invalid',
+            );
       const changed = url !== row.url || displayName !== row.displayName;
       if (changed) {
         row.url = url;
@@ -218,8 +229,8 @@ export class CardAttachmentsService {
         attachmentId,
       );
       if (row.kind === 'FILE') {
-        if (row.state !== 'ACTIVE') return this.notFound();
-        return attachmentFilesUnavailable();
+        if (!['ACTIVE', 'REMOVED'].includes(row.state)) return this.notFound();
+        if (!this.fileStorage?.available) return attachmentFilesUnavailable();
       }
       if (row.state === 'REMOVED') return { value: undefined, changed: false };
       if (expectedRevision !== undefined)
@@ -229,24 +240,6 @@ export class CardAttachmentsService {
       await manager.getRepository(CardAttachment).save(row);
       return { value: undefined, changed: true };
     });
-  }
-
-  async file(
-    userId: string,
-    boardId: string,
-    cardId: string,
-    attachmentId: string,
-  ): Promise<never> {
-    await this.authorization.requireRead(userId, boardId);
-    await this.requireCard(this.boards.manager, boardId, cardId);
-    const row = await this.requireAttachment(
-      this.boards.manager,
-      boardId,
-      cardId,
-      attachmentId,
-    );
-    if (row.kind !== 'FILE' || row.state !== 'ACTIVE') return this.notFound();
-    return attachmentFilesUnavailable();
   }
 
   private async mutate<T>(

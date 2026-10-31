@@ -30,12 +30,10 @@ describe('actual attachment content verification', () => {
   it.each(['png', 'jpeg', 'webp'] as const)(
     'fully decodes and re-encodes %s without source metadata',
     async (format) => {
-      const source = await sharp({
+      const builder = sharp({
         create: { width: 32, height: 20, channels: 3, background: '#123456' },
-      })
-        .withMetadata({ orientation: 6 })
-        [format]()
-        .toBuffer();
+      }).withMetadata({ orientation: 6 });
+      const source = await builder[format]().toBuffer();
       const output = await verifier.verify(source, `image/${format}`, budget);
       const metadata = await sharp(output).metadata();
       expect(metadata.format).toBe(format);

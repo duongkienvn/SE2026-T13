@@ -49,12 +49,14 @@ export interface CreateAttachmentUpload {
 /** Uploader-only short-lived instructions; never cache, log or broadcast grants. */
 export interface CardAttachmentUploadIntent {
   readonly uploadId: string;
+  readonly state: 'PENDING' | 'ACTIVE';
   readonly expiresAt: string;
   readonly upload: {
     readonly kind: 'memory' | 's3';
+    readonly expiresAt: string;
     readonly url: string;
     readonly fields: Readonly<Record<string, string>>;
-  };
+  } | null;
 }
 
 /** V1 reuses card:updated IDs; consumers refetch the affected Card's attachments. */

@@ -12,8 +12,19 @@ import {
   Post,
   Query,
   UseGuards,
+  Res,
+  StreamableFile,
 } from '@nestjs/common';
-import { ApiHeader, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { Readable } from 'node:stream';
+import type { Response } from 'express';
+import {
+  ApiOkResponse,
+  ApiProduces,
+  ApiHeader,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import {
   ApiBearerToken,
   ApiCommonErrors,
@@ -21,11 +32,16 @@ import {
   ApiPaginated,
   ApiSuccess,
 } from '../../decorators/swagger-response.decorators';
-import { SerializeResponse } from '../../decorators/response.decorators';
+import {
+  SkipResponseWrap,
+  SerializeResponse,
+} from '../../decorators/response.decorators';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/constants/auth.constants';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CardAttachmentsService } from './card-attachments.service';
+import { CardAttachmentFilesService } from './card-attachment-files.service';
+import { attachmentDisposition } from './attachments/attachment-file-policy';
 import { AttachmentResponseDto } from './dto/attachment-response.dto';
 import {
   AttachmentListQueryDto,
@@ -41,7 +57,10 @@ import {
 @Controller('boards/:boardId/cards/:cardId/attachments')
 @UseGuards(JwtAuthGuard)
 export class CardAttachmentsController {
-  constructor(private readonly attachments: CardAttachmentsService) {}
+  constructor(
+    private readonly attachments: CardAttachmentsService,
+    private readonly files: CardAttachmentFilesService,
+  ) {}
 
   @Get()
   @ApiBearerToken()
@@ -173,17 +192,53 @@ export class CardAttachmentsController {
 
   @Get(':attachmentId/file')
   @ApiBearerToken()
-  @Header('Cache-Control', 'no-store')
-  @ApiCommonErrors([401, 403, 404, 503])
+  @Header('Cache-Control', 'private, no-store')
+  @SkipResponseWrap()
+  @ApiProduces(
+    'image/png',
+    'image/jpeg',
+    'image/webp',
+    'application/pdf',
+    'text/plain',
+  )
+  @ApiOkResponse({
+    description: 'Authenticated verified file bytes',
+    schema: { type: 'string', format: 'binary' },
+  })
+  @ApiCommonErrors([400, 401, 403, 404, 413, 429, 503])
   @ApiParam({ name: 'attachmentId', format: 'uuid' })
-  file(
+  async file(
     @CurrentUser() user: AuthenticatedUser,
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Param('attachmentId', ParseUUIDPipe) id: string,
     @Query() query: AttachmentReadQueryDto,
-  ): Promise<never> {
+    @Res({ passthrough: true }) response: Response,
+  ) {
     void query;
-    return this.attachments.file(user.userId, boardId, cardId, id);
+    const { object, metadata } = await this.files.download(
+      user,
+      boardId,
+      cardId,
+      id,
+    );
+    response.set({
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Type': metadata.mimeType!,
+      'Content-Length': String(metadata.byteSize),
+      'Content-Disposition': attachmentDisposition(
+        metadata.originalFilename!,
+        metadata.mimeType!,
+      ),
+      'Content-Security-Policy':
+        "sandbox; default-src 'none'; frame-ancestors 'none'",
+    });
+    const stream = Readable.from(object.body);
+    response.once('close', () => {
+      stream.destroy();
+      object.cancel?.();
+    });
+    return new StreamableFile(stream);
   }
 }

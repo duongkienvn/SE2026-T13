@@ -161,8 +161,12 @@ export class MemoryAttachmentStorage extends AttachmentStorage {
         'Attachment exceeds its byte limit',
       );
     const body = Buffer.from(value.body);
+    const stream = Readable.from([body]);
     return {
-      body: Readable.from([body]),
+      body: stream,
+      cancel: () => {
+        stream.destroy();
+      },
       byteSize: body.length,
       contentType: value.contentType,
     };
