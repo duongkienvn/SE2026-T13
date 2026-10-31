@@ -199,7 +199,9 @@ async function inspectSchema() {
           !sql.includes('"card_checklist_items"') &&
           !sql.includes('"board_labels"') &&
           !sql.includes('"card_labels"') &&
-          !sql.includes('"UQ_cards_id_board_id"'),
+          !sql.includes('"UQ_cards_id_board_id"') &&
+          !sql.includes('"start_date"') &&
+          !sql.includes('"IDX_cards_board_due_date"'),
       ),
     [
       'ALTER TABLE "workspaces" ADD "board_creation_admin_only" boolean NOT NULL DEFAULT false',
@@ -430,7 +432,7 @@ try {
       'workspaces',
     ],
   );
-  assert.equal(source.migrations.length, 19);
+  assert.equal(source.migrations.length, 20);
 
   const originalDatabase = process.env.DATABASE_NAME;
   process.env.DATABASE_NAME = testDatabase;
@@ -464,7 +466,8 @@ try {
       !m.name.startsWith('WorkspaceActivity') &&
       !m.name.startsWith('PersonalWorkspaceName') &&
       !m.name.startsWith('CardChecklists') &&
-      !m.name.startsWith('BoardCardLabels'),
+      !m.name.startsWith('BoardCardLabels') &&
+      !m.name.startsWith('CardAdvancedDates'),
   );
   assert.equal((await source.runMigrations()).length, 13);
   const cliOutput = execFileSync(
@@ -538,11 +541,12 @@ try {
   assert.equal((await source.runMigrations()).length, 10);
   await inspectSchema();
   source.migrations = allMigrations;
-  assert.equal((await source.runMigrations()).length, 6);
+  assert.equal((await source.runMigrations()).length, 7);
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries,
     [],
   );
+  await source.undoLastMigration(); // Empty Card start-date extension.
   await source.undoLastMigration(); // Empty Board label extension.
   await source.undoLastMigration(); // Empty checklist extension.
   await source.undoLastMigration(); // Future naming default only; no row changes.
@@ -552,7 +556,7 @@ try {
     source.undoLastMigration(),
     /Workspace policies require a forward fix/,
   );
-  assert.equal((await source.runMigrations()).length, 5);
+  assert.equal((await source.runMigrations()).length, 6);
   console.log(
     'Enum rollback retains existing values/history; idempotent reapply: PASS',
   );

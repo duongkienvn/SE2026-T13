@@ -39,7 +39,8 @@
     "test:realtime:database": "node -r ts-node/register test/realtime/realtime.integration.mjs",
     "test:board-events:database": "node -r ts-node/register test/realtime/board-events/board-events.integration.mjs",
     "test:checklists:database": "pnpm build && node test/card-checklists/checklists.integration.mjs",
-    "test:labels:database": "pnpm build && node test/labels/labels.integration.mjs"
+    "test:labels:database": "pnpm build && node test/labels/labels.integration.mjs",
+    "test:card-dates:database": "pnpm build && node test/cards/dates/dates.integration.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1157.0",

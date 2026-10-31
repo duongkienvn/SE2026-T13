@@ -29,6 +29,7 @@ export function cardFixture(overrides: Partial<Card> = {}): Card {
       description: null,
       position: '100.0000000000',
       isArchived: false,
+      startDate: null,
       dueDate: null,
       archivedAt: null,
       createdAt: new Date('2026-10-16T00:00:00Z'),
@@ -97,18 +98,18 @@ export function cardsHarness() {
   };
   cards.createQueryBuilder.mockReturnValue(builder);
   const events = { publish: jest.fn().mockResolvedValue(undefined) };
+  const activities = { record: jest.fn() };
   const service = new CardsService(
     cards as unknown as Repository<Card>,
     boards as unknown as Repository<Board>,
     columns as unknown as Repository<BoardColumn>,
     authorization as unknown as BoardAuthorizationService,
     events as unknown as BoardEventPublisher,
-    {
-      record: jest.fn(),
-    } as unknown as import('../../src/api/activities/activity-writer.service').ActivityWriterService,
+    activities as unknown as import('../../src/api/activities/activity-writer.service').ActivityWriterService,
   );
   return {
     service,
+    activities,
     events,
     boards,
     cards,

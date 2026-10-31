@@ -1,11 +1,12 @@
+import type { CardDateInput } from '@kanban/shared';
+import { CardDateFieldOptional } from './card-date-field.decorator';
 import {
-  DateFieldOptional,
   StringField,
   StringFieldOptional,
   UUIDField,
 } from '../../../decorators/field.decorators';
 
-export class CreateCardDto {
+export class CreateCardDto implements CardDateInput {
   @UUIDField()
   columnId!: string;
 
@@ -15,6 +16,9 @@ export class CreateCardDto {
   @StringFieldOptional({ nullable: true, minLength: 0, maxLength: 2000 })
   description?: string | null;
 
-  @DateFieldOptional({ nullable: true })
+  @CardDateFieldOptional('2026-03-08T01:30:00-05:00')
+  startDate?: string | null;
+
+  @CardDateFieldOptional('2026-03-08T03:30:00-04:00')
   dueDate?: string | null;
 }

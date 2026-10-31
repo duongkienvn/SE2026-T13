@@ -4,6 +4,10 @@ Implements the approved contract from [Issue #34](https://github.com/duongkienvn
 on `feat/cards`, based on `main` at `4d7886a` (E1 and F1 merged).
 No dependency, entity, migration or realtime business event was added.
 
+The historical E2 date contract below is extended by the current
+[advanced start/due date contract](card-advanced-dates.md), including atomic range
+validation, strict instant parsing and the nullable startDate response field.
+
 ## API for E3
 
 All routes require JWT authentication and BoardMember access. OWNER and MEMBER
