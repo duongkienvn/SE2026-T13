@@ -172,3 +172,80 @@ test('zone projection preserves ISO calendar years at supported UTC boundaries',
     '+010000-01-01',
   );
 });
+
+for (const withEra of [true, false]) {
+  test(`date helpers preserve ISO years with ${withEra ? 'present' : 'absent'} ISO era parts`, (t) => {
+    const formatToParts = Intl.DateTimeFormat.prototype.formatToParts;
+    t.mock.method(
+      Intl.DateTimeFormat.prototype,
+      'formatToParts',
+      function (instant) {
+        if (this.resolvedOptions().calendar !== 'iso8601')
+          return formatToParts.call(this, instant);
+        const formatter = new Intl.DateTimeFormat(
+          'en-US-u-ca-gregory-nu-latn',
+          {
+            timeZone: this.resolvedOptions().timeZone,
+            year: 'numeric',
+            era: 'short',
+            month: '2-digit',
+            day: '2-digit',
+          },
+        );
+        const parts = formatToParts.call(formatter, instant);
+        // ICU 78.2 omits the ISO era but still reports 1 BC as year "1", not "0".
+        return withEra ? parts : parts.filter((part) => part.type !== 'era');
+      },
+    );
+    for (const api of [
+      { cardDateInZone, deriveCardDueStatus },
+      require('@kanban/shared'),
+    ]) {
+      for (const [instant, zone, expected] of [
+        ['2026-10-31T00:00Z', 'UTC', '2026-10-31'],
+        ['0001-01-01T00:00Z', 'UTC', '0001-01-01'],
+        ['0001-01-01T00:00Z', 'America/New_York', '0000-12-31'],
+        ['9999-12-31T23:59Z', 'Asia/Ho_Chi_Minh', '+010000-01-01'],
+      ]) {
+        assert.equal(api.cardDateInZone(instant, zone), expected);
+        assert.equal(
+          api.deriveCardDueStatus(instant, instant, zone),
+          CardDueStatus.DUE_TODAY,
+        );
+      }
+      for (const [now, due, zone, expected] of [
+        [
+          '2026-10-31T00:00Z',
+          '2026-11-01T00:00Z',
+          'UTC',
+          CardDueStatus.UPCOMING,
+        ],
+        [
+          '0001-01-01T00:00Z',
+          '0001-01-01T05:00Z',
+          'America/New_York',
+          CardDueStatus.UPCOMING,
+        ],
+        [
+          '9999-12-31T00:00Z',
+          '9999-12-31T23:59Z',
+          'Asia/Ho_Chi_Minh',
+          CardDueStatus.UPCOMING,
+        ],
+        [
+          '2026-03-08T05:00Z',
+          '2026-03-09T03:59Z',
+          'America/New_York',
+          CardDueStatus.DUE_TODAY,
+        ],
+        [
+          '2026-11-01T04:00Z',
+          '2026-11-02T04:59Z',
+          'America/New_York',
+          CardDueStatus.DUE_TODAY,
+        ],
+      ])
+        assert.equal(api.deriveCardDueStatus(due, now, zone), expected);
+    }
+  });
+}

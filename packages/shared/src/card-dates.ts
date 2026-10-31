@@ -72,13 +72,16 @@ export const CardDueStatus = {
 export type CardDueStatus = (typeof CardDueStatus)[keyof typeof CardDueStatus];
 
 /** Named IANA zones only, matching User Preferences; fixed numeric offsets are not zones. */
-function dayFormatter(timeZone: string): Intl.DateTimeFormat {
+function dayFormatter(
+  timeZone: string,
+  calendar: 'iso8601' | 'gregory' = 'iso8601',
+): Intl.DateTimeFormat {
   if (
     typeof timeZone !== 'string' ||
     !/^[A-Za-z][A-Za-z0-9_+\-/]*$/.test(timeZone)
   )
     throw new RangeError('Expected a named IANA time zone');
-  return new Intl.DateTimeFormat('en-US-u-ca-iso8601-nu-latn', {
+  return new Intl.DateTimeFormat(`en-US-u-ca-${calendar}-nu-latn`, {
     timeZone,
     year: 'numeric',
     era: 'short',
@@ -87,7 +90,15 @@ function dayFormatter(timeZone: string): Intl.DateTimeFormat {
   });
 }
 function civilDay(instant: Date, formatter: Intl.DateTimeFormat): string {
-  const parts = formatter.formatToParts(instant);
+  let parts = formatter.formatToParts(instant);
+  if (!parts.some((part) => part.type === 'era')) {
+    // ICU 78 omits ISO eras while retaining year-of-era (1 BC is still "1").
+    // Gregorian shares ISO's proleptic dates and supplies the missing era.
+    parts = dayFormatter(
+      formatter.resolvedOptions().timeZone,
+      'gregory',
+    ).formatToParts(instant);
+  }
   const part = (name: string) =>
     parts.find((part) => part.type === name)!.value;
   const year =
