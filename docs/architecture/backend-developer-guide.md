@@ -134,3 +134,11 @@ checklist/item REST routes. Commands share the Board row lock with Card and
 membership mutations, and publish `card:updated` only after commit. Exact ordered
 positions, bounded detail payloads, derived progress and scoped aggregate access
 are documented in [the checklist contract](../tasks/backend/card-checklists.md).
+
+## Board-scoped labels (CD-02)
+
+`LabelsModule` owns the Board catalog, Card association routes and exported
+`LabelsService.forCards` batch reader. Mutations share the existing Board row
+lock; composite FKs enforce same-Board links. Catalog invalidation uses one
+post-commit `labels:changed` event; assignments reuse `card:updated`. See the
+[label contracts, lifecycle rules and verification](../tasks/backend/board-card-labels.md).
