@@ -43,17 +43,8 @@ export function parseCardDateInstant(value: unknown): Date {
     offsetMinute > 59
   )
     throw new RangeError('Invalid date-time components');
-  const local = new Date(0);
-  local.setUTCFullYear(year, month - 1, day);
-  local.setUTCHours(
-    hour,
-    minute,
-    second,
-    Number((match[7] ?? '').padEnd(3, '0').slice(0, 3)),
-  );
-  const offset =
-    (offsetHour * 60 + offsetMinute) * 60000 * (match[9] === '-' ? -1 : 1);
-  const instant = new Date(local.getTime() - offset);
+  // After component validation, the platform parses the explicit ISO offset.
+  const instant = new Date(value);
   if (
     !Number.isFinite(instant.getTime()) ||
     instant.getUTCFullYear() < 1 ||
@@ -90,6 +81,7 @@ function dayFormatter(timeZone: string): Intl.DateTimeFormat {
   return new Intl.DateTimeFormat('en-US-u-ca-iso8601-nu-latn', {
     timeZone,
     year: 'numeric',
+    era: 'short',
     month: '2-digit',
     day: '2-digit',
   });
@@ -98,7 +90,13 @@ function civilDay(instant: Date, formatter: Intl.DateTimeFormat): string {
   const parts = formatter.formatToParts(instant);
   const part = (name: string) =>
     parts.find((part) => part.type === name)!.value;
-  return `${part('year').padStart(4, '0')}-${part('month')}-${part('day')}`;
+  const year =
+    part('era') === 'BC' ? 1 - Number(part('year')) : Number(part('year'));
+  const isoYear =
+    year >= 0 && year <= 9999
+      ? String(year).padStart(4, '0')
+      : `${year < 0 ? '-' : '+'}${String(Math.abs(year)).padStart(6, '0')}`;
+  return `${isoYear}-${part('month')}-${part('day')}`;
 }
 /** Display projection only; never converts a civil date into an instant. */
 export function cardDateInZone(instant: string, timeZone: string): string {

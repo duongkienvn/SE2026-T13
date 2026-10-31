@@ -41,7 +41,9 @@ try {
   source = await new DataSource({ ...options, database }).initialize();
   const allMigrations = source.migrations;
   source.migrations = allMigrations.filter(
-    (m) => !m.name.startsWith('BoardCardLabels'),
+    (m) =>
+      !m.name.startsWith('BoardCardLabels') &&
+      !m.name.startsWith('CardAdvancedDates'),
   );
   await source.runMigrations();
   const [legacyOwner] = await source.query(
@@ -80,7 +82,7 @@ try {
       'card_checklist_items',
     ])
       result[table] = await source.query(
-        `SELECT to_jsonb(t) AS row FROM ${table} t ORDER BY id`,
+        `SELECT to_jsonb(t) - 'start_date' AS row FROM ${table} t ORDER BY id`,
       );
     return result;
   };
@@ -94,10 +96,11 @@ try {
   );
   const before = await snapshot();
   source.migrations = allMigrations;
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 2);
   assert.deepEqual(await snapshot(), before);
+  await source.undoLastMigration(); // Empty Card start-date extension.
   await source.undoLastMigration(); // Empty label tables and their Card composite key only.
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 2);
   assert.deepEqual(await source.runMigrations(), []);
   assert.equal(source.options.synchronize, false);
   assert.equal(source.options.migrationsRun, false);
@@ -394,10 +397,12 @@ try {
   assert.ok(
     indexes.some((row) => row.indexname === 'IDX_card_labels_label_board'),
   );
+  await source.undoLastMigration(); // Empty Card start-date extension.
   await assert.rejects(
     source.undoLastMigration(),
     /Refusing to discard Board label data/,
   );
+  await source.runMigrations();
   pass(
     'schema-level normalized uniqueness, strict colors/nonblank names, composite cross-Board rejection, indexes and safe populated down refusal',
   );

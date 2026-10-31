@@ -161,3 +161,14 @@ test('projection validates reference instants and named zones even without a dea
     RangeError,
   );
 });
+
+test('zone projection preserves ISO calendar years at supported UTC boundaries', () => {
+  assert.equal(
+    cardDateInZone('0001-01-01T00:00Z', 'America/New_York'),
+    '0000-12-31',
+  );
+  assert.equal(
+    cardDateInZone('9999-12-31T23:59Z', 'Asia/Ho_Chi_Minh'),
+    '+010000-01-01',
+  );
+});
