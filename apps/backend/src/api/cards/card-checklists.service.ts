@@ -41,16 +41,25 @@ export class CardChecklistsService {
   ): Promise<CardChecklistsResponseDto> {
     await this.authorization.requireRead(userId, boardId);
     await this.requireCard(this.boards.manager, boardId, cardId);
-    const rows = await this.boards.manager.getRepository(CardChecklist).find({
-      where: { cardId },
-      relations: { items: true },
-      order: {
-        position: 'ASC',
-        id: 'ASC',
-        items: { position: 'ASC', id: 'ASC' },
-      },
-      take: MAX_CARD_CHECKLISTS,
-    });
+    // Bound parents before joining: TypeORM take + child ordering can paginate
+    // distinct parent/child rank pairs and silently omit later checklists.
+    const rows = await this.boards.manager
+      .getRepository(CardChecklist)
+      .createQueryBuilder('checklist')
+      .leftJoinAndSelect('checklist.items', 'item')
+      .where('checklist.cardId = :cardId', { cardId })
+      .andWhere(
+        `checklist.id IN (
+        SELECT bounded.id FROM card_checklists bounded WHERE bounded.card_id = :cardId
+        ORDER BY bounded.position, bounded.id LIMIT :maximum
+      )`,
+        { maximum: MAX_CARD_CHECKLISTS },
+      )
+      .orderBy('checklist.position', 'ASC')
+      .addOrderBy('checklist.id', 'ASC')
+      .addOrderBy('item.position', 'ASC')
+      .addOrderBy('item.id', 'ASC')
+      .getMany();
     const checklists = rows.map(toChecklistResponse);
     return toResponseDto(CardChecklistsResponseDto, {
       cardId: cardId.toLowerCase(),

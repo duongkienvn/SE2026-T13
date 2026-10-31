@@ -149,6 +149,17 @@ export function checklistHarness() {
       createQueryBuilder: jest.fn(() => {
         const params: Record<string, unknown> = {};
         const builder = {
+          leftJoinAndSelect: () => builder,
+          orderBy: () => builder,
+          addOrderBy: () => builder,
+          getMany: async () =>
+            sorted(
+              [...store(entity).values()].filter(
+                (row) => row.cardId === params.cardId,
+              ),
+            )
+              .slice(0, Number(params.maximum))
+              .map((row) => hydrate(entity, row)),
           leftJoin: () => builder,
           select: () => builder,
           addSelect: () => builder,

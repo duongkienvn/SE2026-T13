@@ -3,6 +3,7 @@ import { CardChecklistItem } from '../../src/api/cards/entities/card-checklist-i
 import { Board } from '../../src/api/boards/entities/board.entity';
 import { Card } from '../../src/api/cards/entities/card.entity';
 import { checklistHarness, ID } from './checklists.fixture';
+import { checklistProgress } from '../../src/api/cards/dto/checklist-response.dto';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: () => () => undefined,
@@ -10,6 +11,11 @@ jest.mock('@nestjs/typeorm', () => ({
 
 describe('Card checklists service', () => {
   let h: ReturnType<typeof checklistHarness>;
+  it('reports fractional completion without claiming an almost complete checklist is complete', () => {
+    expect(checklistProgress(1, 3).completionPercentage).toBe(33.33);
+    expect(checklistProgress(199, 200).completionPercentage).toBe(99.5);
+    expect(checklistProgress(9999, 10000).completionPercentage).toBe(99.99);
+  });
   beforeEach(() => {
     h = checklistHarness();
   });
@@ -175,6 +181,9 @@ describe('Card checklists service', () => {
       h.service.summaries(ID.owner, ID.board, Array(101).fill(ID.card)),
     ).rejects.toMatchObject({ status: 400 });
     expect(await h.service.summaries(ID.owner, ID.board, [])).toEqual([]);
+    const bounded = await h.service.list(ID.owner, ID.board, ID.card);
+    expect(bounded.checklists).toHaveLength(50);
+    expect(bounded.totalItems).toBe(200);
     expect(
       h
         .repository(CardChecklist)

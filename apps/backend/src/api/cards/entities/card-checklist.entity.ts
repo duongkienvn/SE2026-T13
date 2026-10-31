@@ -23,7 +23,10 @@ import { CardChecklistItem } from './card-checklist-item.entity';
 )
 @Check('CHK_card_checklists_position', 'position > 0')
 export class CardChecklist {
-  @PrimaryGeneratedColumn('uuid') id!: string;
+  @PrimaryGeneratedColumn('uuid', {
+    primaryKeyConstraintName: 'PK_card_checklists',
+  })
+  id!: string;
   @Column({ name: 'card_id', type: 'uuid' }) cardId!: string;
   @ManyToOne(() => Card, { onDelete: 'CASCADE' })
   @JoinColumn({

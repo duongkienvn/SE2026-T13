@@ -11,7 +11,7 @@ export class ChecklistProgressDto {
   @ApiProperty({
     minimum: 0,
     maximum: 100,
-    description: 'Rounded integer percent; empty is zero',
+    description: 'Percent rounded to two decimals; empty is zero',
   })
   completionPercentage!: number;
 }
@@ -55,7 +55,9 @@ export function checklistProgress(
     checkedItems,
     totalItems,
     completionPercentage:
-      totalItems === 0 ? 0 : Math.round((checkedItems * 100) / totalItems),
+      totalItems === 0
+        ? 0
+        : Math.round((checkedItems * 10000) / totalItems) / 100,
   };
 }
 function toItemResponse(row: CardChecklistItem): ChecklistItemResponseDto {

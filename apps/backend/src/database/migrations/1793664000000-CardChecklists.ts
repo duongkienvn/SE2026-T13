@@ -5,7 +5,7 @@ export class CardChecklists1793664000000 implements MigrationInterface {
 
   async up(runner: QueryRunner): Promise<void> {
     await runner.query(`CREATE TABLE card_checklists (
-      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      id uuid CONSTRAINT "PK_card_checklists" PRIMARY KEY DEFAULT gen_random_uuid(),
       card_id uuid NOT NULL,
       title varchar(120) NOT NULL,
       position numeric(20,10) NOT NULL,
@@ -17,7 +17,7 @@ export class CardChecklists1793664000000 implements MigrationInterface {
       CONSTRAINT "UQ_card_checklists_parent_position" UNIQUE (card_id, position) DEFERRABLE INITIALLY DEFERRED
     )`);
     await runner.query(`CREATE TABLE card_checklist_items (
-      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      id uuid CONSTRAINT "PK_card_checklist_items" PRIMARY KEY DEFAULT gen_random_uuid(),
       checklist_id uuid NOT NULL,
       text varchar(255) NOT NULL,
       is_checked boolean NOT NULL DEFAULT false,

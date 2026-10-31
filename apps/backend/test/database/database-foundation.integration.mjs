@@ -194,7 +194,9 @@ async function inspectSchema() {
           !sql.includes('workspace_activities') &&
           !sql.includes('activity_move_version') &&
           !sql.includes('declined_at') &&
-          !sql.includes('CK_workspace_invitations_declined_at'),
+          !sql.includes('CK_workspace_invitations_declined_at') &&
+          !sql.includes('"card_checklists"') &&
+          !sql.includes('"card_checklist_items"'),
       ),
     [
       'ALTER TABLE "workspaces" ADD "board_creation_admin_only" boolean NOT NULL DEFAULT false',
@@ -397,7 +399,7 @@ try {
   assert.equal(source.options.logging, false);
   assert.equal(source.options.synchronize, false);
   assert.equal(source.options.migrationsRun, false);
-  assert.equal(source.entityMetadatas.length, 18);
+  assert.equal(source.entityMetadatas.length, 20);
   assert.deepEqual(
     source.entityMetadatas.map((entity) => entity.tableName).sort(),
     [
@@ -407,6 +409,8 @@ try {
       'board_members',
       'boards',
       'card_assignees',
+      'card_checklist_items',
+      'card_checklists',
       'cards',
       'comments',
       'email_verification_tokens',
@@ -421,7 +425,7 @@ try {
       'workspaces',
     ],
   );
-  assert.equal(source.migrations.length, 17);
+  assert.equal(source.migrations.length, 18);
 
   const originalDatabase = process.env.DATABASE_NAME;
   process.env.DATABASE_NAME = testDatabase;
@@ -432,7 +436,7 @@ try {
     });
     try {
       const nestDataSource = app.get(DataSource);
-      assert.equal(nestDataSource.entityMetadatas.length, 18);
+      assert.equal(nestDataSource.entityMetadatas.length, 20);
       assert.equal(nestDataSource.migrations.length, source.migrations.length);
       assert.equal(nestDataSource.options.poolSize, source.options.poolSize);
       assert.equal(
@@ -453,7 +457,8 @@ try {
       !m.name.startsWith('WorkspacePolicies') &&
       !m.name.startsWith('WorkspaceInvitationDecline') &&
       !m.name.startsWith('WorkspaceActivity') &&
-      !m.name.startsWith('PersonalWorkspaceName'),
+      !m.name.startsWith('PersonalWorkspaceName') &&
+      !m.name.startsWith('CardChecklists'),
   );
   assert.equal((await source.runMigrations()).length, 13);
   const cliOutput = execFileSync(
@@ -479,7 +484,7 @@ try {
       '-e',
       `const dataSource = require('./src/database/data-source.ts').default;
        dataSource.initialize().then(async () => {
-         if (dataSource.entityMetadatas.length !== 18 || dataSource.migrations.length !== ${allMigrations.length}) {
+         if (dataSource.entityMetadatas.length !== 20 || dataSource.migrations.length !== ${allMigrations.length}) {
            throw new Error('TypeScript DataSource discovery mismatch');
          }
          await dataSource.destroy();
@@ -527,11 +532,12 @@ try {
   assert.equal((await source.runMigrations()).length, 10);
   await inspectSchema();
   source.migrations = allMigrations;
-  assert.equal((await source.runMigrations()).length, 4);
+  assert.equal((await source.runMigrations()).length, 5);
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries,
     [],
   );
+  await source.undoLastMigration(); // Empty checklist extension.
   await source.undoLastMigration(); // Future naming default only; no row changes.
   await source.undoLastMigration(); // Empty activity history.
   await source.undoLastMigration(); // Empty decline history; test the older policy boundary.
@@ -539,7 +545,7 @@ try {
     source.undoLastMigration(),
     /Workspace policies require a forward fix/,
   );
-  assert.equal((await source.runMigrations()).length, 3);
+  assert.equal((await source.runMigrations()).length, 4);
   console.log(
     'Enum rollback retains existing values/history; idempotent reapply: PASS',
   );
