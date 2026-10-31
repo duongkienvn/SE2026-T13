@@ -30,6 +30,7 @@ import {
   CardAssigneeResponseDto,
   toCardAssigneeResponseDto,
 } from './dto/card-assignee-response.dto';
+import { resolveCardDates } from './card-dates';
 import { cardInsertionPosition } from './cards-ordering';
 import { rebalancePositions } from '../columns/columns-ordering';
 
@@ -68,7 +69,7 @@ export class CardsService {
         createdById: userId,
         title: input.title,
         description: input.description ?? null,
-        dueDate: input.dueDate ? new Date(input.dueDate) : null,
+        ...resolveCardDates(input),
         isArchived: false,
         archivedAt: null,
         position: position ?? '0.0000000000',
@@ -122,6 +123,7 @@ export class CardsService {
     if (
       input.title === undefined &&
       input.description === undefined &&
+      input.startDate === undefined &&
       input.dueDate === undefined
     ) {
       throw new ApplicationException(
@@ -134,22 +136,18 @@ export class CardsService {
     const result = await this.mutate(userId, boardId, async (manager) => {
       const cards = manager.getRepository(Card);
       const card = await this.requireCard(cards, boardId, cardId, true);
-      const dueDate =
-        input.dueDate === undefined
-          ? card.dueDate
-          : input.dueDate === null
-            ? null
-            : new Date(input.dueDate);
+      const { startDate, dueDate } = resolveCardDates(input, card);
       changed =
         (input.title !== undefined && input.title !== card.title) ||
         (input.description !== undefined &&
           input.description !== card.description) ||
+        startDate?.getTime() !== card.startDate?.getTime() ||
         dueDate?.getTime() !== card.dueDate?.getTime();
       if (!changed) return toCardResponseDto(card);
       if (input.title !== undefined) card.title = input.title;
       if (input.description !== undefined) card.description = input.description;
-      if (input.dueDate !== undefined)
-        card.dueDate = input.dueDate === null ? null : new Date(input.dueDate);
+      if (input.startDate !== undefined) card.startDate = startDate;
+      if (input.dueDate !== undefined) card.dueDate = dueDate;
       const saved = await cards.save(card);
       await this.activities.record(manager, {
         boardId: saved.boardId,

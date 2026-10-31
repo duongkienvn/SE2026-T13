@@ -150,6 +150,8 @@ test('projection validates reference instants and named zones even without a dea
       () => deriveCardDueStatus(null, '2026-01-01T00:00Z', zone),
       RangeError,
     );
+  for (const zone of [undefined, null, 7, false])
+    assert.throws(() => cardDateInZone('2026-01-01T00:00Z', zone), RangeError);
   assert.throws(
     () => deriveCardDueStatus(null, '2026-01-01', 'UTC'),
     RangeError,

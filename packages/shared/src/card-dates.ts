@@ -82,7 +82,10 @@ export type CardDueStatus = (typeof CardDueStatus)[keyof typeof CardDueStatus];
 
 /** Named IANA zones only, matching User Preferences; fixed numeric offsets are not zones. */
 function dayFormatter(timeZone: string): Intl.DateTimeFormat {
-  if (!/^[A-Za-z][A-Za-z0-9_+\-/]*$/.test(timeZone))
+  if (
+    typeof timeZone !== 'string' ||
+    !/^[A-Za-z][A-Za-z0-9_+\-/]*$/.test(timeZone)
+  )
     throw new RangeError('Expected a named IANA time zone');
   return new Intl.DateTimeFormat('en-US-u-ca-iso8601-nu-latn', {
     timeZone,
