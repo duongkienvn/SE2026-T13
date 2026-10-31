@@ -17,7 +17,7 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node --test test/exports.test.mjs test/realtime.test.mjs test/workspace.test.mjs test/card-dates.test.mjs"
+    "test": "node --test test/exports.test.mjs test/realtime.test.mjs test/workspace.test.mjs test/card-dates.test.mjs test/card-attachments.test.mjs"
   },
   "devDependencies": {
     "typescript": "^5.0.0"

@@ -16,6 +16,13 @@ import { CardChecklistsController } from './card-checklists.controller';
 import { CardChecklistsService } from './card-checklists.service';
 import { CardChecklist } from './entities/card-checklist.entity';
 import { CardChecklistItem } from './entities/card-checklist-item.entity';
+import { CardAttachmentsController } from './card-attachments.controller';
+import { CardAttachmentsService } from './card-attachments.service';
+import { CardAttachment } from './entities/card-attachment.entity';
+import {
+  AttachmentStorage,
+  DisabledAttachmentStorage,
+} from './attachments/attachment-storage';
 
 @Module({
   imports: [
@@ -28,13 +35,23 @@ import { CardChecklistItem } from './entities/card-checklist-item.entity';
       CardAssignee,
       CardChecklist,
       CardChecklistItem,
+      CardAttachment,
       Board,
       BoardColumn,
       BoardMember,
     ]),
   ],
-  controllers: [CardsController, CardChecklistsController],
-  providers: [CardsService, CardChecklistsService],
+  controllers: [
+    CardsController,
+    CardChecklistsController,
+    CardAttachmentsController,
+  ],
+  providers: [
+    CardsService,
+    CardChecklistsService,
+    CardAttachmentsService,
+    { provide: AttachmentStorage, useClass: DisabledAttachmentStorage },
+  ],
   exports: [CardChecklistsService],
 })
 export class CardsModule {}

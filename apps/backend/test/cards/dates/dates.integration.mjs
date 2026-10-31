@@ -43,7 +43,9 @@ try {
   source = await new DataSource({ ...options, database }).initialize();
   const allMigrations = source.migrations;
   source.migrations = allMigrations.filter(
-    (m) => !m.name.startsWith('CardAdvancedDates'),
+    (m) =>
+      !m.name.startsWith('CardAdvancedDates') &&
+      !m.name.startsWith('CardAttachments'),
   );
   await source.runMigrations();
   const [legacyOwner] = await source.query(
@@ -109,7 +111,7 @@ try {
   );
   const before = await snapshot();
   source.migrations = allMigrations;
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 2);
   assert.deepEqual(await snapshot(), before);
   assert.deepEqual(await legacyEpoch(), beforeEpoch);
   assert.equal(
@@ -120,8 +122,9 @@ try {
     )[0].n,
     0,
   );
+  await source.undoLastMigration(); // Empty attachment foundation.
   await source.undoLastMigration(); // Empty start_date column; legacy due_date values remain.
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 2);
   assert.deepEqual(await source.runMigrations(), []);
   assert.equal(source.options.synchronize, false);
   assert.equal(source.options.migrationsRun, false);
@@ -413,10 +416,12 @@ try {
     ]),
     (error) => error.driverError?.code === '23514',
   );
+  await source.undoLastMigration(); // Empty attachment foundation.
   await assert.rejects(
     source.undoLastMigration(),
     /Refusing to discard Card start dates/,
   );
+  await source.runMigrations();
   pass(
     'preferences never mutate stored instants; malformed/civil inputs fail; nullability, Board/time indexes, range/finite checks and safe down refusal hold',
   );

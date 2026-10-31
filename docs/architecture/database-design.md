@@ -428,7 +428,8 @@ Timestamp persistent dùng `timestamptz` và lưu theo UTC; việc hiển thị 
 
 ## Ngoài phạm vi database MVP
 
-Chưa có labels, attachments, checklist, card priority, notification system,
+Các extension CD-01/02/03/04 bên dưới bổ sung checklist, labels, attachment
+metadata và dates ngoài MVP. Chưa có card priority, notification system,
 calendar, time tracking, analytics, automation rules hoặc CRDT state. Workspace và
 invitation persistence đã có ở P2-01; P2-02 thêm Workspace lifecycle/metadata REST
 và queries theo Board ACL. P2-03 thêm membership/invitation domain API; mail
@@ -461,3 +462,14 @@ start dates and start <= due when both are present. Partial `(board_id,start_dat
 and `(board_id,due_date)` indexes support scoped temporal queries. No all-day,
 timezone, completion or mutable due-status column is introduced. See the
 [validation, migration and safe rollback contract](../tasks/backend/card-advanced-dates.md).
+
+## Card attachment extension (CD-03 part 1)
+
+`card_attachments` uses an immutable composite Card/Board scope, uploader FK,
+kind/state-dependent CHECKs, optimistic revision and scoped idempotency/keys.
+Only ACTIVE records are listable; PENDING files reserve quota without exposure.
+`card_attachment_cleanup_jobs` deliberately has no parent FK: terminal transitions
+and Card/Board hard deletes retain private-object cleanup obligations. No worker,
+file bytes or storage provider is enabled. The migration is additive and down
+refuses populated metadata/jobs. See the [schema diagram, lifecycle, provisional
+limits and recovery contract](../tasks/backend/card-attachments-foundation.md).
