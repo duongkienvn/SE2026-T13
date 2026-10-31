@@ -33,6 +33,7 @@ const STATUS_STYLES = {
   ACCEPTED: 'bg-[#e3f6ea] text-[#1c7a43] dark:bg-[#173a28] dark:text-[#86d8a6]',
   EXPIRED: 'bg-app text-muted',
   REVOKED: 'bg-app text-muted',
+  DECLINED: 'bg-app text-muted',
 } as const;
 
 /** ADMIN-only invitation history with honest delivery state. */

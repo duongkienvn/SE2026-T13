@@ -135,3 +135,15 @@ export function acceptWorkspaceInvitation(accessToken: string, proof: string) {
     body: { proof },
   });
 }
+
+export function declineWorkspaceInvitation(
+  accessToken: string,
+  proof: string,
+): Promise<void> {
+  return apiRequest<void>('/workspace-invitations/decline', {
+    accessToken,
+    method: 'POST',
+    body: { proof },
+    expectedStatus: 204,
+  });
+}

@@ -10,6 +10,7 @@ import { revokeWorkspaceAccess } from '../revoke-workspace-access';
 import type { WorkspaceViewState } from '../types';
 import {
   acceptWorkspaceInvitation,
+  declineWorkspaceInvitation,
   changeWorkspaceMemberRole,
   inviteWorkspaceMember,
   listWorkspaceInvitations,
@@ -271,6 +272,25 @@ export function useAcceptWorkspaceInvitation() {
     mutationFn: (proof: string) => {
       if (!user || !scope.isCurrent()) throw new WorkspaceUnavailableError();
       return runAuthorized((token) => acceptWorkspaceInvitation(token, proof));
+    },
+    onSuccess: () => {
+      if (scope.isCurrent())
+        void client.invalidateQueries({
+          queryKey: workspaceKeys.session(user?.id ?? '', scope.generation),
+        });
+    },
+  });
+}
+
+export function useDeclineWorkspaceInvitation() {
+  const { user, runAuthorized } = useAuth();
+  const scope = useAuthSession();
+  const client = useQueryClient();
+  return useMutation({
+    retry: false,
+    mutationFn: (proof: string) => {
+      if (!user || !scope.isCurrent()) throw new WorkspaceUnavailableError();
+      return runAuthorized((token) => declineWorkspaceInvitation(token, proof));
     },
     onSuccess: () => {
       if (scope.isCurrent())
