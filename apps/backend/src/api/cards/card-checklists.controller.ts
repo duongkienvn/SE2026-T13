@@ -62,6 +62,7 @@ export class CardChecklistsController {
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Query() _query: ChecklistReadQueryDto,
   ): Promise<CardChecklistsResponseDto> {
+    void _query; // Validation rejects unsupported query fields.
     return this.checklists.list(user.userId, boardId, cardId);
   }
 
@@ -80,6 +81,7 @@ export class CardChecklistsController {
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Query() _query: ChecklistReadQueryDto,
   ): Promise<CardChecklistSummaryDto> {
+    void _query; // Validation rejects unsupported query fields.
     return (await this.checklists.summaries(user.userId, boardId, [cardId]))[0];
   }
 

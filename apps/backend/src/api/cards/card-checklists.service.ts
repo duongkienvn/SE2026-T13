@@ -217,7 +217,7 @@ export class CardChecklistsService {
     });
   }
 
-  updateItem(
+  async updateItem(
     userId: string,
     boardId: string,
     cardId: string,
