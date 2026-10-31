@@ -112,6 +112,7 @@ export interface RealtimeServerEvents {
   'column:moved': (payload: ColumnChangedEvent) => void;
   'column:deleted': (payload: ColumnChangedEvent) => void;
   'card:created': (payload: CardChangedEvent) => void;
+  /** Invalidate Card details and checklist detail/summary caches, including item-only changes. */
   'card:updated': (payload: CardChangedEvent) => void;
   'card:moved': (payload: CardMovedEvent) => void;
   'card:archived': (payload: CardChangedEvent) => void;

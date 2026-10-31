@@ -126,3 +126,11 @@ holds a per-board queue through transaction commit and eviction of all affected
 sockets. Do not call broadcast inside a queued operation or a still-open
 transaction. Expired sockets are disconnected and must authenticate and join
 again. See [F1 contracts, security invariants and testing](../tasks/backend/realtime-foundation.md).
+
+## Card checklists (CD-01)
+
+`CardsModule` also exposes `CardChecklistsService` and authenticated nested
+checklist/item REST routes. Commands share the Board row lock with Card and
+membership mutations, and publish `card:updated` only after commit. Exact ordered
+positions, bounded detail payloads, derived progress and scoped aggregate access
+are documented in [the checklist contract](../tasks/backend/card-checklists.md).

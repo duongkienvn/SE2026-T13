@@ -37,7 +37,8 @@
     "test:activities:database": "pnpm build && node test/activities/activities.integration.mjs",
     "test:realtime": "jest --runInBand --runTestsByPath test/realtime/realtime.e2e-spec.ts",
     "test:realtime:database": "node -r ts-node/register test/realtime/realtime.integration.mjs",
-    "test:board-events:database": "node -r ts-node/register test/realtime/board-events/board-events.integration.mjs"
+    "test:board-events:database": "node -r ts-node/register test/realtime/board-events/board-events.integration.mjs",
+    "test:checklists:database": "pnpm build && node test/card-checklists/checklists.integration.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1157.0",

@@ -40,6 +40,7 @@ try {
   created = true;
   source = await new DataSource({ ...options, database: name }).initialize();
   await source.runMigrations();
+  await source.undoLastMigration(); // Empty checklist extension.
   await source.undoLastMigration(); // Future naming default only; no row changes.
   await source.undoLastMigration(); // Empty Workspace activity history.
   await source.undoLastMigration(); // No decline history yet; exercise the policy boundary below.
@@ -47,7 +48,7 @@ try {
     source.undoLastMigration(),
     /Workspace policies require a forward fix/,
   );
-  assert.equal((await source.runMigrations()).length, 3);
+  assert.equal((await source.runMigrations()).length, 4);
   assert.deepEqual(await source.runMigrations(), []);
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries,
