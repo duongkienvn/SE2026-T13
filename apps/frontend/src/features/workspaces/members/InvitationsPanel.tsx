@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { ActionMenu } from '../../../components/ActionMenu';
 import { Alert } from '../../../components/Alert';
@@ -83,6 +83,7 @@ export function InvitationsPanel({
   );
   const revoke = useRevokeWorkspaceInvitation(workspaceId);
   const resend = useInviteWorkspaceMember(workspaceId);
+  const sending = useRef(false);
   const [revoking, setRevoking] = useState<WorkspaceInvitation | null>(null);
 
   if (workspaceState === 'ready' && !isAdmin)
@@ -95,15 +96,29 @@ export function InvitationsPanel({
     );
 
   const sendAgain = (invitation: WorkspaceInvitation) => {
-    if (resend.isPending) return;
+    if (
+      sending.current ||
+      resend.isPending ||
+      (invitation.status === 'PENDING' &&
+        invitation.sendState === 'DISPATCHING')
+    )
+      return;
+    sending.current = true;
     onNotice(undefined);
     resend.mutate(invitation.email, {
-      onSuccess: (saved) => onNotice(inviteOutcome(saved)),
-      onError: (error) =>
+      onSuccess: (saved) => {
+        if (resend.isCurrent()) onNotice(inviteOutcome(saved));
+      },
+      onError: (error) => {
+        if (!resend.isCurrent()) return;
         onNotice({
           tone: 'error',
           message: inviteError(error).form ?? 'Could not send the invitation.',
-        }),
+        });
+      },
+      onSettled: () => {
+        sending.current = false;
+      },
     });
   };
 
@@ -211,6 +226,11 @@ export function InvitationsPanel({
                     ? [
                         {
                           label: 'Send again',
+                          disabledReason: resend.isPending
+                            ? 'An invitation request is in progress.'
+                            : invitation.sendState === 'DISPATCHING'
+                              ? 'Email sending is in progress. Refresh Invitations for the result.'
+                              : undefined,
                           onSelect: () => sendAgain(invitation),
                         },
                         {
@@ -228,6 +248,9 @@ export function InvitationsPanel({
                       : [
                           {
                             label: 'Invite again',
+                            disabledReason: resend.isPending
+                              ? 'An invitation request is in progress.'
+                              : undefined,
                             onSelect: () => sendAgain(invitation),
                           },
                         ];
@@ -237,13 +260,13 @@ export function InvitationsPanel({
                       <p className="truncate text-sm font-medium text-ink">
                         {invitation.email}
                       </p>
-                      <p className="mt-0.5 truncate text-xs text-muted">
-                        Sent{' '}
+                      <p className="mt-0.5 text-xs text-muted [overflow-wrap:anywhere]">
+                        Created{' '}
                         <time dateTime={invitation.createdAt}>
                           {formatDate(invitation.createdAt)}
                         </time>
                         {delivery && (
-                          <span className="hidden sm:inline">
+                          <span className="hidden whitespace-normal sm:inline">
                             {' · '}
                             {delivery}
                           </span>

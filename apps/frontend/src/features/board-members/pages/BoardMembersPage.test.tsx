@@ -85,6 +85,29 @@ function changes(before: BoardMember[], after: BoardMember[]): Handler {
 describe('BoardMembersPage (as OWNER)', () => {
   const board = makeBoard({ name: 'Design Team', currentUserRole: 'OWNER' });
 
+  it('returns from a direct Members permalink to its Board without inferring Workspace access', async () => {
+    const { router } = openMembers(board, [me, graceMember], {
+      'GET /workspaces?page=1&limit=100': okPage([]),
+      [`GET /boards/${board.id}/columns?page=1&limit=100`]: okPage([]),
+      [`GET /boards/${board.id}/cards?page=1&limit=100`]: okPage([]),
+    });
+    await screen.findByRole('table');
+    const back = within(screen.getByRole('main')).getByRole('link', {
+      name: 'Back to board',
+    });
+    expect(back.getAttribute('href')).toBe(`/boards/${board.id}`);
+    fireEvent.click(back);
+    await screen.findByRole('heading', { name: board.name });
+    expect(router.state.location.pathname).toBe(`/boards/${board.id}`);
+    await act(() => router.navigate(-1));
+    await screen.findByRole('table');
+    expect(
+      within(screen.getByRole('main')).getByRole('link', {
+        name: 'Back to board',
+      }),
+    ).toBeTruthy();
+  });
+
   it('honors separate Workspace policies for invitations and membership changes', async () => {
     openMembers(board, [me, graceMember], {
       [`GET /boards/${board.id}/policy-capabilities`]: ok({
@@ -464,6 +487,35 @@ describe('BoardMembersPage (archived board)', () => {
 describe('BoardMembersPage errors', () => {
   afterEach(() => focusManager.setFocused(undefined));
 
+  it.each([403, 404])(
+    'removes the mobile return link and roster on membership denial %s',
+    async (status) => {
+      const board = makeBoard({
+        name: 'Protected Board',
+        currentUserRole: 'MEMBER',
+      });
+      let denied = false;
+      openMembers(board, () =>
+        denied ? fail(status, 'NOT_FOUND') : okPage([me, graceMember]),
+      );
+      await screen.findByRole('table');
+      expect(
+        within(screen.getByRole('main')).getByRole('link', {
+          name: 'Back to board',
+        }),
+      ).toBeTruthy();
+      denied = true;
+      act(() => {
+        focusManager.setFocused(false);
+        focusManager.setFocused(true);
+      });
+      await screen.findByRole('heading', { name: 'Board not found' });
+      expect(screen.queryByRole('link', { name: 'Back to board' })).toBeNull();
+      expect(screen.queryByRole('table')).toBeNull();
+      expect(screen.queryByText('Grace Hopper')).toBeNull();
+    },
+  );
+
   it('stops showing cached members once access is lost', async () => {
     const board = makeBoard({ name: 'Secret plans', currentUserRole: 'OWNER' });
     let boardCalls = 0;
@@ -485,6 +537,7 @@ describe('BoardMembersPage errors', () => {
     expect(screen.queryByRole('table')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Add member' })).toBeNull();
     expect(screen.queryByText('Secret plans')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Back to board' })).toBeNull();
   });
 
   it.each(['/boards/abc', '/boards/abc/members'])(
@@ -519,6 +572,7 @@ describe('BoardMembersPage errors', () => {
     expect(
       await screen.findByRole('heading', { name: 'Board not found' }),
     ).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Back to board' })).toBeNull();
   });
 });
 

@@ -296,7 +296,8 @@ export function BoardDetailPage() {
       {showingArchivedCards && (
         <ArchivedCardsDialog
           boardId={data.id}
-          readOnly={readOnly}
+          isArchived={data.isArchived}
+          canRestore={board.isError ? undefined : !readOnly}
           onClose={() => setShowingArchivedCards(false)}
         />
       )}

@@ -33,7 +33,7 @@ function useScope(workspaceId: string) {
     detail: workspaceKeys.detail(userId, g, workspaceId),
     policies: workspaceKeys.policies(userId, g, workspaceId),
   };
-  const revoke = (error: unknown, sourceKey: readonly unknown[]) =>
+  const revoke = (error: unknown, sourceKey?: readonly unknown[]) =>
     revokeWorkspaceAccess(client, userId, g, workspaceId, error, sourceKey);
   return { user, runAuthorized, scope, client, keys, revoke };
 }
@@ -121,7 +121,7 @@ function useSettingsCommand<Input, Output>(
     },
     onError: async (error) => {
       if (!scope.isCurrent() || !isApiError(error)) return;
-      if (error.status === 404) await revoke(error, keys.overview);
+      if (error.status === 404) await revoke(error);
       else if ([403, 409].includes(error.status))
         void client.invalidateQueries({ queryKey: keys.resource });
     },
@@ -173,6 +173,8 @@ export function useForgetWorkspace(workspaceId: string) {
     if (!scope.isCurrent()) return;
     void client.cancelQueries({ queryKey: keys.resource });
     client.removeQueries({ queryKey: keys.resource });
+    // An older directory response must not restore the membership we just lost.
+    void client.cancelQueries({ queryKey: keys.list });
     client.setQueryData<WorkspaceSummary[]>(keys.list, (items) =>
       items?.filter((item) => item.id !== workspaceId),
     );

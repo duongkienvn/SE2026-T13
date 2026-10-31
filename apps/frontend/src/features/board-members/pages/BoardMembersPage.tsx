@@ -1,11 +1,11 @@
 import { BoardRole } from '@kanban/shared';
 import { useMemo, useState } from 'react';
-import { useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 import { ActionMenu } from '../../../components/ActionMenu';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
-import { PlusIcon } from '../../../components/icons';
+import { ChevronLeftIcon, PlusIcon } from '../../../components/icons';
 import { PageContainer } from '../../../components/PageContainer';
 import { PageHeader } from '../../../components/PageHeader';
 import { Pagination } from '../../../components/Pagination';
@@ -171,6 +171,13 @@ export function BoardMembersPage() {
 
   return (
     <PageContainer fill>
+      <Link
+        to={`/boards/${encodeURIComponent(boardData.id)}`}
+        className="mb-4 inline-flex min-h-11 w-fit items-center gap-1 rounded-lg px-2 text-sm font-medium text-muted hover:text-primary focus-visible:outline-2 focus-visible:outline-primary md:hidden"
+      >
+        <ChevronLeftIcon aria-hidden="true" className="size-4" />
+        Back to board
+      </Link>
       <PageHeader
         title="Board members"
         description={`People who can access “${boardData.name}”.`}

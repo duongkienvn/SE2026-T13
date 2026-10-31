@@ -6,7 +6,10 @@ import { useAuthSession } from '../../auth/auth-session-context';
 import { WorkspaceUnavailableError } from '../api';
 import { workspaceErrorState } from '../hooks';
 import { workspaceKeys } from '../query-keys';
-import { revokeWorkspaceAccess } from '../revoke-workspace-access';
+import {
+  denyWorkspaceQueries,
+  revokeWorkspaceAccess,
+} from '../revoke-workspace-access';
 import type { WorkspaceViewState } from '../types';
 import {
   acceptWorkspaceInvitation,
@@ -49,7 +52,7 @@ function useScope(workspaceId: string) {
     ),
   };
   /** 404 means the Workspace is gone for this account; clear every page of it. */
-  const revoke = (error: unknown, sourceKey: readonly unknown[]) =>
+  const revoke = (error: unknown, sourceKey?: readonly unknown[]) =>
     revokeWorkspaceAccess(
       client,
       userId,
@@ -169,8 +172,15 @@ export function useWorkspaceInvitations(
       } catch (error) {
         if (scope.isCurrent() && isApiError(error)) {
           if (error.status === 404) await revoke(error, queryKey);
-          if (error.status === 403)
+          if (error.status === 403) {
+            await denyWorkspaceQueries(
+              client,
+              keys.invitations,
+              error,
+              queryKey,
+            );
             void client.invalidateQueries({ queryKey: keys.overview });
+          }
         }
         throw error;
       }
@@ -225,7 +235,7 @@ function useWorkspaceCommand<Input, Output>(
         name !== 'revoke-invitation' &&
         name !== 'change-role'
       ) {
-        await revoke(error, keys.overview);
+        await revoke(error);
         return;
       }
       // 403: this account lost ADMIN; 404: the member/invitation may be gone;

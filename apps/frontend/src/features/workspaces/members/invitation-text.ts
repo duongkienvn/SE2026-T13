@@ -11,11 +11,11 @@ export const STATUS_LABELS = {
 
 /** Only a pending invitation has a delivery state worth showing. */
 export const SEND_STATE_LABELS: Record<InvitationSendState, string> = {
-  SENT: 'Email sent',
+  SENT: 'Email provider accepted the send attempt; inbox delivery is not confirmed',
   DISPATCHING: 'Sending email…',
   UNAVAILABLE: 'Email not sent: delivery is unavailable',
   FAILED: 'Email failed to send',
-  UNKNOWN: 'Email delivery not confirmed',
+  UNKNOWN: 'Email send outcome is unknown',
 };
 
 /** Honest result of a 202: the request was stored, the email maybe not. */
@@ -27,7 +27,7 @@ export function inviteOutcome(invitation: WorkspaceInvitation): {
     case 'SENT':
       return {
         tone: 'success',
-        message: `Invitation email sent to ${invitation.email}.`,
+        message: `Invitation saved for ${invitation.email}. The email provider accepted the send attempt; inbox delivery is not confirmed.`,
       };
     case 'DISPATCHING':
       return {
@@ -39,10 +39,15 @@ export function inviteOutcome(invitation: WorkspaceInvitation): {
         tone: 'error',
         message: `Invitation to ${invitation.email} was saved, but email delivery is not available yet, so no email was sent.`,
       };
-    default:
+    case 'FAILED':
       return {
         tone: 'error',
-        message: `We could not confirm the email to ${invitation.email} was sent. Wait a minute, then send it again from Invitations.`,
+        message: `Invitation to ${invitation.email} was saved, but the email failed to send. Wait a minute, then try again from Invitations.`,
+      };
+    case 'UNKNOWN':
+      return {
+        tone: 'error',
+        message: `Invitation to ${invitation.email} was saved, but the email send outcome is unknown. Check Invitations before trying again.`,
       };
   }
 }
@@ -61,9 +66,9 @@ export function inviteError(error: unknown): {
       form:
         error.message === 'Invitation request limit reached'
           ? 'Invitation limit reached. Try again in an hour.'
-          : 'An invitation was just sent to this address. Wait a minute before sending another.',
+          : 'An invitation was recently requested for this address. Wait a minute before sending another.',
     };
   return {
-    form: 'Could not send the invitation. Check your connection and try again.',
+    form: 'Could not confirm the invitation request. Check Invitations before trying again.',
   };
 }

@@ -1,0 +1,417 @@
+{
+  "fixture": "DEV-only access-polish.html; real app components, synthetic API/Auth/Presence",
+  "checks": [
+    {
+      "width": 320,
+      "theme": "light",
+      "status": 200,
+      "result": {
+        "width": 320,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": true,
+        "backVisible": true,
+        "backHref": "/boards/11111111-1111-4111-8111-111111111111",
+        "backHeight": 44,
+        "desktopBreadcrumbVisible": false,
+        "denied": false,
+        "roster": true
+      }
+    },
+    {
+      "width": 320,
+      "theme": "light",
+      "status": 403,
+      "result": {
+        "width": 320,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": false,
+        "backVisible": false,
+        "backHref": null,
+        "backHeight": 0,
+        "desktopBreadcrumbVisible": false,
+        "denied": true,
+        "roster": false
+      }
+    },
+    {
+      "width": 320,
+      "theme": "light",
+      "status": 404,
+      "result": {
+        "width": 320,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": false,
+        "backVisible": false,
+        "backHref": null,
+        "backHeight": 0,
+        "desktopBreadcrumbVisible": false,
+        "denied": true,
+        "roster": false
+      }
+    },
+    {
+      "width": 375,
+      "theme": "light",
+      "status": 200,
+      "result": {
+        "width": 375,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": true,
+        "backVisible": true,
+        "backHref": "/boards/11111111-1111-4111-8111-111111111111",
+        "backHeight": 44,
+        "desktopBreadcrumbVisible": false,
+        "denied": false,
+        "roster": true
+      }
+    },
+    {
+      "width": 375,
+      "theme": "light",
+      "status": 403,
+      "result": {
+        "width": 375,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": false,
+        "backVisible": false,
+        "backHref": null,
+        "backHeight": 0,
+        "desktopBreadcrumbVisible": false,
+        "denied": true,
+        "roster": false
+      }
+    },
+    {
+      "width": 375,
+      "theme": "light",
+      "status": 404,
+      "result": {
+        "width": 375,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": false,
+        "backVisible": false,
+        "backHref": null,
+        "backHeight": 0,
+        "desktopBreadcrumbVisible": false,
+        "denied": true,
+        "roster": false
+      }
+    },
+    {
+      "width": 767,
+      "theme": "light",
+      "status": 200,
+      "result": {
+        "width": 767,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": true,
+        "backVisible": true,
+        "backHref": "/boards/11111111-1111-4111-8111-111111111111",
+        "backHeight": 44,
+        "desktopBreadcrumbVisible": false,
+        "denied": false,
+        "roster": true
+      }
+    },
+    {
+      "width": 767,
+      "theme": "light",
+      "status": 403,
+      "result": {
+        "width": 767,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": false,
+        "backVisible": false,
+        "backHref": null,
+        "backHeight": 0,
+        "desktopBreadcrumbVisible": false,
+        "denied": true,
+        "roster": false
+      }
+    },
+    {
+      "width": 767,
+      "theme": "light",
+      "status": 404,
+      "result": {
+        "width": 767,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": false,
+        "backVisible": false,
+        "backHref": null,
+        "backHeight": 0,
+        "desktopBreadcrumbVisible": false,
+        "denied": true,
+        "roster": false
+      }
+    },
+    {
+      "width": 768,
+      "theme": "light",
+      "status": 200,
+      "result": {
+        "width": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": true,
+        "backVisible": false,
+        "backHref": "/boards/11111111-1111-4111-8111-111111111111",
+        "backHeight": 0,
+        "desktopBreadcrumbVisible": true,
+        "denied": false,
+        "roster": true
+      }
+    },
+    {
+      "width": 768,
+      "theme": "light",
+      "status": 403,
+      "result": {
+        "width": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": false,
+        "backVisible": false,
+        "backHref": null,
+        "backHeight": 0,
+        "desktopBreadcrumbVisible": false,
+        "denied": true,
+        "roster": false
+      }
+    },
+    {
+      "width": 768,
+      "theme": "light",
+      "status": 404,
+      "result": {
+        "width": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": false,
+        "backVisible": false,
+        "backHref": null,
+        "backHeight": 0,
+        "desktopBreadcrumbVisible": false,
+        "denied": true,
+        "roster": false
+      }
+    },
+    {
+      "width": 320,
+      "theme": "dark",
+      "status": 200,
+      "result": {
+        "width": 320,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": true,
+        "backVisible": true,
+        "backHref": "/boards/11111111-1111-4111-8111-111111111111",
+        "backHeight": 44,
+        "desktopBreadcrumbVisible": false,
+        "denied": false,
+        "roster": true
+      }
+    },
+    {
+      "width": 320,
+      "theme": "dark",
+      "status": 403,
+      "result": {
+        "width": 320,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": false,
+        "backVisible": false,
+        "backHref": null,
+        "backHeight": 0,
+        "desktopBreadcrumbVisible": false,
+        "denied": true,
+        "roster": false
+      }
+    },
+    {
+      "width": 320,
+      "theme": "dark",
+      "status": 404,
+      "result": {
+        "width": 320,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": false,
+        "backVisible": false,
+        "backHref": null,
+        "backHeight": 0,
+        "desktopBreadcrumbVisible": false,
+        "denied": true,
+        "roster": false
+      }
+    },
+    {
+      "width": 375,
+      "theme": "dark",
+      "status": 200,
+      "result": {
+        "width": 375,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": true,
+        "backVisible": true,
+        "backHref": "/boards/11111111-1111-4111-8111-111111111111",
+        "backHeight": 44,
+        "desktopBreadcrumbVisible": false,
+        "denied": false,
+        "roster": true
+      }
+    },
+    {
+      "width": 375,
+      "theme": "dark",
+      "status": 403,
+      "result": {
+        "width": 375,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": false,
+        "backVisible": false,
+        "backHref": null,
+        "backHeight": 0,
+        "desktopBreadcrumbVisible": false,
+        "denied": true,
+        "roster": false
+      }
+    },
+    {
+      "width": 375,
+      "theme": "dark",
+      "status": 404,
+      "result": {
+        "width": 375,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": false,
+        "backVisible": false,
+        "backHref": null,
+        "backHeight": 0,
+        "desktopBreadcrumbVisible": false,
+        "denied": true,
+        "roster": false
+      }
+    },
+    {
+      "width": 767,
+      "theme": "dark",
+      "status": 200,
+      "result": {
+        "width": 767,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": true,
+        "backVisible": true,
+        "backHref": "/boards/11111111-1111-4111-8111-111111111111",
+        "backHeight": 44,
+        "desktopBreadcrumbVisible": false,
+        "denied": false,
+        "roster": true
+      }
+    },
+    {
+      "width": 767,
+      "theme": "dark",
+      "status": 403,
+      "result": {
+        "width": 767,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": false,
+        "backVisible": false,
+        "backHref": null,
+        "backHeight": 0,
+        "desktopBreadcrumbVisible": false,
+        "denied": true,
+        "roster": false
+      }
+    },
+    {
+      "width": 767,
+      "theme": "dark",
+      "status": 404,
+      "result": {
+        "width": 767,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": false,
+        "backVisible": false,
+        "backHref": null,
+        "backHeight": 0,
+        "desktopBreadcrumbVisible": false,
+        "denied": true,
+        "roster": false
+      }
+    },
+    {
+      "width": 768,
+      "theme": "dark",
+      "status": 200,
+      "result": {
+        "width": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": true,
+        "backVisible": false,
+        "backHref": "/boards/11111111-1111-4111-8111-111111111111",
+        "backHeight": 0,
+        "desktopBreadcrumbVisible": true,
+        "denied": false,
+        "roster": true
+      }
+    },
+    {
+      "width": 768,
+      "theme": "dark",
+      "status": 403,
+      "result": {
+        "width": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": false,
+        "backVisible": false,
+        "backHref": null,
+        "backHeight": 0,
+        "desktopBreadcrumbVisible": false,
+        "denied": true,
+        "roster": false
+      }
+    },
+    {
+      "width": 768,
+      "theme": "dark",
+      "status": 404,
+      "result": {
+        "width": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "backRendered": false,
+        "backVisible": false,
+        "backHref": null,
+        "backHeight": 0,
+        "desktopBreadcrumbVisible": false,
+        "denied": true,
+        "roster": false
+      }
+    }
+  ],
+  "keyboard": {
+    "heading": "Sprint planning",
+    "membersLink": "/boards/11111111-1111-4111-8111-111111111111/members"
+  }
+}

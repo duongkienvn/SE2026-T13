@@ -21,12 +21,32 @@ import {
 } from '../../../test/mock-api';
 import { renderApp } from '../../../test/render';
 
-function setup({ archivedBoard = false, error = false, pending = false } = {}) {
+function setup({
+  archivedBoard = false,
+  error = false,
+  pending = false,
+  readOnlyViewer = false,
+} = {}) {
   let release = () => {};
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
-  const board = makeBoard({ isArchived: archivedBoard });
+  const board = makeBoard({
+    isArchived: archivedBoard,
+    ...(readOnlyViewer
+      ? {
+          visibility: 'WORKSPACE_VISIBLE',
+          currentUserRole: null,
+          capabilities: {
+            canReadBoard: true,
+            canWriteBoard: false,
+            canManageBoard: false,
+            canManageMembers: false,
+            canRestoreBoard: false,
+          },
+        }
+      : {}),
+  });
   const column = makeColumn({ boardId: board.id });
   const card = makeCard({
     boardId: board.id,
@@ -68,6 +88,20 @@ async function openArchive(name: string) {
 }
 
 describe('Archived cards in board context', () => {
+  it('explains an active Workspace-visible viewer’s lack of Restore permission without calling the Board archived', async () => {
+    const { board } = setup({ readOnlyViewer: true });
+    const dialog = await openArchive(board.name);
+    await within(dialog).findByText('Preserved archived card');
+    expect(
+      within(dialog).getByText(
+        'You have read-only access to this board. You cannot restore cards.',
+      ),
+    ).toBeTruthy();
+    expect(within(dialog).queryByText(/This board is archived/)).toBeNull();
+    expect(
+      within(dialog).queryByRole('button', { name: /^Restore / }),
+    ).toBeNull();
+  });
   it('submits once when two confirmation clicks arrive before a render', async () => {
     const { board, calls, release } = setup({ pending: true });
     const dialog = await openArchive(board.name);
