@@ -27,6 +27,8 @@ erDiagram
     board_columns ||--o{ cards : contains
     cards ||--o{ card_assignees : has
     cards ||--o{ comments : has
+    cards ||--o{ card_checklists : has
+    card_checklists ||--o{ card_checklist_items : has
 
     boards ||--o{ board_members : has
     boards ||--o{ activities : has
@@ -428,3 +430,13 @@ calendar, time tracking, analytics, automation rules hoặc CRDT state. Workspac
 invitation persistence đã có ở P2-01; P2-02 thêm Workspace lifecycle/metadata REST
 và queries theo Board ACL. P2-03 thêm membership/invitation domain API; mail
 delivery thuộc P2-10, visibility authorization thuộc P2-04.
+
+## Card checklist extension (CD-01)
+
+`card_checklists` belongs to Card; `card_checklist_items` belongs to a checklist.
+Both use UUIDs, UTC timestamps, positive `numeric(20,10)` positions and parent
+position uniqueness deferred to transaction commit. Title/item text is bounded
+and nonblank; item checked state is boolean and progress is derived, never stored.
+Parent FKs cascade on hard deletion; archive/restore preserves both tables.
+The unique B-tree indexes also index parent FKs. See the
+[schema, bounds, migration and safe rollback contract](../tasks/backend/card-checklists.md).
