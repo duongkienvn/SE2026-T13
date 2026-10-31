@@ -1,0 +1,29 @@
+{
+  "description": "Real browser + frontend + Nest HTTP API + disposable PostgreSQL",
+  "results": [
+    {
+      "role": "admin",
+      "activityStatus": 200,
+      "boardVisible": false,
+      "invitationVisible": true
+    },
+    {
+      "role": "member",
+      "activityStatus": 200,
+      "boardVisible": true,
+      "invitationVisible": false
+    },
+    {
+      "role": "guest",
+      "activityStatus": 404,
+      "boardVisible": false,
+      "invitationVisible": false
+    },
+    {
+      "role": "outsider",
+      "activityStatus": 404,
+      "boardVisible": false,
+      "invitationVisible": false
+    }
+  ]
+}
