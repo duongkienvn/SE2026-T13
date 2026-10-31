@@ -22,11 +22,12 @@ const request = require('supertest');
 const { io } = createRequire(
   new URL('../../../../frontend/package.json', import.meta.url),
 )('socket.io-client');
-// The ACL integration suite drives access changes; this fixture covers content/member events.
+// ACL and label integration suites cover access/catalog events separately.
 const events = Object.values(RealtimeServerEvent).filter(
   (event) =>
     event !== RealtimeServerEvent.BOARD_ACCESS_CHANGED &&
-    event !== RealtimeServerEvent.BOARD_ACCESS_REVOKED,
+    event !== RealtimeServerEvent.BOARD_ACCESS_REVOKED &&
+    event !== RealtimeServerEvent.LABELS_CHANGED,
 );
 
 export async function seedBoardEvents(source) {

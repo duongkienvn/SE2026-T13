@@ -75,3 +75,15 @@ server['card:created']({ ...card, title: 'private' });
 client['card:created'](card);
 // @ts-expect-error no catch-all event name
 server['unreviewed:event'](card);
+
+server['labels:changed']({ boardId: 'board', labelId: 'label' });
+// @ts-expect-error a catalog invalidation identifies the affected label
+server['labels:changed']({ boardId: 'board' });
+server['labels:changed']({
+  boardId: 'board',
+  labelId: 'label',
+  // @ts-expect-error catalog content stays in authenticated REST responses
+  color: '#FFFFFF',
+});
+// @ts-expect-error clients have no label business event command
+client['labels:changed']({ boardId: 'board', labelId: 'label' });

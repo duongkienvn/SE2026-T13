@@ -1,4 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { RealtimeServerEvent } from '@kanban/shared';
+import { BoardEventPublisher } from '../../realtime/board-event-publisher.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, In, Repository } from 'typeorm';
 import { BoardAuthorizationService } from '../board-members/board-authorization.service';
@@ -33,6 +35,7 @@ export class LabelsService {
   constructor(
     @InjectRepository(Board) private readonly boards: Repository<Board>,
     private readonly authorization: BoardAuthorizationService,
+    private readonly events: BoardEventPublisher,
   ) {}
 
   async list(
@@ -288,8 +291,22 @@ export class LabelsService {
         { mutable: true },
         manager,
       );
-      return operation(manager, board);
+      return { ...(await operation(manager, board)), boardId: board.id };
     });
+    // The Board database lock is released before entering the delivery coordinator.
+    if (result.changed) {
+      if (result.card)
+        await this.events.publish(RealtimeServerEvent.CARD_UPDATED, {
+          boardId: result.boardId,
+          cardId: result.card.id,
+          columnId: result.card.columnId,
+        });
+      else
+        await this.events.publish(RealtimeServerEvent.LABELS_CHANGED, {
+          boardId: result.boardId,
+          labelId: result.labelId,
+        });
+    }
     return result.value;
   }
   private async requireLabel(

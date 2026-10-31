@@ -37,6 +37,7 @@ test('exports the reviewed Board events in ESM and CommonJS', () => {
     'comment:created',
     'comment:updated',
     'comment:deleted',
+    'labels:changed',
   ]);
   assert.deepEqual(
     require('@kanban/shared').RealtimeServerEvent,
