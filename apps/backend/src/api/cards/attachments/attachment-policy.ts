@@ -4,7 +4,7 @@ import { CardAttachment } from '../entities/card-attachment.entity';
 /** Implemented provisional metadata abuse safeguard, NOT approved production file policy. */
 export const ATTACHMENT_CARD_SLOT_LIMIT = 20;
 
-/** Recommendations only. File routes remain unavailable regardless of these values. */
+/** Historical P3-05 proposal. Enforced V1 policy is in attachment-file-policy.ts. */
 export const ATTACHMENT_FILE_POLICY_PROPOSAL = Object.freeze({
   approval: 'REQUIRES_OWNER_REVIEW' as const,
   maximumFileBytes: 10 * 1024 * 1024,

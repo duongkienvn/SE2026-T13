@@ -1,3 +1,4 @@
+import { verifyPrivateFileCleanup } from './private-files-cleanup.mjs';
 import { Buffer } from 'node:buffer';
 import assert from 'node:assert/strict';
 import console from 'node:console';
@@ -492,7 +493,9 @@ try {
     'unsafe metadata/content and terminal intent replay never become public; owner cancellation is idempotent',
   );
 
-  // Additional race/recovery assertions are appended below as the operational layer is completed.
+  Object.assign(ctx, { begin, transfer, finish, input, activeFile: active });
+  await verifyPrivateFileCleanup(ctx);
+  // Additional race and realtime assertions follow.
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries,
     [],

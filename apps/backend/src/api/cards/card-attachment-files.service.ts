@@ -255,7 +255,14 @@ export class CardAttachmentFilesService {
             ),
           );
           row.revision++;
-          await manager.getRepository(CardAttachment).save(row);
+          await manager.getRepository(CardAttachment).update(
+            { id: row.id },
+            {
+              verificationToken: row.verificationToken,
+              verificationExpiresAt: row.verificationExpiresAt,
+              revision: row.revision,
+            },
+          );
           return { row, card };
         },
       );
@@ -396,8 +403,21 @@ export class CardAttachmentFilesService {
           current.verificationToken = null;
           current.verificationExpiresAt = null;
           current.revision++;
-          await manager.getRepository(CardAttachment).save(current);
-          return { value: toAttachmentResponse(current), changed: true, card };
+          await manager.getRepository(CardAttachment).update(
+            { id: current.id },
+            {
+              state: 'ACTIVE',
+              mimeType: current.mimeType,
+              byteSize: current.byteSize,
+              contentSha256: current.contentSha256,
+              verifiedAt: current.verifiedAt,
+              verificationToken: null,
+              verificationExpiresAt: null,
+              revision: current.revision,
+            },
+          );
+          const saved = await this.asset(manager, boardId, cardId, current.id);
+          return { value: toAttachmentResponse(saved), changed: true, card };
         },
       );
       if (result.changed)
@@ -486,7 +506,15 @@ export class CardAttachmentFilesService {
       row.verificationToken = null;
       row.verificationExpiresAt = null;
       row.revision++;
-      await manager.getRepository(CardAttachment).save(row);
+      await manager.getRepository(CardAttachment).update(
+        { id: row.id },
+        {
+          state: row.state,
+          verificationToken: null,
+          verificationExpiresAt: null,
+          revision: row.revision,
+        },
+      );
     });
   }
 
@@ -697,7 +725,15 @@ export class CardAttachmentFilesService {
       row.verificationToken = null;
       row.verificationExpiresAt = null;
       row.revision++;
-      await manager.getRepository(CardAttachment).save(row);
+      await manager.getRepository(CardAttachment).update(
+        { id: row.id },
+        {
+          state: row.state,
+          verificationToken: null,
+          verificationExpiresAt: null,
+          revision: row.revision,
+        },
+      );
     });
   }
 }

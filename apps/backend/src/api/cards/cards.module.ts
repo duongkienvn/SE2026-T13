@@ -1,3 +1,4 @@
+import { AttachmentCleanupService } from './attachments/attachment-cleanup.service';
 import { CardAttachmentFilesService } from './card-attachment-files.service';
 import {
   CardAttachmentUploadsController,
@@ -56,6 +57,7 @@ import { attachmentStorageProvider } from './attachments/attachment-storage.prov
     CardAttachmentsService,
     CardAttachmentFilesService,
     AttachmentContentService,
+    AttachmentCleanupService,
     LocalAttachmentUploadGuard,
     attachmentStorageProvider,
   ],
