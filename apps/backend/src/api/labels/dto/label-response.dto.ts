@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import { toResponseDto } from '../../../common/dto/to-response-dto';
 import { BoardLabel } from '../entities/board-label.entity';
 
@@ -22,4 +22,12 @@ export function toLabelResponse(label: BoardLabel): LabelResponseDto {
     createdAt: label.createdAt.toISOString(),
     updatedAt: label.updatedAt.toISOString(),
   });
+}
+
+export class CardLabelsResponseDto {
+  @Expose() @ApiProperty({ format: 'uuid' }) cardId!: string;
+  @Expose()
+  @Type(() => LabelResponseDto)
+  @ApiProperty({ type: () => [LabelResponseDto], maxItems: 200 })
+  labels!: LabelResponseDto[];
 }

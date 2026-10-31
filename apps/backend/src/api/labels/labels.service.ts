@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
 import { BoardAuthorizationService } from '../board-members/board-authorization.service';
 import { Board } from '../boards/entities/board.entity';
 import { ApplicationException } from '../../exceptions/application.exception';
@@ -10,14 +10,22 @@ import {
   pageOffset,
   PaginatedResponse,
 } from '../../common/dto/paginated-response';
+import { Card } from '../cards/entities/card.entity';
+import { CardLabel } from '../cards/entities/card-label.entity';
+import { toResponseDto } from '../../common/dto/to-response-dto';
 import { BoardLabel } from './entities/board-label.entity';
-import { LabelResponseDto, toLabelResponse } from './dto/label-response.dto';
+import {
+  CardLabelsResponseDto,
+  LabelResponseDto,
+  toLabelResponse,
+} from './dto/label-response.dto';
 
 export const MAX_BOARD_LABELS = 200;
 interface Mutation<T> {
   value: T;
   changed: boolean;
   labelId: string;
+  card?: Card;
 }
 
 @Injectable()
@@ -122,6 +130,150 @@ export class LabelsService {
         .delete({ id: label.id, boardId: board.id });
       return { value: undefined, changed: true, labelId: label.id };
     });
+  }
+
+  async cardLabels(
+    userId: string,
+    boardId: string,
+    cardId: string,
+  ): Promise<CardLabelsResponseDto> {
+    return (await this.forCards(userId, boardId, [cardId]))[0];
+  }
+
+  /** Bounded, Board-scoped preview access: two queries independent of Card count. */
+  async forCards(
+    userId: string,
+    boardId: string,
+    cardIds: string[],
+  ): Promise<CardLabelsResponseDto[]> {
+    await this.authorization.requireRead(userId, boardId);
+    if (cardIds.length > 100)
+      throw new ApplicationException(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_FAILED',
+        'At most 100 Card IDs are supported',
+      );
+    const ids = [...new Set(cardIds.map((id) => id.toLowerCase()))];
+    if (!ids.length) return [];
+    const manager = this.boards.manager;
+    const cards = await manager.getRepository(Card).find({
+      where: { boardId, id: In(ids) },
+      select: { id: true },
+      take: 100,
+    });
+    if (cards.length !== ids.length)
+      throw new ApplicationException(
+        HttpStatus.NOT_FOUND,
+        'CARD_NOT_FOUND',
+        'Card not found',
+      );
+    return this.readCardLabels(manager, boardId, ids);
+  }
+
+  assign(
+    userId: string,
+    boardId: string,
+    cardId: string,
+    labelId: string,
+  ): Promise<CardLabelsResponseDto> {
+    return this.mutate(userId, boardId, async (manager, board) => {
+      const card = await this.requireMutableCard(manager, board.id, cardId);
+      const label = await this.requireLabel(manager, board.id, labelId);
+      const links = manager.getRepository(CardLabel);
+      if (
+        await links.findOneBy({
+          cardId: card.id,
+          labelId: label.id,
+          boardId: board.id,
+        })
+      )
+        throw new ApplicationException(
+          HttpStatus.CONFLICT,
+          'CARD_LABEL_EXISTS',
+          'Label is already assigned to this Card',
+        );
+      await links.save(
+        links.create({ cardId: card.id, labelId: label.id, boardId: board.id }),
+      );
+      return {
+        value: (await this.readCardLabels(manager, board.id, [card.id]))[0],
+        changed: true,
+        labelId: label.id,
+        card,
+      };
+    });
+  }
+
+  unassign(
+    userId: string,
+    boardId: string,
+    cardId: string,
+    labelId: string,
+  ): Promise<void> {
+    return this.mutate(userId, boardId, async (manager, board) => {
+      const card = await this.requireMutableCard(manager, board.id, cardId);
+      const label = await this.requireLabel(manager, board.id, labelId);
+      const result = await manager
+        .getRepository(CardLabel)
+        .delete({ cardId: card.id, labelId: label.id, boardId: board.id });
+      if (!result.affected)
+        throw new ApplicationException(
+          HttpStatus.NOT_FOUND,
+          'CARD_LABEL_NOT_FOUND',
+          'Card label association not found',
+        );
+      return { value: undefined, changed: true, labelId: label.id, card };
+    });
+  }
+
+  private async readCardLabels(
+    manager: EntityManager,
+    boardId: string,
+    ids: string[],
+  ): Promise<CardLabelsResponseDto[]> {
+    const links = await manager
+      .getRepository(CardLabel)
+      .createQueryBuilder('link')
+      .innerJoinAndSelect('link.label', 'label')
+      .where('link.boardId = :boardId', { boardId })
+      .andWhere('link.cardId IN (:...ids)', { ids })
+      .orderBy('link.cardId', 'ASC')
+      .addOrderBy('LOWER(label.name)', 'ASC')
+      .addOrderBy('label.id', 'ASC')
+      .limit(MAX_BOARD_LABELS * ids.length)
+      .getMany();
+    const grouped = new Map(ids.map((id) => [id, [] as LabelResponseDto[]]));
+    for (const link of links)
+      grouped.get(link.cardId)!.push(toLabelResponse(link.label));
+    return ids.map((cardId) =>
+      toResponseDto(CardLabelsResponseDto, {
+        cardId,
+        labels: grouped.get(cardId)!,
+      }),
+    );
+  }
+
+  private async requireMutableCard(
+    manager: EntityManager,
+    boardId: string,
+    cardId: string,
+  ): Promise<Card> {
+    const card = await manager
+      .getRepository(Card)
+      .findOneBy({ id: cardId, boardId });
+    if (!card)
+      throw new ApplicationException(
+        HttpStatus.NOT_FOUND,
+        'CARD_NOT_FOUND',
+        'Card not found',
+      );
+    if (card.isArchived)
+      throw new ApplicationException(
+        HttpStatus.CONFLICT,
+        'CARD_ARCHIVED',
+        'Archived cards cannot be modified',
+      );
+    return card;
   }
 
   private async mutate<T>(
