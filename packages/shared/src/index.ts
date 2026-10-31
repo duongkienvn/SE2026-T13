@@ -16,3 +16,4 @@ export * from './realtime.js';
 export * from './workspace.js';
 
 export * from './card-dates.js';
+export * from './card-attachments.js';
