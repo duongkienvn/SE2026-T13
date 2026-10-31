@@ -13,6 +13,7 @@ import { UsersModule } from './api/users/users.module';
 import { BoardsModule } from './api/boards/boards.module';
 import { BoardMembersModule } from './api/board-members/board-members.module';
 import { ColumnsModule } from './api/columns/columns.module';
+import { LabelsModule } from './api/labels/labels.module';
 import { CardsModule } from './api/cards/cards.module';
 import { CommentsModule } from './api/comments/comments.module';
 import { ActivitiesModule } from './api/activities/activities.module';
@@ -36,6 +37,7 @@ import { WorkspaceApiModule } from './api/workspaces/workspace-api.module';
     BoardMembersModule,
     ColumnsModule,
     CardsModule,
+    LabelsModule,
     CommentsModule,
     ActivitiesModule,
     WorkspaceApiModule,
