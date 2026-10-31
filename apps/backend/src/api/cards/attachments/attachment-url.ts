@@ -13,7 +13,7 @@ export function normalizeAttachmentUrl(value: unknown): string {
     typeof value !== 'string' ||
     value.length > ATTACHMENT_URL_MAX_LENGTH ||
     !/^https:\/\//i.test(value) ||
-    /[\s\x00-\x1f\x7f\\]/u.test(value) ||
+    /[\s\p{Cc}\\]/u.test(value) ||
     /%(?:0[0-9a-f]|1[0-9a-f]|7f)/i.test(value)
   )
     attachmentValidation(
@@ -54,7 +54,7 @@ export function attachmentDisplayName(value: unknown, url: string): string {
     typeof value !== 'string' ||
     !value.trim() ||
     value.trim().length > ATTACHMENT_NAME_MAX_LENGTH ||
-    /[\x00-\x1f\x7f]/u.test(value)
+    /\p{Cc}/u.test(value)
   )
     attachmentValidation('Expected a display name of 1 to 120 characters');
   return value.trim();

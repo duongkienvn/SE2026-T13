@@ -37,14 +37,14 @@ export class CreateAttachmentDto {
   })
   url?: string;
   @StringFieldOptional({ minLength: 1, maxLength: 120 })
-  @Matches(/^[^\x00-\x1f\x7f]*$/u)
+  @Matches(/^[^\p{Cc}]*$/u)
   displayName?: string;
 }
 export class UpdateAttachmentDto {
   @NumberField({ integer: true, min: 1 }) expectedRevision!: number;
   @StringFieldOptional({ maxLength: 2048 }) @HttpsAttachment() url?: string;
   @StringFieldOptional({ minLength: 1, maxLength: 120 })
-  @Matches(/^[^\x00-\x1f\x7f]*$/u)
+  @Matches(/^[^\p{Cc}]*$/u)
   displayName?: string;
 }
 export class AttachmentListQueryDto extends PageQueryDto {}

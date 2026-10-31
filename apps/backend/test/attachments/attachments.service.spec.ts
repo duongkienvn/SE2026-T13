@@ -3,7 +3,6 @@ import { EntityManager, Repository } from 'typeorm';
 import { attachmentHarness, ID } from './attachments.fixture';
 import { Board } from '../../src/api/boards/entities/board.entity';
 import { Card } from '../../src/api/cards/entities/card.entity';
-import { CardAttachment } from '../../src/api/cards/entities/card-attachment.entity';
 import { CardAttachmentsService } from '../../src/api/cards/card-attachments.service';
 import { BoardEventPublisher } from '../../src/realtime/board-event-publisher.service';
 import { RealtimeBroadcastService } from '../../src/realtime/realtime-broadcast.service';
@@ -144,6 +143,9 @@ describe('attachment mutations', () => {
     const hidden = [...h.rows.values()].find((row) => row.state === 'PENDING')!;
     await expect(
       h.service.get(ID.owner, ID.board, ID.card, hidden.id),
+    ).rejects.toMatchObject({ status: 404 });
+    await expect(
+      h.service.remove(ID.member, ID.board, ID.card, hidden.id),
     ).rejects.toMatchObject({ status: 404 });
     await h.service.remove(ID.owner, ID.board, ID.card, first.id);
     await expect(create()).resolves.toBeDefined();

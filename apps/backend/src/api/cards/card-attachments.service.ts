@@ -217,7 +217,10 @@ export class CardAttachmentsService {
         cardId,
         attachmentId,
       );
-      if (row.kind === 'FILE') return attachmentFilesUnavailable();
+      if (row.kind === 'FILE') {
+        if (row.state !== 'ACTIVE') return this.notFound();
+        return attachmentFilesUnavailable();
+      }
       if (row.state === 'REMOVED') return { value: undefined, changed: false };
       if (expectedRevision !== undefined)
         this.checkRevision(row, expectedRevision);
