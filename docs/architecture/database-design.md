@@ -230,9 +230,15 @@ at-most-one consumed/revoked/declined constraint. Open-row uniqueness excludes
 all three terminal outcomes. Legacy rows/hashes remain intact; rollback refuses
 once declined history exists. See [decline lifecycle and migration evidence](../tasks/backend/workspace-invitation-decline.md).
 
-Mọi FK mới dùng NO ACTION: xóa Workspace không cascade Board/Card/User.
-Workspace ADMIN không có Board grant. P2-03 triển khai last-admin protection và
-membership management; Workspace-visible read policy vẫn thuộc P2-04.
+Các FK của Workspace foundation dùng NO ACTION: xóa Workspace không cascade
+Board/Card/User. P2-05 chỉ xóa Team không còn Board, đồng thời xóa membership và
+invitation trong transaction; quota một giờ được giữ ở ledger độc lập. WS-04
+thêm ngoại lệ đã duyệt: Workspace Activity cascade theo Workspace/Board và
+SET NULL theo actor. Move audit giữ Board/actor bằng NO ACTION, còn source và
+destination Workspace là định danh lịch sử không có FK để Team cũ có thể bị xóa.
+Xem [inventory catalog và audit deletion policy](../tasks/backend/phase2-database-integrity.md).
+Workspace ADMIN không có Board grant; last-admin protection và Workspace-visible
+read-only policy được thực thi trong services hiện tại.
 
 `public.ensure_personal_workspace(uuid)` là persistence primitive SECURITY INVOKER
 dùng chung cho service, migration và old-writer bridge. Partial unique upsert khóa
@@ -368,7 +374,14 @@ Danh sách này chỉ gồm các giá trị thuộc scope hiện tại; có th�
 | `card_assignees.card_id` | `CASCADE`         | Assignment phụ thuộc card.                          |
 | `comments.card_id`       | `CASCADE`         | Comment phụ thuộc card.                             |
 
-Các rule trên là hướng cho trường hợp hard delete hiếm gặp; archive board/card không kích hoạt cascade. Chỉ các FK được liệt kê ở trên mới có planned `CASCADE`/`RESTRICT` behavior này. Các FK khác không được cascade tự động khi chưa có business rule; implementation nên giữ behavior an toàn mặc định (`NO ACTION`/`RESTRICT` theo mapping phù hợp của PostgreSQL/TypeORM) cho đến khi requirement được chốt. Khi cần hard delete board, phải xử lý card trước column vì `cards.column_id RESTRICT`; không thể giả định các cascade từ `boards` tự giải quyết toàn bộ đồ thị quan hệ.
+Các rule trên mô tả domain MVP; archive Board/Card không kích hoạt cascade.
+Các auth cleanup FK và WS-04 Activity có thêm lifecycle đã duyệt, được liệt kê
+trong [inventory FK hiện tại](../tasks/backend/phase2-schema-inventory.md).
+Không mở rộng cascade cho FK khác khi chưa có business rule. Hard delete Board
+không có public API; ngoài `cards.column_id RESTRICT`, Board Activity và move
+audit dùng NO ACTION nên không thể giả định các cascade từ Board tự giải quyết
+toàn bộ đồ thị. Account hard delete/retention chưa có flow được triển khai; không
+được đổi các User FK sang cascade để suy diễn thêm policy.
 
 ## Constraint và Index Strategy
 
