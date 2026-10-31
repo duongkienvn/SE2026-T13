@@ -380,7 +380,12 @@ describe('Workspace Boards route and capabilities', () => {
       await within(drawer).findByRole('link', { name: other.name }),
     );
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    const create = main().getByRole('button', { name: 'Create Board' });
+    fireEvent.click(
+      within(
+        main().getByRole('navigation', { name: 'Workspace sections' }),
+      ).getByRole('link', { name: 'Boards' }),
+    );
+    const create = await main().findByRole('button', { name: 'Create Board' });
     await waitFor(() =>
       expect((create as HTMLButtonElement).disabled).toBe(false),
     );
@@ -407,7 +412,7 @@ describe('Workspace Boards route and capabilities', () => {
     await act(() => router.navigate(-1));
     await ready();
   });
-  it('preserves the Boards section when switching Workspace and supports Back/Forward', async () => {
+  it('enters Overview when switching Workspace and supports Back/Forward', async () => {
     const api = gateway({
       list: vi.fn(async (_token, id) =>
         id === other.id ? { ...page, items: [], total: 0 } : page,
@@ -417,9 +422,7 @@ describe('Workspace Boards route and capabilities', () => {
     await ready();
     fireEvent.click(screen.getByRole('link', { name: other.name }));
     await screen.findByRole('heading', { name: 'No accessible boards yet' });
-    expect(router.state.location.pathname).toBe(
-      `/workspaces/${other.id}/boards`,
-    );
+    expect(router.state.location.pathname).toBe(`/workspaces/${other.id}`);
     expect(
       main().queryByRole('link', { name: `Open ${board.name}` }),
     ).toBeNull();

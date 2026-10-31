@@ -458,6 +458,11 @@ async function inspectAuthentication() {
     const personal = await service.findPersonalWorkspace(userId);
     assert.ok(personal, 'Account must have Personal Workspace immediately');
     assert.equal(
+      personal.name,
+      'Kanvexa Workspace',
+      'Email/Google signup uses the future default',
+    );
+    assert.equal(
       await source
         .getRepository('Workspace')
         .countBy({ type: 'PERSONAL', createdById: userId }),
@@ -792,13 +797,14 @@ try {
     [],
     'Entity metadata must match final migrations',
   );
+  await source.undoLastMigration(); // Future naming default only; no row changes.
   await source.undoLastMigration(); // Empty activity history.
   await source.undoLastMigration(); // Empty decline history; retain the policy rollback assertion.
   await assert.rejects(
     source.undoLastMigration(),
     /Workspace policies require a forward fix/,
   );
-  assert.equal((await source.runMigrations()).length, 2);
+  assert.equal((await source.runMigrations()).length, 3);
   await source.destroy();
 
   // Exercise historical rollback in a separate disposable database without P2-05.
@@ -807,7 +813,8 @@ try {
     (m) =>
       !m.name.startsWith('WorkspacePolicies') &&
       !m.name.startsWith('WorkspaceInvitationDecline') &&
-      !m.name.startsWith('WorkspaceActivity'),
+      !m.name.startsWith('WorkspaceActivity') &&
+      !m.name.startsWith('PersonalWorkspaceName'),
   );
   await source.runMigrations();
   // Revert invitation, icon, empty welcome ledger and both Workspace foundation stages.
@@ -829,7 +836,8 @@ try {
       !m.name.startsWith('WelcomeEmailOutbox') &&
       !m.name.startsWith('WorkspacePolicies') &&
       !m.name.startsWith('WorkspaceInvitationDecline') &&
-      !m.name.startsWith('WorkspaceActivity'),
+      !m.name.startsWith('WorkspaceActivity') &&
+      !m.name.startsWith('PersonalWorkspaceName'),
   );
   const atomicMigrations = [...source.migrations];
   source.migrations = atomicMigrations.filter(
@@ -885,7 +893,8 @@ try {
       !m.name.startsWith('WelcomeEmailOutbox') &&
       !m.name.startsWith('WorkspacePolicies') &&
       !m.name.startsWith('WorkspaceInvitationDecline') &&
-      !m.name.startsWith('WorkspaceActivity'),
+      !m.name.startsWith('WorkspaceActivity') &&
+      !m.name.startsWith('PersonalWorkspaceName'),
   );
   const migrations = [...source.migrations];
   source.migrations = migrations.filter(
@@ -1154,13 +1163,14 @@ try {
     board_membership_changes_enabled AND board_visibility_changes_enabled
   ) AS valid FROM workspaces`);
   assert.equal(defaults.valid, true);
+  await source.undoLastMigration(); // Future naming default only; no row changes.
   await source.undoLastMigration(); // No activity history exists in this legacy fixture.
   await source.undoLastMigration(); // No declined history exists in this legacy fixture.
   await assert.rejects(
     source.undoLastMigration(),
     /Workspace policies require a forward fix/,
   );
-  assert.equal((await source.runMigrations()).length, 2);
+  assert.equal((await source.runMigrations()).length, 3);
   pass(
     'Policy upgrade preserves populated Board data and applies default policies',
   );

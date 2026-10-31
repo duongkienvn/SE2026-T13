@@ -199,9 +199,16 @@ describe('Workspace runtime and navigation', () => {
     expect(summary.textContent).toContain('7');
     expect(
       within(summary)
+        .getAllByRole('term')
+        .map((item) => item.textContent),
+    ).toEqual(['Visible boards', 'Members']);
+    expect(main().queryByText('Active this week')).toBeNull();
+    expect(main().queryByText('Total cards')).toBeNull();
+    expect(
+      within(summary)
         .getAllByRole('definition')
         .filter((item) => item.textContent?.includes('Unavailable')),
-    ).toHaveLength(3);
+    ).toHaveLength(1);
     expect(
       main()
         .getByRole('link', { name: /Allowed board/ })
@@ -238,6 +245,25 @@ describe('Workspace runtime and navigation', () => {
     await loaded();
     await act(() => router.navigate(1));
     await main().findByRole('heading', { level: 1, name: personal.name });
+  });
+
+  it('uses Overview destinations from Sidebar even on a nested Settings route, with no section links duplicated', async () => {
+    mount(`/workspaces/${team.id}/settings/general`);
+    await loaded();
+    const primary = within(screen.getByRole('navigation', { name: 'Primary' }));
+    expect(
+      primary.getByRole('link', { name: personal.name }).getAttribute('href'),
+    ).toBe(`/workspaces/${personal.id}`);
+    expect(
+      primary
+        .getByRole('link', { name: team.name })
+        .getAttribute('aria-current'),
+    ).toBe('location');
+    for (const section of ['Overview', 'Members', 'Settings'])
+      expect(primary.queryByRole('link', { name: section })).toBeNull();
+    expect(
+      primary.getByRole('link', { name: 'Boards' }).getAttribute('href'),
+    ).toBe('/boards');
   });
 
   it('keeps a keyboard-accessible selector with current indication and Escape restoration', async () => {

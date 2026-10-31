@@ -496,14 +496,35 @@ describe('Workspace Members page', () => {
     );
   });
 
-  it('explains why a Personal workspace has no invitations', async () => {
-    mount(`${base}/members`, {}, { ...admin, type: 'PERSONAL' });
-    await table();
-    expect(
-      screen.getByText(/Personal workspaces are just for you/),
-    ).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /Actions for/ })).toBeNull();
-  });
+  it.each(['', '?tab=invitations&invite=1'])(
+    'hides Personal invitation controls with a safe URL fallback %s',
+    async (query) => {
+      const { calls } = mount(
+        `${base}/members${query}`,
+        {},
+        { ...admin, type: 'PERSONAL' },
+      );
+      await table();
+      expect(
+        screen.getByText(/Personal workspaces are just for you/),
+      ).toBeTruthy();
+      expect(screen.queryByRole('button', { name: /Actions for/ })).toBeNull();
+      expect(
+        screen.queryByRole('button', { name: 'Invite Member' }),
+      ).toBeNull();
+      expect(screen.queryByRole('tab', { name: 'Invitations' })).toBeNull();
+      expect(screen.queryByText(/^Invite$/)).toBeNull();
+      expect(
+        screen
+          .getByRole('tab', { name: 'Members' })
+          .getAttribute('aria-selected'),
+      ).toBe('true');
+      expect(screen.getByRole('tab', { name: 'Guests' })).toBeTruthy();
+      expect(calls.some((call) => call.path.includes('/invitations'))).toBe(
+        false,
+      );
+    },
+  );
 
   it('offers Guests without requesting its protected data until selected', async () => {
     const { calls } = mount();

@@ -109,6 +109,7 @@ export function PermissionsSettings() {
       key={`${user?.id}:${generation}:${workspaceId}:${revoked}`}
       workspaceId={workspaceId}
       policy={policy.value}
+      personal={workspace.overview?.workspace.type === 'PERSONAL'}
       state={policy.state}
       fallback={
         workspace.state === 'ready' ? (
@@ -125,11 +126,13 @@ export function PermissionsSettings() {
 function PolicyForm({
   workspaceId,
   policy,
+  personal,
   state,
   fallback,
 }: {
   workspaceId: string;
   policy?: WorkspacePolicy;
+  personal: boolean;
   state: WorkspaceViewState;
   fallback: ReactNode;
 }) {
@@ -183,7 +186,9 @@ function PolicyForm({
           <Alert variant="error">{saveError(update.error)}</Alert>
         )}
         <div className="divide-y divide-line rounded-lg border border-line">
-          {POLICIES.map((item) => {
+          {POLICIES.filter(
+            (item) => !personal || item.field !== 'boardCreationAdminOnly',
+          ).map((item) => {
             const current = item.options.find(
               ([option]) => option === value[item.field],
             );
@@ -233,6 +238,13 @@ function PolicyForm({
           workspace admin open a private board, and a workspace-visible board is
           read-only for members who are not on it.
         </p>
+        {personal && (
+          <p className="text-xs leading-relaxed text-muted">
+            Board guests collaborate through direct board membership without
+            joining your personal workspace. Workspace-visible access does not
+            extend to unrelated board guests.
+          </p>
+        )}
         {canEdit && (
           <div className="flex flex-col-reverse gap-3 border-t border-line pt-5 sm:flex-row sm:justify-end">
             <Button

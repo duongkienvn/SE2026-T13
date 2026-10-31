@@ -1,0 +1,456 @@
+{
+  "fixture": "DEV-only workspace-polish.html with actual merged Activity UI and intercepted REST",
+  "checks": [
+    {
+      "theme": "light",
+      "size": "320x600",
+      "result": {
+        "width": 320,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "metrics": ["Visible boards", "Members"],
+        "cards": [
+          {
+            "width": 138,
+            "x": 16,
+            "y": 345.75
+          },
+          {
+            "width": 138,
+            "x": 166,
+            "y": 345.75
+          }
+        ],
+        "activityRows": 5,
+        "errors": []
+      }
+    },
+    {
+      "theme": "light",
+      "size": "375x700",
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "metrics": ["Visible boards", "Members"],
+        "cards": [
+          {
+            "width": 165.5,
+            "x": 16,
+            "y": 377
+          },
+          {
+            "width": 165.5,
+            "x": 193.5,
+            "y": 377
+          }
+        ],
+        "activityRows": 5,
+        "errors": []
+      }
+    },
+    {
+      "theme": "light",
+      "size": "768x768",
+      "result": {
+        "width": 768,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "metrics": ["Visible boards", "Members"],
+        "cards": [
+          {
+            "width": 302.5,
+            "x": 100,
+            "y": 305
+          },
+          {
+            "width": 302.5,
+            "x": 414.5,
+            "y": 305
+          }
+        ],
+        "activityRows": 5,
+        "errors": []
+      }
+    },
+    {
+      "theme": "light",
+      "size": "1280x600",
+      "result": {
+        "width": 1280,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "metrics": ["Visible boards", "Members"],
+        "cards": [
+          {
+            "width": 458.5,
+            "x": 296,
+            "y": 273.75
+          },
+          {
+            "width": 458.5,
+            "x": 766.5,
+            "y": 273.75
+          }
+        ],
+        "activityRows": 5,
+        "errors": []
+      }
+    },
+    {
+      "theme": "light",
+      "size": "1280x700",
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "metrics": ["Visible boards", "Members"],
+        "cards": [
+          {
+            "width": 458.5,
+            "x": 296,
+            "y": 309
+          },
+          {
+            "width": 458.5,
+            "x": 766.5,
+            "y": 309
+          }
+        ],
+        "activityRows": 5,
+        "errors": []
+      }
+    },
+    {
+      "theme": "light",
+      "size": "1280x768",
+      "result": {
+        "width": 1280,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "metrics": ["Visible boards", "Members"],
+        "cards": [
+          {
+            "width": 458.5,
+            "x": 296,
+            "y": 309
+          },
+          {
+            "width": 458.5,
+            "x": 766.5,
+            "y": 309
+          }
+        ],
+        "activityRows": 5,
+        "errors": []
+      }
+    },
+    {
+      "theme": "light",
+      "size": "1440x768",
+      "result": {
+        "width": 1440,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "metrics": ["Visible boards", "Members"],
+        "cards": [
+          {
+            "width": 538.5,
+            "x": 296,
+            "y": 309
+          },
+          {
+            "width": 538.5,
+            "x": 846.5,
+            "y": 309
+          }
+        ],
+        "activityRows": 5,
+        "errors": []
+      }
+    },
+    {
+      "theme": "dark",
+      "size": "320x600",
+      "result": {
+        "width": 320,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "metrics": ["Visible boards", "Members"],
+        "cards": [
+          {
+            "width": 138,
+            "x": 16,
+            "y": 345.75
+          },
+          {
+            "width": 138,
+            "x": 166,
+            "y": 345.75
+          }
+        ],
+        "activityRows": 5,
+        "errors": []
+      }
+    },
+    {
+      "theme": "dark",
+      "size": "375x700",
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "metrics": ["Visible boards", "Members"],
+        "cards": [
+          {
+            "width": 165.5,
+            "x": 16,
+            "y": 377
+          },
+          {
+            "width": 165.5,
+            "x": 193.5,
+            "y": 377
+          }
+        ],
+        "activityRows": 5,
+        "errors": []
+      }
+    },
+    {
+      "theme": "dark",
+      "size": "768x768",
+      "result": {
+        "width": 768,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "metrics": ["Visible boards", "Members"],
+        "cards": [
+          {
+            "width": 302.5,
+            "x": 100,
+            "y": 305
+          },
+          {
+            "width": 302.5,
+            "x": 414.5,
+            "y": 305
+          }
+        ],
+        "activityRows": 5,
+        "errors": []
+      }
+    },
+    {
+      "theme": "dark",
+      "size": "1280x600",
+      "result": {
+        "width": 1280,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "metrics": ["Visible boards", "Members"],
+        "cards": [
+          {
+            "width": 458.5,
+            "x": 296,
+            "y": 273.75
+          },
+          {
+            "width": 458.5,
+            "x": 766.5,
+            "y": 273.75
+          }
+        ],
+        "activityRows": 5,
+        "errors": []
+      }
+    },
+    {
+      "theme": "dark",
+      "size": "1280x700",
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "metrics": ["Visible boards", "Members"],
+        "cards": [
+          {
+            "width": 458.5,
+            "x": 296,
+            "y": 309
+          },
+          {
+            "width": 458.5,
+            "x": 766.5,
+            "y": 309
+          }
+        ],
+        "activityRows": 5,
+        "errors": []
+      }
+    },
+    {
+      "theme": "dark",
+      "size": "1280x768",
+      "result": {
+        "width": 1280,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "metrics": ["Visible boards", "Members"],
+        "cards": [
+          {
+            "width": 458.5,
+            "x": 296,
+            "y": 309
+          },
+          {
+            "width": 458.5,
+            "x": 766.5,
+            "y": 309
+          }
+        ],
+        "activityRows": 5,
+        "errors": []
+      }
+    },
+    {
+      "theme": "dark",
+      "size": "1440x768",
+      "result": {
+        "width": 1440,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "metrics": ["Visible boards", "Members"],
+        "cards": [
+          {
+            "width": 538.5,
+            "x": 296,
+            "y": 309
+          },
+          {
+            "width": 538.5,
+            "x": 846.5,
+            "y": 309
+          }
+        ],
+        "activityRows": 5,
+        "errors": []
+      }
+    }
+  ],
+  "activityStates": [
+    {
+      "scenario": "activity-empty",
+      "width": 320,
+      "theme": "light",
+      "result": {
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "activity": "Activity\nView all\n\nActivity will appear when workspace changes happen.",
+        "historyDisabled": "true"
+      }
+    },
+    {
+      "scenario": "activity-empty",
+      "width": 320,
+      "theme": "dark",
+      "result": {
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "activity": "Activity\nView all\n\nActivity will appear when workspace changes happen.",
+        "historyDisabled": "true"
+      }
+    },
+    {
+      "scenario": "activity-empty",
+      "width": 1440,
+      "theme": "light",
+      "result": {
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "activity": "Activity\nView all\n\nActivity will appear when workspace changes happen.",
+        "historyDisabled": "true"
+      }
+    },
+    {
+      "scenario": "activity-empty",
+      "width": 1440,
+      "theme": "dark",
+      "result": {
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "activity": "Activity\nView all\n\nActivity will appear when workspace changes happen.",
+        "historyDisabled": "true"
+      }
+    },
+    {
+      "scenario": "activity-error",
+      "width": 320,
+      "theme": "light",
+      "result": {
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "activity": "Activity\nView all\nUnable to load activity. Retry",
+        "historyDisabled": "true"
+      }
+    },
+    {
+      "scenario": "activity-error",
+      "width": 320,
+      "theme": "dark",
+      "result": {
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "activity": "Activity\nView all\nUnable to load activity. Retry",
+        "historyDisabled": "true"
+      }
+    },
+    {
+      "scenario": "activity-error",
+      "width": 1440,
+      "theme": "light",
+      "result": {
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "activity": "Activity\nView all\nUnable to load activity. Retry",
+        "historyDisabled": "true"
+      }
+    },
+    {
+      "scenario": "activity-error",
+      "width": 1440,
+      "theme": "dark",
+      "result": {
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "activity": "Activity\nView all\nUnable to load activity. Retry",
+        "historyDisabled": "true"
+      }
+    }
+  ],
+  "history": {
+    "viewport": "375x700",
+    "theme": "dark",
+    "events": 8,
+    "top": 16,
+    "bottom": 684,
+    "focusInside": true,
+    "horizontalOverflow": false,
+    "escapeCloses": true,
+    "focusReturnsTo": "View all"
+  }
+}

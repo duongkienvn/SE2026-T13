@@ -10,9 +10,9 @@ export function workspacePath(workspaceId: string) {
   return `/workspaces/${encodeURIComponent(workspaceId)}`;
 }
 
-/** Keep the current delivered section when switching workspaces. */
-export function workspaceDestination(workspaceId: string, pathname: string) {
-  return `${workspacePath(workspaceId)}${pathname.match(/\/workspaces\/[^/]+(\/(?:boards|members|settings))\/?$/)?.[1] ?? ''}`;
+/** Sidebar selects a Workspace; its horizontal tabs select the section. */
+export function workspaceDestination(workspaceId: string) {
+  return workspacePath(workspaceId);
 }
 
 /** Downstream owners activate a slot only when their real route exists. */

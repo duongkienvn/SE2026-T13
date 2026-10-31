@@ -1,0 +1,1200 @@
+{
+  "fixture": "DEV-only /qa/workspace-polish.html",
+  "note": "No production data or backend network calls; layout measurements from Chrome DevTools.",
+  "checks": [
+    {
+      "label": "overview",
+      "size": "320x600",
+      "theme": "light",
+      "result": {
+        "width": 320,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "headings": [
+          "Development Team",
+          "Recent Boards",
+          "Sprint planning",
+          "Activity",
+          "A little context, all in one place"
+        ],
+        "errors": []
+      }
+    },
+    {
+      "label": "boards",
+      "size": "320x600",
+      "theme": "light",
+      "result": {
+        "width": 320,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "headings": ["Development Team", "Boards", "Sprint planning"],
+        "errors": []
+      }
+    },
+    {
+      "label": "members",
+      "size": "320x600",
+      "theme": "light",
+      "result": {
+        "width": 320,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "headings": ["Development Team", "Members"],
+        "errors": []
+      }
+    },
+    {
+      "label": "guests",
+      "size": "320x600",
+      "theme": "light",
+      "result": {
+        "width": 320,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "headings": [
+          "Development Team",
+          "Members",
+          "Guests on boards you can view member details for",
+          "No guests on boards you can see member details for"
+        ],
+        "errors": []
+      }
+    },
+    {
+      "label": "general",
+      "size": "320x600",
+      "theme": "light",
+      "result": {
+        "width": 320,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "headings": ["Development Team", "Settings", "General"],
+        "errors": []
+      }
+    },
+    {
+      "label": "permissions",
+      "size": "320x600",
+      "theme": "light",
+      "result": {
+        "width": 320,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "headings": ["Development Team", "Settings", "Permissions"],
+        "errors": []
+      }
+    },
+    {
+      "label": "board",
+      "size": "320x600",
+      "theme": "light",
+      "result": {
+        "width": 320,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "headings": ["Sprint planning", "No columns yet"],
+        "errors": []
+      }
+    },
+    {
+      "label": "overview",
+      "size": "375x700",
+      "theme": "light",
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "boards",
+      "size": "375x700",
+      "theme": "light",
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "members",
+      "size": "375x700",
+      "theme": "light",
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "guests",
+      "size": "375x700",
+      "theme": "light",
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "general",
+      "size": "375x700",
+      "theme": "light",
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "permissions",
+      "size": "375x700",
+      "theme": "light",
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "board",
+      "size": "375x700",
+      "theme": "light",
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "overview",
+      "size": "768x768",
+      "theme": "light",
+      "result": {
+        "width": 768,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "boards",
+      "size": "768x768",
+      "theme": "light",
+      "result": {
+        "width": 768,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "members",
+      "size": "768x768",
+      "theme": "light",
+      "result": {
+        "width": 768,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "guests",
+      "size": "768x768",
+      "theme": "light",
+      "result": {
+        "width": 768,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "general",
+      "size": "768x768",
+      "theme": "light",
+      "result": {
+        "width": 768,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "permissions",
+      "size": "768x768",
+      "theme": "light",
+      "result": {
+        "width": 768,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "board",
+      "size": "768x768",
+      "theme": "light",
+      "result": {
+        "width": 768,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "overview",
+      "size": "1280x600",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "boards",
+      "size": "1280x600",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "members",
+      "size": "1280x600",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "guests",
+      "size": "1280x600",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "general",
+      "size": "1280x600",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "permissions",
+      "size": "1280x600",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "board",
+      "size": "1280x600",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "overview",
+      "size": "1280x700",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "boards",
+      "size": "1280x700",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "members",
+      "size": "1280x700",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "guests",
+      "size": "1280x700",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "general",
+      "size": "1280x700",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "permissions",
+      "size": "1280x700",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "board",
+      "size": "1280x700",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "overview",
+      "size": "1280x768",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "boards",
+      "size": "1280x768",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "members",
+      "size": "1280x768",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "guests",
+      "size": "1280x768",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "general",
+      "size": "1280x768",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "permissions",
+      "size": "1280x768",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "board",
+      "size": "1280x768",
+      "theme": "light",
+      "result": {
+        "width": 1280,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "overview",
+      "size": "1440x768",
+      "theme": "light",
+      "result": {
+        "width": 1440,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "boards",
+      "size": "1440x768",
+      "theme": "light",
+      "result": {
+        "width": 1440,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "members",
+      "size": "1440x768",
+      "theme": "light",
+      "result": {
+        "width": 1440,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "guests",
+      "size": "1440x768",
+      "theme": "light",
+      "result": {
+        "width": 1440,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "general",
+      "size": "1440x768",
+      "theme": "light",
+      "result": {
+        "width": 1440,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "permissions",
+      "size": "1440x768",
+      "theme": "light",
+      "result": {
+        "width": 1440,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "board",
+      "size": "1440x768",
+      "theme": "light",
+      "result": {
+        "width": 1440,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "overview",
+      "size": "320x600",
+      "theme": "dark",
+      "result": {
+        "width": 320,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "boards",
+      "size": "320x600",
+      "theme": "dark",
+      "result": {
+        "width": 320,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "members",
+      "size": "320x600",
+      "theme": "dark",
+      "result": {
+        "width": 320,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "guests",
+      "size": "320x600",
+      "theme": "dark",
+      "result": {
+        "width": 320,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "general",
+      "size": "320x600",
+      "theme": "dark",
+      "result": {
+        "width": 320,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "permissions",
+      "size": "320x600",
+      "theme": "dark",
+      "result": {
+        "width": 320,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "board",
+      "size": "320x600",
+      "theme": "dark",
+      "result": {
+        "width": 320,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "overview",
+      "size": "375x700",
+      "theme": "dark",
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "boards",
+      "size": "375x700",
+      "theme": "dark",
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "members",
+      "size": "375x700",
+      "theme": "dark",
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "guests",
+      "size": "375x700",
+      "theme": "dark",
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "general",
+      "size": "375x700",
+      "theme": "dark",
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "permissions",
+      "size": "375x700",
+      "theme": "dark",
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "board",
+      "size": "375x700",
+      "theme": "dark",
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "overview",
+      "size": "768x768",
+      "theme": "dark",
+      "result": {
+        "width": 768,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "boards",
+      "size": "768x768",
+      "theme": "dark",
+      "result": {
+        "width": 768,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "members",
+      "size": "768x768",
+      "theme": "dark",
+      "result": {
+        "width": 768,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "guests",
+      "size": "768x768",
+      "theme": "dark",
+      "result": {
+        "width": 768,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "general",
+      "size": "768x768",
+      "theme": "dark",
+      "result": {
+        "width": 768,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "permissions",
+      "size": "768x768",
+      "theme": "dark",
+      "result": {
+        "width": 768,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "board",
+      "size": "768x768",
+      "theme": "dark",
+      "result": {
+        "width": 768,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "overview",
+      "size": "1280x600",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "boards",
+      "size": "1280x600",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "members",
+      "size": "1280x600",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "guests",
+      "size": "1280x600",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "general",
+      "size": "1280x600",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "permissions",
+      "size": "1280x600",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "board",
+      "size": "1280x600",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 600,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "overview",
+      "size": "1280x700",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "boards",
+      "size": "1280x700",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "members",
+      "size": "1280x700",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "guests",
+      "size": "1280x700",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "general",
+      "size": "1280x700",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "permissions",
+      "size": "1280x700",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "board",
+      "size": "1280x700",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "overview",
+      "size": "1280x768",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "boards",
+      "size": "1280x768",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "members",
+      "size": "1280x768",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "guests",
+      "size": "1280x768",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "general",
+      "size": "1280x768",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "permissions",
+      "size": "1280x768",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "board",
+      "size": "1280x768",
+      "theme": "dark",
+      "result": {
+        "width": 1280,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "overview",
+      "size": "1440x768",
+      "theme": "dark",
+      "result": {
+        "width": 1440,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "boards",
+      "size": "1440x768",
+      "theme": "dark",
+      "result": {
+        "width": 1440,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "members",
+      "size": "1440x768",
+      "theme": "dark",
+      "result": {
+        "width": 1440,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "guests",
+      "size": "1440x768",
+      "theme": "dark",
+      "result": {
+        "width": 1440,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "general",
+      "size": "1440x768",
+      "theme": "dark",
+      "result": {
+        "width": 1440,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "permissions",
+      "size": "1440x768",
+      "theme": "dark",
+      "result": {
+        "width": 1440,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    },
+    {
+      "label": "board",
+      "size": "1440x768",
+      "theme": "dark",
+      "result": {
+        "width": 1440,
+        "height": 768,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "errors": []
+      }
+    }
+  ]
+}

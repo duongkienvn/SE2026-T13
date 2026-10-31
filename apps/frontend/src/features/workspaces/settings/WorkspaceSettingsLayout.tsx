@@ -41,46 +41,29 @@ export function WorkspaceSettingsLayout() {
     </header>
   );
 
-  if (!desktop)
-    return (
-      <section aria-label="Workspace settings" className="space-y-4">
-        {index ? (
-          <>
-            {heading}
-            <nav aria-label="Workspace settings sections">
-              <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface shadow-card">
-                {workspaceSettingsSections.map((section) => (
-                  <ListItem
-                    key={section.id}
-                    section={section}
-                    to={workspaceSettingsPath(workspaceId, section.id)}
-                  />
-                ))}
-              </ul>
-            </nav>
-          </>
-        ) : (
-          <>
-            <Link
-              to={workspaceSettingsPath(workspaceId)}
-              className="-ml-2 inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-sm font-medium text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-primary"
-            >
-              <ChevronLeftIcon className="size-4" />
-              Back to Settings
-            </Link>
-            <Outlet context={workspace} />
-          </>
-        )}
-      </section>
-    );
-
   return (
     <section aria-label="Workspace settings" className="space-y-5">
-      {heading}
-      <div className="grid grid-cols-[13rem_minmax(0,1fr)] items-start gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8">
+      <div className={index ? '' : 'hidden md:block'}>{heading}</div>
+      <nav
+        aria-label="Workspace settings sections"
+        hidden={desktop || !index}
+        className={index ? 'md:hidden' : 'hidden'}
+      >
+        <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface shadow-card">
+          {workspaceSettingsSections.map((section) => (
+            <ListItem
+              key={section.id}
+              section={section}
+              to={workspaceSettingsPath(workspaceId, section.id)}
+            />
+          ))}
+        </ul>
+      </nav>
+      <div className="items-start gap-6 md:grid md:grid-cols-[11rem_minmax(0,1fr)] lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-8">
         <nav
           aria-label="Workspace settings sections"
-          className="rounded-xl border border-line bg-surface p-2 shadow-card"
+          hidden={!desktop}
+          className="hidden rounded-xl border border-line bg-surface p-2 shadow-card md:block"
         >
           <ul className="space-y-1">
             {workspaceSettingsSections.map((section) => {
@@ -108,11 +91,21 @@ export function WorkspaceSettingsLayout() {
           </ul>
         </nav>
         <div className="min-w-0">
+          <Link
+            to={workspaceSettingsPath(workspaceId)}
+            className={`${index ? 'hidden' : 'inline-flex'} mb-4 min-h-11 items-center gap-1 rounded-lg px-2 text-sm font-medium text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-primary md:hidden`}
+          >
+            <ChevronLeftIcon className="size-4" />
+            Back to Settings
+          </Link>
+          {/* One stable Outlet owns the draft across breakpoint changes. */}
           {index ? (
-            <Navigate
-              to={workspaceSettingsPath(workspaceId, 'general')}
-              replace
-            />
+            desktop ? (
+              <Navigate
+                to={workspaceSettingsPath(workspaceId, 'general')}
+                replace
+              />
+            ) : null
           ) : (
             <Outlet context={workspace} />
           )}

@@ -45,10 +45,10 @@ export function WorkspaceIdentity({
   );
   inviteParams.set('invite', '1');
   return (
-    <header className="flex flex-wrap items-center gap-4 py-6">
+    <header className="flex flex-wrap items-center gap-4 py-6 short:py-3">
       <WorkspaceAvatar
         workspace={workspace}
-        className="size-16 text-2xl sm:size-18"
+        className="size-16 text-2xl sm:size-18 short:size-12 short:text-xl"
       />
       <div className="min-w-0 flex-1 basis-40">
         <div className="flex flex-wrap items-center gap-2">
@@ -84,26 +84,19 @@ export function WorkspaceIdentity({
             <PlusIcon className="size-4" />
             Invite
           </Link>
-        ) : (
+        ) : workspace?.type === 'TEAM' ? (
           <span
             aria-disabled="true"
-            title={
-              workspace?.type === 'PERSONAL'
-                ? 'Personal workspaces are just for you.'
-                : 'Only workspace admins can invite people.'
-            }
+            title="Only workspace admins can invite people."
             className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-line px-3 text-xs"
           >
             <PlusIcon className="size-4" />
             Invite
             <span className="sr-only">
-              , unavailable:{' '}
-              {workspace?.type === 'PERSONAL'
-                ? 'personal workspaces are just for you'
-                : 'only workspace admins can invite people'}
+              , unavailable: only workspace admins can invite people
             </span>
           </span>
-        )}
+        ) : null}
       </div>
     </header>
   );

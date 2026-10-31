@@ -74,6 +74,53 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 describe('Workspace activity authorization and session', () => {
+  it('cancels pending summary/history together on revocation without evicting another Workspace', async () => {
+    const summary = deferred<MockResponse>(),
+      history = deferred<MockResponse>();
+    let refreshing = false;
+    const { client, calls } = setup({
+      [path('one')]: () =>
+        refreshing
+          ? summary.promise
+          : workspacePage([event('Initially authorized')], 1, 1, 5),
+      [path('one', 1, 20)]: () => history.promise,
+    });
+    await screen.findByText('Initially authorized');
+    const other = workspaceKeys.overview(testUser.id, 0, 'other');
+    client.setQueryData(other, { name: 'Other authorized Workspace' });
+    fireEvent.click(screen.getByRole('button', { name: /view all/i }));
+    await waitFor(() =>
+      expect(
+        calls.some((call) => call.path.endsWith('activity?page=1&limit=20')),
+      ).toBe(true),
+    );
+    refreshing = true;
+    act(() => {
+      void client.invalidateQueries({
+        queryKey: [...workspaceKeys.activity(testUser.id, 0, 'one'), 1, 5],
+      });
+    });
+    await waitFor(() =>
+      expect(
+        calls.filter((call) => call.path.endsWith('activity?page=1&limit=5')),
+      ).toHaveLength(2),
+    );
+    act(() => receiveWorkspaceRevocation(client, { workspaceId: 'one' }));
+    await act(async () => {
+      summary.resolve(workspacePage([event('Late summary secret')], 1, 1, 5));
+      history.resolve(workspacePage([event('Late history secret')], 1, 1, 20));
+    });
+    expect(screen.queryByText('Initially authorized')).toBeNull();
+    expect(screen.queryByText('Late summary secret')).toBeNull();
+    expect(screen.queryByText('Late history secret')).toBeNull();
+    for (const query of client
+      .getQueryCache()
+      .findAll({ queryKey: workspaceKeys.activity(testUser.id, 0, 'one') }))
+      expect(query.state.data).toBeNull();
+    expect(client.getQueryData(other)).toEqual({
+      name: 'Other authorized Workspace',
+    });
+  });
   it('keeps the five server rows in order and does not invent a board link', async () => {
     const rows = ['First', 'Second', 'Third', 'Fourth', 'Fifth'].map(event);
     setup({ [path('one')]: workspacePage(rows, 1, 23, 5) });
@@ -167,40 +214,56 @@ describe('Workspace activity authorization and session', () => {
       expect(screen.queryByText('Restricted row')).toBeNull(),
     );
   });
-  it('removes old session activity and ignores an old response after account change', async () => {
-    const pending = deferred<MockResponse>();
-    let requestCount = 0;
-    const { client } = setup({
-      [path('one')]: () =>
-        ++requestCount === 1
-          ? pending.promise
-          : workspacePage([event('New account')], 1, 1, 5),
-    });
-    await waitFor(() => expect(requestCount).toBe(1));
-    const oldCall = vi
-      .mocked(fetch)
-      .mock.calls.find(([url]) => String(url).includes('/activity'))!;
-    act(() => {
-      storeSession('another-account-token');
-      window.dispatchEvent(
-        new StorageEvent('storage', {
-          key: 'kanban.session',
-          storageArea: localStorage,
-        }),
+  it.each([200, 401, 403, 503])(
+    'removes old session activity and ignores an old response %s after account change',
+    async (status) => {
+      const pending = deferred<MockResponse>();
+      let requestCount = 0;
+      let activeUser = testUser;
+      const { client } = setup({
+        'GET /users/me': () => ok(activeUser),
+        [path('one')]: () =>
+          ++requestCount === 1
+            ? pending.promise
+            : workspacePage([event('New account')], 1, 1, 5),
+      });
+      await waitFor(() => expect(requestCount).toBe(1));
+      const oldCall = vi
+        .mocked(fetch)
+        .mock.calls.find(([url]) => String(url).includes('/activity'))!;
+      act(() => {
+        activeUser = {
+          ...testUser,
+          id: '00000000-0000-4000-8000-000000000002',
+          displayName: 'Account B',
+        };
+        storeSession('another-account-token');
+        window.dispatchEvent(
+          new StorageEvent('storage', {
+            key: 'kanban.session',
+            storageArea: localStorage,
+          }),
+        );
+      });
+      expect(await screen.findByText('New account')).toBeTruthy();
+      expect((oldCall[1]?.signal as AbortSignal).aborted).toBe(true);
+      await act(async () =>
+        pending.resolve(
+          status === 200
+            ? workspacePage([event('Previous account')], 1, 1, 5)
+            : fail(status, 'OLD_RESPONSE'),
+        ),
       );
-    });
-    expect(await screen.findByText('New account')).toBeTruthy();
-    expect((oldCall[1]?.signal as AbortSignal).aborted).toBe(true);
-    await act(async () =>
-      pending.resolve(workspacePage([event('Previous account')], 1, 1, 5)),
-    );
-    expect(screen.queryByText('Previous account')).toBeNull();
-    expect(
-      client
-        .getQueryCache()
-        .findAll({ queryKey: workspaceKeys.activity(testUser.id, 0, 'one') }),
-    ).toHaveLength(0);
-  });
+      expect(screen.queryByText('Previous account')).toBeNull();
+      expect(
+        client
+          .getQueryCache()
+          .findAll({ queryKey: workspaceKeys.activity(testUser.id, 0, 'one') }),
+      ).toHaveLength(0);
+      expect(localStorage.getItem('kanban.session')).not.toBeNull();
+      expect(screen.getByText('New account')).toBeTruthy();
+    },
+  );
   it('ends the current session on an activity 401 and removes its pages', async () => {
     let unauthorized = false;
     const { client } = setup({

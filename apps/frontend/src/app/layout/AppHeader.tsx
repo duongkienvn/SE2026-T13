@@ -43,11 +43,11 @@ export function AppHeader({ context, actions, navigation }: AppHeaderProps) {
         <BrandLogo decorative className="size-8" />
       </Link>
       {context && (
-        <div className="flex min-w-0 items-center text-sm font-medium text-ink">
+        <div className="flex min-w-0 flex-1 items-center text-sm font-medium text-ink">
           {context}
         </div>
       )}
-      <SearchSlot />
+      <SearchSlot compact={!!context} />
       <div className="ml-auto flex shrink-0 items-center gap-2 md:gap-3">
         <NotificationsSlot />
         {actions}
@@ -60,20 +60,20 @@ export function AppHeader({ context, actions, navigation }: AppHeaderProps) {
  * Approved global Search position. Static until the search palette ships:
  * not an input, no results, no keyboard shortcut.
  */
-function SearchSlot() {
+function SearchSlot({ compact = false }: { compact?: boolean }) {
   return (
     <div
       title="Search — coming soon"
-      className="grid size-10 shrink-0 place-items-center text-muted/60 sm:flex sm:h-10 sm:w-full sm:max-w-sm sm:min-w-0 sm:shrink sm:items-center sm:gap-2.5 sm:rounded-lg sm:border sm:border-line sm:bg-app sm:px-3 sm:text-sm sm:text-muted/70"
+      className={`grid size-10 shrink-0 place-items-center text-muted/60 ${compact ? 'xl:flex xl:h-10 xl:w-full xl:max-w-48 xl:min-w-0 xl:shrink xl:items-center xl:gap-2.5 xl:rounded-lg xl:border xl:border-line xl:bg-app xl:px-3 xl:text-sm xl:text-muted/70' : 'sm:flex sm:h-10 sm:w-full sm:max-w-sm sm:min-w-0 sm:shrink sm:items-center sm:gap-2.5 sm:rounded-lg sm:border sm:border-line sm:bg-app sm:px-3 sm:text-sm sm:text-muted/70'}`}
     >
       <SearchIcon className="size-5 shrink-0 sm:size-4.5" />
       <span
         aria-hidden="true"
-        className="hidden min-w-0 flex-1 truncate sm:block"
+        className={`hidden min-w-0 flex-1 truncate ${compact ? 'xl:block' : 'sm:block'}`}
       >
         Search
       </span>
-      <span className="hidden sm:contents">
+      <span className={compact ? 'hidden xl:contents' : 'hidden sm:contents'}>
         <SoonBadge />
       </span>
       <span className="sr-only">Search, coming soon</span>

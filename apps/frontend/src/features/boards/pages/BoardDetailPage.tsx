@@ -1,7 +1,9 @@
 import { BoardRole } from '@kanban/shared';
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useOutletContext, useParams } from 'react-router';
+import type { WorkspaceSummary } from '../../workspaces/types';
+import { workspacePath } from '../../workspaces/navigation';
 import { ActionMenu } from '../../../components/ActionMenu';
 import { Alert } from '../../../components/Alert';
 import { Button, buttonClassName } from '../../../components/Button';
@@ -64,6 +66,7 @@ export function BoardUnavailable() {
 }
 
 export function BoardDetailPage() {
+  const workspace = useOutletContext<WorkspaceSummary | undefined>();
   const { boardId = '' } = useParams();
   const navigate = useNavigate();
   const { board, verified } = useVerifiedBoard(boardId);
@@ -148,6 +151,41 @@ export function BoardDetailPage() {
 
   return (
     <PageContainer fill>
+      <nav
+        aria-label="Board breadcrumb"
+        className="mb-4 text-xs leading-6 text-muted md:hidden"
+      >
+        <ol className="flex flex-wrap items-center gap-x-2">
+          {workspace && (
+            <li className="min-w-0 max-w-full [overflow-wrap:anywhere]">
+              <Link
+                className="rounded hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
+                to={workspacePath(workspace.id)}
+              >
+                {workspace.name}
+              </Link>
+              <span aria-hidden="true"> /</span>
+            </li>
+          )}
+          <li>
+            <Link
+              className="rounded hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
+              to={
+                workspace ? `${workspacePath(workspace.id)}/boards` : '/boards'
+              }
+            >
+              Boards
+            </Link>
+          </li>
+          <li aria-hidden="true">/</li>
+          <li
+            aria-current="page"
+            className="min-w-0 max-w-full [overflow-wrap:anywhere]"
+          >
+            {data.name}
+          </li>
+        </ol>
+      </nav>
       <div className="flex flex-col gap-5 md:flex-row md:items-start">
         <BoardIcon boardId={data.id} className="size-12 rounded-xl text-2xl" />
         <div className="min-w-0 flex-1">

@@ -5,7 +5,9 @@ import { randomBytes } from 'node:crypto';
 export async function verifyDeclineMigration(source) {
   const allMigrations = source.migrations;
   source.migrations = allMigrations.filter(
-    (m) => !m.name.startsWith('WorkspaceActivity'),
+    (m) =>
+      !m.name.startsWith('WorkspaceActivity') &&
+      !m.name.startsWith('PersonalWorkspaceName'),
   );
   const before = await source.query(
     'SELECT * FROM workspace_invitations ORDER BY id',
@@ -106,7 +108,7 @@ export async function verifyDeclineMigration(source) {
   );
   assert.deepEqual(await source.runMigrations(), []);
   source.migrations = allMigrations;
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 2);
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries,
     [],

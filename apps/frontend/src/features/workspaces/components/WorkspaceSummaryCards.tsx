@@ -1,9 +1,4 @@
-import {
-  ActivityIcon,
-  ColumnsIcon,
-  LayersIcon,
-  UsersIcon,
-} from '../../../components/icons';
+import { ColumnsIcon, UsersIcon } from '../../../components/icons';
 import type { WorkspaceOverview, WorkspaceViewState } from '../types';
 
 export function WorkspaceSummaryCards({
@@ -26,22 +21,10 @@ export function WorkspaceSummaryCards({
       icon: UsersIcon,
       accent: 'bg-primary-soft text-primary',
     },
-    {
-      label: 'Active this week',
-      value: null,
-      icon: ActivityIcon,
-      accent: 'bg-success/10 text-success',
-    },
-    {
-      label: 'Total cards',
-      value: null,
-      icon: LayersIcon,
-      accent: 'bg-primary-soft text-primary',
-    },
   ];
   return (
     <section aria-label="Workspace summary">
-      <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-3">
         {metrics.map(({ label, value, icon: Icon, accent }) => (
           <div
             key={label}
@@ -63,11 +46,7 @@ export function WorkspaceSummaryCards({
                   <>
                     <span aria-hidden="true">—</span>
                     <span className="sr-only">
-                      {state === 'loading' &&
-                      label !== 'Active this week' &&
-                      label !== 'Total cards'
-                        ? 'Loading'
-                        : 'Unavailable'}
+                      {state === 'loading' ? 'Loading' : 'Unavailable'}
                     </span>
                   </>
                 )}
@@ -77,11 +56,7 @@ export function WorkspaceSummaryCards({
                   aria-hidden="true"
                   className="order-3 mt-1 text-[11px] text-muted"
                 >
-                  {state === 'loading' &&
-                  label !== 'Active this week' &&
-                  label !== 'Total cards'
-                    ? 'Loading…'
-                    : 'Unavailable'}
+                  {state === 'loading' ? 'Loading…' : 'Unavailable'}
                 </span>
               )}
             </div>

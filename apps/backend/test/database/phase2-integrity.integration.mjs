@@ -9,6 +9,7 @@ import { verifyPhase2Catalog } from './phase2-catalog.mjs';
 import { verifyPhase2Upgrade } from './phase2-upgrade.mjs';
 import { verifyPhase2Lifecycles } from './phase2-lifecycles.mjs';
 import { verifyPhase2Backup } from './phase2-backup.mjs';
+import { verifyPersonalWorkspaceName } from '../workspaces/personal-workspace-name.integration.mjs';
 
 // Same disposable Docker pattern as the Workspace membership runner. No .env.
 const require = createRequire(import.meta.url);
@@ -92,6 +93,7 @@ try {
     `PASS: PostgreSQL ${version}; fresh compiled chain ${migrations.length} migrations; reviewed catalogs, FK actions, columns, checks, indexes, triggers, ORM schema diff`,
   );
   await verifyPhase2Upgrade(source, catalog);
+  await verifyPersonalWorkspaceName(source);
   await verifyPhase2Lifecycles(source);
   await verifyPhase2Backup(source, docker, container);
   // Existing foundation, legacy-data, API/activity and migration-negative tests

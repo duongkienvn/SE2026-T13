@@ -72,6 +72,51 @@ function mount(
 }
 
 describe('Workspace routes using production HTTP adapters', () => {
+  it('keeps real authorized Activity/history and navigation alongside only the two supported counts', async () => {
+    const item = {
+      id: 'activity-1',
+      eventType: 'WORKSPACE_UPDATED',
+      createdAt: '2026-10-31T00:00:00Z',
+      actor: {
+        id: testUser.id,
+        displayName: 'Authorized actor',
+        avatarUrl: null,
+      },
+      board: null,
+    };
+    const { router } = mount(`/workspaces/${workspace.id}`, {
+      [`GET /workspaces/${workspace.id}/activity?page=1&limit=5`]:
+        workspacePage([item], 1, 1, 5),
+      [`GET /workspaces/${workspace.id}/activity?page=1&limit=20`]:
+        workspacePage([item], 1, 1, 20),
+    });
+    await screen.findByText('Authorized actor');
+    const summary = screen.getByRole('region', { name: 'Workspace summary' });
+    expect(
+      within(summary)
+        .getAllByRole('term')
+        .map((term) => term.textContent),
+    ).toEqual(['Visible boards', 'Members']);
+    expect(screen.queryByText('Active this week')).toBeNull();
+    expect(screen.queryByText('Total cards')).toBeNull();
+    const activity = screen.getByRole('region', { name: 'Activity' });
+    expect(within(activity).queryByRole('link')).toBeNull();
+    const trigger = within(activity).getByRole('button', { name: /View all/ });
+    trigger.focus();
+    fireEvent.click(trigger);
+    await within(
+      screen.getByRole('dialog', { name: 'Workspace activity' }),
+    ).findByText('Authorized actor');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(document.activeElement).toBe(trigger);
+    const tabs = screen.getByRole('navigation', { name: 'Workspace sections' });
+    fireEvent.click(within(tabs).getByRole('link', { name: 'Boards' }));
+    await screen.findByRole('heading', { name: 'Boards' });
+    await act(() => router.navigate(-1));
+    await screen.findByText('Authorized actor');
+    await act(() => router.navigate(1));
+    await screen.findByRole('heading', { name: 'Boards' });
+  });
   it.each(['ADMIN', 'MEMBER'] as const)(
     'shows only the %s activity page returned by the server',
     async (role) => {
