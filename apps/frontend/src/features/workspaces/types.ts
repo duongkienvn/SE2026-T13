@@ -1,5 +1,13 @@
 import type { WorkspaceRole, WorkspaceType } from '@kanban/shared';
 
+export interface WorkspaceActivityItem {
+  id: string;
+  eventType: string;
+  createdAt: string;
+  actor: { id: string; displayName: string; avatarUrl: string | null } | null;
+  board: { id: string; name: string } | null;
+}
+
 /** Presentation models mapped from the Workspace API DTOs. */
 export interface WorkspaceSummary {
   id: string;

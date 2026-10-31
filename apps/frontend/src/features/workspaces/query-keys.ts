@@ -15,6 +15,11 @@ export const workspaceKeys = {
       ...workspaceKeys.resource(userId, generation, workspaceId),
       'overview',
     ] as const,
+  activity: (userId: string, generation: number, workspaceId: string) =>
+    [
+      ...workspaceKeys.resource(userId, generation, workspaceId),
+      'activity',
+    ] as const,
   boards: (userId: string, generation: number, workspaceId: string) =>
     [
       ...workspaceKeys.resource(userId, generation, workspaceId),

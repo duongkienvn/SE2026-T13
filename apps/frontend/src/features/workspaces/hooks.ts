@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { isApiError } from '../../lib/api-client';
 import { useAuthSession } from '../auth/auth-session-context';
 import { useAuth } from '../auth/useAuth';
-import { WorkspaceUnavailableError } from './api';
+import { listWorkspaceActivity, WorkspaceUnavailableError } from './api';
 import { useWorkspaceGateway } from './gateway-context';
 import { workspaceKeys } from './query-keys';
 import { revokeWorkspaceAccess } from './revoke-workspace-access';
@@ -95,6 +95,65 @@ export function useWorkspaceOverview(workspaceId: string) {
     ...query,
     state,
     overview: state === 'ready' ? query.data : undefined,
+  };
+}
+
+export function useWorkspaceActivity(
+  workspaceId: string,
+  page: number,
+  limit: number,
+  enabled: boolean,
+) {
+  const { user, runAuthorized } = useAuth();
+  const scope = useAuthSession();
+  const client = useQueryClient();
+  const key = [
+    ...workspaceKeys.activity(user?.id ?? '', scope.generation, workspaceId),
+    page,
+    limit,
+  ] as const;
+  const query = useQuery({
+    queryKey: key,
+    queryFn: async ({ signal }) => {
+      try {
+        return await runAuthorized((token) =>
+          listWorkspaceActivity(token, workspaceId, page, limit, signal),
+        );
+      } catch (error) {
+        if (
+          scope.isCurrent() &&
+          isApiError(error) &&
+          [403, 404].includes(error.status)
+        )
+          await revokeWorkspaceAccess(
+            client,
+            user?.id ?? '',
+            scope.generation,
+            workspaceId,
+            error,
+            key,
+          );
+        throw error;
+      }
+    },
+    enabled: !!user && !!workspaceId && enabled,
+    // Remove protected pages once their last observer leaves this Workspace.
+    gcTime: 0,
+    retry: false,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
+    refetchOnReconnect: 'always',
+  });
+  return {
+    ...query,
+    pageData:
+      enabled &&
+      scope.isCurrent() &&
+      query.isSuccess &&
+      query.isFetchedAfterMount &&
+      !query.isFetching
+        ? query.data
+        : undefined,
   };
 }
 
