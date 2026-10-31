@@ -74,6 +74,7 @@ function invitation(
     updatedAt: '2026-10-29T00:00:00.000Z',
     consumedAt: null,
     revokedAt: null,
+    declinedAt: null,
     ...patch,
   };
 }
@@ -729,6 +730,53 @@ describe('Workspace invitations', () => {
       await screen.findByText('Invitation to new@example.com was revoked.'),
     ).toBeTruthy();
     expect(calls.filter((call) => call.method === 'DELETE')).toHaveLength(1);
+  });
+
+  it('filters declined history on page one without showing pending actions', async () => {
+    const { calls, router } = mount(`${base}/members?tab=invitations&page=2`, {
+      [`GET ${base}/invitations?page=2&limit=10`]: workspacePage(
+        [invitation()],
+        2,
+        11,
+        10,
+      ),
+      [`GET ${base}/invitations?page=1&limit=10&status=DECLINED`]:
+        workspacePage(
+          [
+            invitation({
+              status: 'DECLINED',
+              declinedAt: '2026-10-30T00:00:00.000Z',
+            }),
+          ],
+          1,
+          1,
+          10,
+        ),
+    });
+    await screen.findByRole('table', { name: 'Workspace invitations' });
+    fireEvent.change(screen.getByLabelText('Filter by status'), {
+      target: { value: 'DECLINED' },
+    });
+    await waitFor(() =>
+      expect(
+        calls.some((call) =>
+          call.path.endsWith('page=1&limit=10&status=DECLINED'),
+        ),
+      ).toBe(true),
+    );
+    const params = new URLSearchParams(router.state.location.search);
+    expect(params.get('page')).toBeNull();
+    expect(params.get('status')).toBe('DECLINED');
+    const row = await screen.findByRole('row', {
+      name: /new@example.com.*Declined/i,
+    });
+    fireEvent.click(
+      within(row).getByRole('button', { name: /Actions for invitation/ }),
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Revoke invitation' }),
+    ).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Send again' })).toBeNull();
   });
 
   it('sends again through the same create request', async () => {

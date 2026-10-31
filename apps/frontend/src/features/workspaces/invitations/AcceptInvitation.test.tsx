@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
@@ -107,6 +108,253 @@ describe('Workspace invitation acceptance', () => {
     expect(accept.body).toEqual({ proof });
     expect(invitationProof.get(null)).toBeNull();
   });
+
+  it('requires confirmation to decline and sends exactly one request', async () => {
+    const { calls, router } = mount(link, {
+      'POST /workspace-invitations/decline': { status: 204 },
+    });
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Decline invitation' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(calls.filter((call) => call.path.includes('decline'))).toHaveLength(
+      0,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Decline invitation' }));
+    const dialog = screen.getByRole('dialog');
+    const confirm = Array.from(dialog.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Decline invitation',
+    )!;
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
+    const heading = await screen.findByRole('heading', {
+      name: 'Invitation declined',
+    });
+    expect(document.activeElement).toBe(heading);
+    expect(
+      calls
+        .filter((call) => call.path.includes('decline'))
+        .map((call) => call.body),
+    ).toEqual([{ proof }]);
+    expect(router.state.location.hash).toBe('');
+    expect(screen.queryByText(/Welcome aboard/)).toBeNull();
+  });
+
+  it.each([
+    [400, /This invitation can’t be used/],
+    [403, /Verify your email address first/],
+    [409, /not been confirmed as sent/],
+    [410, /This invitation can’t be used/],
+    [429, /Too many attempts/],
+  ])(
+    'shows a safe decline error for %s and allows explicit retry',
+    async (status, message) => {
+      const { calls } = mount(link, {
+        'POST /workspace-invitations/decline': fail(status, 'ERROR'),
+      });
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Decline invitation' }),
+      );
+      fireEvent.click(
+        within(screen.getByRole('dialog')).getByRole('button', {
+          name: 'Decline invitation',
+        }),
+      );
+      expect(await screen.findByText(message)).toBeTruthy();
+      expect(
+        calls.filter((call) => call.path.includes('decline')),
+      ).toHaveLength(1);
+      fireEvent.click(
+        within(screen.getByRole('dialog')).getByRole('button', {
+          name: 'Decline invitation',
+        }),
+      );
+      await waitFor(() =>
+        expect(
+          calls.filter((call) => call.path.includes('decline')),
+        ).toHaveLength(2),
+      );
+    },
+  );
+
+  it('requires sign-in and reopening the link after a 401', async () => {
+    mount(link, {
+      'POST /workspace-invitations/decline': fail(401, 'UNAUTHORIZED'),
+    });
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Decline invitation' }),
+    );
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Decline invitation',
+      }),
+    );
+    await screen.findByRole('heading', { name: 'Open your invitation link' });
+    expect(screen.getByRole('link', { name: 'Sign in' })).toBeTruthy();
+  });
+
+  it.each([{ status: 200 }, ok(undefined)])(
+    'does not claim decline on an unexpected success status',
+    async (response) => {
+      mount(link, { 'POST /workspace-invitations/decline': response });
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Decline invitation' }),
+      );
+      fireEvent.click(
+        within(screen.getByRole('dialog')).getByRole('button', {
+          name: 'Decline invitation',
+        }),
+      );
+      expect(
+        await screen.findByText(/couldn’t complete your request/),
+      ).toBeTruthy();
+      expect(
+        screen.queryByRole('heading', { name: 'Invitation declined' }),
+      ).toBeNull();
+    },
+  );
+
+  it('keeps the proof for an explicit retry after an ambiguous network failure', async () => {
+    let attempts = 0;
+    const { calls } = mount(link, {
+      'POST /workspace-invitations/decline': () => {
+        if (++attempts === 1) throw new Error('network');
+        return { status: 204 };
+      },
+    });
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Decline invitation' }),
+    );
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Decline invitation',
+      }),
+    );
+    await screen.findByText(/couldn’t complete your request/);
+    expect(attempts).toBe(1);
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Decline invitation',
+      }),
+    );
+    await screen.findByRole('heading', { name: 'Invitation declined' });
+    expect(
+      calls
+        .filter((call) => call.path.includes('decline'))
+        .map((call) => call.body),
+    ).toEqual([{ proof }, { proof }]);
+  });
+
+  it('prevents accept while decline is pending and drops proof on back', async () => {
+    let resolve!: (response: MockResponse) => void;
+    const pending = new Promise<MockResponse>((done) => {
+      resolve = done;
+    });
+    const { calls, router } = mount(link, {
+      'POST /workspace-invitations/decline': () => pending,
+    });
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Decline invitation' }),
+    );
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Decline invitation',
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        (
+          screen.getByRole('button', {
+            name: 'Accept invitation',
+            hidden: true,
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(true),
+    );
+    await act(async () => resolve({ status: 204 }));
+    await screen.findByRole('heading', { name: 'Invitation declined' });
+    await act(() => router.navigate('/'));
+    await act(() => router.navigate(-1));
+    await screen.findByRole('heading', { name: 'Open your invitation link' });
+    expect(calls.filter((call) => call.path.includes('accept'))).toHaveLength(
+      0,
+    );
+    expect(calls.filter((call) => call.path.includes('decline'))).toHaveLength(
+      1,
+    );
+  });
+
+  it('drops the proof if the account changes during initial session verification', async () => {
+    let resolve!: (response: MockResponse) => void;
+    const pending = new Promise<MockResponse>((done) => {
+      resolve = done;
+    });
+    const { calls } = mount(link, {
+      'GET /users/me': (request) =>
+        request.headers.Authorization === 'Bearer stored-token'
+          ? pending
+          : ok({ ...testUser, id: 'other', email: 'other@example.com' }),
+    });
+    await waitFor(() =>
+      expect(calls.some((call) => call.path === '/users/me')).toBe(true),
+    );
+    act(() => {
+      storeSession('other-token');
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: 'kanban.session',
+          storageArea: localStorage,
+        }),
+      );
+    });
+    await screen.findByRole('heading', { name: 'Open your invitation link' });
+    await act(async () => resolve(ok(testUser)));
+    expect(
+      screen.queryByRole('button', { name: 'Accept invitation' }),
+    ).toBeNull();
+    expect(
+      calls.some((call) => call.path.includes('workspace-invitations/')),
+    ).toBe(false);
+  });
+
+  it.each([{ status: 204 }, fail(410, 'INVALID_WORKSPACE_INVITATION')])(
+    'ignores a late decline result after a session change',
+    async (response) => {
+      let resolve!: (value: MockResponse) => void;
+      const pending = new Promise<MockResponse>((done) => {
+        resolve = done;
+      });
+      const { calls } = mount(link, {
+        'POST /workspace-invitations/decline': () => pending,
+      });
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Decline invitation' }),
+      );
+      fireEvent.click(
+        within(screen.getByRole('dialog')).getByRole('button', {
+          name: 'Decline invitation',
+        }),
+      );
+      await waitFor(() =>
+        expect(calls.some((call) => call.path.includes('decline'))).toBe(true),
+      );
+      act(() => {
+        storeSession('other-token');
+        window.dispatchEvent(
+          new StorageEvent('storage', {
+            key: 'kanban.session',
+            storageArea: localStorage,
+          }),
+        );
+      });
+      await screen.findByRole('heading', { name: 'Open your invitation link' });
+      await act(async () => resolve(response));
+      expect(
+        screen.queryByRole('heading', { name: 'Invitation declined' }),
+      ).toBeNull();
+      expect(screen.queryByText(/This invitation can’t be used/)).toBeNull();
+    },
+  );
 
   it('shows one generic message for invalid, expired or wrong-account proofs', async () => {
     mount(link, {
@@ -236,12 +484,9 @@ describe('Workspace invitation acceptance', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Use a different account' }),
     );
-    fireEvent.click(await screen.findByRole('link', { name: 'Sign in' }));
-    await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
-    const from = router.state.location.state.from as string;
-    const returnId = new URLSearchParams(from.split('?')[1]).get('resume');
+    await screen.findByRole('heading', { name: 'Open your invitation link' });
     await act(async () => resolve(ok({ userId: testUser.id })));
-    expect(invitationProof.get(returnId)).toBe(nextProof);
+    expect(invitationProof.get(null)).toBeNull();
     expect(
       screen.queryByRole('heading', { name: 'You joined the workspace' }),
     ).toBeNull();
@@ -297,7 +542,7 @@ describe('Workspace invitation acceptance', () => {
     );
     expect(
       await screen.findByRole('heading', {
-        name: 'You’re invited to a workspace',
+        name: 'Open your invitation link',
       }),
     ).toBeTruthy();
     expect(calls.filter((call) => call.path.includes('accept'))).toHaveLength(
