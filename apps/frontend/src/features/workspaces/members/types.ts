@@ -33,6 +33,7 @@ export const INVITATION_STATUSES = [
   'ACCEPTED',
   'EXPIRED',
   'REVOKED',
+  'DECLINED',
 ] as const;
 export type InvitationStatus = (typeof INVITATION_STATUSES)[number];
 
@@ -53,6 +54,7 @@ export interface WorkspaceInvitation {
   updatedAt: string;
   consumedAt: string | null;
   revokedAt: string | null;
+  declinedAt: string | null;
 }
 
 export interface MemberFilters {

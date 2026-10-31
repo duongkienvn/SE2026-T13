@@ -6,6 +6,7 @@ export const STATUS_LABELS = {
   ACCEPTED: 'Accepted',
   EXPIRED: 'Expired',
   REVOKED: 'Revoked',
+  DECLINED: 'Declined',
 } as const;
 
 /** Only a pending invitation has a delivery state worth showing. */

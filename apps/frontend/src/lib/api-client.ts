@@ -43,6 +43,8 @@ export interface ApiRequestOptions {
   /** Sent as `Authorization: Bearer <token>`. */
   accessToken?: string;
   signal?: AbortSignal;
+  /** Require an exact successful HTTP status when the endpoint contract needs it. */
+  expectedStatus?: number;
 }
 
 function isErrorEnvelope(value: unknown): value is ApiErrorResponse {
@@ -80,7 +82,13 @@ function invalidResponse(status: number): ApiError {
  */
 async function requestEnvelope(
   path: string,
-  { method = 'GET', body, accessToken, signal }: ApiRequestOptions,
+  {
+    method = 'GET',
+    body,
+    accessToken,
+    signal,
+    expectedStatus,
+  }: ApiRequestOptions,
 ): Promise<ApiSuccessResponse<unknown> | undefined> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -103,6 +111,12 @@ async function requestEnvelope(
     );
   }
 
+  if (
+    response.ok &&
+    expectedStatus !== undefined &&
+    response.status !== expectedStatus
+  )
+    throw invalidResponse(response.status);
   if (response.status === 204) return undefined;
 
   let payload: unknown;

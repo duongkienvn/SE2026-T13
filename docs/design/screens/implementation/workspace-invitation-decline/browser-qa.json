@@ -1,0 +1,106 @@
+{
+  "checks": [
+    {
+      "theme": "light",
+      "width": 320,
+      "layout": {
+        "width": 320,
+        "viewport": 320,
+        "hash": "",
+        "email": true
+      },
+      "dialogFocus": "Cancel",
+      "cancelled": true
+    },
+    {
+      "theme": "light",
+      "width": 375,
+      "layout": {
+        "width": 375,
+        "viewport": 375,
+        "hash": "",
+        "email": true
+      },
+      "dialogFocus": "Cancel",
+      "cancelled": true
+    },
+    {
+      "theme": "light",
+      "width": 768,
+      "layout": {
+        "width": 768,
+        "viewport": 768,
+        "hash": "",
+        "email": true
+      },
+      "dialogFocus": "Cancel",
+      "cancelled": true
+    },
+    {
+      "theme": "light",
+      "width": 1280,
+      "layout": {
+        "width": 1280,
+        "viewport": 1280,
+        "hash": "",
+        "email": true
+      },
+      "dialogFocus": "Cancel",
+      "cancelled": true
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "layout": {
+        "width": 320,
+        "viewport": 320,
+        "hash": "",
+        "email": true
+      },
+      "dialogFocus": "Cancel",
+      "cancelled": true
+    },
+    {
+      "theme": "dark",
+      "width": 375,
+      "layout": {
+        "width": 375,
+        "viewport": 375,
+        "hash": "",
+        "email": true
+      },
+      "dialogFocus": "Cancel",
+      "cancelled": true
+    },
+    {
+      "theme": "dark",
+      "width": 768,
+      "layout": {
+        "width": 768,
+        "viewport": 768,
+        "hash": "",
+        "email": true
+      },
+      "dialogFocus": "Cancel",
+      "cancelled": true
+    },
+    {
+      "theme": "dark",
+      "width": 1280,
+      "layout": {
+        "width": 1280,
+        "viewport": 1280,
+        "hash": "",
+        "email": true
+      },
+      "dialogFocus": "Cancel",
+      "cancelled": true
+    }
+  ],
+  "result": {
+    "heading": "Invitation declined",
+    "focused": "H1",
+    "hash": ""
+  },
+  "declineRequests": 1
+}

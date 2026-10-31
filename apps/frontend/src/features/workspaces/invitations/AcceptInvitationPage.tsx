@@ -1,15 +1,20 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import type { RedirectState } from '../../../app/redirect';
 import { Alert } from '../../../components/Alert';
 import { Brand } from '../../../components/Brand';
 import { Button } from '../../../components/Button';
+import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { LoadingState } from '../../../components/states';
 import { MailIcon } from '../../../components/icons';
 import { usePageTitle } from '../../../hooks/usePageTitle';
 import { isApiError } from '../../../lib/api-client';
 import { useAuth } from '../../auth/useAuth';
-import { useAcceptWorkspaceInvitation } from '../members/hooks';
+import { useAuthSession } from '../../auth/auth-session-context';
+import {
+  useAcceptWorkspaceInvitation,
+  useDeclineWorkspaceInvitation,
+} from '../members/hooks';
 import {
   INVITATION_ACCEPT_PATH,
   invitationProof,
@@ -23,11 +28,17 @@ function Card({
   title,
   description,
   children,
+  focusTitle = false,
 }: {
   title: string;
   description: ReactNode;
   children?: ReactNode;
+  focusTitle?: boolean;
 }) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (focusTitle) heading.current?.focus();
+  }, [focusTitle]);
   return (
     <main className="grid min-h-dvh place-items-center bg-app px-4 py-8">
       <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-card sm:p-8">
@@ -35,7 +46,11 @@ function Card({
         <span className="mt-6 grid size-12 place-items-center rounded-xl bg-primary-soft text-primary">
           <MailIcon className="size-6" />
         </span>
-        <h1 className="mt-4 text-2xl font-semibold tracking-tight text-ink">
+        <h1
+          ref={heading}
+          tabIndex={focusTitle ? -1 : undefined}
+          className="mt-4 text-2xl font-semibold tracking-tight text-ink"
+        >
           {title}
         </h1>
         <div className="mt-2 space-y-2 text-sm leading-relaxed text-muted">
@@ -57,8 +72,10 @@ function failure(error: unknown): string {
       return 'This invitation email has not been confirmed as sent yet. Ask a workspace admin to send it again.';
     if (error.status === 429)
       return 'Too many attempts. Wait a minute and try again.';
+    if (error.status === 401)
+      return 'Your session has ended. Sign in again and reopen the invitation link.';
   }
-  return 'We couldn’t accept the invitation. Check your connection and try again.';
+  return 'We couldn’t complete your request. Check your connection and try again.';
 }
 
 /**
@@ -86,11 +103,19 @@ function InvitationEntry() {
   const location = useLocation();
   const navigate = useNavigate();
   const { status, user, signOut, retry } = useAuth();
-  const [proof] = useState(() =>
+  const scope = useAuthSession();
+  const boundGeneration = useRef<number | null>(null);
+  if (status !== 'anonymous' && boundGeneration.current === null)
+    boundGeneration.current = scope.generation;
+  const sessionChanged =
+    boundGeneration.current !== null &&
+    boundGeneration.current !== scope.generation;
+  const [proof, setProof] = useState(() =>
     location.hash
       ? readProofFragment(location.hash)
       : invitationProof.get(new URLSearchParams(location.search).get('resume')),
   );
+  const [outcome, setOutcome] = useState<'accepted' | 'declined' | null>(null);
   const [returnId] = useState(() => crypto.randomUUID());
   usePageTitle('Workspace invitation');
   useEffect(() => {
@@ -102,6 +127,14 @@ function InvitationEntry() {
         state: { invitationEntry: location.key },
       });
   }, [location.hash, location.search, location.key, navigate]);
+
+  useEffect(() => {
+    if (sessionChanged) {
+      invitationProof.clear();
+      setProof(null);
+      setOutcome(null);
+    }
+  }, [sessionChanged]);
 
   if (status === 'error')
     return (
@@ -123,7 +156,33 @@ function InvitationEntry() {
       </main>
     );
 
-  if (!proof)
+  if (outcome && !sessionChanged)
+    return (
+      <Card
+        focusTitle
+        title={
+          outcome === 'accepted'
+            ? 'You joined the workspace'
+            : 'Invitation declined'
+        }
+        description={
+          <p>
+            {outcome === 'accepted'
+              ? 'Welcome aboard. The workspace is now in your Workspaces list.'
+              : 'You declined this invitation.'}
+          </p>
+        }
+      >
+        <Link
+          to="/workspaces"
+          className={`${linkClass} w-full bg-primary-solid text-white hover:bg-primary-solid-hover`}
+        >
+          Go to workspaces
+        </Link>
+      </Card>
+    );
+
+  if (!proof || sessionChanged)
     return (
       <Card
         title="Open your invitation link"
@@ -155,11 +214,14 @@ function InvitationEntry() {
           <>
             <p>
               Sign in with the email address this invitation was sent to. You
-              can review and accept it after signing in.
+              can review and accept or decline it after signing in.
             </p>
             <p>
               New to Kanvexa? Create an account with that address, verify it,
               then open the invitation link again.
+            </p>
+            <p>
+              After Google sign-in or a page reload, open the email link again.
             </p>
           </>
         }
@@ -190,7 +252,16 @@ function InvitationEntry() {
       key={user?.id}
       proof={proof}
       email={user?.email ?? ''}
-      onSwitchAccount={() => signOut()}
+      onSwitchAccount={() => {
+        invitationProof.clear();
+        setProof(null);
+        signOut();
+      }}
+      onComplete={(result) => {
+        invitationProof.clear();
+        setProof(null);
+        setOutcome(result);
+      }}
     />
   );
 }
@@ -199,28 +270,32 @@ function AcceptInvitation({
   proof,
   email,
   onSwitchAccount,
+  onComplete,
 }: {
   proof: string;
   email: string;
   onSwitchAccount: () => void;
+  onComplete: (result: 'accepted' | 'declined') => void;
 }) {
   const accept = useAcceptWorkspaceInvitation();
-  if (accept.isSuccess)
-    return (
-      <Card
-        title="You joined the workspace"
-        description={
-          <p>Welcome aboard. The workspace is now in your Workspaces list.</p>
-        }
-      >
-        <Link
-          to="/workspaces"
-          className={`${linkClass} w-full bg-primary-solid text-white hover:bg-primary-solid-hover`}
-        >
-          Go to workspaces
-        </Link>
-      </Card>
-    );
+  const decline = useDeclineWorkspaceInvitation();
+  const scope = useAuthSession();
+  const [confirming, setConfirming] = useState(false);
+  const busy = useRef(false);
+  const pending = accept.isPending || decline.isPending;
+  const submit = (action: 'accepted' | 'declined') => {
+    if (busy.current || !scope.isCurrent()) return;
+    busy.current = true;
+    const mutation = action === 'accepted' ? accept : decline;
+    mutation.mutate(proof, {
+      onSuccess: () => {
+        if (scope.isCurrent()) onComplete(action);
+      },
+      onSettled: () => {
+        busy.current = false;
+      },
+    });
+  };
   return (
     <Card
       title="Join this workspace?"
@@ -238,13 +313,22 @@ function AcceptInvitation({
       <Button
         size="lg"
         className="w-full"
-        disabled={accept.isPending}
-        onClick={() => {
-          if (accept.isPending) return;
-          accept.mutate(proof);
-        }}
+        disabled={pending}
+        onClick={() => submit('accepted')}
       >
         {accept.isPending ? 'Joining…' : 'Accept invitation'}
+      </Button>
+      <Button
+        size="lg"
+        variant="secondary"
+        className="w-full"
+        disabled={pending}
+        onClick={() => {
+          decline.reset();
+          setConfirming(true);
+        }}
+      >
+        Decline invitation
       </Button>
       <div className="flex flex-col gap-3 sm:flex-row">
         <Link
@@ -256,13 +340,26 @@ function AcceptInvitation({
         </Link>
         <button
           type="button"
-          disabled={accept.isPending}
+          disabled={pending}
           onClick={onSwitchAccount}
           className={`${linkClass} flex-1 text-primary-hover hover:bg-app disabled:cursor-not-allowed disabled:text-muted`}
         >
           Use a different account
         </button>
       </div>
+      {confirming && (
+        <ConfirmDialog
+          open
+          title="Decline invitation?"
+          description="You will not join this workspace."
+          confirmLabel="Decline invitation"
+          pendingLabel="Declining…"
+          pending={pending}
+          error={decline.isError ? failure(decline.error) : undefined}
+          onCancel={() => setConfirming(false)}
+          onConfirm={() => submit('declined')}
+        />
+      )}
     </Card>
   );
 }
