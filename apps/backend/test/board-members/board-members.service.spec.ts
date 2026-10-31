@@ -13,6 +13,8 @@ import { BoardRoomCoordinator } from '../../src/realtime/board-room-coordinator.
 import { BoardEventPublisher } from '../../src/realtime/board-event-publisher.service';
 import { ActivityWriterService } from '../../src/api/activities/activity-writer.service';
 import { Workspace } from '../../src/api/workspaces/entities/workspace.entity';
+import { BoardMemberAddedNotificationService } from '../../src/api/board-members/board-member-added-notification.service';
+import { BoardMemberAddedMailer } from '../../src/mail/board-member-added-mailer';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: (entity: { name: string }) =>
@@ -26,6 +28,7 @@ const BOARD_ID = 'c6ba7134-97ef-4c1b-a342-001a982a7721';
 const board = Object.assign(new Board(), {
   id: BOARD_ID,
   createdById: ACTOR_ID,
+  name: 'Member board',
   isArchived: false,
 });
 const target = Object.assign(new User(), {
@@ -57,7 +60,8 @@ describe('BoardMembersService', () => {
   const txAssignments = { createQueryBuilder: jest.fn() };
   const manager = { getRepository: jest.fn() };
   const transaction = jest.fn();
-  const members = { createQueryBuilder: jest.fn() };
+  const members = { createQueryBuilder: jest.fn(), existsBy: jest.fn() };
+  const mailer = { send: jest.fn() };
   const users = {};
   const boards = { manager: { transaction } };
   const assignments = {};
@@ -69,6 +73,8 @@ describe('BoardMembersService', () => {
 
   beforeEach(async () => {
     jest.resetAllMocks();
+    members.existsBy.mockResolvedValue(true);
+    mailer.send.mockResolvedValue('SENT');
     manager.getRepository.mockImplementation((entity) => {
       if (entity === BoardMember) return txMembers;
       if (entity === User) return txUsers;
@@ -95,6 +101,8 @@ describe('BoardMembersService', () => {
       providers: [
         { provide: BoardEventPublisher, useValue: events },
         BoardMembersService,
+        BoardMemberAddedNotificationService,
+        { provide: BoardMemberAddedMailer, useValue: mailer },
         { provide: ActivityWriterService, useValue: { record: jest.fn() } },
         { provide: getRepositoryToken(BoardMember), useValue: members },
         { provide: getRepositoryToken(User), useValue: users },
@@ -173,8 +181,10 @@ describe('BoardMembersService', () => {
             : service.remove(ACTOR_ID, BOARD_ID, TARGET_ID);
       await finished;
       expect(events.publish).not.toHaveBeenCalled();
+      expect(mailer.send).not.toHaveBeenCalled();
       commit();
       await mutation;
+      expect(mailer.send).toHaveBeenCalledTimes(operation === 'add' ? 1 : 0);
       expect(events.publish.mock.calls).toEqual([
         [
           `member:${{ add: 'added', updateRole: 'role-changed', remove: 'removed' }[operation]}`,
@@ -210,6 +220,7 @@ describe('BoardMembersService', () => {
             }),
       ).rejects.toThrow('commit failed');
       expect(events.publish).not.toHaveBeenCalled();
+      expect(mailer.send).not.toHaveBeenCalled();
     },
   );
 
@@ -300,10 +311,42 @@ describe('BoardMembersService', () => {
       user: target,
     });
     expect(result.role).toBe(BoardMemberRole.MEMBER);
+    expect(mailer.send).toHaveBeenCalledWith(
+      {
+        membershipId: 'member-row',
+        boardId: BOARD_ID,
+        boardName: board.name,
+        recipient: target.email,
+        recipientDisplayName: target.displayName,
+        actorDisplayName: target.displayName,
+      },
+      expect.any(AbortSignal),
+    );
     expect(events.publish.mock.calls).toEqual([
       ['member:added', { boardId: BOARD_ID, userId: TARGET_ID }],
     ]);
   });
+
+  it.each(['unauthorized', 'duplicate', 'missing user'])(
+    'does not notify for %s additions',
+    async (kind) => {
+      txUsers.findOne.mockResolvedValue(
+        kind === 'missing user' ? null : target,
+      );
+      txMembers.findOne.mockResolvedValue(
+        kind === 'duplicate' ? { id: 'existing' } : null,
+      );
+      if (kind === 'unauthorized')
+        authorization.requireMutableOwner.mockRejectedValue(
+          new Error('forbidden'),
+        );
+      await expect(
+        service.add(ACTOR_ID, BOARD_ID, { email: target.email }),
+      ).rejects.toThrow();
+      expect(mailer.send).not.toHaveBeenCalled();
+      expect(events.publish).not.toHaveBeenCalled();
+    },
+  );
 
   it('rejects demoting the creator and preserves the transaction write set', async () => {
     const creator = Object.assign(new BoardMember(), {

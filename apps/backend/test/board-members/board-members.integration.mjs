@@ -1,21 +1,14 @@
 import assert from 'node:assert/strict';
 import console from 'node:console';
+import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
-import { resolve } from 'node:path';
-import { fileURLToPath, URL } from 'node:url';
 import process from 'node:process';
+import { setTimeout as delay } from 'node:timers/promises';
+import { verifyBoardMemberAddedMail } from './board-member-added-mail.integration.mjs';
 
 const require = createRequire(import.meta.url);
 require('reflect-metadata');
-require('dotenv').config({
-  path: resolve(
-    fileURLToPath(new URL('../../', import.meta.url)),
-    '../../.env',
-  ),
-  quiet: true,
-});
-const { Client } = require('pg');
 const { DataSource } = require('typeorm');
 const { databaseOptions } = require('../../dist/database/database-options.js');
 const {
@@ -35,23 +28,73 @@ const {
   BoardMember,
 } = require('../../dist/api/board-members/entities/board-member.entity.js');
 
-const testDatabase = `kanban_members_verify_${randomBytes(8).toString('hex')}`;
-const baseOptions = databaseOptions(process.env);
-const admin = new Client({
-  ...baseOptions,
-  user: baseOptions.username,
-  database: baseOptions.database,
-});
+// Designated disposable local server only. Never load the application's .env.
+const container = `kanvexa-members-test-${randomBytes(6).toString('hex')}`;
+const password = randomBytes(32).toString('hex');
+const docker = (...args) =>
+  execFileSync('docker', args, {
+    encoding: 'utf8',
+    env: { ...process.env, POSTGRES_PASSWORD: password },
+    stdio: ['pipe', 'pipe', 'pipe'],
+  }).trim();
 let source;
-let created = false;
+let started = false;
 
 try {
-  await admin.connect();
-  await admin.query(`CREATE DATABASE "${testDatabase}"`);
-  created = true;
-  source = new DataSource({ ...baseOptions, database: testDatabase });
-  await source.initialize();
+  docker(
+    'run',
+    '--detach',
+    '--rm',
+    '--name',
+    container,
+    '--publish',
+    '127.0.0.1::5432',
+    '--env',
+    'POSTGRES_PASSWORD',
+    '--env',
+    'POSTGRES_USER=member_test',
+    '--env',
+    'POSTGRES_DB=member_test',
+    'postgres:16.15-alpine3.24',
+  );
+  started = true;
+  const port = docker(
+    'inspect',
+    '--format',
+    '{{(index (index .NetworkSettings.Ports "5432/tcp") 0).HostPort}}',
+    container,
+  );
+  Object.assign(process.env, {
+    DATABASE_HOST: '127.0.0.1',
+    DATABASE_PORT: port,
+    DATABASE_NAME: 'member_test',
+    DATABASE_USER: 'member_test',
+    DATABASE_PASSWORD: password,
+    DATABASE_SSL: 'false',
+    NODE_ENV: 'test',
+    API_PREFIX: 'api',
+    LOG_LEVEL: 'silent',
+    MAIL_TRANSPORT: 'fake',
+    PUBLIC_APP_URL: 'https://boards.example.test',
+    WORKSPACE_INVITATION_ACCEPT_PATH: '',
+    AVATAR_STORAGE_DRIVER: 'disabled',
+    GOOGLE_CLIENT_ID: '',
+    RATE_LIMIT_MAX: '10000',
+    JWT_SECRET: randomBytes(32).toString('hex'),
+  });
+  const options = databaseOptions(process.env);
+  for (let attempt = 0; attempt < 80; attempt++) {
+    try {
+      source = await new DataSource(options).initialize();
+      break;
+    } catch (error) {
+      if (attempt === 79) throw error;
+      await delay(250);
+    }
+  }
+  assert(source);
   await source.runMigrations();
+  await verifyBoardMemberAddedMail(source);
 
   const boards = source.getRepository(Board);
   const members = source.getRepository(BoardMember);
@@ -67,6 +110,7 @@ try {
     new BoardRoomCoordinator(new BoardPresenceService()),
     { publish: async () => undefined },
     new ActivityWriterService(),
+    { notify: async () => undefined },
   );
   const user = (name) =>
     users.save(
@@ -132,6 +176,5 @@ try {
   );
 } finally {
   if (source?.isInitialized) await source.destroy();
-  if (created) await admin.query(`DROP DATABASE "${testDatabase}"`);
-  await admin.end();
+  if (started) docker('rm', '--force', container);
 }

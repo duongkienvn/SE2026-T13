@@ -32,6 +32,7 @@ import { BoardMember } from './entities/board-member.entity';
 import { BoardRoomCoordinator } from '../../realtime/board-room-coordinator.service';
 import { WorkspaceMember } from '../workspaces/entities/workspace-member.entity';
 import { requireBoardPolicy } from '../workspaces/workspace-policy';
+import { BoardMemberAddedNotificationService } from './board-member-added-notification.service';
 
 @Injectable()
 export class BoardMembersService {
@@ -43,6 +44,7 @@ export class BoardMembersService {
     private readonly realtimeAccess: BoardRoomCoordinator,
     private readonly events: BoardEventPublisher,
     private readonly activities: ActivityWriterService,
+    private readonly notifications: BoardMemberAddedNotificationService,
   ) {}
 
   async list(
@@ -119,13 +121,25 @@ export class BoardMembersService {
         entityId: member.id,
         metadata: null,
       });
-      return toBoardMemberResponseDto(member);
+      const actor = await users.findOne({ where: { id: userId } });
+      return {
+        member: toBoardMemberResponseDto(member),
+        notification: {
+          membershipId: member.id,
+          boardId: board.id,
+          boardName: board.name,
+          actorDisplayName: actor?.displayName,
+          recipient: user.email,
+          recipientDisplayName: user.displayName,
+        },
+      };
     });
     await this.events.publish(RealtimeServerEvent.MEMBER_ADDED, {
       boardId: boardId.toLowerCase(),
-      userId: result.user.id,
+      userId: result.member.user.id,
     });
-    return result;
+    await this.notifications.notify(result.notification);
+    return result.member;
   }
 
   async updateRole(

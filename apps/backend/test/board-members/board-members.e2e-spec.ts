@@ -32,6 +32,8 @@ import { BoardMemberRole } from '../../src/common/enums/database-enums';
 import { User } from '../../src/api/users/entities/user.entity';
 import { RealtimeAccessModule } from '../../src/realtime/realtime-access.module';
 import { BoardEventPublisher } from '../../src/realtime/board-event-publisher.service';
+import { BoardMemberAddedNotificationService } from '../../src/api/board-members/board-member-added-notification.service';
+import { BoardMemberAddedMailer } from '../../src/mail/board-member-added-mailer';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: (entity: { name: string }) =>
@@ -79,7 +81,12 @@ describe('board-members HTTP contract', () => {
   };
   const txUsers = { findOne: jest.fn() };
   const boards = { manager: { transaction: jest.fn() } };
-  const members = { findOne: jest.fn(), createQueryBuilder: jest.fn() };
+  const members = {
+    findOne: jest.fn(),
+    createQueryBuilder: jest.fn(),
+    existsBy: jest.fn(),
+  };
+  const mailer = { send: jest.fn() };
   const users = { findOne: jest.fn() };
 
   beforeAll(async () => {
@@ -105,6 +112,8 @@ describe('board-members HTTP contract', () => {
       providers: [
         { provide: BoardEventPublisher, useValue: { publish: jest.fn() } },
         BoardMembersService,
+        BoardMemberAddedNotificationService,
+        { provide: BoardMemberAddedMailer, useValue: mailer },
         { provide: ActivityWriterService, useValue: { record: jest.fn() } },
         BoardAuthorizationService,
         AuthService,
@@ -145,6 +154,8 @@ describe('board-members HTTP contract', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    members.existsBy.mockResolvedValue(true);
+    mailer.send.mockResolvedValue('SENT');
     users.findOne.mockImplementation(
       async ({ where }: { where: { id?: string; email?: string } }) => {
         if (where.email === memberUser.email) return memberUser;
@@ -269,5 +280,19 @@ describe('board-members HTTP contract', () => {
       .get(`/api/boards/${BOARD_ID}/members`)
       .set('Authorization', `Bearer ${tokens[OUTSIDER]}`)
       .expect(404);
+    expect(mailer.send).not.toHaveBeenCalled();
+  });
+
+  it('returns the existing 201 membership contract when the mail adapter throws', async () => {
+    mailer.send.mockRejectedValueOnce(new Error('private provider failure'));
+    const response = await request(app.getHttpServer())
+      .post(`/api/boards/${BOARD_ID}/members`)
+      .set('Authorization', `Bearer ${tokens[OWNER]}`)
+      .send({ email: 'new@example.com' })
+      .expect(201);
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.role).toBe('MEMBER');
+    expect(response.body.data).not.toHaveProperty('notification');
+    expect(mailer.send).toHaveBeenCalledTimes(1);
   });
 });

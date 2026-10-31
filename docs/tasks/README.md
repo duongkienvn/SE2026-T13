@@ -27,6 +27,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Backend tasks
 
+- [Board Member added email notification](backend/board-member-added-email.md)
 - [Workspace activity API](backend/workspace-activity.md)
 - [Authorized Workspace and Board member summaries](backend/workspace-authorized-member-counts.md)
 - [Secure Workspace invitation decline](backend/workspace-invitation-decline.md)
