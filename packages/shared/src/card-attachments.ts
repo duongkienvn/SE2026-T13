@@ -40,4 +40,21 @@ export interface UpdateUrlAttachment {
   readonly displayName?: string;
 }
 
+export interface CreateAttachmentUpload {
+  readonly filename: string;
+  readonly contentType: string;
+  readonly fileSize: number;
+  readonly displayName?: string;
+}
+/** Uploader-only short-lived instructions; never cache, log or broadcast grants. */
+export interface CardAttachmentUploadIntent {
+  readonly uploadId: string;
+  readonly expiresAt: string;
+  readonly upload: {
+    readonly kind: 'memory' | 's3';
+    readonly url: string;
+    readonly fields: Readonly<Record<string, string>>;
+  };
+}
+
 /** V1 reuses card:updated IDs; consumers refetch the affected Card's attachments. */
