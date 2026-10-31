@@ -12,6 +12,11 @@ import { CardsController } from './cards.controller';
 import { CardsService } from './cards.service';
 import { ActivityWriterModule } from '../activities/activity-writer.module';
 
+import { CardChecklistsController } from './card-checklists.controller';
+import { CardChecklistsService } from './card-checklists.service';
+import { CardChecklist } from './entities/card-checklist.entity';
+import { CardChecklistItem } from './entities/card-checklist-item.entity';
+
 @Module({
   imports: [
     RealtimeDeliveryModule,
@@ -21,12 +26,15 @@ import { ActivityWriterModule } from '../activities/activity-writer.module';
     TypeOrmModule.forFeature([
       Card,
       CardAssignee,
+      CardChecklist,
+      CardChecklistItem,
       Board,
       BoardColumn,
       BoardMember,
     ]),
   ],
-  controllers: [CardsController],
-  providers: [CardsService],
+  controllers: [CardsController, CardChecklistsController],
+  providers: [CardsService, CardChecklistsService],
+  exports: [CardChecklistsService],
 })
 export class CardsModule {}
