@@ -1,4 +1,5 @@
 import {
+  Check,
   Column,
   CreateDateColumn,
   Entity,
@@ -17,6 +18,20 @@ import { Comment } from '../../comments/entities/comment.entity';
 import { User } from '../../users/entities/user.entity';
 
 @Entity('cards')
+@Check(
+  'CHK_cards_start_date_finite',
+  '"start_date" IS NULL OR isfinite("start_date")',
+)
+@Check(
+  'CHK_cards_date_range',
+  '"start_date" IS NULL OR "due_date" IS NULL OR "start_date" <= "due_date"',
+)
+@Index('IDX_cards_board_start_date', ['boardId', 'startDate'], {
+  where: '"start_date" IS NOT NULL',
+})
+@Index('IDX_cards_board_due_date', ['boardId', 'dueDate'], {
+  where: '"due_date" IS NOT NULL',
+})
 @Unique('UQ_cards_id_board_id', ['id', 'boardId'])
 @Index('IDX_cards_board_id_column_id', ['boardId', 'columnId'])
 @Index('IDX_cards_column_id', ['columnId'])
@@ -48,6 +63,8 @@ export class Card {
   @Column({ type: 'varchar' }) title!: string;
   @Column({ type: 'text', nullable: true }) description!: string | null;
   @Column({ type: 'numeric', precision: 20, scale: 10 }) position!: string;
+  @Column({ name: 'start_date', type: 'timestamptz', nullable: true })
+  startDate!: Date | null;
   @Column({ name: 'due_date', type: 'timestamptz', nullable: true })
   dueDate!: Date | null;
   @Column({ name: 'is_archived', type: 'boolean', default: false })
