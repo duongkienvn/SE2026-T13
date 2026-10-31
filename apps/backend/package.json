@@ -17,6 +17,7 @@
     "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/database/data-source.ts",
     "migration:show": "typeorm-ts-node-commonjs migration:show -d src/database/data-source.ts",
     "test:database": "pnpm build && node test/database/database-foundation.integration.mjs",
+    "test:phase2-integrity:database": "pnpm build && node test/database/phase2-integrity.integration.mjs",
     "test:workspaces:database": "pnpm build && node test/workspaces/workspaces.integration.mjs",
     "test:workspace-api:database": "pnpm build && node test/workspaces/workspace-api.integration.mjs",
     "test:workspace-members:database": "pnpm build && node test/workspaces/workspace-members-invitations.integration.mjs",
