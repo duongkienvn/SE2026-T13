@@ -1,4 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { RealtimeServerEvent } from '@kanban/shared';
+import { BoardEventPublisher } from '../../realtime/board-event-publisher.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { ApplicationException } from '../../exceptions/application.exception';
@@ -29,6 +31,7 @@ export class CardChecklistsService {
   constructor(
     @InjectRepository(Board) private readonly boards: Repository<Board>,
     private readonly authorization: BoardAuthorizationService,
+    private readonly events: BoardEventPublisher,
   ) {}
 
   async list(
@@ -328,8 +331,22 @@ export class CardChecklistsService {
         manager,
       );
       const card = await this.requireCard(manager, boardId, cardId, true);
-      return operation(manager, card);
+      const mutation = await operation(manager, card);
+      return {
+        ...mutation,
+        payload: {
+          boardId: card.boardId,
+          cardId: card.id,
+          columnId: card.columnId,
+        },
+      };
     });
+    // Never publish while holding a database lock or the board coordinator queue.
+    if (result.changed)
+      await this.events.publish(
+        RealtimeServerEvent.CARD_UPDATED,
+        result.payload,
+      );
     return result.value;
   }
 
@@ -357,13 +374,11 @@ export class CardChecklistsService {
     cardId: string,
     checklistId: string,
   ): Promise<CardChecklist> {
-    const row = await manager
-      .getRepository(CardChecklist)
-      .findOne({
-        where: { id: checklistId, cardId },
-        relations: { items: true },
-        order: { items: { position: 'ASC', id: 'ASC' } },
-      });
+    const row = await manager.getRepository(CardChecklist).findOne({
+      where: { id: checklistId, cardId },
+      relations: { items: true },
+      order: { items: { position: 'ASC', id: 'ASC' } },
+    });
     if (!row) this.notFound('CHECKLIST_NOT_FOUND', 'Checklist not found');
     return row;
   }
