@@ -521,6 +521,167 @@ describe('Card HTTP API with real JWT, authorization, services and envelopes', (
     );
   });
 
+  it('round-trips start-only, due-only, empty and equal/ordered date pairs through create, detail and list', async () => {
+    for (const dates of [
+      {},
+      { startDate: '2026-03-08T01:30:00-05:00' },
+      { dueDate: '2026-03-08T03:30:00-04:00' },
+      {
+        startDate: '2026-03-08T01:30:00-05:00',
+        dueDate: '2026-03-08T03:30:00-04:00',
+      },
+      { startDate: '2024-02-29T00:00Z', dueDate: '2024-02-29T00:00Z' },
+    ]) {
+      const created = (
+        await http()
+          .post(base)
+          .send({ columnId: ID.column, title: 'Dates', ...dates })
+          .expect(201)
+      ).body.data;
+      const expected = {
+        startDate: dates.startDate
+          ? new Date(dates.startDate).toISOString()
+          : null,
+        dueDate: dates.dueDate ? new Date(dates.dueDate).toISOString() : null,
+      };
+      expect(created).toMatchObject(expected);
+      expect(
+        (await http().get(`${base}/${created.id}`).expect(200)).body.data,
+      ).toMatchObject(expected);
+      expect(
+        (await http().get(`${base}?limit=100`).expect(200)).body.data.find(
+          (row: { id: string }) => row.id === created.id,
+        ),
+      ).toMatchObject(expected);
+      expect(created).not.toHaveProperty('dueStatus');
+      expect(created).not.toHaveProperty('timeZone');
+    }
+  });
+
+  it('validates PATCH against persisted counterpart, atomically replaces/clears ranges and suppresses equivalent instants', async () => {
+    const input = {
+      startDate: '2026-03-08T01:30:00-05:00',
+      dueDate: '2026-03-08T03:30:00-04:00',
+    };
+    const row = (
+      await http()
+        .post(base)
+        .send({ columnId: ID.column, title: 'Keep', ...input })
+        .expect(201)
+    ).body.data;
+    h.events.publish.mockClear();
+    for (const dates of [
+      { startDate: '2026-03-08T08:00Z', title: 'Must roll back' },
+      { dueDate: '2026-03-08T05:00Z' },
+    ]) {
+      const rejected = await http()
+        .patch(`${base}/${row.id}`)
+        .send(dates)
+        .expect(400);
+      expect(rejected.body.code).toBe('CARD_DATE_RANGE_INVALID');
+    }
+    expect(
+      (await http().get(`${base}/${row.id}`).expect(200)).body.data.title,
+    ).toBe('Keep');
+    await http()
+      .patch(`${base}/${row.id}`)
+      .send({
+        startDate: '2026-03-08T06:30:00Z',
+        dueDate: '2026-03-08T07:30:00Z',
+      })
+      .expect(200);
+    expect(h.events.publish).not.toHaveBeenCalled();
+    const changed = await http(ID.target)
+      .patch(`${base}/${row.id}`)
+      .send({ startDate: '2026-04-01T00:00Z', dueDate: '2026-04-02T00:00Z' })
+      .expect(200);
+    expect(changed.body.data).toMatchObject({
+      startDate: '2026-04-01T00:00:00.000Z',
+      dueDate: '2026-04-02T00:00:00.000Z',
+    });
+    expect(h.events.publish).toHaveBeenCalledTimes(1);
+    expect(
+      (
+        await http()
+          .patch(`${base}/${row.id}`)
+          .send({ startDate: null })
+          .expect(200)
+      ).body.data,
+    ).toMatchObject({ startDate: null, dueDate: '2026-04-02T00:00:00.000Z' });
+    await http().patch(`${base}/${row.id}`).send(input).expect(200);
+    expect(
+      (
+        await http()
+          .patch(`${base}/${row.id}`)
+          .send({ startDate: null, dueDate: null })
+          .expect(200)
+      ).body.data,
+    ).toMatchObject({ startDate: null, dueDate: null });
+  });
+
+  it('rejects ambiguous/impossible dates, start-after-due creation and unsupported precision/timezone overrides', async () => {
+    for (const dates of [
+      { startDate: '2026-03-08' },
+      { dueDate: '2026-03-08T02:30:00' },
+      { startDate: '2026-02-30T00:00Z' },
+      { dueDate: '2026-01-01T00:00+24:00' },
+      { startDate: '2026-03-09T00:00Z', dueDate: '2026-03-08T00:00Z' },
+      { startDateOnly: '2026-03-08', timeZone: 'America/New_York' },
+      { dueStatus: 'OVERDUE' },
+    ])
+      await http()
+        .post(base)
+        .send({ columnId: ID.column, title: 'No', ...dates })
+        .expect(400);
+    expect(h.events.publish).not.toHaveBeenCalled();
+    await http(OUTSIDER)
+      .patch(`${base}/${ID.card}`)
+      .send({ startDate: '2026-03-08T00:00Z' })
+      .expect(404);
+    await http()
+      .patch(`${base}/${FOREIGN_CARD}`)
+      .send({ startDate: '2026-03-08T00:00Z' })
+      .expect(404);
+  });
+
+  it('preserves both dates across archive/restore and rejects archived Card and Board date writes', async () => {
+    const row = (
+      await http()
+        .post(base)
+        .send({
+          columnId: ID.column,
+          title: 'Keep',
+          startDate: '2026-03-08T06:30:00Z',
+          dueDate: '2026-03-08T07:30:00Z',
+        })
+        .expect(201)
+    ).body.data;
+    await http().post(`${base}/${row.id}/archive`).expect(200);
+    await http()
+      .patch(`${base}/${row.id}`)
+      .send({ startDate: null })
+      .expect(409);
+    const archived = await http().get(`${base}?status=archived`).expect(200);
+    expect(
+      archived.body.data.find((card: { id: string }) => card.id === row.id),
+    ).toMatchObject({ startDate: row.startDate, dueDate: row.dueDate });
+    expect(
+      (await http().post(`${base}/${row.id}/restore`).expect(200)).body.data,
+    ).toMatchObject({ startDate: row.startDate, dueDate: row.dueDate });
+    archivedBoard = true;
+    expect(
+      (await http().get(`${base}/${row.id}`).expect(200)).body.data.startDate,
+    ).toBe(row.startDate);
+    expect(
+      (
+        await http()
+          .patch(`${base}/${row.id}`)
+          .send({ dueDate: null })
+          .expect(409)
+      ).body.code,
+    ).toBe('BOARD_ARCHIVED');
+  });
+
   it('documents all routes, statuses and nested DTOs in OpenAPI', () => {
     const document = SwaggerModule.createDocument(
       app,
@@ -549,6 +710,15 @@ describe('Card HTTP API with real JWT, authorization, services and envelopes', (
     ).toHaveProperty('204');
     expect(document.components!.schemas!.CardResponseDto).toHaveProperty(
       'properties.assignees',
+    );
+    expect(document.components!.schemas!.CardResponseDto).toHaveProperty(
+      'properties.startDate',
+    );
+    expect(document.components!.schemas!.CreateCardDto).toHaveProperty(
+      'properties.startDate',
+    );
+    expect(document.components!.schemas!.UpdateCardDto).toHaveProperty(
+      'properties.startDate',
     );
     expect(document.components!.schemas!.MoveCardDto).toMatchObject({
       required: ['toColumnId', 'beforeCardId'],
