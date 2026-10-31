@@ -6,7 +6,7 @@ import {
   workspaceOverviewResponse as overview,
   workspacePage,
 } from '../../test/workspace-fixtures';
-import { workspaceGateway } from './api';
+import { listWorkspaceActivity, workspaceGateway } from './api';
 import { workspaceBoardsGateway } from './boards/gateway';
 
 const signal = () => new AbortController().signal;
@@ -19,6 +19,31 @@ const filters = {
 const boardPath = `/workspaces/${workspace.id}/boards?page=1&limit=20&status=active&sort=updatedAt`;
 
 describe('Workspace HTTP adapters', () => {
+  it('requests an authorized activity page and preserves server pagination', async () => {
+    const item = {
+      id: 'event',
+      eventType: 'BOARD_MOVED',
+      createdAt: '2026-01-01T00:00:00Z',
+      actor: null,
+      board: null,
+    };
+    const calls = mockApi({
+      [`GET /workspaces/${workspace.id}/activity?page=2&limit=20`]:
+        workspacePage([item], 2, 21, 20),
+    });
+    const abort = signal();
+    const result = await listWorkspaceActivity(
+      'token',
+      workspace.id,
+      2,
+      20,
+      abort,
+    );
+    expect(result.items).toEqual([item]);
+    expect(result.meta).toMatchObject({ page: 2, total: 21, totalPages: 2 });
+    expect(calls[0].headers.Authorization).toBe('Bearer token');
+    expect(vi.mocked(fetch).mock.calls[0][1]?.signal).toBe(abort);
+  });
   it('loads every membership page in order with Bearer auth and cancellation', async () => {
     const calls = mockApi({
       'GET /workspaces?page=1&limit=100': workspacePage(

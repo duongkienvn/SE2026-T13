@@ -1,0 +1,117 @@
+- dialog "Workspace activity":
+  - heading "Workspace activity" [level=2]
+  - list:
+    - listitem:
+      - paragraph:
+        - strong: QA Member
+        - text: "moved a board into the workspace:"
+        - link "Accessible board":
+          - /url: /boards/qa-board
+      - time: 10/30/2026, 5:00:00 PM
+    - listitem:
+      - paragraph:
+        - strong: Unknown user
+        - text: updated the workspace
+      - time: 10/30/2026, 5:00:00 PM
+    - listitem:
+      - paragraph:
+        - strong: Long Workspace Member Name Long Workspace Member Name Long Workspace Member Name Long Workspace Member Name
+        - text: updated the workspace
+      - time: 10/30/2026, 5:00:00 PM
+    - listitem:
+      - paragraph:
+        - strong: QA Member
+        - text: updated the workspace
+      - time: 10/30/2026, 5:00:00 PM
+    - listitem:
+      - paragraph:
+        - strong: QA Member
+        - text: updated the workspace
+      - time: 10/30/2026, 5:00:00 PM
+    - listitem:
+      - paragraph:
+        - strong: QA Member
+        - text: updated the workspace
+      - time: 10/30/2026, 5:00:00 PM
+    - listitem:
+      - paragraph:
+        - strong: QA Member
+        - text: updated the workspace
+      - time: 10/30/2026, 5:00:00 PM
+    - listitem:
+      - paragraph:
+        - strong: QA Member
+        - text: updated the workspace
+      - time: 10/30/2026, 5:00:00 PM
+    - listitem:
+      - paragraph:
+        - strong: QA Member
+        - text: updated the workspace
+      - time: 10/30/2026, 5:00:00 PM
+    - listitem:
+      - paragraph:
+        - strong: QA Member
+        - text: updated the workspace
+      - time: 10/30/2026, 5:00:00 PM
+    - listitem:
+      - paragraph:
+        - strong: QA Member
+        - text: updated the workspace
+      - time: 10/30/2026, 5:00:00 PM
+    - listitem:
+      - paragraph:
+        - strong: QA Member
+        - text: updated the workspace
+      - time: 10/30/2026, 5:00:00 PM
+    - listitem:
+      - paragraph:
+        - strong: QA Member
+        - text: updated the workspace
+      - time: 10/30/2026, 5:00:00 PM
+    - listitem:
+      - paragraph:
+        - strong: QA Member
+        - text: updated the workspace
+      - time: 10/30/2026, 5:00:00 PM
+    - listitem:
+      - paragraph:
+        - strong: QA Member
+        - text: updated the workspace
+      - time: 10/30/2026, 5:00:00 PM
+    - listitem:
+      - paragraph:
+        - strong: QA Member
+        - text: updated the workspace
+      - time: 10/30/2026, 5:00:00 PM
+    - listitem:
+      - paragraph:
+        - strong: QA Member
+        - text: updated the workspace
+      - time: 10/30/2026, 5:00:00 PM
+    - listitem:
+      - paragraph:
+        - strong: QA Member
+        - text: updated the workspace
+      - time: 10/30/2026, 5:00:00 PM
+    - listitem:
+      - paragraph:
+        - strong: QA Member
+        - text: updated the workspace
+      - time: 10/30/2026, 5:00:00 PM
+    - listitem:
+      - paragraph:
+        - strong: QA Member
+        - text: updated the workspace
+      - time: 10/30/2026, 5:00:00 PM
+  - paragraph: 23 events
+  - navigation "Activity pages":
+    - list:
+      - listitem:
+        - button "Previous page" [disabled]
+      - listitem:
+        - button "Page 1": "1"
+      - listitem:
+        - button "Page 2": "2"
+      - listitem:
+        - button "Next page"
+  - button "Close"

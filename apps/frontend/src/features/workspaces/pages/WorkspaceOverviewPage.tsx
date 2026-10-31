@@ -14,7 +14,7 @@ export function WorkspaceOverviewPage() {
       <WorkspaceSummaryCards overview={overview} state={state} />
       <div className="grid items-start gap-4 md:grid-cols-2">
         <RecentWorkspaceBoards overview={overview} state={state} />
-        <WorkspaceActivity />
+        <WorkspaceActivity state={state} />
       </div>
     </div>
   );

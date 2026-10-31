@@ -1,0 +1,72 @@
+[
+  {
+    "theme": "light",
+    "width": 320,
+    "overflow": false,
+    "accessible": "true",
+    "restored": true
+  },
+  {
+    "theme": "light",
+    "width": 375,
+    "overflow": false,
+    "accessible": "true",
+    "restored": true
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "overflow": false,
+    "accessible": "true",
+    "restored": true
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "overflow": false,
+    "accessible": "true",
+    "restored": true
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "overflow": false,
+    "accessible": "true",
+    "restored": true
+  },
+  {
+    "theme": "dark",
+    "width": 320,
+    "overflow": false,
+    "accessible": "true",
+    "restored": true
+  },
+  {
+    "theme": "dark",
+    "width": 375,
+    "overflow": false,
+    "accessible": "true",
+    "restored": true
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "overflow": false,
+    "accessible": "true",
+    "restored": true
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "overflow": false,
+    "accessible": "true",
+    "restored": true
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "overflow": false,
+    "accessible": "true",
+    "restored": true
+  }
+]

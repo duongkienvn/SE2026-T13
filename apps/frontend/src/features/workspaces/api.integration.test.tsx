@@ -72,6 +72,42 @@ function mount(
 }
 
 describe('Workspace routes using production HTTP adapters', () => {
+  it.each(['ADMIN', 'MEMBER'] as const)(
+    'shows only the %s activity page returned by the server',
+    async (role) => {
+      const row = {
+        id: 'visible-event',
+        eventType: 'WORKSPACE_UPDATED',
+        createdAt: '2026-10-30T10:00:00Z',
+        actor: {
+          id: 'actor',
+          displayName: `${role} visible actor`,
+          avatarUrl: null,
+        },
+        board: null,
+      };
+      const calls = mount(`/workspaces/${workspace.id}`, {
+        [`GET /workspaces/${workspace.id}/overview`]: ok({
+          ...overview,
+          workspace: { ...workspace, role, canManage: role === 'ADMIN' },
+        }),
+        [`GET /workspaces/${workspace.id}/activity?page=1&limit=5`]:
+          workspacePage([row], 1, 1, 5),
+      }).calls;
+      await screen.findByText(`${role} visible actor`);
+      expect(screen.queryByText(/private hidden board/i)).toBeNull();
+      expect(calls.some((call) => call.path.includes('/invitations'))).toBe(
+        false,
+      );
+    },
+  );
+  it('does not request protected activity for a guest or outsider', async () => {
+    const { calls } = mount(`/workspaces/${workspace.id}`, {
+      [`GET /workspaces/${workspace.id}/overview`]: fail(404, 'NOT_FOUND'),
+    });
+    await screen.findByText(/do not have access to it/i);
+    expect(calls.some((call) => call.path.includes('/activity'))).toBe(false);
+  });
   it('removes cached roster counts immediately on a membership event and reloads privacy-aware summaries', async () => {
     let count: number | null = 9;
     let role: 'OWNER' | null = 'OWNER';

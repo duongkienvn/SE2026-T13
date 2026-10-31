@@ -161,3 +161,45 @@ Eight meaningful local commits were authorized, in order:
 8. `docs(workspace): document visual QA and API integration handoff` (this record/evidence commit).
 
 No push, PR, merge or deploy. Remaining closure work: merge/verify #111's real contract, implement its frontend adapter, reconcile validators/permission fields, connect real access-loss invalidation, and run live authenticated/ACL/creation/reload tests plus populated visual QA with authorized real test data.
+
+## P2-C06 Activity integration (2026-10-31)
+
+The Overview Activity slot reads the persisted Workspace Activity endpoint and shows at most five recent rows. View all opens paginated history using server totals. The server filters rows and Board associations for the requesting member; the UI neither enriches them from other caches nor infers hidden activity. Actors omitted by the API receive a neutral label, unknown event types receive a generic label, and only a Board object returned by the API creates a link. The checked-in API uses `POLICY_UPDATED` and `BOARD_MOVED` (rather than the names in the initial handoff).
+
+| State                               | Presentation                                                                     |
+| ----------------------------------- | -------------------------------------------------------------------------------- |
+| Loading or revalidating             | Loading status/skeleton; previously cached rows hidden                           |
+| Ready, empty                        | Workspace-change empty message; View all disabled                                |
+| Ready, populated                    | Recent rows and accessible history dialog with server pagination                 |
+| Network error                       | Panel-level error and retry                                                      |
+| Workspace 403/404 or session change | Existing Workspace revocation/session handling clears or isolates protected data |
+
+Activity pages are scoped by user, session generation and Workspace and pass the query AbortSignal to the HTTP client. Existing Workspace resource invalidation covers workspace/member/settings/Board actions. Mount, focus and reconnect trigger revalidation; there is no new realtime event. A history page beyond the server's last page returns to the last available page.
+
+Verification for this integration: focused component and Workspace adapter tests passed (30 tests); `pnpm lint` and `pnpm build` passed. `pnpm test` was interrupted after backend HTTP suites failed with sandbox loopback `EACCES`. Repository-wide `pnpm format:check` reported 670 existing checkout formatting issues. The follow-up below records additional browser and session/revocation checks. The local Node version (22.12.0) is below the repository requirement (22.13.0).
+
+### Follow-up verification and privacy fixes
+
+The fallback for an absent actor is now “Unknown user”, since a declined invitation can come from someone who was never a Workspace member. Activity pages use zero inactive cache retention, so leaving the page cancels in-flight reads and discards pages after their last observer is removed. The history trigger retains focusability while marked unavailable, allowing focus restoration even during refresh.
+
+Focused tests exercise page selection, the shrinking-last-page case, retries, server-filtered ADMIN/MEMBER results, inaccessible Workspaces, cancellation on Workspace and account changes, stale responses, HTTP 401/403/404, realtime revocation, focus/reconnect and focus restoration. These tests use controlled HTTP responses; they do not replace the backend's database ACL integration tests.
+
+Isolated browser fixture QA used the existing Workspace preview and intercepted Activity HTTP responses. The [results](../../design/screens/implementation/workspace-activity/qa-results.json) cover light/dark at 320, 375, 768, 1280 and 1440 px, with no document horizontal overflow and successful keyboard open/Escape/focus restoration. Accessible dialog tree snapshots and dialog screenshots are alongside the results; examples: [mobile dark](../../design/screens/implementation/workspace-activity/history-dark-375.png), [desktop light](../../design/screens/implementation/workspace-activity/light-1280.png). The screenshots contain isolated test fixtures, not production data.
+
+Follow-up commands used the bundled Node 24 runtime. `pnpm lint`, `pnpm build`, and the focused Activity/Workspace/Board Activity tests passed. The full frontend run with `vitest run --maxWorkers=2` passed 104 files and 1,107 tests; the newest Activity-specific cases also passed in a separate focused run. The root `pnpm test` retry with loopback permission was stopped after concurrent frontend suites timed out. A separate backend run passed 71 suites and 748 tests but failed the BoardsModule bootstrap wrapper with `ETIMEDOUT`; the wrapper also timed out when rerun alone, so the backend suite is not recorded as a pass.
+
+The underlying `node -r ts-node/register test/boards/boards-module.bootstrap.mjs` passed when run directly with loopback access; it verifies real Nest module wiring using a mock DataSource. This does not change the failed Jest wrapper result above.
+
+Final checks: changed-file Prettier and `git diff --check` passed. A fresh repository-wide `pnpm format:check` still reports formatting differences in 667 unchanged checkout files; no repository-wide formatting was applied.
+
+### Additional end-to-end ACL and interaction verification
+
+The `test:workspace-api:database` suite passed against a disposable PostgreSQL 16 container bound to localhost; it created and dropped its own random database. A separate real Chrome → frontend → Nest HTTP → PostgreSQL run used four isolated test accounts and a PRIVATE Board. [Results](../../design/screens/implementation/workspace-activity/real-acl-qa.json): ADMIN saw the invitation event but not the ungranted PRIVATE Board; MEMBER saw the granted Board but not the invitation event; Board-only guest and outsider received 404 and no protected content. Test users and data existed only in the temporary database. The container and temporary database were removed after the run.
+
+Additional [browser interaction results](../../design/screens/implementation/workspace-activity/interaction-qa.json) cover light/dark at 320, 375, 768, 1280, and 1440 px. Each run exercised summary retry, history retry, Tab to page 2 and Enter, Escape/focus restoration, and a 403 Workspace without an Activity request. Screenshots are stored alongside the results. The Workspace 403 scenarios and retry responses in this browser pass used the isolated preview fixture.
+
+The previously timing-out BoardsModule Jest test passed in isolation with `TS_NODE_TRANSPILE_ONLY=true` using Node 24; `pnpm build` independently checks TypeScript. This does not retroactively turn earlier failed or interrupted test runs into passes.
+
+Final root `pnpm test` passed with the bundled Node 24.22.1, `VITEST_MAX_WORKERS=2` and `TS_NODE_TRANSPILE_ONLY=true`: shared 7 tests, backend 72 suites/749 tests, and frontend 104 files/1,108 tests. `pnpm build` separately passed TypeScript checking. This successful run follows and does not overwrite the earlier timeout results above.
+
+A repository-wide `pnpm exec prettier --check . --end-of-line auto` also passed on the Windows checkout. The standard `pnpm format:check` remains a failure on the existing CRLF/LF differences noted above; the repository configuration and unrelated files were not changed.

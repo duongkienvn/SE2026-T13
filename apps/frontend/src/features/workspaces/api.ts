@@ -17,7 +17,25 @@ import type {
   CreateTeamWorkspaceInput,
   WorkspaceOverview,
   WorkspaceSummary,
+  WorkspaceActivityItem,
 } from './types';
+
+export function listWorkspaceActivity(
+  accessToken: string,
+  workspaceId: string,
+  page: number,
+  limit: number,
+  signal: AbortSignal,
+) {
+  const query = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+  return apiRequestPage<WorkspaceActivityItem>(
+    `/workspaces/${encodeURIComponent(workspaceId)}/activity?${query}`,
+    { accessToken, signal },
+  );
+}
 
 /** Membership-only discovery and server ACL-filtered overview. */
 export interface WorkspaceGateway {
