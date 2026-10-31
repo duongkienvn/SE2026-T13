@@ -151,3 +151,13 @@ state under the Board lock, then record Activity and publish after commit as usu
 Date-only strings are rejected; Preferences change display projection only. Shared
 due-state helpers require an explicit clock and use IANA calendar projection.
 See the [date representation, API and verification contract](../tasks/backend/card-advanced-dates.md).
+
+## Card attachment foundation (CD-03 part 1)
+
+`CardsModule` owns authenticated nested URL attachment CRUD. Mutations use the
+Board lock for current ACL, Card archive checks, provisional slot limits,
+idempotency and revision checks. Only ACTIVE allowlisted metadata is public;
+file operations remain 503 through an explicitly disabled private-storage boundary.
+Changes reuse one post-commit `card:updated` invalidation. Storage I/O and workers
+are reserved for P3-06; database triggers persist cleanup obligations on terminal
+states/hard deletes. See [schema, policy classifications and P3-06 handoff](../tasks/backend/card-attachments-foundation.md).
