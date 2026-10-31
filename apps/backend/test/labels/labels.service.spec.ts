@@ -5,7 +5,6 @@ import { labelsHarness, ID } from './labels.fixture';
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: () => () => undefined,
 }));
-const query = { page: 1, limit: 20 };
 describe('Board labels service', () => {
   let h: ReturnType<typeof labelsHarness>;
   beforeEach(() => {
