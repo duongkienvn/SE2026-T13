@@ -19,10 +19,7 @@ import { CardChecklistItem } from './entities/card-checklist-item.entity';
 import { CardAttachmentsController } from './card-attachments.controller';
 import { CardAttachmentsService } from './card-attachments.service';
 import { CardAttachment } from './entities/card-attachment.entity';
-import {
-  AttachmentStorage,
-  DisabledAttachmentStorage,
-} from './attachments/attachment-storage';
+import { attachmentStorageProvider } from './attachments/attachment-storage.provider';
 
 @Module({
   imports: [
@@ -50,7 +47,7 @@ import {
     CardsService,
     CardChecklistsService,
     CardAttachmentsService,
-    { provide: AttachmentStorage, useClass: DisabledAttachmentStorage },
+    attachmentStorageProvider,
   ],
   exports: [CardChecklistsService],
 })

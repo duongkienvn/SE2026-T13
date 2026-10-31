@@ -3,11 +3,13 @@ import { ApplicationException } from '../../../exceptions/application.exception'
 
 /** Internal only: grants and keys must never enter attachment metadata or events. */
 export interface AttachmentUploadGrant {
+  readonly kind: 'memory' | 's3';
   readonly url: string;
   readonly fields: Readonly<Record<string, string>>;
   readonly expiresAt: Date;
 }
 export interface AttachmentStoredObject {
+  readonly cancel?: () => void;
   readonly body: AsyncIterable<Uint8Array>;
   readonly byteSize: number;
   /** Untrusted until P3-06 validates actual bounded bytes. */
@@ -29,6 +31,7 @@ export interface VerifiedAttachmentWrite {
 
 /** P3-06 must perform all storage/byte verification outside Board transactions. */
 export abstract class AttachmentStorage {
+  abstract readonly kind: 'disabled' | 'memory' | 's3';
   abstract readonly available: boolean;
   abstract createUploadGrant(
     reservation: AttachmentUploadReservation,
@@ -49,6 +52,7 @@ export function attachmentFilesUnavailable(): never {
 }
 @Injectable()
 export class DisabledAttachmentStorage extends AttachmentStorage {
+  readonly kind = 'disabled' as const;
   readonly available = false;
   async createUploadGrant(): Promise<AttachmentUploadGrant> {
     return attachmentFilesUnavailable();
