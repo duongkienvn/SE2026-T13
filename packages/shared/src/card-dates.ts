@@ -71,3 +71,52 @@ export function isCardDateInstant(value: unknown): value is string {
     return false;
   }
 }
+
+export const CardDueStatus = {
+  NO_DUE_DATE: 'NO_DUE_DATE',
+  OVERDUE: 'OVERDUE',
+  DUE_TODAY: 'DUE_TODAY',
+  UPCOMING: 'UPCOMING',
+} as const;
+export type CardDueStatus = (typeof CardDueStatus)[keyof typeof CardDueStatus];
+
+/** Named IANA zones only, matching User Preferences; fixed numeric offsets are not zones. */
+function dayFormatter(timeZone: string): Intl.DateTimeFormat {
+  if (!/^[A-Za-z][A-Za-z0-9_+\-/]*$/.test(timeZone))
+    throw new RangeError('Expected a named IANA time zone');
+  return new Intl.DateTimeFormat('en-US-u-ca-iso8601-nu-latn', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+}
+function civilDay(instant: Date, formatter: Intl.DateTimeFormat): string {
+  const parts = formatter.formatToParts(instant);
+  const part = (name: string) =>
+    parts.find((part) => part.type === name)!.value;
+  return `${part('year').padStart(4, '0')}-${part('month')}-${part('day')}`;
+}
+/** Display projection only; never converts a civil date into an instant. */
+export function cardDateInZone(instant: string, timeZone: string): string {
+  return civilDay(parseCardDateInstant(instant), dayFormatter(timeZone));
+}
+
+/** Explicit clock, no implicit Date.now. Overdue has priority over today's civil day.
+ * due < now => OVERDUE; otherwise same zone-local calendar date => DUE_TODAY.
+ * IANA calendar projection uses Intl and never assumes a day is 24 elapsed hours.
+ */
+export function deriveCardDueStatus(
+  dueDate: string | null,
+  now: string,
+  timeZone = 'UTC',
+): CardDueStatus {
+  const clock = parseCardDateInstant(now),
+    formatter = dayFormatter(timeZone);
+  if (dueDate === null) return CardDueStatus.NO_DUE_DATE;
+  const due = parseCardDateInstant(dueDate);
+  if (due.getTime() < clock.getTime()) return CardDueStatus.OVERDUE;
+  return civilDay(due, formatter) === civilDay(clock, formatter)
+    ? CardDueStatus.DUE_TODAY
+    : CardDueStatus.UPCOMING;
+}
