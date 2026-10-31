@@ -8,6 +8,7 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  Unique,
 } from 'typeorm';
 import { Board } from '../../boards/entities/board.entity';
 import { BoardColumn } from '../../columns/entities/board-column.entity';
@@ -16,6 +17,7 @@ import { Comment } from '../../comments/entities/comment.entity';
 import { User } from '../../users/entities/user.entity';
 
 @Entity('cards')
+@Unique('UQ_cards_id_board_id', ['id', 'boardId'])
 @Index('IDX_cards_board_id_column_id', ['boardId', 'columnId'])
 @Index('IDX_cards_column_id', ['columnId'])
 export class Card {
