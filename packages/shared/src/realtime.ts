@@ -50,6 +50,7 @@ export const RealtimeServerEvent = {
   COMMENT_CREATED: 'comment:created',
   COMMENT_UPDATED: 'comment:updated',
   COMMENT_DELETED: 'comment:deleted',
+  LABELS_CHANGED: 'labels:changed',
 } as const;
 
 export const RealtimePresenceEvent = {
@@ -76,6 +77,12 @@ export interface CardChangedEvent {
   boardId: string;
   cardId: string;
   columnId: string;
+}
+
+/** Catalog changes invalidate catalog and Card label caches across this Board. */
+export interface LabelsChangedEvent {
+  boardId: string;
+  labelId: string;
 }
 
 export interface CardMovedEvent {
@@ -112,7 +119,7 @@ export interface RealtimeServerEvents {
   'column:moved': (payload: ColumnChangedEvent) => void;
   'column:deleted': (payload: ColumnChangedEvent) => void;
   'card:created': (payload: CardChangedEvent) => void;
-  /** Invalidate Card details and checklist detail/summary caches, including item-only changes. */
+  /** Invalidate Card details and checklist detail/summary caches, including item-only changes and Card label associations. */
   'card:updated': (payload: CardChangedEvent) => void;
   'card:moved': (payload: CardMovedEvent) => void;
   'card:archived': (payload: CardChangedEvent) => void;
@@ -124,4 +131,5 @@ export interface RealtimeServerEvents {
   'comment:created': (payload: CommentChangedEvent) => void;
   'comment:updated': (payload: CommentChangedEvent) => void;
   'comment:deleted': (payload: CommentChangedEvent) => void;
+  'labels:changed': (payload: LabelsChangedEvent) => void;
 }

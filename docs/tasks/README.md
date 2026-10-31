@@ -57,6 +57,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 - [Column management API](backend/column-management-api.md)
 - [Card management API](backend/card-management-api.md)
 - [Card checklists backend](backend/card-checklists.md)
+- [Board-scoped labels and Card associations](backend/board-card-labels.md)
 - [Archived cards management and restore](backend/card-archive-restore.md)
 - [Realtime foundation](backend/realtime-foundation.md)
 - [Realtime board events](backend/realtime-board-events.md)

@@ -28,6 +28,7 @@ const cached = {
   boardList: boardKeys.lists(),
   otherBoard: boardKeys.detail(OTHER),
   otherCards: boardKeys.cards(OTHER),
+  otherBoardCard: boardKeys.card(OTHER, CARD),
   otherArchived: boardKeys.archivedCardsPage(OTHER, 1),
   commentsPage1: commentKeys.page(BOARD, CARD, 1),
   commentsPage2: commentKeys.page(BOARD, CARD, 2),
@@ -81,6 +82,7 @@ describe('BOARD_EVENTS', () => {
       'comment:created',
       'comment:deleted',
       'comment:updated',
+      'labels:changed',
       'member:added',
       'member:removed',
       'member:role-changed',
@@ -169,6 +171,32 @@ describe('invalidationTargets', () => {
     ]);
   });
 
+  it('labels:changed refreshes all Card queries and archived pages of its Board', async () => {
+    expect(
+      await hit('labels:changed', { boardId: BOARD, labelId: 'label-1' }),
+    ).toEqual([
+      'cards',
+      'card',
+      'otherCard',
+      'archived',
+      'archivedPage2',
+      'commentsPage1',
+      'commentsPage2',
+      'otherCardComments',
+    ]);
+  });
+
+  it('labels:changed isolates Boards even when cached Card IDs match', async () => {
+    expect(
+      await hit('labels:changed', { boardId: OTHER, labelId: 'label-1' }),
+    ).toEqual([
+      'otherCards',
+      'otherBoardCard',
+      'otherArchived',
+      'otherBoardComments',
+    ]);
+  });
+
   it('member:added refreshes membership and any newly granted collaboration role', async () => {
     expect(await hit('member:added', member)).toEqual([
       'board',
@@ -225,10 +253,12 @@ describe('invalidationTargets', () => {
         fromColumnId: 'column-1',
         toColumnId: 'column-2',
         userId: 'user-1',
+        labelId: 'label-1',
       };
       const names = await invalidated(invalidationTargets(event, payload));
       expect(names).not.toContain('otherBoard');
       expect(names).not.toContain('otherCards');
+      expect(names).not.toContain('otherBoardCard');
       expect(names).not.toContain('otherArchived');
       expect(names).not.toContain('otherBoardComments');
     }

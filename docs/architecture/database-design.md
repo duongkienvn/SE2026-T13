@@ -27,6 +27,9 @@ erDiagram
     board_columns ||--o{ cards : contains
     cards ||--o{ card_assignees : has
     cards ||--o{ comments : has
+    boards ||--o{ board_labels : owns
+    cards ||--o{ card_labels : has
+    board_labels ||--o{ card_labels : assigned_through
     cards ||--o{ card_checklists : has
     card_checklists ||--o{ card_checklist_items : has
 
@@ -440,3 +443,12 @@ and nonblank; item checked state is boolean and progress is derived, never store
 Parent FKs cascade on hard deletion; archive/restore preserves both tables.
 The unique B-tree indexes also index parent FKs. See the
 [schema, bounds, migration and safe rollback contract](../tasks/backend/card-checklists.md).
+
+## Board label extension (CD-02)
+
+`board_labels` stores each Board's case-insensitive unique name/color catalog.
+`card_labels` has a `(card_id,label_id)` primary key and composite Board-scoped
+FKs to Card and BoardLabel, so even direct SQL cannot associate foreign Boards.
+Parent composite unique keys, indexed FKs, canonical hex-color/nonblank-name
+CHECKs and cascading deletion are added by the forward migration. Archive and
+restore preserve links. See the [schema, API, index and rollback contract](../tasks/backend/board-card-labels.md).
