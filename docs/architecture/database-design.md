@@ -452,3 +452,12 @@ FKs to Card and BoardLabel, so even direct SQL cannot associate foreign Boards.
 Parent composite unique keys, indexed FKs, canonical hex-color/nonblank-name
 CHECKs and cascading deletion are added by the forward migration. Archive and
 restore preserve links. See the [schema, API, index and rollback contract](../tasks/backend/board-card-labels.md).
+
+## Card start-date extension (CD-04)
+
+`cards.start_date` is nullable `timestamptz` with no default/backfill. The existing
+`due_date` column and values remain unchanged. New CHECKs require finite non-null
+start dates and start <= due when both are present. Partial `(board_id,start_date)`
+and `(board_id,due_date)` indexes support scoped temporal queries. No all-day,
+timezone, completion or mutable due-status column is introduced. See the
+[validation, migration and safe rollback contract](../tasks/backend/card-advanced-dates.md).

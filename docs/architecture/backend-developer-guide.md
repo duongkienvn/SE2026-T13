@@ -142,3 +142,12 @@ are documented in [the checklist contract](../tasks/backend/card-checklists.md).
 lock; composite FKs enforce same-Board links. Catalog invalidation uses one
 post-commit `labels:changed` event; assignments reuse `card:updated`. See the
 [label contracts, lifecycle rules and verification](../tasks/backend/board-card-labels.md).
+
+## Advanced Card dates (CD-04)
+
+Card start/due requests use Card-specific strict ISO instant validation and shared
+parsing. Partial updates validate the complete proposed range against persisted
+state under the Board lock, then record Activity and publish after commit as usual.
+Date-only strings are rejected; Preferences change display projection only. Shared
+due-state helpers require an explicit clock and use IANA calendar projection.
+See the [date representation, API and verification contract](../tasks/backend/card-advanced-dates.md).
