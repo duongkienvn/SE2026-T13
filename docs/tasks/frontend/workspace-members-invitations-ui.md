@@ -58,6 +58,46 @@ and the Workspace switcher (`workspaceDestination` keeps `/members`).
 - **Leave Workspace** is not on this page; it belongs to P2-09 Settings Danger
   Zone (#118).
 
+## Recipient decline follow-up
+
+The recipient can explicitly accept or decline after signing in. Decline opens a
+confirmation dialog; cancel sends nothing, and confirmation posts the fragment
+proof to `/workspace-invitations/decline`. A confirmed 204 shows “Invitation
+declined” and links to Workspaces without claiming membership. The ADMIN history
+filter includes `DECLINED`, using the server status and `declinedAt` contract in
+the [backend handoff](../backend/workspace-invitation-decline.md).
+
+The proof stays in tab memory only and is cleared after success or an account
+change. Reloads, new tabs, email verification and Google redirects require opening
+the email link again. Both actions require a new click after a network failure;
+an ambiguous failure cannot establish whether the server committed the action.
+400/410 share a non-enumerating unusable message; 401 requires sign-in again,
+403 verification, 409 a new invitation and 429 a delay. Accept's existing guard
+can also return 401 for an unverified account. Backend migration must precede UI
+rollout.
+
+Follow-up verification: the focused invitation and Members suites passed 62
+tests, including decline confirmation, status/error handling, explicit retry,
+session changes and the declined history filter. The client requires HTTP 204
+for a confirmed decline. The full frontend suite also passed 1,090 tests across
+102 files. A subsequent Chrome headless run used a local mock API and tested
+320, 375, 768 and 1280px in light and dark: no horizontal overflow, fragment
+removal, confirmation focus, Tab trapping, Escape cancellation/focus restore,
+and one confirmed 204 request with success heading focus. The
+[screenshots and results](../../design/screens/implementation/workspace-invitation-decline/)
+show the review and dialog states. Representative phone, tablet and desktop
+screenshots were visually inspected. This is browser automation and visual
+inspection, not a manual screen-reader audit; that audit remains outstanding.
+The full `pnpm test` subsequently passed with Node 24, two frontend workers,
+30-second frontend timeouts and temporary 300-second subprocess limits for two
+slow backend tests: 1,090 frontend, 708 backend and seven shared tests. These
+runtime limits were supplied for that run without changing repository tests.
+`pnpm --filter @kanban/backend test:workspace-invitations:database` also passed
+against its own disposable PostgreSQL container, covering migration, HTTP and
+Swagger contracts, recipient binding, replay, history and concurrent terminal
+actions. The container was removed afterward. This does not verify deployment
+or that the migration has been applied in any other environment.
+
 ## Invitation acceptance
 
 - Each new invitation link reads its own fragment (`#proof=`, strict 43-char
@@ -76,9 +116,10 @@ and the Workspace switcher (`workspaceDestination` keeps `/members`).
 - Signed in: shows the account email; **Accept invitation** posts
   `{ proof }` to `/workspace-invitations/accept`; success ends the flow and
   invalidates the Workspace list. 400/410 show one generic message (expired,
-  revoked, used or wrong account) and keep the proof in the current flow so the
-  user can switch account; 403 asks for verification, 409 says delivery is unconfirmed, 429
-  asks to wait. "Use a different account" signs out; "Not now" drops the proof.
+  revoked, used or wrong account) and keep the proof in the current flow for a
+  retry; 403 asks for verification, 409 says delivery is unconfirmed, 429 asks
+  to wait. "Use a different account" signs out and drops the proof; "Not now"
+  also drops it.
 - No proof (reload, opened without fragment): "Open your invitation link".
 
 ## Visual parity
