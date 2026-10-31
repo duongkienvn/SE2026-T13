@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 
 export async function verifyInvitationMigration(source) {
-  const migrations = source.migrations;
+  const allMigrations = source.migrations;
+  const migrations = allMigrations.filter(
+    (m) => !m.name.startsWith('PersonalWorkspaceName'),
+  );
   const lifecycle = migrations.find((m) =>
     m.name.startsWith('WorkspaceInvitationLifecycle'),
   );
@@ -71,5 +74,5 @@ export async function verifyInvitationMigration(source) {
   assert.equal((await source.runMigrations()).length, 1);
   source.migrations = migrations.filter((m) => m !== activity);
   assert.equal((await source.runMigrations()).length, 2);
-  source.migrations = migrations;
+  source.migrations = allMigrations;
 }

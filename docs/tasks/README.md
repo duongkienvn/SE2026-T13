@@ -67,6 +67,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Frontend tasks
 
+- [Workspace UX, navigation and responsive polish](frontend/workspace-ux-navigation-polish.md)
 - [Board OWNER visibility and move actions from Board Detail](frontend/board-owner-actions-detail.md)
 - [ACL-scoped Workspace Guests tab](frontend/workspace-guests-directory-ui.md)
 - [Workspace frontend API integration](frontend/workspace-api-integration.md)

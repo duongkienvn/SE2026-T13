@@ -8,16 +8,21 @@ import {
 import { useWorkspaceDirectory } from '../hooks';
 import { workspaceDestination } from '../navigation';
 import { WorkspaceAvatar } from './WorkspaceIdentity';
-import { WorkspaceSections } from './WorkspaceSections';
 
 const linkStyle =
   'flex min-h-11 min-w-0 items-center gap-2.5 rounded-lg px-3 text-sm focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary hover:bg-app';
 
-export function WorkspaceSwitcher({ expanded }: { expanded: boolean }) {
+export function WorkspaceSwitcher({
+  expanded,
+  boardWorkspaceId,
+}: {
+  expanded: boolean;
+  boardWorkspaceId?: string;
+}) {
   const query = useWorkspaceDirectory();
   const match = useMatch('/workspaces/:workspaceId/*');
   const current = query.workspaces.find(
-    (item) => item.id === match?.params.workspaceId,
+    (item) => item.id === (match?.params.workspaceId ?? boardWorkspaceId),
   );
   const details = useRef<HTMLDetailsElement>(null);
   const location = useLocation();
@@ -39,6 +44,9 @@ export function WorkspaceSwitcher({ expanded }: { expanded: boolean }) {
       <Link
         to="/workspaces"
         aria-label="Choose workspace"
+        aria-description={
+          current ? `Current workspace: ${current.name}` : undefined
+        }
         title="Choose workspace"
         className="mb-1 flex min-h-12 items-center justify-center rounded-lg focus-visible:outline-2 focus-visible:outline-primary"
       >
@@ -93,7 +101,7 @@ export function WorkspaceSwitcher({ expanded }: { expanded: boolean }) {
           {query.workspaces.map((item) => (
             <Link
               key={item.id}
-              to={workspaceDestination(item.id, location.pathname)}
+              to={workspaceDestination(item.id)}
               aria-current={item.id === current?.id ? 'location' : undefined}
               className={`${linkStyle} ${item.id === current?.id ? 'bg-primary-soft text-primary' : 'text-ink'}`}
             >
@@ -140,9 +148,16 @@ export function WorkspaceSwitcher({ expanded }: { expanded: boolean }) {
   );
 }
 
-export function WorkspaceNavigation({ expanded }: { expanded: boolean }) {
+export function WorkspaceNavigation({
+  expanded,
+  boardWorkspaceId,
+}: {
+  expanded: boolean;
+  boardWorkspaceId?: string;
+}) {
   const query = useWorkspaceDirectory();
   const match = useMatch('/workspaces/:workspaceId/*');
+  const currentId = match?.params.workspaceId ?? boardWorkspaceId;
   const { pathname } = useLocation();
   const [open, setOpen] = useState(true);
   const itemsId = useId();
@@ -186,13 +201,11 @@ export function WorkspaceNavigation({ expanded }: { expanded: boolean }) {
                     .map((item) => (
                       <div key={item.id}>
                         <Link
-                          to={workspaceDestination(item.id, pathname)}
+                          to={workspaceDestination(item.id)}
                           aria-current={
-                            item.id === match?.params.workspaceId
-                              ? 'location'
-                              : undefined
+                            item.id === currentId ? 'location' : undefined
                           }
-                          className={`${linkStyle} ${item.id === match?.params.workspaceId ? 'bg-app font-medium text-ink' : 'text-muted'}`}
+                          className={`${linkStyle} ${item.id === currentId ? 'bg-primary-soft font-medium text-primary' : 'text-muted'}`}
                         >
                           <WorkspaceAvatar
                             workspace={item}
@@ -202,9 +215,6 @@ export function WorkspaceNavigation({ expanded }: { expanded: boolean }) {
                             {item.name}
                           </span>
                         </Link>
-                        {item.id === match?.params.workspaceId && (
-                          <WorkspaceSections workspaceId={item.id} compact />
-                        )}
                       </div>
                     ))}
                   {!query.workspaces.some((item) => item.type === type) && (

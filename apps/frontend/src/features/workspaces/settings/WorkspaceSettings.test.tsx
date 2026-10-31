@@ -147,7 +147,118 @@ const formCases = [
 const sections = () =>
   screen.getByRole('navigation', { name: 'Workspace settings sections' });
 
+function viewport(initial: number) {
+  let width = initial;
+  const listeners = new Set<() => void>();
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    get matches() {
+      return (
+        query.includes('min-width') &&
+        width >= Number(query.match(/(\d+)px/)?.[1] ?? Infinity)
+      );
+    },
+    media: query,
+    addEventListener: (_event: string, listener: () => void) =>
+      listeners.add(listener),
+    removeEventListener: (_event: string, listener: () => void) =>
+      listeners.delete(listener),
+  }));
+  return (next: number) =>
+    act(() => {
+      width = next;
+      for (const listener of [...listeners]) listener();
+    });
+}
+
+describe.each(formCases)(
+  'Workspace Settings responsive draft — $section',
+  (form) => {
+    it.each([767, 768])(
+      'keeps the same dirty form through repeated breakpoint/rotation changes starting at %spx',
+      async (start) => {
+        const resize = viewport(start);
+        const { calls } = mount(`${base}/settings/${form.section}`);
+        const input = await form.field();
+        form.edit(input);
+        for (const width of [768, 767, 1024, 375, 767, 768]) {
+          resize(width);
+          form.check(true);
+          expect(await form.field()).toBe(input);
+        }
+        expect(calls.some((call) => call.method === 'PATCH')).toBe(false);
+        expect(
+          (
+            screen.getByRole('button', {
+              name: 'Save Changes',
+            }) as HTMLButtonElement
+          ).disabled,
+        ).toBe(false);
+        fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+        form.check(false);
+      },
+    );
+    it('preserves a failed save and dirty state across resize', async () => {
+      const resize = viewport(767);
+      mount(`${base}/settings/${form.section}`, {
+        [`PATCH ${form.endpoint}`]: fail(503, 'SERVICE_UNAVAILABLE'),
+      });
+      form.edit(await form.field());
+      fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+      await screen.findByRole('alert');
+      resize(768);
+      resize(767);
+      form.check(true);
+      expect(screen.getByRole('alert').textContent).toContain('kept');
+    });
+  },
+);
+
 describe('Workspace Settings — General', () => {
+  it('keeps validation through resize, then saves the corrected draft', async () => {
+    const resize = viewport(767);
+    const { calls } = mount(`${base}/settings/general`, {
+      [`PATCH ${base}`]: (request) =>
+        ok({ ...admin, ...(request.body as object) }),
+    });
+    const input = await screen.findByLabelText('Workspace name');
+    fireEvent.change(input, { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+    await screen.findByText('Enter a workspace name.');
+    resize(768);
+    resize(767);
+    expect(screen.getByText('Enter a workspace name.')).toBeTruthy();
+    fireEvent.change(input, { target: { value: 'Resized and saved' } });
+    resize(768);
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+    await screen.findByText('Workspace settings saved.');
+    expect(calls.find((call) => call.method === 'PATCH')?.body).toEqual({
+      name: 'Resized and saved',
+    });
+  });
+  it('keeps the dirty navigation guard after resize and allows clean browser Back', async () => {
+    const resize = viewport(768);
+    const { router } = mount(`${base}/settings/general`);
+    await screen.findByLabelText('Workspace name');
+    await act(() => router.navigate(`${base}/settings/permissions`));
+    fireEvent.click(await screen.findByRole('radio', { name: /Admins only/ }));
+    resize(767);
+    resize(768);
+    await act(() => router.navigate(-1));
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Discard unsaved changes?',
+    });
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Keep editing' }),
+    );
+    expect(
+      (screen.getByRole('radio', { name: /Admins only/ }) as HTMLInputElement)
+        .checked,
+    ).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await act(() => router.navigate(-1));
+    await screen.findByLabelText('Workspace name');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
   it('does not clear newer field edits when an earlier save completes', async () => {
     const pending = deferred<MockResponse>();
     let server = admin;
@@ -591,6 +702,23 @@ describe.each(formCases)(
 );
 
 describe('Workspace Settings — Permissions', () => {
+  it('hides only the redundant Personal creation policy and retains three Board OWNER policies', async () => {
+    mount(`${base}/settings/permissions`, {}, { ...admin, type: 'PERSONAL' });
+    await screen.findByText('Board owners can add board members');
+    expect(screen.queryByText('Who can create boards')).toBeNull();
+    expect(screen.getAllByRole('radio')).toHaveLength(6);
+    expect(
+      screen.getByText('Board owners can change board members'),
+    ).toBeTruthy();
+    expect(
+      screen.getByText('Board owners can change board visibility'),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        /Board guests collaborate through direct board membership/,
+      ),
+    ).toBeTruthy();
+  });
   it('sends only the changed policy and explains the effect', async () => {
     const { calls } = mount(`${base}/settings/permissions`, {
       [`PATCH ${base}/policies`]: ok({

@@ -398,7 +398,11 @@ export async function verifyWorkspaceActivity({
       [team.id, actors.admin],
     );
     const rejected = assert.rejects(
-      source.undoLastMigration(),
+      source.transaction((manager) =>
+        source.migrations
+          .find((migration) => migration.name.startsWith('WorkspaceActivity'))
+          .down(manager.queryRunner),
+      ),
       /Workspace activity history requires a forward fix/,
     );
     let waiting = false;

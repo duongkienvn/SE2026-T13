@@ -164,7 +164,10 @@ export async function verifyPhase2Upgrade(admin, freshCatalog) {
     // of legacy backfill against Teams/WORKSPACE_VISIBLE Boards.
     const after = await snapshot(source, withLedgers);
     source.migrations = all;
-    assert.deepEqual(await source.runMigrations(), []);
+    assert.deepEqual(
+      (await source.runMigrations()).map((migration) => migration.name),
+      ['PersonalWorkspaceName1793577600000'],
+    );
     assert.deepEqual(await snapshot(source, withLedgers), after);
     for (const [name, type] of [
       ['bad-visibility', 'INVALID'],

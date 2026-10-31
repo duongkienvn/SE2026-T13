@@ -35,8 +35,9 @@ function WorkspaceMembersContent({ workspaceId }: { workspaceId: string }) {
   const [params, setParams] = useSearchParams();
   const [notice, setNotice] = useState<Notice>();
   const requestedTab = params.get('tab');
+  const personal = summary?.type === 'PERSONAL';
   const tab =
-    requestedTab === 'invitations' || requestedTab === 'guests'
+    (requestedTab === 'invitations' && !personal) || requestedTab === 'guests'
       ? requestedTab
       : 'members';
   const isAdmin = summary?.role === 'ADMIN';
@@ -64,7 +65,7 @@ function WorkspaceMembersContent({ workspaceId }: { workspaceId: string }) {
     { id: 'members', label: 'Members', icon: UsersIcon },
     { id: 'invitations', label: 'Invitations', icon: MailIcon },
     { id: 'guests', label: 'Guests', icon: UserIcon },
-  ] as const;
+  ].filter((item) => !personal || item.id !== 'invitations');
 
   return (
     <section aria-label="Workspace members" className="space-y-5">
@@ -77,18 +78,20 @@ function WorkspaceMembersContent({ workspaceId }: { workspaceId: string }) {
             Manage workspace members, invitations and permitted board guests.
           </p>
         </div>
-        <Button
-          size="lg"
-          disabled={!canInvite}
-          title={inviteReason}
-          onClick={() => {
-            setNotice(undefined);
-            go({ invite: '1' });
-          }}
-        >
-          <PlusIcon className="size-4" />
-          Invite Member
-        </Button>
+        {!personal && (
+          <Button
+            size="lg"
+            disabled={!canInvite}
+            title={inviteReason}
+            onClick={() => {
+              setNotice(undefined);
+              go({ invite: '1' });
+            }}
+          >
+            <PlusIcon className="size-4" />
+            Invite Member
+          </Button>
+        )}
       </header>
       {inviteReason && workspace.state === 'ready' && (
         <p className="text-xs leading-relaxed text-muted">{inviteReason}</p>
