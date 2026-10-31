@@ -74,6 +74,50 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 describe('Workspace activity authorization and session', () => {
+  it.each([403, 404])(
+    'cancels pending history when the Activity summary receives HTTP %s',
+    async (status) => {
+      const history = deferred<MockResponse>();
+      let denied = false;
+      const { client, calls } = setup({
+        [path('one')]: () =>
+          denied
+            ? fail(status, 'NOT_FOUND')
+            : workspacePage([event('Authorized summary')], 1, 1, 5),
+        [path('one', 1, 20)]: () => history.promise,
+      });
+      await screen.findByText('Authorized summary');
+      const other = workspaceKeys.overview(testUser.id, 0, 'other');
+      client.setQueryData(other, { name: 'Still authorized' });
+      fireEvent.click(screen.getByRole('button', { name: /view all/i }));
+      await waitFor(() =>
+        expect(
+          calls.some((call) => call.path.endsWith('activity?page=1&limit=20')),
+        ).toBe(true),
+      );
+      denied = true;
+      await act(async () => {
+        await client.invalidateQueries({
+          queryKey: [...workspaceKeys.activity(testUser.id, 0, 'one'), 1, 5],
+        });
+      });
+      await act(async () => {
+        history.resolve(
+          workspacePage([event('Late protected history')], 1, 1, 20),
+        );
+      });
+      expect(screen.queryByText('Authorized summary')).toBeNull();
+      expect(screen.queryByText('Late protected history')).toBeNull();
+      expect(
+        client.getQueryData([
+          ...workspaceKeys.activity(testUser.id, 0, 'one'),
+          1,
+          20,
+        ]),
+      ).toBeNull();
+      expect(client.getQueryData(other)).toEqual({ name: 'Still authorized' });
+    },
+  );
   it('cancels pending summary/history together on revocation without evicting another Workspace', async () => {
     const summary = deferred<MockResponse>(),
       history = deferred<MockResponse>();

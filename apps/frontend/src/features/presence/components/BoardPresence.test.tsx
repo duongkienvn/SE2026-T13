@@ -29,9 +29,10 @@ async function openPresence(
   ids = [testUser.id],
   membersError?: number,
   beforeJoin?: () => void,
+  canReadMembers = true,
 ) {
   storeSession();
-  mockApi({
+  const calls = mockApi({
     'GET /users/me': ok(testUser),
     [`GET /boards/${BOARD}/members?page=1&limit=100`]: membersError
       ? fail(membersError, 'NOT_FOUND')
@@ -52,7 +53,7 @@ async function openPresence(
   });
   function Page() {
     useBoardRealtime(BOARD);
-    return <BoardPresence boardId={BOARD} />;
+    return <BoardPresence boardId={BOARD} canReadMembers={canReadMembers} />;
   }
   const result = render(
     <AppProviders>
@@ -68,10 +69,33 @@ async function openPresence(
     socket.push('presence:sync', { boardId: BOARD, userIds: ids });
     socket.lastJoin().reply(joined(BOARD));
   });
-  return { ...result, socket };
+  return { ...result, socket, calls };
 }
 
 describe('BoardPresence', () => {
+  it('keeps Workspace-visible viewers anonymous without requesting an unauthorized roster, deduplicates tabs and clears on revocation', async () => {
+    const { socket, calls, container } = await openPresence(
+      [testUser.id, IDS[0], IDS[0]],
+      undefined,
+      undefined,
+      false,
+    );
+    const trigger = await screen.findByRole('button', {
+      name: '2 people viewing. Show viewers',
+    });
+    fireEvent.click(trigger);
+    expect(await screen.findByText('Unknown viewer')).toBeTruthy();
+    expect(screen.getByText('Ada Lovelace')).toBeTruthy();
+    expect(screen.queryByText('Viewer 0')).toBeNull();
+    expect(container.textContent).not.toContain(IDS[0]);
+    expect(container.textContent).not.toContain('@');
+    expect(calls.some((call) => call.path.includes('/members'))).toBe(false);
+    act(() => socket.push('board:access-revoked', { boardId: BOARD }));
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /Show viewers/ })).toBeNull(),
+    );
+    expect(screen.queryByText('Unknown viewer')).toBeNull();
+  });
   it('uses a compact avatar and overflow count on small screens and dismisses on outside interaction', async () => {
     vi.stubGlobal('matchMedia', () => ({
       matches: false,

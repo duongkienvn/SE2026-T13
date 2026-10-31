@@ -56,18 +56,21 @@ function setup(status = 503, code = 'SERVICE_UNAVAILABLE', pending = false) {
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   const close = vi.fn();
-  const view = (readOnly: boolean) => (
+  const view = (permissions: {
+    isArchived?: boolean;
+    canRestore?: boolean;
+  }) => (
     <QueryClientProvider client={client}>
       <AuthProvider>
         <ArchivedCardsDialog
           boardId={board.id}
-          readOnly={readOnly}
+          {...permissions}
           onClose={close}
         />
       </AuthProvider>
     </QueryClientProvider>
   );
-  const ui = render(view(false));
+  const ui = render(view({ isArchived: false, canRestore: true }));
   return {
     calls,
     release,
@@ -77,7 +80,10 @@ function setup(status = 503, code = 'SERVICE_UNAVAILABLE', pending = false) {
       ),
     confirm: () =>
       fireEvent.click(screen.getByRole('button', { name: 'Restore card' })),
-    readOnly: (value: boolean) => ui.rerender(view(value)),
+    readOnly: (value: boolean) =>
+      ui.rerender(view({ isArchived: value, canRestore: !value })),
+    permissions: (value: { isArchived?: boolean; canRestore?: boolean }) =>
+      ui.rerender(view(value)),
     succeed: () => {
       responseStatus = 200;
     },
@@ -85,6 +91,34 @@ function setup(status = 503, code = 'SERVICE_UNAVAILABLE', pending = false) {
 }
 
 describe('archived card restore recovery', () => {
+  it.each([{}, { isArchived: false }])(
+    'keeps unknown/loading/failed capability state disabled without asserting archive status %j',
+    async (permissions) => {
+      const h = setup();
+      await h.select();
+      h.permissions(permissions);
+      expect(
+        await screen.findByText(
+          /Restore is unavailable while board permissions are being checked/,
+        ),
+      ).toBeTruthy();
+      expect(screen.queryByText(/This board is archived/)).toBeNull();
+      expect(screen.queryByRole('button', { name: /^Restore / })).toBeNull();
+      expect(h.calls.some((c) => c.method === 'POST')).toBe(false);
+    },
+  );
+  it('closes a pending confirmation on lost write capability while the Board stays active', async () => {
+    const h = setup();
+    await h.select();
+    h.permissions({ isArchived: false, canRestore: false });
+    expect(
+      await screen.findByText(
+        'You have read-only access to this board. You cannot restore cards.',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Restore card' })).toBeNull();
+    expect(h.calls.some((c) => c.method === 'POST')).toBe(false);
+  });
   it('recovers when the board is archived and restored during a pending request', async () => {
     const h = setup(409, 'CARD_NOT_ARCHIVED', true);
     await h.select();

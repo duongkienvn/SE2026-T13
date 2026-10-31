@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
 import { Dialog } from '../../../components/Dialog';
@@ -23,6 +23,7 @@ export function InviteMemberDialog({
   onInvited: (invitation: WorkspaceInvitation) => void;
 }) {
   const invite = useInviteWorkspaceMember(workspaceId);
+  const submitting = useRef(false);
   const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState<string>();
@@ -30,7 +31,7 @@ export function InviteMemberDialog({
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (invite.isPending) return;
+    if (submitting.current || invite.isPending) return;
     const error = validateEmail(email);
     setEmailError(
       error === 'Enter your email address.' ? 'Enter an email address.' : error,
@@ -40,15 +41,20 @@ export function InviteMemberDialog({
       focusFirstInvalid();
       return;
     }
+    submitting.current = true;
     invite.mutate(normalizeEmail(email), {
       onSuccess: (invitation) => {
         if (invite.isCurrent()) onInvited(invitation);
       },
       onError: (failure) => {
+        if (!invite.isCurrent()) return;
         const result = inviteError(failure);
         setEmailError(result.field);
         setFormError(result.form);
         focusFirstInvalid();
+      },
+      onSettled: () => {
+        submitting.current = false;
       },
     });
   };

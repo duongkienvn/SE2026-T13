@@ -1,0 +1,805 @@
+{
+  "fixture": "DEV-only access-polish.html; synthetic Auth/API/Presence; no real services",
+  "checks": [
+    {
+      "scenario": "reader",
+      "theme": "light",
+      "width": 320,
+      "result": {
+        "width": 320,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 145,
+          "bottom": 555,
+          "left": 16,
+          "right": 304
+        },
+        "focusInDialog": true,
+        "reason": [
+          "You have read-only access to this board. You cannot restore cards."
+        ],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "owner",
+      "theme": "light",
+      "width": 320,
+      "result": {
+        "width": 320,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 168,
+          "bottom": 532,
+          "left": 16,
+          "right": 304
+        },
+        "focusInDialog": true,
+        "reason": [],
+        "restoreButtons": 1
+      }
+    },
+    {
+      "scenario": "archived",
+      "theme": "light",
+      "width": 320,
+      "result": {
+        "width": 320,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 145,
+          "bottom": 555,
+          "left": 16,
+          "right": 304
+        },
+        "focusInDialog": true,
+        "reason": [
+          "This board is archived. It can be viewed but no longer changed.",
+          "This board is archived. Cards can be viewed but cannot be restored."
+        ],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "invitations",
+      "theme": "light",
+      "width": 320,
+      "result": {
+        "width": 320,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": null,
+        "focusInDialog": null,
+        "reason": [],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "reader",
+      "theme": "light",
+      "width": 375,
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 155,
+          "bottom": 545,
+          "left": 16,
+          "right": 359
+        },
+        "focusInDialog": true,
+        "reason": [
+          "You have read-only access to this board. You cannot restore cards."
+        ],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "owner",
+      "theme": "light",
+      "width": 375,
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 168,
+          "bottom": 532,
+          "left": 16,
+          "right": 359
+        },
+        "focusInDialog": true,
+        "reason": [],
+        "restoreButtons": 1
+      }
+    },
+    {
+      "scenario": "archived",
+      "theme": "light",
+      "width": 375,
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 155,
+          "bottom": 545,
+          "left": 16,
+          "right": 359
+        },
+        "focusInDialog": true,
+        "reason": [
+          "This board is archived. It can be viewed but no longer changed.",
+          "This board is archived. Cards can be viewed but cannot be restored."
+        ],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "invitations",
+      "theme": "light",
+      "width": 375,
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": null,
+        "focusInDialog": null,
+        "reason": [],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "reader",
+      "theme": "light",
+      "width": 768,
+      "result": {
+        "width": 768,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 179,
+          "bottom": 521,
+          "left": 16,
+          "right": 752
+        },
+        "focusInDialog": true,
+        "reason": [
+          "You have read-only access to this board. You cannot restore cards."
+        ],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "owner",
+      "theme": "light",
+      "width": 768,
+      "result": {
+        "width": 768,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 208,
+          "bottom": 492,
+          "left": 16,
+          "right": 752
+        },
+        "focusInDialog": true,
+        "reason": [],
+        "restoreButtons": 1
+      }
+    },
+    {
+      "scenario": "archived",
+      "theme": "light",
+      "width": 768,
+      "result": {
+        "width": 768,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 179,
+          "bottom": 521,
+          "left": 16,
+          "right": 752
+        },
+        "focusInDialog": true,
+        "reason": [
+          "This board is archived. It can be viewed but no longer changed.",
+          "This board is archived. Cards can be viewed but cannot be restored."
+        ],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "invitations",
+      "theme": "light",
+      "width": 768,
+      "result": {
+        "width": 768,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": null,
+        "focusInDialog": null,
+        "reason": [],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "reader",
+      "theme": "light",
+      "width": 1280,
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 179,
+          "bottom": 521,
+          "left": 192,
+          "right": 1088
+        },
+        "focusInDialog": true,
+        "reason": [
+          "You have read-only access to this board. You cannot restore cards."
+        ],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "owner",
+      "theme": "light",
+      "width": 1280,
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 208,
+          "bottom": 492,
+          "left": 192,
+          "right": 1088
+        },
+        "focusInDialog": true,
+        "reason": [],
+        "restoreButtons": 1
+      }
+    },
+    {
+      "scenario": "archived",
+      "theme": "light",
+      "width": 1280,
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 179,
+          "bottom": 521,
+          "left": 192,
+          "right": 1088
+        },
+        "focusInDialog": true,
+        "reason": [
+          "This board is archived. It can be viewed but no longer changed.",
+          "This board is archived. Cards can be viewed but cannot be restored."
+        ],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "invitations",
+      "theme": "light",
+      "width": 1280,
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": null,
+        "focusInDialog": null,
+        "reason": [],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "reader",
+      "theme": "light",
+      "width": 1440,
+      "result": {
+        "width": 1440,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 179,
+          "bottom": 521,
+          "left": 272,
+          "right": 1168
+        },
+        "focusInDialog": true,
+        "reason": [
+          "You have read-only access to this board. You cannot restore cards."
+        ],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "owner",
+      "theme": "light",
+      "width": 1440,
+      "result": {
+        "width": 1440,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 208,
+          "bottom": 492,
+          "left": 272,
+          "right": 1168
+        },
+        "focusInDialog": true,
+        "reason": [],
+        "restoreButtons": 1
+      }
+    },
+    {
+      "scenario": "archived",
+      "theme": "light",
+      "width": 1440,
+      "result": {
+        "width": 1440,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 179,
+          "bottom": 521,
+          "left": 272,
+          "right": 1168
+        },
+        "focusInDialog": true,
+        "reason": [
+          "This board is archived. It can be viewed but no longer changed.",
+          "This board is archived. Cards can be viewed but cannot be restored."
+        ],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "invitations",
+      "theme": "light",
+      "width": 1440,
+      "result": {
+        "width": 1440,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": null,
+        "focusInDialog": null,
+        "reason": [],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "reader",
+      "theme": "dark",
+      "width": 320,
+      "result": {
+        "width": 320,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 145,
+          "bottom": 555,
+          "left": 16,
+          "right": 304
+        },
+        "focusInDialog": true,
+        "reason": [
+          "You have read-only access to this board. You cannot restore cards."
+        ],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "owner",
+      "theme": "dark",
+      "width": 320,
+      "result": {
+        "width": 320,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 168,
+          "bottom": 532,
+          "left": 16,
+          "right": 304
+        },
+        "focusInDialog": true,
+        "reason": [],
+        "restoreButtons": 1
+      }
+    },
+    {
+      "scenario": "archived",
+      "theme": "dark",
+      "width": 320,
+      "result": {
+        "width": 320,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 145,
+          "bottom": 555,
+          "left": 16,
+          "right": 304
+        },
+        "focusInDialog": true,
+        "reason": [
+          "This board is archived. It can be viewed but no longer changed.",
+          "This board is archived. Cards can be viewed but cannot be restored."
+        ],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "invitations",
+      "theme": "dark",
+      "width": 320,
+      "result": {
+        "width": 320,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": null,
+        "focusInDialog": null,
+        "reason": [],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "reader",
+      "theme": "dark",
+      "width": 375,
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 155,
+          "bottom": 545,
+          "left": 16,
+          "right": 359
+        },
+        "focusInDialog": true,
+        "reason": [
+          "You have read-only access to this board. You cannot restore cards."
+        ],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "owner",
+      "theme": "dark",
+      "width": 375,
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 168,
+          "bottom": 532,
+          "left": 16,
+          "right": 359
+        },
+        "focusInDialog": true,
+        "reason": [],
+        "restoreButtons": 1
+      }
+    },
+    {
+      "scenario": "archived",
+      "theme": "dark",
+      "width": 375,
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 155,
+          "bottom": 545,
+          "left": 16,
+          "right": 359
+        },
+        "focusInDialog": true,
+        "reason": [
+          "This board is archived. It can be viewed but no longer changed.",
+          "This board is archived. Cards can be viewed but cannot be restored."
+        ],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "invitations",
+      "theme": "dark",
+      "width": 375,
+      "result": {
+        "width": 375,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": null,
+        "focusInDialog": null,
+        "reason": [],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "reader",
+      "theme": "dark",
+      "width": 768,
+      "result": {
+        "width": 768,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 179,
+          "bottom": 521,
+          "left": 16,
+          "right": 752
+        },
+        "focusInDialog": true,
+        "reason": [
+          "You have read-only access to this board. You cannot restore cards."
+        ],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "owner",
+      "theme": "dark",
+      "width": 768,
+      "result": {
+        "width": 768,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 208,
+          "bottom": 492,
+          "left": 16,
+          "right": 752
+        },
+        "focusInDialog": true,
+        "reason": [],
+        "restoreButtons": 1
+      }
+    },
+    {
+      "scenario": "archived",
+      "theme": "dark",
+      "width": 768,
+      "result": {
+        "width": 768,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 179,
+          "bottom": 521,
+          "left": 16,
+          "right": 752
+        },
+        "focusInDialog": true,
+        "reason": [
+          "This board is archived. It can be viewed but no longer changed.",
+          "This board is archived. Cards can be viewed but cannot be restored."
+        ],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "invitations",
+      "theme": "dark",
+      "width": 768,
+      "result": {
+        "width": 768,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": null,
+        "focusInDialog": null,
+        "reason": [],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "reader",
+      "theme": "dark",
+      "width": 1280,
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 179,
+          "bottom": 521,
+          "left": 192,
+          "right": 1088
+        },
+        "focusInDialog": true,
+        "reason": [
+          "You have read-only access to this board. You cannot restore cards."
+        ],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "owner",
+      "theme": "dark",
+      "width": 1280,
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 208,
+          "bottom": 492,
+          "left": 192,
+          "right": 1088
+        },
+        "focusInDialog": true,
+        "reason": [],
+        "restoreButtons": 1
+      }
+    },
+    {
+      "scenario": "archived",
+      "theme": "dark",
+      "width": 1280,
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 179,
+          "bottom": 521,
+          "left": 192,
+          "right": 1088
+        },
+        "focusInDialog": true,
+        "reason": [
+          "This board is archived. It can be viewed but no longer changed.",
+          "This board is archived. Cards can be viewed but cannot be restored."
+        ],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "invitations",
+      "theme": "dark",
+      "width": 1280,
+      "result": {
+        "width": 1280,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": null,
+        "focusInDialog": null,
+        "reason": [],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "reader",
+      "theme": "dark",
+      "width": 1440,
+      "result": {
+        "width": 1440,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 179,
+          "bottom": 521,
+          "left": 272,
+          "right": 1168
+        },
+        "focusInDialog": true,
+        "reason": [
+          "You have read-only access to this board. You cannot restore cards."
+        ],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "owner",
+      "theme": "dark",
+      "width": 1440,
+      "result": {
+        "width": 1440,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 208,
+          "bottom": 492,
+          "left": 272,
+          "right": 1168
+        },
+        "focusInDialog": true,
+        "reason": [],
+        "restoreButtons": 1
+      }
+    },
+    {
+      "scenario": "archived",
+      "theme": "dark",
+      "width": 1440,
+      "result": {
+        "width": 1440,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": {
+          "top": 179,
+          "bottom": 521,
+          "left": 272,
+          "right": 1168
+        },
+        "focusInDialog": true,
+        "reason": [
+          "This board is archived. It can be viewed but no longer changed.",
+          "This board is archived. Cards can be viewed but cannot be restored."
+        ],
+        "restoreButtons": 0
+      }
+    },
+    {
+      "scenario": "invitations",
+      "theme": "dark",
+      "width": 1440,
+      "result": {
+        "width": 1440,
+        "height": 700,
+        "pageOverflow": false,
+        "mainOverflow": false,
+        "dialog": null,
+        "focusInDialog": null,
+        "reason": [],
+        "restoreButtons": 0
+      }
+    }
+  ]
+}

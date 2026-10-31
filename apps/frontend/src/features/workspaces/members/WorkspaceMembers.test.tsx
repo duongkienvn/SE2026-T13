@@ -648,10 +648,39 @@ describe('Workspace invitations', () => {
     return { ...result, dialog };
   }
 
-  it('sends a MEMBER invitation and reports a confirmed email', async () => {
+  it('submits an invitation only once when two submit events arrive before rendering', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((yes) => {
+      release = yes;
+    });
+    const { calls } = mount(`${base}/members`, {
+      [`POST ${base}/invitations`]: async () => {
+        await gate;
+        return ok(invitation(), 202);
+      },
+    });
+    await table();
+    fireEvent.click(screen.getByRole('button', { name: 'Invite Member' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Invite member' });
+    fireEvent.change(within(dialog).getByLabelText('Email address'), {
+      target: { value: 'new@example.com' },
+    });
+    act(() => {
+      fireEvent.submit(dialog.querySelector('form')!);
+      fireEvent.submit(dialog.querySelector('form')!);
+    });
+    await waitFor(() =>
+      expect(calls.filter((call) => call.method === 'POST')).toHaveLength(1),
+    );
+    await act(async () => release());
+  });
+
+  it('sends a MEMBER invitation and distinguishes provider acceptance from inbox delivery', async () => {
     const { calls } = await invite(ok(invitation(), 202));
     expect(
-      await screen.findByText('Invitation email sent to new@example.com.'),
+      await screen.findByText(
+        'Invitation saved for new@example.com. The email provider accepted the send attempt; inbox delivery is not confirmed.',
+      ),
     ).toBeTruthy();
     expect(calls.find((call) => call.method === 'POST')?.body).toEqual({
       email: 'new@example.com',
@@ -817,11 +846,104 @@ describe('Workspace invitations', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Invite again' }));
     expect(
-      await screen.findByText('Invitation email sent to new@example.com.'),
+      await screen.findByText(
+        'Invitation saved for new@example.com. The email provider accepted the send attempt; inbox delivery is not confirmed.',
+      ),
     ).toBeTruthy();
     expect(calls.find((call) => call.method === 'POST')?.body).toEqual({
       email: 'new@example.com',
       role: 'MEMBER',
     });
   });
+
+  it.each([
+    ['DISPATCHING', /is being sent\. Check Invitations/],
+    ['FAILED', /was saved, but the email failed to send/],
+    ['UNKNOWN', /was saved, but the email send outcome is unknown/],
+  ] as const)(
+    'reports the actual %s create result',
+    async (sendState, message) => {
+      await invite(ok(invitation({ sendState }), 202));
+      expect(await screen.findByText(message)).toBeTruthy();
+      expect(screen.queryByText(/Invitation email sent/)).toBeNull();
+    },
+  );
+  it.each([
+    [
+      'SENT',
+      /email provider accepted the send attempt; inbox delivery is not confirmed/,
+    ],
+    ['UNAVAILABLE', /was saved, but email delivery is not available yet/],
+    ['DISPATCHING', /is being sent\. Check Invitations/],
+    ['FAILED', /was saved, but the email failed to send/],
+    ['UNKNOWN', /was saved, but the email send outcome is unknown/],
+  ] as const)(
+    'reports backend-authoritative %s resend state and prevents same-frame duplicates',
+    async (sendState, message) => {
+      let saved = invitation({ sendState: 'FAILED' });
+      const { calls } = mount(`${base}/members?tab=invitations`, {
+        [invitationsPath]: () => workspacePage([saved], 1, 1, 10),
+        [`POST ${base}/invitations`]: () => {
+          saved = invitation({ sendState });
+          return ok(saved, 202);
+        },
+      });
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Actions for invitation to new@example.com',
+        }),
+      );
+      const send = screen.getByRole('button', { name: 'Send again' });
+      act(() => {
+        fireEvent.click(send);
+        fireEvent.click(send);
+      });
+      expect(await screen.findByText(message)).toBeTruthy();
+      expect(calls.filter((call) => call.method === 'POST')).toHaveLength(1);
+      await screen.findByRole('table', { name: 'Workspace invitations' });
+      if (sendState === 'DISPATCHING') {
+        fireEvent.click(
+          screen.getByRole('button', {
+            name: 'Actions for invitation to new@example.com',
+          }),
+        );
+        await waitFor(() =>
+          expect(
+            screen
+              .getByRole('button', { name: /Send again/ })
+              .getAttribute('aria-disabled'),
+          ).toBe('true'),
+        );
+      }
+    },
+  );
+  it.each([429, 503])(
+    'does not claim sending succeeded on resend HTTP %s',
+    async (status) => {
+      mount(`${base}/members?tab=invitations`, {
+        [invitationsPath]: workspacePage(
+          [invitation({ sendState: 'FAILED' })],
+          1,
+          1,
+          10,
+        ),
+        [`POST ${base}/invitations`]: fail(status, 'SEND_REFUSED'),
+      });
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Actions for invitation to new@example.com',
+        }),
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Send again' }));
+      expect(
+        await screen.findByText(
+          status === 429
+            ? /recently requested/
+            : /Could not confirm the invitation request/,
+        ),
+      ).toBeTruthy();
+      expect(screen.queryByText(/Invitation saved for/)).toBeNull();
+      expect(screen.getByText('Email failed to send')).toBeTruthy();
+    },
+  );
 });

@@ -20,13 +20,15 @@ import type { Card } from '../types';
 
 interface ArchivedCardsDialogProps {
   boardId: string;
-  readOnly: boolean;
+  isArchived?: boolean;
+  canRestore?: boolean;
   onClose: () => void;
 }
 
 export function ArchivedCardsDialog({
   boardId,
-  readOnly,
+  isArchived,
+  canRestore,
   onClose,
 }: ArchivedCardsDialogProps) {
   const [page, setPage] = useState(1);
@@ -41,6 +43,13 @@ export function ArchivedCardsDialog({
     (error) => isApiError(error) && [401, 403, 404].includes(error.status),
   );
   const data = unavailable ? undefined : query.data;
+  const readOnly = isArchived !== false || canRestore !== true;
+  const restoreReason =
+    isArchived === true
+      ? 'This board is archived. Cards can be viewed but cannot be restored.'
+      : isArchived === false && canRestore === false
+        ? 'You have read-only access to this board. You cannot restore cards.'
+        : 'Restore is unavailable while board permissions are being checked. Refresh the board and try again.';
 
   useEffect(() => {
     if (unavailable) {
@@ -122,10 +131,8 @@ export function ArchivedCardsDialog({
           </Button>
         </div>
         {notice && !unavailable && <Alert variant="success">{notice}</Alert>}
-        {readOnly && (
-          <Alert variant="error">
-            This board is archived. Cards can be viewed but cannot be restored.
-          </Alert>
+        {readOnly && !unavailable && (
+          <Alert variant="error">{restoreReason}</Alert>
         )}
         {unavailable ? (
           <ErrorState

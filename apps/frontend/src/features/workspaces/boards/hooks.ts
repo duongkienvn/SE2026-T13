@@ -58,7 +58,6 @@ export function useCreateWorkspaceBoard(
           scope.generation,
           workspaceId,
           error,
-          overviewKey,
         );
       } else if (error.status === 403) {
         client.setQueryData<WorkspaceOverview>(overviewKey, (current) =>

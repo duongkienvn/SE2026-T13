@@ -1,0 +1,30 @@
+{
+  "fixture": "Isolated DEV-only browser fixtures; actual merged components; no backend or real email",
+  "checks": [
+    {
+      "scenario": "rebased Overview",
+      "url": "http://127.0.0.1:5173/qa/workspace-polish.html?theme=light&route=%2Fworkspaces%2F00000000-0000-4000-8000-000000000113&check=rebased147",
+      "overflow": false,
+      "metrics": ["Visible boards", "Members"],
+      "activityRows": 5
+    },
+    {
+      "scenario": "Activity Board navigation",
+      "breadcrumb": "Development Team\nBoards\nSprint planning",
+      "globalBoardsActive": null
+    },
+    {
+      "scenario": "rebased active reader archive",
+      "width": 320,
+      "overflow": false,
+      "reason": "You have read-only access to this board. You cannot restore cards.",
+      "bounds": {
+        "top": 145,
+        "bottom": 555
+      },
+      "restoreButtons": 0,
+      "focusInside": true
+    }
+  ],
+  "console": "No unexpected warning/error messages on checked pages"
+}
