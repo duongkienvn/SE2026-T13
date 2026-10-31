@@ -318,6 +318,17 @@ describe('BoardRealtimeClient events', () => {
     },
   );
 
+  it('routes labels:changed only for the live Board, preserving the page Board ID', async () => {
+    await live(A);
+    const payload = { boardId: A.toLowerCase(), labelId: 'label-1' };
+    socket.push('labels:changed', payload);
+    socket.push('labels:changed', { ...payload, boardId: B });
+    expect(invalidate).toHaveBeenCalledTimes(1);
+    expect(invalidate).toHaveBeenCalledWith(
+      invalidationTargets('labels:changed', { ...payload, boardId: A }),
+    );
+  });
+
   it('ignores events of other boards and malformed payloads', async () => {
     await live(A);
 
@@ -339,7 +350,7 @@ describe('BoardRealtimeClient events', () => {
     expect(invalidate).not.toHaveBeenCalled();
   });
 
-  it('listens to each of the 18 business events exactly once', async () => {
+  it('registers business event listeners once across multiple Board watchers', async () => {
     client.watch(A);
     client.watch(B);
     await settle();
@@ -351,6 +362,7 @@ describe('BoardRealtimeClient events', () => {
     expect(socket.listenerCount('comment:deleted')).toBe(1);
     expect(socket.listenerCount('board:archived')).toBe(1);
     expect(socket.listenerCount('board:restored')).toBe(1);
+    expect(socket.listenerCount('labels:changed')).toBe(1);
   });
 });
 
