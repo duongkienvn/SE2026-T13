@@ -7,6 +7,11 @@ import { ResendVerificationMailer } from '../../src/mail/resend-verification-mai
 import { WorkspaceInvitationMailer } from '../../src/api/workspaces/workspace-invitation-mailer';
 import { FakeWorkspaceInvitationMailer } from '../../src/mail/fake-workspace-invitation-mailer';
 import { ResendWorkspaceInvitationMailer } from '../../src/mail/resend-workspace-invitation-mailer';
+import {
+  BoardMemberAddedMailer,
+  FakeBoardMemberAddedMailer,
+} from '../../src/mail/board-member-added-mailer';
+import { ResendBoardMemberAddedMailer } from '../../src/mail/resend-board-member-added-mailer';
 import { WorkspaceRole } from '@kanban/shared';
 import {
   FakeWelcomeMailer,
@@ -119,7 +124,25 @@ describe('mail transport configuration', () => {
             idempotencyKey: 'workspace-invitation/binding-test',
           }),
         ).toBe('SENT');
-        expect(Resend).toHaveBeenCalledTimes(expected === 'resend' ? 4 : 0);
+        const boardNotification = module.get(BoardMemberAddedMailer);
+        expect(boardNotification).toBeInstanceOf(
+          expected === 'resend'
+            ? ResendBoardMemberAddedMailer
+            : FakeBoardMemberAddedMailer,
+        );
+        expect(
+          await boardNotification.send(
+            {
+              membershipId: 'binding-test',
+              boardId: 'c6ba7134-97ef-4c1b-a342-001a982a7721',
+              boardName: 'Board',
+              recipient: 'recipient@example.test',
+              actorDisplayName: 'Owner',
+            },
+            new AbortController().signal,
+          ),
+        ).toBe('SENT');
+        expect(Resend).toHaveBeenCalledTimes(expected === 'resend' ? 5 : 0);
         if (expected === 'fake') expect(config.RESEND_API_KEY).toBe('');
         else expect(config.RESEND_API_KEY === mail.RESEND_API_KEY).toBe(true);
       } finally {

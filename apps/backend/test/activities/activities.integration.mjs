@@ -299,6 +299,7 @@ try {
     new BoardRoomCoordinator(new BoardPresenceService()),
     events,
     writer,
+    { notify: async () => undefined },
   );
   const auditBoard = await boardService.create(owner.id, {
     name: 'Integration board',

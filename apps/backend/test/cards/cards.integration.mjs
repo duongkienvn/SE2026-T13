@@ -121,6 +121,7 @@ try {
     new BoardRoomCoordinator(new BoardPresenceService()),
     { publish: async () => undefined },
     activityWriter,
+    { notify: async () => undefined },
   );
   const passwordHash = await argon2.hash('cards-integration-password');
   const user = async (name) =>

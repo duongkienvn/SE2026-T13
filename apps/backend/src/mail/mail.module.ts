@@ -17,10 +17,32 @@ import { ResendWelcomeMailer } from './resend-welcome-mailer';
 import { WorkspaceInvitationMailer } from '../api/workspaces/workspace-invitation-mailer';
 import { FakeWorkspaceInvitationMailer } from './fake-workspace-invitation-mailer';
 import { ResendWorkspaceInvitationMailer } from './resend-workspace-invitation-mailer';
+import {
+  BoardMemberAddedMailer,
+  FakeBoardMemberAddedMailer,
+} from './board-member-added-mailer';
+import { ResendBoardMemberAddedMailer } from './resend-board-member-added-mailer';
 
 @Module({
   imports: [ConfigModule],
   providers: [
+    {
+      provide: BoardMemberAddedMailer,
+      inject: [ConfigService],
+      useFactory: (
+        config: ConfigService<EnvironmentConfig, true>,
+      ): BoardMemberAddedMailer => {
+        const from = config.get('MAIL_FROM', { infer: true });
+        const origin = config.get('PUBLIC_APP_URL', { infer: true });
+        return config.get('MAIL_TRANSPORT', { infer: true }) === 'fake'
+          ? new FakeBoardMemberAddedMailer(from, origin)
+          : new ResendBoardMemberAddedMailer(
+              new Resend(config.get('RESEND_API_KEY', { infer: true })),
+              from,
+              origin,
+            );
+      },
+    },
     {
       provide: WorkspaceInvitationMailer,
       inject: [ConfigService],
@@ -88,6 +110,7 @@ import { ResendWorkspaceInvitationMailer } from './resend-workspace-invitation-m
     },
   ],
   exports: [
+    BoardMemberAddedMailer,
     VerificationMailer,
     PasswordRecoveryMailer,
     WelcomeMailer,
