@@ -124,7 +124,7 @@ export class CardsController {
   @ApiSuccess({
     type: CardResponseDto,
     summary:
-      'Partially update title, description or deadline; null clears nullable fields',
+      'Partially update title, description, start or due instant; null clears nullable fields',
   })
   @ApiCommonErrors()
   update(
