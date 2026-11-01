@@ -50,6 +50,64 @@ const rejectsStatus = (promise, status) =>
 
 try {
   await admin.connect();
+  const upgradeDatabase = `${testDatabase}_upgrade`;
+  await admin.query(`CREATE DATABASE "${upgradeDatabase}"`);
+  let upgradeSource;
+  try {
+    upgradeSource = new DataSource({
+      ...baseOptions,
+      database: upgradeDatabase,
+    });
+    await upgradeSource.initialize();
+    const migrations = [...upgradeSource.migrations];
+    upgradeSource.migrations = migrations.filter(
+      (migration) => !migration.name.startsWith('BoardDiscovery'),
+    );
+    await upgradeSource.runMigrations();
+    const [legacyUser] = await upgradeSource.query(
+      "INSERT INTO users(email,display_name,email_verified_at) VALUES ('legacy-board@example.test','Legacy',now()) RETURNING id",
+    );
+    const [legacy] = await upgradeSource.query(
+      "INSERT INTO boards(name,created_by_id) VALUES ('Legacy board',$1) RETURNING id, updated_at, workspace_id, visibility",
+      [legacyUser.id],
+    );
+    upgradeSource.migrations = migrations;
+    await upgradeSource.runMigrations();
+    const [after] = await upgradeSource.query(
+      'SELECT id, updated_at, workspace_id, visibility, background_preset FROM boards WHERE id=$1',
+      [legacy.id],
+    );
+    assert.equal(after.background_preset, 'blue');
+    delete after.background_preset;
+    assert.deepEqual(after, legacy);
+    await assert.rejects(
+      upgradeSource.query(
+        "UPDATE boards SET background_preset='https://invalid.test' WHERE id=$1",
+        [legacy.id],
+      ),
+      (error) => error.code === '23514',
+    );
+    await upgradeSource.query(
+      'INSERT INTO board_user_states(user_id,board_id,is_starred) VALUES ($1,$2,true)',
+      [legacyUser.id, legacy.id],
+    );
+    await assert.rejects(
+      upgradeSource.undoLastMigration(),
+      /must be preserved/,
+    );
+    await upgradeSource.query(
+      'DELETE FROM board_user_states WHERE user_id=$1 AND board_id=$2',
+      [legacyUser.id, legacy.id],
+    );
+    await upgradeSource.undoLastMigration();
+    assert.equal((await upgradeSource.runMigrations()).length, 1);
+    console.log(
+      'Populated Board upgrade preserves legacy fields and backfills default: PASS',
+    );
+  } finally {
+    if (upgradeSource?.isInitialized) await upgradeSource.destroy();
+    await admin.query(`DROP DATABASE "${upgradeDatabase}"`);
+  }
   // The configured database is only an administrative connection. All fixtures and
   // migrations below run exclusively in a random database owned by this test.
   await admin.query(`CREATE DATABASE "${testDatabase}"`);
@@ -94,6 +152,163 @@ try {
     name: 'First',
     description: 'Keep',
   });
+  const {
+    BoardDiscoveryService,
+  } = require('../../dist/api/boards/board-discovery.service.js');
+  const delivered = [];
+  const discovery = new BoardDiscoveryService(
+    boards,
+    new BoardAuthorizationService(members),
+    {
+      publish: async (event, payload) => delivered.push({ event, payload }),
+    },
+    activityWriter,
+  );
+  await members.save(
+    members.create({ boardId: first.id, userId: member.id, role: 'MEMBER' }),
+  );
+  await Promise.all(
+    Array.from({ length: 5 }, () =>
+      discovery.setStar(owner.id, first.id, true),
+    ),
+  );
+  await Promise.all(
+    Array.from({ length: 5 }, () => discovery.view(owner.id, first.id)),
+  );
+  assert.equal((await discovery.state(owner.id, first.id)).isStarred, true);
+  assert.equal((await discovery.state(member.id, first.id)).isStarred, false);
+  assert.ok((await discovery.state(owner.id, first.id)).lastViewedAt);
+  assert.equal(
+    (
+      await source.query(
+        'SELECT count(*)::int AS n FROM board_user_states WHERE user_id = $1 AND board_id = $2',
+        [owner.id, first.id],
+      )
+    )[0].n,
+    1,
+  );
+  await assert.rejects(
+    source.query(
+      'INSERT INTO board_user_states(user_id,board_id) VALUES ($1,$2)',
+      [owner.id, first.id],
+    ),
+    (error) => error.code === '23505',
+  );
+  await assert.rejects(
+    source.query(
+      "INSERT INTO board_user_states(user_id,board_id) VALUES ('00000000-0000-4000-8000-000000000000',$1)",
+      [first.id],
+    ),
+    (error) => error.code === '23503',
+  );
+  await rejectsStatus(discovery.setStar(outsider.id, first.id, true), 404);
+  await rejectsStatus(discovery.background(member.id, first.id, 'forest'), 403);
+  for (const preset of ['teal', 'forest']) {
+    assert.equal(
+      (await discovery.background(owner.id, first.id, preset)).backgroundPreset,
+      preset,
+    );
+    assert.equal(
+      (await boards.findOneByOrFail({ id: first.id })).backgroundPreset,
+      preset,
+    );
+  }
+  await rejectsStatus(
+    discovery.background(owner.id, first.id, 'https://invalid.test'),
+    400,
+  );
+  assert.equal(delivered.length, 2);
+  assert.ok(
+    delivered.every(
+      ({ event, payload }) =>
+        event === 'board:access-changed' &&
+        Object.keys(payload).join() === 'boardId',
+    ),
+  );
+  const starred = await service.list(owner.id, {
+    page: 1,
+    limit: 20,
+    starred: true,
+  });
+  assert.deepEqual(
+    starred.data.map((board) => board.id),
+    [first.id],
+  );
+  const recent = await service.list(owner.id, {
+    page: 1,
+    limit: 20,
+    recent: true,
+    sort: 'recent',
+  });
+  assert.deepEqual(
+    recent.data.map((board) => board.id),
+    [first.id],
+  );
+  await discovery.setStar(owner.id, first.id, false);
+  await discovery.setStar(owner.id, first.id, false);
+  assert.equal((await discovery.state(owner.id, first.id)).isStarred, false);
+  await members.delete({ boardId: first.id, userId: member.id });
+  await rejectsStatus(discovery.state(member.id, first.id), 404);
+  console.log(
+    'Board discovery concurrency, per-user state, access and preset persistence: PASS',
+  );
+  const planUser = await user('plan-user');
+  const planBoards = await source.query(
+    `INSERT INTO boards(name,created_by_id) SELECT 'plan-' || n, $1 FROM generate_series(1,1200) AS n RETURNING id`,
+    [planUser.id],
+  );
+  await source.query(
+    `INSERT INTO board_user_states(user_id,board_id,is_starred,last_viewed_at)
+     SELECT $1, unnest($2::uuid[]), true, now()`,
+    [planUser.id, planBoards.map((row) => row.id)],
+  );
+  await source.query('ANALYZE board_user_states');
+  const plan = await source.query(
+    `EXPLAIN (ANALYZE, FORMAT JSON) SELECT board_id FROM board_user_states
+     WHERE user_id=$1 AND last_viewed_at IS NOT NULL ORDER BY last_viewed_at DESC,board_id DESC LIMIT 20`,
+    [planUser.id],
+  );
+  assert.ok(plan[0]['QUERY PLAN'][0]['Execution Time'] >= 0);
+  assert.ok(JSON.stringify(plan).includes('IDX_board_user_states_recent'));
+  console.log(
+    'PostgreSQL recent query EXPLAIN ANALYZE on 1,200 relations: PASS',
+  );
+  await members.save(
+    members.create({
+      boardId: planBoards[0].id,
+      userId: planUser.id,
+      role: 'OWNER',
+    }),
+  );
+  await discovery.view(planUser.id, planBoards[0].id);
+  const [retained] = await source.query(
+    'SELECT count(*) FILTER (WHERE last_viewed_at IS NOT NULL)::int AS recent, count(*) FILTER (WHERE is_starred)::int AS starred FROM board_user_states WHERE user_id=$1',
+    [planUser.id],
+  );
+  assert.equal(retained.recent, 100);
+  assert.equal(retained.starred, 1200);
+  await members.save(
+    members.create({
+      boardId: planBoards[1].id,
+      userId: planUser.id,
+      role: 'OWNER',
+    }),
+  );
+  await source.query(
+    "UPDATE boards SET name='Equal discovery name' WHERE id = ANY($1::uuid[])",
+    [[planBoards[0].id, planBoards[1].id]],
+  );
+  const nameOrder = [planBoards[0].id, planBoards[1].id].sort();
+  for (const page of [1, 2]) {
+    const result = await service.list(planUser.id, {
+      page,
+      limit: 1,
+      q: 'Equal discovery name',
+      sort: 'name',
+    });
+    assert.equal(result.meta.total, 2);
+    assert.equal(result.data[0].id, nameOrder[page - 1]);
+  }
   assert.equal(first.currentUserRole, 'OWNER');
   assert.equal(await boards.countBy({ id: first.id }), 1);
   assert.equal(
@@ -134,6 +349,66 @@ try {
 
   const second = await service.create(owner.id, { name: 'Second' });
   const third = await service.create(owner.id, { name: 'Third' });
+  await members.save(
+    [second, third].map(({ id }) =>
+      members.create({ boardId: id, userId: member.id, role: 'MEMBER' }),
+    ),
+  );
+  const unchangedBefore = (
+    await boards.findOneByOrFail({ id: third.id })
+  ).updatedAt.getTime();
+  await discovery.view(owner.id, second.id);
+  await delay(5);
+  await discovery.view(owner.id, third.id);
+  await discovery.view(member.id, third.id);
+  await delay(5);
+  await discovery.view(member.id, second.id);
+  const ownerOrder = await service.list(owner.id, {
+    page: 1,
+    limit: 2,
+    recent: true,
+    sort: 'recent',
+  });
+  const memberOrder = await service.list(member.id, {
+    page: 1,
+    limit: 2,
+    recent: true,
+    sort: 'recent',
+  });
+  assert.deepEqual(
+    ownerOrder.data.map((item) => item.id),
+    [third.id, second.id],
+  );
+  assert.deepEqual(
+    memberOrder.data.map((item) => item.id),
+    [second.id, third.id],
+  );
+  assert.equal(
+    (await boards.findOneByOrFail({ id: third.id })).updatedAt.getTime(),
+    unchangedBefore,
+  );
+  await members.delete({ boardId: second.id, userId: member.id });
+  await members.delete({ boardId: third.id, userId: member.id });
+  await source.query(
+    'DELETE FROM board_user_states WHERE board_id = ANY($1::uuid[])',
+    [[second.id, third.id]],
+  );
+  await discovery.view(owner.id, second.id);
+  await source.query(
+    'UPDATE board_user_states SET last_viewed_at = $1 WHERE user_id = $2 AND board_id = ANY($3::uuid[])',
+    [new Date('2026-01-01T00:00:00Z'), owner.id, [first.id, second.id]],
+  );
+  const recentOrder = [first.id, second.id].sort().reverse();
+  for (const page of [1, 2]) {
+    const result = await service.list(owner.id, {
+      page,
+      limit: 1,
+      recent: true,
+      sort: 'recent',
+    });
+    assert.equal(result.meta.total, 2);
+    assert.equal(result.data[0].id, recentOrder[page - 1]);
+  }
   const privateBoard = await service.create(outsider.id, { name: 'Private' });
   const creatorWithoutMembership = await service.create(owner.id, {
     name: 'No membership',
@@ -295,6 +570,7 @@ try {
     ]);
   const beforeArchive = await relatedRows();
   const result = await service.archive(owner.id, first.id);
+  await rejectsStatus(discovery.background(owner.id, first.id, 'green'), 409);
   const persisted = await boards.findOneByOrFail({ id: first.id });
   assert.equal(persisted.isArchived, true);
   assert.equal(persisted.archivedAt.toISOString(), result.archivedAt);
@@ -445,6 +721,80 @@ try {
     'PostgreSQL concurrent archive and queued update lock behavior: PASS',
   );
 
+  const raceBoard = await service.create(owner.id, { name: 'Discovery race' });
+  await members.save(
+    members.create({
+      boardId: raceBoard.id,
+      userId: member.id,
+      role: 'MEMBER',
+    }),
+  );
+  const raceRunner = source.createQueryRunner();
+  try {
+    await raceRunner.connect();
+    await raceRunner.startTransaction();
+    await raceRunner.query('SELECT id FROM boards WHERE id=$1 FOR UPDATE', [
+      raceBoard.id,
+    ]);
+    await raceRunner.query(
+      'DELETE FROM board_members WHERE board_id=$1 AND user_id=$2',
+      [raceBoard.id, member.id],
+    );
+    let finished = false;
+    const star = discovery
+      .setStar(member.id, raceBoard.id, true)
+      .then(
+        () => ({ status: 200 }),
+        (error) => ({ status: error.getStatus() }),
+      )
+      .finally(() => {
+        finished = true;
+      });
+    await delay(100);
+    assert.equal(finished, false, 'Star must wait for the Board lock');
+    await raceRunner.commitTransaction();
+    assert.equal((await star).status, 404);
+    assert.equal(
+      (
+        await source.query(
+          'SELECT count(*)::int AS n FROM board_user_states WHERE user_id=$1 AND board_id=$2',
+          [member.id, raceBoard.id],
+        )
+      )[0].n,
+      0,
+    );
+
+    await raceRunner.startTransaction();
+    await raceRunner.query(
+      'UPDATE boards SET is_archived=true, archived_at=now() WHERE id=$1',
+      [raceBoard.id],
+    );
+    finished = false;
+    const background = discovery
+      .background(owner.id, raceBoard.id, 'forest')
+      .then(
+        () => ({ status: 200 }),
+        (error) => ({ status: error.getStatus() }),
+      )
+      .finally(() => {
+        finished = true;
+      });
+    await delay(100);
+    assert.equal(finished, false, 'Background must wait for the Board lock');
+    await raceRunner.commitTransaction();
+    assert.equal((await background).status, 409);
+    assert.equal(
+      (await boards.findOneByOrFail({ id: raceBoard.id })).backgroundPreset,
+      'blue',
+    );
+  } finally {
+    if (raceRunner.isTransactionActive) await raceRunner.rollbackTransaction();
+    await raceRunner.release();
+  }
+  console.log(
+    'Discovery rechecks revoked membership and archive after Board lock: PASS',
+  );
+
   Object.assign(process.env, {
     DATABASE_NAME: testDatabase,
     JWT_SECRET: randomBytes(32).toString('hex'),
@@ -465,6 +815,21 @@ try {
   await app.listen(0, '127.0.0.1');
   assert.equal(app.get(DataSource).options.database, testDatabase);
   const token = await app.get(JwtService).signAsync({ sub: owner.id });
+  await request(app.getHttpServer())
+    .get('/api/boards/background-presets')
+    .expect(401);
+  const catalog = await request(app.getHttpServer())
+    .get('/api/boards/background-presets')
+    .set('Authorization', `Bearer ${token}`)
+    .expect(200);
+  assert.equal(
+    catalog.body.data.filter((entry) => entry.kind === 'color').length,
+    8,
+  );
+  assert.equal(
+    catalog.body.data.filter((entry) => entry.kind === 'photo').length,
+    4,
+  );
   await request(app.getHttpServer()).get('/health/ready').expect(200);
   await request(app.getHttpServer()).get('/api/boards').expect(401);
   const response = await request(app.getHttpServer())
@@ -473,6 +838,18 @@ try {
     .send({ name: ' Runtime Board ' })
     .expect(201);
   assert.equal(response.body.data.name, 'Runtime Board');
+  for (const preset of ['teal', 'forest']) {
+    await request(app.getHttpServer())
+      .patch(`/api/boards/${response.body.data.id}/background`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ preset })
+      .expect(200);
+    const detail = await request(app.getHttpServer())
+      .get(`/api/boards/${response.body.data.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    assert.equal(detail.body.data.backgroundPreset, preset);
+  }
   assert.equal(
     await members.countBy({
       boardId: response.body.data.id,

@@ -1,6 +1,7 @@
 import { ParseUUIDPipe } from '@nestjs/common';
 import { CreateBoardDto } from '../../src/api/boards/dto/create-board.dto';
 import { UpdateBoardDto } from '../../src/api/boards/dto/update-board.dto';
+import { ListBoardsDto } from '../../src/api/boards/dto/list-boards.dto';
 import { createValidationPipe } from '../../src/config/validation';
 
 describe('board request validation', () => {
@@ -83,5 +84,22 @@ describe('board request validation', () => {
     await expect(
       uuid.transform('1c5e2d5b-1e13-4b31-9cc4-8e4f849d75e5', { type: 'param' }),
     ).resolves.toBeDefined();
+  });
+
+  it('validates bounded discovery search and explicit sorting', async () => {
+    const query = (value: unknown) =>
+      pipe.transform(value, { type: 'query', metatype: ListBoardsDto });
+    await expect(query({ q: ' Board ', sort: 'name' })).resolves.toMatchObject({
+      q: 'Board',
+      sort: 'name',
+    });
+    for (const value of [
+      { q: 'x'.repeat(121) },
+      { q: ['board'] },
+      { sort: 'unknown' },
+      { sort: null },
+    ]) {
+      await expect(query(value)).rejects.toMatchObject({ status: 400 });
+    }
   });
 });

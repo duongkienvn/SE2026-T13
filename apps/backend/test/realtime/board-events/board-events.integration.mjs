@@ -205,6 +205,21 @@ try {
       .expect(status);
   };
 
+  const backgroundEvent = nextBoardEvent(owner, 'board:access-changed');
+  await http('patch', 'background', { preset: 'forest' });
+  assert.deepEqual(await backgroundEvent, { boardId });
+  assert.equal(
+    (await boards.findOneByOrFail({ id: boardId })).backgroundPreset,
+    'forest',
+  );
+  await flush();
+  const privateBefore = snapshot();
+  await http('put', 'star');
+  await http('post', 'views');
+  await flush();
+  assert.deepEqual(snapshot(), privateBefore);
+  pass('background persists and emits only Board ID to the authorized room');
+
   // Instrument the real QueryRunner at COMMIT, after the callback's SQL writes.
   // TypeORM still owns commit/rollback/release; no mock transaction decides success.
   let commitHook;
@@ -684,7 +699,7 @@ try {
   pass(
     'real removal commit/eviction/broadcast/join race completes without deadlock or revoked-tab delivery despite double adapter failure',
   );
-  assert.equal(checks, 10);
+  assert.equal(checks, 11);
   console.log(
     `Board events PostgreSQL + Socket.IO: ${checks} groups PASS; isolated migrations and cleanup`,
   );

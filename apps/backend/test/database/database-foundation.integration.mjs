@@ -193,6 +193,8 @@ async function inspectSchema() {
         (sql) =>
           !sql.includes('workspace_activities') &&
           !sql.includes('activity_move_version') &&
+          !sql.includes('board_user_states') &&
+          !sql.includes('background_preset') &&
           !sql.includes('declined_at') &&
           !sql.includes('CK_workspace_invitations_declined_at') &&
           !sql.includes('"card_checklists"') &&
@@ -406,7 +408,7 @@ try {
   assert.equal(source.options.logging, false);
   assert.equal(source.options.synchronize, false);
   assert.equal(source.options.migrationsRun, false);
-  assert.equal(source.entityMetadatas.length, 24);
+  assert.equal(source.entityMetadatas.length, 25);
   assert.deepEqual(
     source.entityMetadatas.map((entity) => entity.tableName).sort(),
     [
@@ -415,6 +417,7 @@ try {
       'board_columns',
       'board_labels',
       'board_members',
+      'board_user_states',
       'boards',
       'card_assignees',
       'card_attachment_cleanup_jobs',
@@ -436,7 +439,7 @@ try {
       'workspaces',
     ],
   );
-  assert.equal(source.migrations.length, 22);
+  assert.equal(source.migrations.length, 23);
 
   const originalDatabase = process.env.DATABASE_NAME;
   process.env.DATABASE_NAME = testDatabase;
@@ -447,7 +450,7 @@ try {
     });
     try {
       const nestDataSource = app.get(DataSource);
-      assert.equal(nestDataSource.entityMetadatas.length, 24);
+      assert.equal(nestDataSource.entityMetadatas.length, 25);
       assert.equal(nestDataSource.migrations.length, source.migrations.length);
       assert.equal(nestDataSource.options.poolSize, source.options.poolSize);
       assert.equal(
@@ -473,7 +476,8 @@ try {
       !m.name.startsWith('BoardCardLabels') &&
       !m.name.startsWith('CardAdvancedDates') &&
       !m.name.startsWith('CardAttachments') &&
-      !m.name.startsWith('PrivateCardFiles'),
+      !m.name.startsWith('PrivateCardFiles') &&
+      !m.name.startsWith('BoardDiscovery'),
   );
   assert.equal((await source.runMigrations()).length, 13);
   const cliOutput = execFileSync(
@@ -499,7 +503,7 @@ try {
       '-e',
       `const dataSource = require('./src/database/data-source.ts').default;
        dataSource.initialize().then(async () => {
-         if (dataSource.entityMetadatas.length !== 24 || dataSource.migrations.length !== ${allMigrations.length}) {
+         if (dataSource.entityMetadatas.length !== 25 || dataSource.migrations.length !== ${allMigrations.length}) {
            throw new Error('TypeScript DataSource discovery mismatch');
          }
          await dataSource.destroy();
@@ -547,11 +551,12 @@ try {
   assert.equal((await source.runMigrations()).length, 10);
   await inspectSchema();
   source.migrations = allMigrations;
-  assert.equal((await source.runMigrations()).length, 9);
+  assert.equal((await source.runMigrations()).length, 10);
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries,
     [],
   );
+  await source.undoLastMigration(); // Empty Board discovery extension.
   await source.undoLastMigration(); // Empty private-file extension.
   await source.undoLastMigration(); // Empty attachment foundation.
   await source.undoLastMigration(); // Empty Card start-date extension.
@@ -564,7 +569,7 @@ try {
     source.undoLastMigration(),
     /Workspace policies require a forward fix/,
   );
-  assert.equal((await source.runMigrations()).length, 8);
+  assert.equal((await source.runMigrations()).length, 9);
   console.log(
     'Enum rollback retains existing values/history; idempotent reapply: PASS',
   );

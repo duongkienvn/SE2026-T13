@@ -29,11 +29,17 @@ export async function verifyPrivacy(ctx) {
   assert.equal(memberOverview.body.data.memberCount, 2);
   assert.equal(memberOverview.body.data.visibleBoardCount, 1);
   await send('admin', 'get', `/api/boards/${hiddenId}`).expect(404);
+  await send('admin', 'put', `/api/boards/${hiddenId}/star`).expect(404);
   await source.query(
     `INSERT INTO board_members(board_id,user_id,role) VALUES ($1,$2,'MEMBER')`,
     [hiddenId, actors.guest],
   );
   await send('guest', 'get', `/api/boards/${hiddenId}`).expect(200);
+  await send('guest', 'put', `/api/boards/${hiddenId}/star`).expect(200);
+  await send('guest', 'post', `/api/boards/${hiddenId}/views`).expect(200);
+  await send('guest', 'patch', `/api/boards/${hiddenId}/background`)
+    .send({ preset: 'forest' })
+    .expect(403);
   const guestList = await send('guest', 'get', '/api/workspaces').expect(200);
   assert.ok(!guestList.body.data.some((w) => w.id === team.id));
   for (const suffix of ['', '/boards', '/overview'])
@@ -156,11 +162,30 @@ export async function verifyPrivacy(ctx) {
   assert.equal(workspaceVisible.body.data[0].id, hiddenId);
   assert.equal(workspaceVisible.body.data[0].currentUserRole, null);
   assert.equal(workspaceVisible.body.data[0].canEdit, false);
+  await send('admin', 'put', `/api/boards/${hiddenId}/star`).expect(200);
+  await send('admin', 'post', `/api/boards/${hiddenId}/views`).expect(200);
+  await send('admin', 'patch', `/api/boards/${hiddenId}/background`)
+    .send({ preset: 'teal' })
+    .expect(404);
+  const discovery = await send(
+    'admin',
+    'get',
+    `/api/workspaces/${team.id}/boards?q=Secret&starred=true&recent=true&sort=recent`,
+  ).expect(200);
+  assert.equal(discovery.body.meta.total, 1);
+  assert.equal(discovery.body.data[0].isStarred, true);
   await source.query(
     'DELETE FROM board_members WHERE board_id=$1 AND user_id=$2',
     [hiddenId, actors.guest],
   );
   await send('guest', 'get', `/api/boards/${hiddenId}`).expect(404);
+  await send('guest', 'get', `/api/boards/${hiddenId}/user-state`).expect(404);
+  const revoked = await send(
+    'guest',
+    'get',
+    '/api/boards?starred=true&recent=true',
+  ).expect(200);
+  assert.ok(!JSON.stringify(revoked.body).includes(hiddenId));
   await source.query(
     'DELETE FROM workspace_members WHERE workspace_id=$1 AND user_id=$2',
     [team.id, actors.member],
@@ -380,6 +405,8 @@ export async function verifyMemberCounts({
     [delta.id, actors.guest],
   );
   assert.equal((await list('admin', '?search=Delta')).data[0].memberCount, 2);
+  await send('member', 'put', `/api/boards/${delta.id}/star`).expect(200);
+  await send('member', 'post', `/api/boards/${delta.id}/views`).expect(200);
   await send('admin', 'post', `/api/boards/${delta.id}/move-workspace`)
     .send({ destinationWorkspaceId: destination.id })
     .expect(200);
@@ -388,6 +415,19 @@ export async function verifyMemberCounts({
   assert.equal(moved.id, delta.id);
   assert.equal(moved.visibility, 'PRIVATE');
   assert.equal(moved.memberCount, 2);
+  await send('member', 'get', `/api/boards/${delta.id}/user-state`).expect(404);
+  const afterMove = await send(
+    'member',
+    'get',
+    '/api/boards?starred=true&recent=true',
+  ).expect(200);
+  assert.ok(!JSON.stringify(afterMove.body).includes(delta.id));
+  const [preserved] = await source.query(
+    'SELECT is_starred, last_viewed_at FROM board_user_states WHERE user_id=$1 AND board_id=$2',
+    [actors.member, delta.id],
+  );
+  assert.equal(preserved.is_starred, true);
+  assert.ok(preserved.last_viewed_at);
   assert.equal((await overview('admin', destination.id)).memberCount, 1);
   await send(
     'member',

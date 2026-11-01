@@ -172,6 +172,7 @@ describe('BoardsService', () => {
 
   it('filters by membership and archive state, uses stable ordering and preserves page metadata', async () => {
     const builder = {
+      leftJoinAndMapOne: jest.fn().mockReturnThis(),
       innerJoinAndSelect: jest.fn().mockReturnThis(),
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
@@ -219,6 +220,11 @@ describe('BoardsService', () => {
     expect(result.meta).toEqual({ page: 2, limit: 1, total: 3, totalPages: 3 });
     expect(result.data[0].currentUserRole).toBe('MEMBER');
     expect(result.data[0]).not.toHaveProperty('members');
+    await service.list(USER_ID, { page: 1, limit: 20, q: '%_', starred: true });
+    expect(builder.andWhere).toHaveBeenCalledWith('board.name ILIKE :search', {
+      search: '%\\%\\_%',
+    });
+    expect(builder.andWhere).toHaveBeenCalledWith('userState.isStarred = true');
   });
 
   it('propagates membership failure out of the transaction so TypeORM rolls back', async () => {

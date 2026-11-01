@@ -54,6 +54,7 @@ const PUBLIC_FIELDS = [
   'currentUserRole',
   'workspaceId',
   'visibility',
+  'backgroundPreset',
   'capabilities',
 ];
 
@@ -441,6 +442,7 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
 
   it('wraps list data and pagination meta without serializing relations', async () => {
     const builder = {
+      leftJoinAndMapOne: jest.fn().mockReturnThis(),
       innerJoinAndSelect: jest.fn().mockReturnThis(),
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),

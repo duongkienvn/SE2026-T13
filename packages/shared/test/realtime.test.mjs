@@ -64,3 +64,23 @@ test('typechecks key/payload mapping and rejects invalid contracts', () => {
     { stdio: 'pipe' },
   );
 });
+
+test('typechecks Board discovery contracts and rejects unsupported values', () => {
+  execFileSync(
+    process.execPath,
+    [
+      require.resolve('typescript/bin/tsc'),
+      '--strict',
+      '--noEmit',
+      '--skipLibCheck',
+      '--module',
+      'NodeNext',
+      '--moduleResolution',
+      'NodeNext',
+      '--target',
+      'ES2022',
+      'test/board-discovery-contracts.ts',
+    ],
+    { stdio: 'pipe' },
+  );
+});
