@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { Board } from '../boards/entities/board.entity';
+import { BoardUserState } from '../boards/entities/board-user-state.entity';
 import { BoardMember } from '../board-members/entities/board-member.entity';
 import { WorkspaceMember } from './entities/workspace-member.entity';
 import { WorkspacesService } from './workspaces.service';
@@ -15,6 +16,7 @@ import { toWorkspaceResponseDto } from './dto/workspace-response.dto';
 import {
   PaginatedResponse,
   paginate,
+  pageOffset,
 } from '../../common/dto/paginated-response';
 import { paginateQueryBuilder } from '../../utils/offset-pagination';
 import { toResponseDto } from '../../common/dto/to-response-dto';
@@ -35,6 +37,13 @@ export class WorkspaceBoardsService {
     return manager
       .getRepository(Board)
       .createQueryBuilder('board')
+      .leftJoinAndMapOne(
+        'board.userState',
+        BoardUserState,
+        'userState',
+        'userState.boardId = board.id AND userState.userId = :userId',
+        { userId: member.userId },
+      )
       .innerJoinAndSelect('board.workspace', 'boardWorkspace')
       .leftJoinAndSelect('board.members', 'actor', 'actor.userId = :userId', {
         userId: member.userId,
@@ -87,11 +96,28 @@ export class WorkspaceBoardsService {
         'board.isArchived = :archived',
         { archived: query.status === 'archived' },
       );
-      if (query.search) {
-        const literal = query.search.replace(/[\\%_]/g, '\\$&');
+      const search = query.q ?? query.search;
+      if (search) {
+        const literal = search.replace(/[\\%_]/g, '\\$&');
         builder.andWhere('board.name ILIKE :search', {
           search: `%${literal}%`,
         });
+      }
+      if (query.starred !== undefined)
+        builder.andWhere(
+          query.starred
+            ? 'userState.isStarred = true'
+            : 'COALESCE(userState.isStarred, false) = false',
+        );
+      if (query.recent) builder.andWhere('userState.lastViewedAt IS NOT NULL');
+      if (query.sort === 'recent') {
+        const [rows, total] = await builder
+          .orderBy('userState.lastViewedAt', 'DESC', 'NULLS LAST')
+          .addOrderBy('board.id', 'DESC')
+          .skip(pageOffset(query))
+          .take(query.limit)
+          .getManyAndCount();
+        return paginate(await this.summaries(rows, manager), total, query);
       }
       const page = await paginateQueryBuilder(
         builder,
