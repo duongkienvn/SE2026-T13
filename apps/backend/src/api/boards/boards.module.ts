@@ -16,6 +16,8 @@ import { BoardMoveService } from './board-move.service';
 import { BoardPolicyController } from './board-policy.controller';
 import { BoardPolicyService } from './board-policy.service';
 import { Workspace } from '../workspaces/entities/workspace.entity';
+import { BoardDiscoveryController } from './board-discovery.controller';
+import { BoardDiscoveryService } from './board-discovery.service';
 
 @Module({
   imports: [
@@ -27,6 +29,7 @@ import { Workspace } from '../workspaces/entities/workspace.entity';
     TypeOrmModule.forFeature([Board, BoardMember, Workspace]),
   ],
   controllers: [
+    BoardDiscoveryController,
     BoardsController,
     BoardVisibilityController,
     BoardMoveController,
@@ -34,6 +37,7 @@ import { Workspace } from '../workspaces/entities/workspace.entity';
   ],
   providers: [
     BoardsService,
+    BoardDiscoveryService,
     BoardVisibilityService,
     BoardMoveService,
     BoardPolicyService,
