@@ -258,6 +258,34 @@
   box-shadow: none;
 }
 
+.auth-entry-recovery {
+  display: flex;
+  align-self: flex-end;
+  align-items: center;
+  min-height: 32px;
+  margin-top: -8px;
+}
+
+.auth-entry [aria-label='Alternative sign-in'] {
+  margin-top: 24px;
+}
+
+.auth-entry .auth-switch {
+  display: block;
+  min-height: 0;
+  margin-top: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  text-align: center;
+  line-height: 1.7;
+}
+
+.auth-entry .auth-switch a {
+  display: inline-block;
+  margin-left: 6px;
+}
+
 .auth-entry-field > div {
   margin-top: 8px;
 }
