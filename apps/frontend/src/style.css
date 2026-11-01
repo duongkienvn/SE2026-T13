@@ -266,6 +266,34 @@
   margin-top: -8px;
 }
 
+.auth-entry-password-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-entry-requirements {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.auth-entry-requirements ul {
+  column-gap: 12px;
+  row-gap: 8px;
+}
+
+.auth-entry-requirements li {
+  align-items: flex-start;
+}
+
+.auth-entry-requirements li > :first-child {
+  margin-top: 2px;
+}
+
+.auth-entry-requirements > p {
+  font-variant-numeric: tabular-nums;
+}
+
 .auth-entry [aria-label='Alternative sign-in'] {
   margin-top: 24px;
 }
