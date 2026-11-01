@@ -34,6 +34,7 @@ import { AssignCardDto } from './dto/assign-card.dto';
 import { CardAssigneeResponseDto } from './dto/card-assignee-response.dto';
 import { CardResponseDto } from './dto/card-response.dto';
 import { CreateCardDto } from './dto/create-card.dto';
+import { DuplicateCardDto } from './dto/duplicate-card.dto';
 import { ListCardsDto } from './dto/list-cards.dto';
 import { MoveCardDto } from './dto/move-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
@@ -152,6 +153,27 @@ export class CardsController {
     @Param('cardId', ParseUUIDPipe) cardId: string,
   ): Promise<CardResponseDto> {
     return this.cards.archive(user.userId, boardId, cardId);
+  }
+
+  @Post(':cardId/duplicate')
+  @SerializeResponse(CardResponseDto)
+  @ResponseMessage('Card duplicated')
+  @ApiBearerToken()
+  @ApiParam({ name: 'cardId', format: 'uuid' })
+  @ApiSuccess({
+    type: CardResponseDto,
+    status: HttpStatus.CREATED,
+    summary:
+      'Copy an active card within its board: title, description, dates, labels and checklists (all items unchecked); never assignees, comments, activity or attachments',
+  })
+  @ApiCommonErrors()
+  duplicate(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+    @Param('cardId', ParseUUIDPipe) cardId: string,
+    @Body() input: DuplicateCardDto,
+  ): Promise<CardResponseDto> {
+    return this.cards.duplicate(user.userId, boardId, cardId, input);
   }
 
   @Post(':cardId/restore')
