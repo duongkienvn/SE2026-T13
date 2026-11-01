@@ -68,6 +68,11 @@ services:
       AVATAR_S3_BUCKET: ${AVATAR_S3_BUCKET:-}
       AVATAR_S3_REGION: ${AVATAR_S3_REGION:-ap-southeast-1}
       AVATAR_S3_PREFIX: ${AVATAR_S3_PREFIX:-avatars/v1}
+      ATTACHMENT_STORAGE_DRIVER: ${ATTACHMENT_STORAGE_DRIVER:-disabled}
+      ATTACHMENT_S3_BUCKET: ${ATTACHMENT_S3_BUCKET:-}
+      ATTACHMENT_S3_REGION: ${ATTACHMENT_S3_REGION:-ap-southeast-1}
+      ATTACHMENT_S3_PREFIX: ${ATTACHMENT_S3_PREFIX:-attachments/v1}
+      ATTACHMENT_POLICY_ACK: ${ATTACHMENT_POLICY_ACK:-}
     depends_on:
       postgres:
         condition: service_healthy

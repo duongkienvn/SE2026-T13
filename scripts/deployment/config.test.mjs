@@ -63,6 +63,51 @@ test('invitation destination is gated by default and forwarded only to backend',
   );
 });
 
+test('production forwards private attachment configuration only to backend with safe defaults', () => {
+  const defaults = {
+    ATTACHMENT_STORAGE_DRIVER: 'disabled',
+    ATTACHMENT_S3_BUCKET: '',
+    ATTACHMENT_S3_REGION: 'ap-southeast-1',
+    ATTACHMENT_S3_PREFIX: 'attachments/v1',
+    ATTACHMENT_POLICY_ACK: '',
+  };
+  const names = Object.keys(defaults);
+  const example = readFileSync('.env.production.example', 'utf8');
+  for (const [name, value] of Object.entries(defaults))
+    assert.equal(
+      new RegExp(`^${name}=(.*)$`, 'm').exec(example)?.[1].trim(),
+      value,
+    );
+
+  // Remove inherited shell values, then also verify Compose fallbacks for empty inputs.
+  for (const value of [undefined, '']) {
+    const result = config(
+      false,
+      Object.fromEntries(names.map((name) => [name, value])),
+    );
+    for (const [name, expected] of Object.entries(defaults))
+      assert.equal(result.services.backend.environment[name], expected);
+  }
+  const explicit = {
+    ATTACHMENT_STORAGE_DRIVER: 's3',
+    ATTACHMENT_S3_BUCKET: 'attachments-configuration-test',
+    ATTACHMENT_S3_REGION: 'eu-west-1',
+    ATTACHMENT_S3_PREFIX: 'private/cards/v1',
+    ATTACHMENT_POLICY_ACK: 'v1',
+  };
+  const configured = config(false, explicit);
+  for (const [name, value] of Object.entries(explicit)) {
+    assert.equal(configured.services.backend.environment[name], value);
+    for (const service of ['frontend', 'postgres', 'migrate'])
+      assert.equal(configured.services[service].environment?.[name], undefined);
+    assert.equal(configured.services.frontend.build.args[name], undefined);
+    assert.equal(
+      configured.services.frontend.build.args[`VITE_${name}`],
+      undefined,
+    );
+  }
+});
+
 test('production publishes only Caddy and isolates the database network', () => {
   const result = config();
   assert.deepEqual(Object.keys(result.services).sort(), [
