@@ -469,7 +469,27 @@ timezone, completion or mutable due-status column is introduced. See the
 kind/state-dependent CHECKs, optimistic revision and scoped idempotency/keys.
 Only ACTIVE records are listable; PENDING files reserve quota without exposure.
 `card_attachment_cleanup_jobs` deliberately has no parent FK: terminal transitions
-and Card/Board hard deletes retain private-object cleanup obligations. No worker,
-file bytes or storage provider is enabled. The migration is additive and down
+and Card/Board hard deletes retain private-object cleanup obligations. P3-05
+itself enabled no worker, file bytes or storage provider. Its migration is additive and down
 refuses populated metadata/jobs. See the [schema diagram, lifecycle, provisional
 limits and recovery contract](../tasks/backend/card-attachments-foundation.md).
+
+## Private Card file integrity and recovery (CD-03 part 2)
+
+The additive `1794009600000-PrivateCardFiles` migration adds hidden source byte
+length, verified SHA-256, intent session version and paired verification lease
+fields. Existing FILE pointers/timestamps remain; declared bytes are backfilled
+from reservation and revision advances once. Legacy content is not presumed
+verified. The output byte constraint permits bounded raster normalization rather
+than requiring source/output equality. Native guards preserve identity, terminal
+states and revision progression; pending expiry and cleanup due indexes support
+bounded workers. No new table or public metadata field is introduced.
+
+Every FILE insert creates permanent pending/active object ownership jobs. They
+survive parent hard deletion, forbid key reuse and reconcile completed jobs daily
+for late provider writes. Workers claim with `SKIP LOCKED`, check current
+references and perform provider I/O outside transactions. Final activation and
+quota decisions remain under the Board lock, using declared source versus
+reserved/verified byte semantics. Populated down refuses FILE rows or cleanup
+obligations; preserve evidence and roll forward. See
+[the schema, lifecycle, quota and migration contract](../tasks/backend/private-card-attachments.md).

@@ -58,6 +58,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 - [Card management API](backend/card-management-api.md)
 - [Advanced Card start/due dates](backend/card-advanced-dates.md)
 - [Card attachment foundation](backend/card-attachments-foundation.md)
+- [Secure private Card file attachments](backend/private-card-attachments.md)
 - [Card checklists backend](backend/card-checklists.md)
 - [Board-scoped labels and Card associations](backend/board-card-labels.md)
 - [Archived cards management and restore](backend/card-archive-restore.md)

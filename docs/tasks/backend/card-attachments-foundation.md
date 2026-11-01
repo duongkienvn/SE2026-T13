@@ -1,5 +1,11 @@
 # Card Attachment Foundation — P3-05 / CD-03 part 1
 
+This is the historical P3-05 implementation record. The subsequent
+[private-file implementation and enforced V1 policy](private-card-attachments.md)
+extend the disabled boundary described below. Its explicit production policy
+acknowledgement and manual AWS prerequisites supersede the proposed handoff,
+without asserting product approval or an actual deployment.
+
 Implements [Issue #158](https://github.com/duongkienvn/SE2026-T13/issues/158).
 The foundation provides URL metadata CRUD and a private-file extension boundary.
 P3-06 owns actual file transfer/verification; P3-10 owns the UI. No AWS, bucket,

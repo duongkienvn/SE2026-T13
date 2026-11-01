@@ -433,3 +433,16 @@ Backend architecture của project đang trong giai đoạn khởi tạo nhưng 
 - `Activity` = audit history layer
 
 Đây là basis để các feature sau này được implement theo cùng convention và không làm lệch kiến trúc đã thống nhất.
+
+## Private Card attachment extension (CD-03)
+
+The current Card module extends the historical MVP structure with URL metadata
+and private file attachments. Owned intents reserve Board/Card quota under the
+Board transaction lock; bounded content verification and S3 I/O run outside SQL
+transactions; final activation rechecks current ACL, archive, session and lease.
+Only ACTIVE allowlisted metadata is public, and authenticated downloads stream
+through the backend. Dedicated disabled/memory/private-S3 drivers stay independent
+of avatar storage. A durable database-backed worker handles expiry, deletion and
+late-write reconciliation without deleting referenced content. Business events
+reuse the post-commit Board publisher. See [implementation and P3-10 contracts](../tasks/backend/private-card-attachments.md)
+and [manual deployment requirements](../deployment/private-card-attachments.md).
