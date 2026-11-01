@@ -41,7 +41,7 @@ export function TextField({
         {label}
       </label>
       <div className="relative mt-1.5">
-        {icon && appearance !== 'auth' && (
+        {icon && (
           <span
             aria-hidden="true"
             className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-lg text-muted"
@@ -57,7 +57,7 @@ export function TextField({
             error
               ? 'border-danger focus:border-danger'
               : 'border-line focus:border-primary'
-          } ${icon && appearance !== 'auth' ? 'pl-10' : 'pl-3.5'} ${trailing ? 'pr-11' : 'pr-3.5'} ${appearance === 'auth' ? 'auth-entry-input' : ''}`}
+          } ${icon ? 'pl-10' : 'pl-3.5'} ${trailing ? 'pr-11' : 'pr-3.5'} ${appearance === 'auth' ? 'auth-entry-input' : ''}`}
           {...inputProps}
         />
         {trailing && (

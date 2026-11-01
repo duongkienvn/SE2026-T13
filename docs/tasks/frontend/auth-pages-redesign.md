@@ -1,5 +1,10 @@
 # Auth pages redesign — Forward, together
 
+This records the initial Direction A iteration. The later approved
+[Auth V2 reference refinement](auth-v2-reference-refinement.md) supersedes its
+illustration, desktop composition, scroll policy, and entry-page logo behavior.
+The implementation and verification below remain historical evidence.
+
 ## Approved scope and design
 
 Direction A was approved for Login and Sign Up, borrowing Kanban geometry from

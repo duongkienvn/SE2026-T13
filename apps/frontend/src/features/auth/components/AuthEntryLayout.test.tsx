@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { renderApp } from '../../../test/render';
 import { mockApi } from '../../../test/mock-api';
@@ -13,10 +13,37 @@ describe('scoped auth entry presentation', () => {
         expect(input.hasAttribute('appearance')).toBe(false);
         expect(input.autocomplete).not.toBe('off');
       }
-      const art = container.querySelector('svg.auth-entry-illustration');
+      const art = container.querySelector('.auth-entry-illustration');
       expect(art?.getAttribute('aria-hidden')).toBe('true');
-      expect(art?.getAttribute('focusable')).toBe('false');
+      expect(art?.querySelectorAll('a, button, input, [tabindex]').length).toBe(
+        0,
+      );
       expect(screen.getAllByRole('main')).toHaveLength(1);
+    },
+  );
+
+  it.each([
+    ['/login', 0],
+    ['/login', 1],
+    ['/register', 0],
+    ['/register', 1],
+  ] as const)(
+    'navigates from %s brand placement %s to the public home',
+    async (path, placement) => {
+      const calls = mockApi({});
+      const { router } = renderApp(path);
+      const home = screen.getAllByRole('link', { name: 'Kanvexa home' })[
+        placement
+      ];
+      expect(home.getAttribute('href')).toBe('/');
+      home.focus();
+      expect(document.activeElement).toBe(home);
+      expect(home.querySelector('img')?.getAttribute('src')).toBe(
+        '/branding/kanvexa-logo-v1.png',
+      );
+      fireEvent.click(home);
+      await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+      expect(calls).toHaveLength(0);
     },
   );
 
@@ -30,6 +57,7 @@ describe('scoped auth entry presentation', () => {
     expect(container.querySelector('[data-auth-entry]')).toBeNull();
     expect(container.querySelector('.auth-entry-input')).toBeNull();
     expect(screen.getByRole('main')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Kanvexa home' })).toBeNull();
   });
 
   it('keeps registration guidance immediately after the new password through validation', () => {

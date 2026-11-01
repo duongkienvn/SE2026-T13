@@ -7,10 +7,11 @@
 
 ## 1. Visual source of truth
 
-The approved **Forward, together** redesign supersedes the original Login and
-Sign Up composition only. Its scoped layout, responsive budget, form treatments,
-and verification evidence are recorded in
-[Auth pages redesign](../tasks/frontend/auth-pages-redesign.md). Recovery and
+The approved [Auth V2 reference](screens/reference/auth-v2.png) supersedes the
+original Login and earlier Forward, together composition for Login and Sign Up
+only. Its scoped layout, responsive budget, home-logo navigation, and
+verification evidence are recorded in
+[Auth V2 refinement](../tasks/frontend/auth-v2-reference-refinement.md). Recovery and
 email-verification pages retain the original shared `AuthLayout`; the other
 screen baselines below remain in force.
 
@@ -117,8 +118,8 @@ These are measured design guides, not hard-coded fixed dimensions. Use CSS grid/
 The reference images were drawn at about 1672 px wide, so copying their pixel sizes 1:1 made screens scroll on common laptops (for example 1366×657 and 1536×730 browser viewports). The frontend therefore uses compact sizes and should fit normal content within the viewport. Auth forms with long errors or very small viewports may scroll inside their form panel so controls remain reachable:
 
 - Controls: inputs and large buttons are 44 px high, regular buttons 40 px, field labels 14 px. The header is 60 px high and the side rail 60 px wide.
-- Login and Sign Up use the scoped `AuthEntryLayout`: frame up to 1280 px wide, form content up to 400 px, flat lavender/deep brand surfaces, and an approximately 42.5/57.5 desktop split. A 56rem **available container width** budget enables the split (22rem hero, 25rem form, 6rem form padding, plus breathing room), rather than a 1200px viewport cutoff. Desktop height is capped at 800px or viewport minus 48px; the form panel scrolls when needed. Below the split budget, the form uses document flow; below 640px the outer card treatment is removed. At heights of 480px or less, document flow takes precedence over the split.
-- Sign Up fields are sequential, with persistent requirements directly below the new password. Groups use 16px gaps (12px on short viewports), labels are 14px, input text is 16px, and password toggles have 44px targets. Desktop branding appears in the hero; single-column layouts place it above the form.
+- Login and Sign Up use the scoped `AuthEntryLayout`: frame up to 1496px wide, 400–480px desktop form content, and a 52/48 split following the approved Auth V2 reference. A 64rem **available container width** budget enables the split (29rem hero, 25rem form plus control padding and breathing room), rather than a 1200px viewport cutoff. The frame has a viewport-aware minimum height, grows with content, and never scrolls the form pane independently. Short viewports and long errors use natural document scrolling. Below the split budget, the layout is single-column; below 640px the outer card treatment is removed.
+- Sign Up fields remain sequential, with persistent requirements directly below the new password. Its form uses 16px gaps, 14px labels, 16px input text and 48px inputs; Login scales up on desktop to match the reference. Password toggles retain 44px targets. Desktop branding appears in the hero; single-column layouts place it above the form. Both entry-page logo placements are accessible links named “Kanvexa home” to `/`; other routes keep their existing logo behavior.
 - Recovery and email verification retain the original `AuthLayout`: up to 1380px wide, 48/52 split, content up to 560px, and height capped at 720px. This redesign does not change those routes or their controls.
 - `short:` is a custom Tailwind variant (`max-height: 640px`, defined in `apps/frontend/src/style.css`) that tightens vertical spacing on short viewports.
 - When data does not fit (for example many boards or members), use numbered pagination sized to the available space instead of scrolling or "Load more".

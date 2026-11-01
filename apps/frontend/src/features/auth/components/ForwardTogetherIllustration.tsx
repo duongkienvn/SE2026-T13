@@ -1,85 +1,154 @@
-/** A static diagram of cards moving forward, with no simulated product controls. */
+import { CheckCircleIcon, CheckSquareIcon } from '../../../components/icons';
+
+interface IllustrationTask {
+  title: string;
+  label?: string;
+  detail?: string;
+  progress?: { completed: number; total: number };
+  complete?: boolean;
+  collaborator?: string;
+}
+
+const columns: { title: string; tone: string; tasks: IllustrationTask[] }[] = [
+  {
+    title: 'To Do',
+    tone: 'planned',
+    tasks: [
+      { title: 'Design landing page', label: 'Design', collaborator: 'AL' },
+      { title: 'Write documentation', label: 'Docs' },
+      { title: 'Review product brief', detail: 'A clear plan for the team' },
+    ],
+  },
+  {
+    title: 'In Progress',
+    tone: 'active',
+    tasks: [
+      { title: 'Build board UI', progress: { completed: 3, total: 5 } },
+      { title: 'Refine onboarding', label: 'Frontend' },
+    ],
+  },
+  {
+    title: 'Done',
+    tone: 'complete',
+    tasks: [
+      {
+        title: 'Set up database',
+        detail: 'Project foundation',
+        complete: true,
+      },
+      { title: 'Connect Google', detail: 'Account access', complete: true },
+      { title: 'Define card checklists', complete: true },
+      { title: 'Add board labels', complete: true },
+    ],
+  },
+];
+
+function TaskCard({
+  task,
+  floating = false,
+}: {
+  task: IllustrationTask;
+  floating?: boolean;
+}) {
+  return (
+    <div className={`auth-art-task${floating ? ' auth-art-floating' : ''}`}>
+      <p className="auth-art-title">{task.title}</p>
+      {task.detail && <p className="auth-art-detail">{task.detail}</p>}
+      {task.progress && (
+        <div className="auth-art-checklist">
+          <span>
+            <CheckSquareIcon /> {task.progress.completed}/{task.progress.total}
+          </span>
+          <div className="auth-art-track">
+            <span
+              style={{
+                width: `${(task.progress.completed / task.progress.total) * 100}%`,
+              }}
+            />
+          </div>
+        </div>
+      )}
+      {task.label && (
+        <span
+          className={`auth-art-label auth-art-label-${task.label.toLowerCase()}`}
+        >
+          {task.label}
+        </span>
+      )}
+      {task.complete && <CheckCircleIcon className="auth-art-completed" />}
+      {task.collaborator && (
+        <span className="auth-art-person">{task.collaborator}</span>
+      )}
+      {floating && (
+        <div className="auth-art-people">
+          <span>AL</span>
+          <span>JM</span>
+          <span>SK</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Approved illustrative task content; never live board data or interactive UI. */
 export function ForwardTogetherIllustration() {
   return (
-    <svg
-      className="auth-entry-illustration"
-      viewBox="0 0 400 340"
-      fill="none"
-      aria-hidden="true"
-      focusable="false"
-    >
-      {/* Three open lanes, rather than a miniature application window. */}
-      <path d="M18 28H122V312H18z" className="auth-art-lane" />
-      <path d="M148 28H252V312H148z" className="auth-art-lane" />
-      <path d="M278 28H382V312H278z" className="auth-art-lane" />
-      <path
-        d="M38 49H102M168 49H232M298 49H362"
-        className="auth-art-rule"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <rect
-        x="30"
-        y="193"
-        width="80"
-        height="82"
-        rx="8"
-        className="auth-art-card"
-      />
-      <rect
-        x="160"
-        y="132"
-        width="80"
-        height="82"
-        rx="8"
-        className="auth-art-card"
-      />
-      <rect
-        x="290"
-        y="72"
-        width="80"
-        height="82"
-        rx="8"
-        className="auth-art-card"
-      />
-      <path
-        d="M70 234C125 234 122 173 200 173S274 113 330 113"
-        className="auth-art-route"
-        strokeWidth="2"
-        strokeDasharray="3 7"
-        strokeLinecap="round"
-      />
-      <circle cx="70" cy="234" r="5" className="auth-art-node" />
-      <circle cx="330" cy="113" r="5" className="auth-art-node" />
-      <g transform="rotate(-7 200 172)">
-        <rect
-          x="142"
-          y="120"
-          width="116"
-          height="104"
-          rx="10"
-          fill="var(--color-primary-solid)"
-        />
+    <div className="auth-entry-illustration" aria-hidden="true">
+      <div className="auth-art-board">
+        {columns.map((column) => (
+          <div
+            key={column.title}
+            className={`auth-art-column auth-art-${column.tone}`}
+          >
+            <div className="auth-art-column-heading">
+              <span className="auth-art-status" />
+              <span>{column.title}</span>
+              <span className="auth-art-count">{column.tasks.length}</span>
+            </div>
+            <div className="auth-art-tasks">
+              {column.tasks.map((task) => (
+                <TaskCard key={task.title} task={task} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <svg
+        className="auth-art-path"
+        viewBox="0 0 600 350"
+        fill="none"
+        focusable="false"
+      >
         <path
-          d="M177 189L219 147M191 147H219V175"
-          stroke="white"
-          strokeWidth="5"
+          d="M326 260C442 260 512 233 510 139"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeDasharray="8 9"
           strokeLinecap="round"
+        />
+        <path d="m500 152 10-17 10 17z" fill="currentColor" />
+      </svg>
+      <TaskCard
+        floating
+        task={{
+          title: 'Real-time board sync',
+          progress: { completed: 4, total: 4 },
+        }}
+      />
+      <svg
+        className="auth-art-cursor"
+        viewBox="0 0 40 44"
+        fill="none"
+        focusable="false"
+      >
+        <path
+          d="m5 3 29 19-14 3-6 14z"
+          fill="var(--auth-art-cursor)"
+          stroke="white"
+          strokeWidth="2.5"
           strokeLinejoin="round"
         />
-        <path
-          d="M158 137H173"
-          stroke="white"
-          strokeOpacity=".55"
-          strokeWidth="3"
-          strokeLinecap="round"
-        />
-      </g>
-      <path
-        d="M290 220H370M290 232H344M30 112H110M30 124H84"
-        className="auth-art-rule"
-        strokeLinecap="round"
-      />
-    </svg>
+      </svg>
+    </div>
   );
 }

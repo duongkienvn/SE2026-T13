@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router';
 import type { RedirectState } from '../../../app/redirect';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
+import { MailIcon, UserIcon } from '../../../components/icons';
 import { PasswordField } from '../../../components/PasswordField';
 import { TextField } from '../../../components/TextField';
 import { register } from '../api';
@@ -129,7 +130,7 @@ export function RegisterPage() {
   };
 
   return (
-    <AuthEntryLayout>
+    <AuthEntryLayout kind="register">
       <h1>Create your account</h1>
       <p className="auth-entry-intro">Start organizing work with your team.</p>
 
@@ -145,6 +146,7 @@ export function RegisterPage() {
         <TextField
           appearance="auth"
           label="Display name"
+          icon={<UserIcon />}
           name="displayName"
           autoComplete="name"
           placeholder="Your name"
@@ -155,6 +157,7 @@ export function RegisterPage() {
         <TextField
           appearance="auth"
           label="Email address"
+          icon={<MailIcon />}
           type="email"
           name="email"
           autoComplete="email"

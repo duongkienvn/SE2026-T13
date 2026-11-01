@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import type { RedirectState } from '../../../app/redirect';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
+import { MailIcon } from '../../../components/icons';
 import { PasswordField } from '../../../components/PasswordField';
 import { TextField } from '../../../components/TextField';
 import { login } from '../api';
@@ -139,6 +140,7 @@ export function LoginPage() {
         <TextField
           appearance="auth"
           label="Email address"
+          icon={<MailIcon />}
           type="email"
           name="email"
           autoComplete="username"
