@@ -183,9 +183,8 @@
   flex: 1 1 0;
   width: 100%;
   min-height: 0;
-  max-height: 340px;
-  margin-block: auto 0;
-  padding-top: 24px;
+  max-height: 400px;
+  margin-block: 32px 0;
 }
 
 .auth-art-lane {
@@ -217,6 +216,7 @@
   display: flex;
   min-width: 0;
   padding: 32px 24px 40px;
+  scroll-padding-block: 24px;
 }
 
 .auth-entry-content {
@@ -320,6 +320,7 @@
 
 .auth-entry-input {
   font-size: 16px;
+  scroll-margin-block: 24px;
   transition-duration: 140ms;
 }
 
@@ -384,7 +385,7 @@
   }
 
   .auth-entry-main {
-    padding: 40px 48px;
+    padding: 32px 48px;
   }
 
   .auth-entry-content h1 {
@@ -433,5 +434,28 @@
   .auth-entry-form {
     gap: 12px;
     margin-top: 20px;
+  }
+}
+
+/* Below the hero's vertical content budget, prefer a reachable document flow. */
+@media (max-height: 480px) {
+  .auth-entry-frame {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 512px;
+    height: auto;
+    overflow: visible;
+  }
+
+  .auth-entry-hero {
+    display: none;
+  }
+
+  .auth-entry-main {
+    overflow: visible;
+    scrollbar-gutter: auto;
+  }
+
+  .auth-entry-mobile-brand {
+    display: inline-flex;
   }
 }
