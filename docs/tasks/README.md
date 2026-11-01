@@ -56,6 +56,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 - [Board members management](backend/board-members-management.md)
 - [Column management API](backend/column-management-api.md)
 - [Card management API](backend/card-management-api.md)
+- [Same-Board Card duplicate API](backend/card-duplicate.md)
 - [Advanced Card start/due dates](backend/card-advanced-dates.md)
 - [Card attachment foundation](backend/card-attachments-foundation.md)
 - [Secure private Card file attachments](backend/private-card-attachments.md)
@@ -72,6 +73,9 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Frontend tasks
 
+- [Card Detail V2, safe duplicate and quick actions](frontend/card-detail-v2.md)
+- [Card checklists and Board-scoped labels UI](frontend/checklists-labels.md)
+- [Card attachments and advanced dates UI](frontend/card-attachments-advanced-dates.md)
 - [Workspace UX, navigation and responsive polish](frontend/workspace-ux-navigation-polish.md)
 - [Phase 2 access consistency and Board/invitation polish](frontend/p2-access-consistency-board-invitation-polish.md)
 - [Board OWNER visibility and move actions from Board Detail](frontend/board-owner-actions-detail.md)

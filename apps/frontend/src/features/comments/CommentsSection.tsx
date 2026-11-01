@@ -45,7 +45,7 @@ interface CommentsSectionProps {
   canReadMembers?: boolean;
 }
 
-/** A sibling of CardForm, never a form inside the card edit form. */
+/** A sibling of the card editors, never a form inside one of them. */
 export function CommentsSection({
   boardId,
   cardId,

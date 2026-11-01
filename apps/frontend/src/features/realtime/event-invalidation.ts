@@ -98,6 +98,7 @@ export function invalidationTargets<E extends BoardEventName>(
     case 'labels:changed':
       // Catalog edits affect every associated Card, including archived Cards.
       return [
+        { queryKey: [...boardKeys.detail(boardId), 'labels'] },
         allCards(boardId),
         { queryKey: boardKeys.archivedCards(boardId) },
       ];

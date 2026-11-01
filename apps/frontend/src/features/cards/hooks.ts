@@ -9,6 +9,7 @@ import {
   archiveCard,
   assignCard,
   createCard,
+  duplicateCard,
   getCard,
   listAllCards,
   listArchivedCards,
@@ -163,6 +164,22 @@ export function useUpdateCard(boardId: string, cardId: string) {
   return useMutation({
     mutationFn: (input: UpdateCardRequest) =>
       runAuthorized((token) => updateCard(token, boardId, cardId, input)),
+    ...save,
+    onError,
+  });
+}
+
+/**
+ * Copies the card into the same board. Each click is a new copy (the server
+ * has no idempotency key), so callers must block repeat submits while pending.
+ */
+export function useDuplicateCard(boardId: string, cardId: string) {
+  const { runAuthorized } = useAuth();
+  const save = useSaveCard(boardId);
+  const onError = useRefreshAfterCardError(boardId);
+  return useMutation({
+    mutationFn: () =>
+      runAuthorized((token) => duplicateCard(token, boardId, cardId)),
     ...save,
     onError,
   });

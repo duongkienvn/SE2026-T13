@@ -45,6 +45,8 @@ export interface ApiRequestOptions {
   signal?: AbortSignal;
   /** Require an exact successful HTTP status when the endpoint contract needs it. */
   expectedStatus?: number;
+  /** Extra request headers, e.g. `Idempotency-Key`. */
+  headers?: Record<string, string>;
 }
 
 function isErrorEnvelope(value: unknown): value is ApiErrorResponse {
@@ -88,9 +90,13 @@ async function requestEnvelope(
     accessToken,
     signal,
     expectedStatus,
+    headers: extraHeaders,
   }: ApiRequestOptions,
 ): Promise<ApiSuccessResponse<unknown> | undefined> {
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  const headers: Record<string, string> = {
+    ...extraHeaders,
+    Accept: 'application/json',
+  };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 

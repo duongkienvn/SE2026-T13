@@ -24,7 +24,11 @@ import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
 import { MoveCardDto } from './dto/move-card.dto';
 import { AssignCardDto } from './dto/assign-card.dto';
+import { DuplicateCardDto } from './dto/duplicate-card.dto';
 import { CardAssignee } from './entities/card-assignee.entity';
+import { CardChecklist } from './entities/card-checklist.entity';
+import { CardChecklistItem } from './entities/card-checklist-item.entity';
+import { CardLabel } from './entities/card-label.entity';
 import { BoardMember } from '../board-members/entities/board-member.entity';
 import {
   CardAssigneeResponseDto,
@@ -57,54 +61,15 @@ export class CardsService {
         boardId,
         input.columnId,
       );
-      const cards = manager.getRepository(Card);
-      const last = await cards.findOne({
-        where: { boardId, columnId: column.id, isArchived: false },
-        order: { position: 'DESC', id: 'DESC' },
-      });
-      const position = cardInsertionPosition(last?.position);
-      const card = cards.create({
+      const saved = await this.appendCard(manager, userId, {
         boardId,
         columnId: column.id,
         createdById: userId,
         title: input.title,
         description: input.description ?? null,
         ...resolveCardDates(input),
-        isArchived: false,
-        archivedAt: null,
-        position: position ?? '0.0000000000',
       });
-      if (position) {
-        const saved = await cards.save(card);
-        await this.activities.record(manager, {
-          boardId: saved.boardId,
-          actorId: userId,
-          actionType: ActivityActionType.CARD_CREATED,
-          entityType: ActivityEntityType.CARD,
-          entityId: saved.id,
-          metadata: null,
-        });
-        return toCardResponseDto(saved);
-      }
-      const ordered = await cards.find({
-        where: { boardId, columnId: column.id, isArchived: false },
-        order: { position: 'ASC', id: 'ASC' },
-      });
-      const all = [...ordered, card];
-      const positions = rebalancePositions(all.length);
-      all.forEach((row, index) => {
-        row.position = positions[index];
-      });
-      const saved = await cards.save(all);
-      await this.activities.record(manager, {
-        boardId: saved[saved.length - 1].boardId,
-        actorId: userId,
-        actionType: ActivityActionType.CARD_CREATED,
-        entityType: ActivityEntityType.CARD,
-        entityId: saved[saved.length - 1].id,
-        metadata: null,
-      });
-      return toCardResponseDto(saved[saved.length - 1]);
+      return toCardResponseDto(saved);
     });
     await this.events.publish(RealtimeServerEvent.CARD_CREATED, {
       boardId: result.boardId,
@@ -112,6 +77,140 @@ export class CardsService {
       columnId: result.columnId,
     });
     return result;
+  }
+
+  /**
+   * Same-board copy of an active card: title, description, dates, labels and
+   * checklists (every item unchecked). Assignees, comments, activity and
+   * attachments are never copied. Not idempotent, like create.
+   */
+  async duplicate(
+    userId: string,
+    boardId: string,
+    cardId: string,
+    input: DuplicateCardDto,
+  ): Promise<CardResponseDto> {
+    const result = await this.mutate(userId, boardId, async (manager) => {
+      const source = await this.requireCard(
+        manager.getRepository(Card),
+        boardId,
+        cardId,
+        true,
+      );
+      const column = await this.requireColumn(
+        manager.getRepository(BoardColumn),
+        boardId,
+        input.columnId ?? source.columnId,
+      );
+      const saved = await this.appendCard(manager, userId, {
+        boardId,
+        columnId: column.id,
+        createdById: userId,
+        title: source.title,
+        description: source.description,
+        startDate: source.startDate,
+        dueDate: source.dueDate,
+      });
+      // The board lock serializes this with label deletion and checklist edits.
+      const labels = await manager
+        .getRepository(CardLabel)
+        .find({ where: { cardId: source.id, boardId } });
+      if (labels.length > 0)
+        await manager.getRepository(CardLabel).insert(
+          labels.map((label) => ({
+            cardId: saved.id,
+            labelId: label.labelId,
+            boardId,
+          })),
+        );
+      const checklists = manager.getRepository(CardChecklist);
+      const items = manager.getRepository(CardChecklistItem);
+      const sourceChecklists = await checklists.find({
+        where: { cardId: source.id },
+        relations: { items: true },
+        order: { position: 'ASC', id: 'ASC', items: { position: 'ASC' } },
+      });
+      for (const checklist of sourceChecklists) {
+        const copy = await checklists.save(
+          checklists.create({
+            cardId: saved.id,
+            title: checklist.title,
+            position: checklist.position,
+          }),
+        );
+        if (checklist.items.length > 0)
+          await items.insert(
+            checklist.items.map((item) => ({
+              checklistId: copy.id,
+              text: item.text,
+              position: item.position,
+              isChecked: false,
+            })),
+          );
+      }
+      return toCardResponseDto(saved);
+    });
+    await this.events.publish(RealtimeServerEvent.CARD_CREATED, {
+      boardId: result.boardId,
+      cardId: result.id,
+      columnId: result.columnId,
+    });
+    return result;
+  }
+
+  /** Appends a new card to its column and records its creation. */
+  private async appendCard(
+    manager: EntityManager,
+    userId: string,
+    values: Pick<
+      Card,
+      | 'boardId'
+      | 'columnId'
+      | 'createdById'
+      | 'title'
+      | 'description'
+      | 'startDate'
+      | 'dueDate'
+    >,
+  ): Promise<Card> {
+    const { boardId, columnId } = values;
+    const cards = manager.getRepository(Card);
+    const last = await cards.findOne({
+      where: { boardId, columnId, isArchived: false },
+      order: { position: 'DESC', id: 'DESC' },
+    });
+    const position = cardInsertionPosition(last?.position);
+    const card = cards.create({
+      ...values,
+      isArchived: false,
+      archivedAt: null,
+      position: position ?? '0.0000000000',
+    });
+    let saved: Card;
+    if (position) {
+      saved = await cards.save(card);
+    } else {
+      const ordered = await cards.find({
+        where: { boardId, columnId, isArchived: false },
+        order: { position: 'ASC', id: 'ASC' },
+      });
+      const all = [...ordered, card];
+      const positions = rebalancePositions(all.length);
+      all.forEach((row, index) => {
+        row.position = positions[index];
+      });
+      const rows = await cards.save(all);
+      saved = rows[rows.length - 1];
+    }
+    await this.activities.record(manager, {
+      boardId: saved.boardId,
+      actorId: userId,
+      actionType: ActivityActionType.CARD_CREATED,
+      entityType: ActivityEntityType.CARD,
+      entityId: saved.id,
+      metadata: null,
+    });
+    return saved;
   }
 
   async update(

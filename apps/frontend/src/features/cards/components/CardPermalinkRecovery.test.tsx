@@ -48,6 +48,9 @@ describe('permalink failure recovery', () => {
     renderApp(path);
     fireEvent.click(await screen.findByRole('button', { name: card.title }));
     const dialog = await screen.findByRole('dialog', { name: card.title });
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Edit description' }),
+    );
     const description =
       within(dialog).getByLabelText<HTMLTextAreaElement>('Description');
     fireEvent.change(description, {

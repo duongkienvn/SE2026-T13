@@ -10,9 +10,11 @@ interface DialogProps {
   children: ReactNode;
   /** Prevents closing (Escape, backdrop) while a request is running. */
   dismissible?: boolean;
-  /** `wide` fits a two-column layout such as the card detail. */
-  size?: 'default' | 'wide';
+  /** `wide` fits a two-column layout; `detail` is the Card Detail V2 width. */
+  size?: 'default' | 'wide' | 'detail';
   fullscreenOnMobile?: boolean;
+  /** Controls beside the title, e.g. edit and close buttons. */
+  headerActions?: ReactNode;
 }
 
 /**
@@ -28,6 +30,7 @@ export function Dialog({
   dismissible = true,
   size = 'default',
   fullscreenOnMobile = false,
+  headerActions,
 }: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -54,17 +57,28 @@ export function Dialog({
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
         className={`relative w-full ${fullscreenOnMobile ? 'h-dvh max-h-dvh rounded-none sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl' : 'max-h-[calc(100dvh-2rem)] rounded-2xl'} ${
-          size === 'wide' ? 'max-w-4xl' : 'max-w-lg'
+          size === 'detail'
+            ? 'max-w-5xl'
+            : size === 'wide'
+              ? 'max-w-4xl'
+              : 'max-w-lg'
         } overflow-y-auto bg-surface p-5 shadow-frame focus:outline-none sm:p-6`}
       >
-        <h2
-          id={titleId}
-          className={`font-semibold break-words text-ink ${
-            size === 'wide' ? 'text-xl sm:text-2xl' : 'text-lg'
-          }`}
-        >
-          {title}
-        </h2>
+        <div className="flex items-start gap-3">
+          <h2
+            id={titleId}
+            className={`min-w-0 flex-1 font-semibold break-words text-ink ${
+              size === 'default' ? 'text-lg' : 'text-xl sm:text-2xl'
+            }`}
+          >
+            {title}
+          </h2>
+          {headerActions && (
+            <div className="-mt-1 -mr-2 flex shrink-0 items-center gap-1">
+              {headerActions}
+            </div>
+          )}
+        </div>
         {description && (
           <p id={descriptionId} className="mt-1 text-sm text-muted">
             {description}

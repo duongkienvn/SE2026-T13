@@ -4,6 +4,9 @@ import { Board } from '../../src/api/boards/entities/board.entity';
 import { BoardColumn } from '../../src/api/columns/entities/board-column.entity';
 import { CardAssignee } from '../../src/api/cards/entities/card-assignee.entity';
 import { BoardMember } from '../../src/api/board-members/entities/board-member.entity';
+import { CardLabel } from '../../src/api/cards/entities/card-label.entity';
+import { CardChecklist } from '../../src/api/cards/entities/card-checklist.entity';
+import { CardChecklistItem } from '../../src/api/cards/entities/card-checklist-item.entity';
 import { CardsService } from '../../src/api/cards/cards.service';
 import { BoardAuthorizationService } from '../../src/api/board-members/board-authorization.service';
 import { BoardEventPublisher } from '../../src/realtime/board-event-publisher.service';
@@ -65,18 +68,30 @@ export function cardsHarness() {
   const members = {
     findOne: jest.fn().mockResolvedValue({ userId: CARD_IDS.target }),
   };
+  const cardLabels = {
+    find: jest.fn().mockResolvedValue([]),
+    insert: jest.fn().mockResolvedValue(undefined),
+  };
+  const checklists = {
+    find: jest.fn().mockResolvedValue([]),
+    create: jest.fn((input) => input),
+    save: jest.fn(async (input) => ({
+      id: `copy-of-${input.title}`,
+      ...input,
+    })),
+  };
+  const checklistItems = { insert: jest.fn().mockResolvedValue(undefined) };
+  const repositories = new Map<unknown, unknown>([
+    [Card, cards],
+    [BoardColumn, columns],
+    [CardAssignee, assignees],
+    [BoardMember, members],
+    [CardLabel, cardLabels],
+    [CardChecklist, checklists],
+    [CardChecklistItem, checklistItems],
+  ]);
   const manager = {
-    getRepository: jest.fn((entity) =>
-      entity === Card
-        ? cards
-        : entity === BoardColumn
-          ? columns
-          : entity === CardAssignee
-            ? assignees
-            : entity === BoardMember
-              ? members
-              : {},
-    ),
+    getRepository: jest.fn((entity) => repositories.get(entity) ?? {}),
   };
   const transaction = jest.fn(async (callback) => callback(manager));
   const boards = { manager: { transaction } };
@@ -116,6 +131,9 @@ export function cardsHarness() {
     columns,
     members,
     assignees,
+    cardLabels,
+    checklists,
+    checklistItems,
     manager,
     transaction,
     authorization,

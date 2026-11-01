@@ -28,6 +28,41 @@ const defaultHandlers: Record<string, Handler> = {
   }),
 };
 
+const page = (items: unknown[], limit: number): MockResponse => ({
+  status: 200,
+  body: {
+    success: true,
+    statusCode: 200,
+    message: 'OK',
+    data: items,
+    meta: { page: 1, limit, total: 0, totalPages: 1 },
+  },
+});
+
+/**
+ * Card Detail loads checklists, labels and attachments for every card. Tests
+ * that do not care about them get empty sections; others override the path.
+ */
+function defaultCardSection(method: string, path: string) {
+  if (method !== 'GET') return undefined;
+  const card =
+    /^\/boards\/[^/]+\/cards\/([^/?]+)\/(checklists|labels|attachments)(\?|$)/.exec(
+      path,
+    );
+  if (card?.[2] === 'checklists')
+    return ok({
+      cardId: card[1],
+      checklists: [],
+      checkedItems: 0,
+      totalItems: 0,
+      completionPercentage: 0,
+    });
+  if (card?.[2] === 'labels') return ok({ cardId: card[1], labels: [] });
+  if (card?.[2] === 'attachments') return page([], 5);
+  if (/^\/boards\/[^/]+\/labels\?/.test(path)) return page([], 100);
+  return undefined;
+}
+
 /**
  * Replaces `fetch` with handlers keyed by "METHOD /path" (relative to the API
  * base URL). Unknown requests fail the test loudly. Returns the call log.
@@ -49,7 +84,8 @@ export function mockApi(overrides: Record<string, Handler>): MockRequest[] {
       };
       calls.push(request);
 
-      const handler = handlers[`${method} ${path}`];
+      const handler =
+        handlers[`${method} ${path}`] ?? defaultCardSection(method, path);
       if (!handler) throw new Error(`Unexpected request: ${method} ${path}`);
       const { status, body } =
         typeof handler === 'function' ? await handler(request) : handler;

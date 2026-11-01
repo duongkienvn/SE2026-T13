@@ -20,7 +20,9 @@ export interface Card {
   description: string | null;
   /** Decimal string; compare with `compareByPosition`, never `parseFloat`. */
   position: string;
-  /** ISO 8601 with timezone, or `null` for no due date. */
+  /** UTC instant (P3-03), or `null` for no start date. */
+  startDate: string | null;
+  /** UTC instant, or `null` for no due date. */
   dueDate: string | null;
   isArchived: boolean;
   archivedAt: string | null;
@@ -33,14 +35,24 @@ export interface CreateCardRequest {
   columnId: string;
   title: string;
   description?: string | null;
+  startDate?: string | null;
   dueDate?: string | null;
 }
 
-/** Omitted fields stay as they are; `null` clears. Never send it empty. */
+/**
+ * Omitted fields stay as they are; `null` clears. Never send it empty. Dates
+ * are ISO instants with `Z` or an offset, never bare calendar days.
+ */
 export interface UpdateCardRequest {
   title?: string;
   description?: string | null;
+  startDate?: string | null;
   dueDate?: string | null;
+}
+
+/** Same-board copy; an omitted column keeps the source card's column. */
+export interface DuplicateCardRequest {
+  columnId?: string;
 }
 
 export interface MoveCardRequest {

@@ -10,6 +10,7 @@ import type {
   Card,
   CardAssignee,
   CreateCardRequest,
+  DuplicateCardRequest,
   MoveCardRequest,
   UpdateCardRequest,
 } from './types';
@@ -114,6 +115,20 @@ export function archiveCard(
 ): Promise<Card> {
   return apiRequest<Card>(`${cardsPath(boardId, cardId)}/archive`, {
     method: 'POST',
+    accessToken,
+  });
+}
+
+/** A new card in the same board; never copies assignees, comments or files. */
+export function duplicateCard(
+  accessToken: string,
+  boardId: string,
+  cardId: string,
+  input: DuplicateCardRequest = {},
+): Promise<Card> {
+  return apiRequest<Card>(`${cardsPath(boardId, cardId)}/duplicate`, {
+    method: 'POST',
+    body: input,
     accessToken,
   });
 }

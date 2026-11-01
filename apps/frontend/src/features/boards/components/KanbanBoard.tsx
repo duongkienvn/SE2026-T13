@@ -31,6 +31,8 @@ interface KanbanBoardProps {
   /** Archived boards can be viewed but not changed. */
   readOnly: boolean;
   canReadMembers?: boolean;
+  /** Shown as the card's context in Card Detail. */
+  boardName?: string;
 }
 
 type OpenDialog =
@@ -43,6 +45,7 @@ export function KanbanBoard({
   boardId,
   readOnly,
   canReadMembers = true,
+  boardName,
 }: KanbanBoardProps) {
   const { cardId, openCard, closeCard } = useCardRoute(boardId);
   const columns = useColumns(boardId);
@@ -169,8 +172,10 @@ export function KanbanBoard({
           }
           members={canReadMembers ? (members.data ?? []) : []}
           canReadMembers={canReadMembers}
+          boardName={boardName}
           boardReadOnly={readOnly}
           onClose={closeCard}
+          onOpenCard={openCard}
         />
       )}
     </>
