@@ -501,6 +501,93 @@ try {
   pass(
     'raster bytes are decoded/normalized under prospective reservation and served inline with immutable verified digest',
   );
+  // Generate xref offsets from the final encoded names, not by patching serialized PDFs.
+  const pdfFixture = (embedded = false, escaped = false) => {
+    const name = (value) =>
+      '/' +
+      (escaped
+        ? [...value]
+            .map((char) => '#' + char.charCodeAt(0).toString(16))
+            .join('')
+        : value);
+    const binary = 'MZ\0\x01synthetic binary fixture';
+    const objects = [
+      '<< /Type /Catalog /Pages 2 0 R >>',
+      '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << >> ${embedded ? '/Annots [4 0 R]' : ''} >>`,
+    ];
+    if (embedded)
+      objects.push(
+        `<< /Type /Annot /Subtype ${name('FileAttachment')} /Rect [0 0 10 10] /FS 5 0 R >>`,
+        `<< /Type ${name('Filespec')} /F (payload.bin) ${name('EF')} << /F 6 0 R >> >>`,
+        `<< /Type ${name('EmbeddedFile')} /Length ${Buffer.byteLength(binary)} >>\nstream\n${binary}\nendstream`,
+      );
+    let text = '%PDF-1.4\n';
+    const offsets = [];
+    for (const [index, object] of objects.entries()) {
+      offsets.push(Buffer.byteLength(text));
+      text += `${index + 1} 0 obj\n${object}\nendobj\n`;
+    }
+    const xref = Buffer.byteLength(text);
+    text += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+    for (const offset of offsets)
+      text += `${String(offset).padStart(10, '0')} 00000 n \n`;
+    text += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+    return Buffer.from(text);
+  };
+  for (const escaped of [false, true]) {
+    const body = pdfFixture(true, escaped);
+    assert.ok(!body.includes(Buffer.from('/EmbeddedFiles')));
+    const upload = await begin({
+      filename: 'embedded.pdf',
+      contentType: 'application/pdf',
+      fileSize: body.length,
+    });
+    await transfer(upload, body, 'owner', 'application/pdf').expect(204);
+    const rejected = await finish(upload).expect(415);
+    assert.equal(rejected.body.code, 'ATTACHMENT_PDF_UNSUPPORTED');
+    const [row] = await source.query(
+      'SELECT state,content_sha256,verification_token,verified_at FROM card_attachments WHERE id=$1',
+      [upload.uploadId],
+    );
+    assert.equal(row.state, 'FAILED');
+    assert.equal(row.content_sha256, null);
+    assert.equal(row.verification_token, null);
+    assert.equal(row.verified_at, null);
+    assert.ok(!storage.objects.has(`attachments/v1/active/${upload.uploadId}`));
+    const listed = (await send('owner', 'get', attachments).expect(200)).body
+      .data;
+    assert.ok(!listed.some((item) => item.id === upload.uploadId));
+    await send('owner', 'get', attachments + '/' + upload.uploadId).expect(404);
+    await send(
+      'owner',
+      'get',
+      attachments + '/' + upload.uploadId + '/file',
+    ).expect(404);
+    await finish(upload).expect(409);
+  }
+  const supportedPdf = pdfFixture();
+  const pdfUpload = await begin({
+    filename: 'supported.pdf',
+    contentType: 'application/pdf',
+    fileSize: supportedPdf.length,
+  });
+  await transfer(pdfUpload, supportedPdf, 'owner', 'application/pdf').expect(
+    204,
+  );
+  const verifiedPdf = (await finish(pdfUpload).expect(200)).body.data;
+  assert.equal(verifiedPdf.state, 'ACTIVE');
+  const pdfDownload = await send(
+    'member',
+    'get',
+    attachments + '/' + verifiedPdf.id + '/file',
+  ).expect(200);
+  assert.deepEqual(pdfDownload.body, supportedPdf);
+  await send('owner', 'delete', attachments + '/' + verifiedPdf.id).expect(204);
+  pass(
+    'PDF annotation-embedded binaries without a name tree, including escaped names, fail completion before ACTIVE/storage publication; supported PDFs still complete and download',
+  );
+
   for (const payload of [
     { filename: 'x.svg', contentType: 'image/svg+xml', fileSize: 5 },
     { filename: '../x.txt', contentType: 'text/plain', fileSize: 5 },

@@ -14,15 +14,16 @@ export function verifyAttachmentPdf(body: Buffer): void {
   const names = text.replace(/#([0-9a-f]{2})/gi, (_match, hex: string) =>
     String.fromCharCode(parseInt(hex, 16)),
   );
+  // Attachment annotations/filespecs can reach embedded streams without a name tree.
   if (
-    /\/(?:JavaScript|JS|Launch|AA|OpenAction|EmbeddedFiles|RichMedia|XFA|Encrypt|ObjStm|GoToR|SubmitForm|ImportData)\b/i.test(
+    /\/(?:JavaScript|JS|Launch|AA|OpenAction|FileAttachment|Filespec|EF|EmbeddedFile|EmbeddedFiles|RichMedia|XFA|Encrypt|ObjStm|GoToR|SubmitForm|ImportData)\b/i.test(
       names,
     )
   )
     throw fileError(
       415,
       'ATTACHMENT_PDF_UNSUPPORTED',
-      'Encrypted, active-content and object-stream PDFs are unsupported',
+      'Encrypted, active-content, embedded-file and object-stream PDFs are unsupported',
     );
   const end = /startxref\s+(\d+)\s+%%EOF[\t\r\n ]*$/.exec(text);
   if (!end) invalid();
