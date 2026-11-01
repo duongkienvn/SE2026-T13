@@ -482,3 +482,115 @@ export function CodeIcon(props: IconProps) {
     </StrokeSvg>
   );
 }
+
+export function PencilIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z" />
+      <path d="m13.5 6.5 4 4" />
+    </StrokeSvg>
+  );
+}
+
+export function CopyIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <rect x="8" y="8" width="12" height="12" rx="2.5" />
+      <path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8" />
+    </StrokeSvg>
+  );
+}
+
+export function ArchiveIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <rect x="3.5" y="4" width="17" height="4.5" rx="1.5" />
+      <path d="M5 8.5V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5M10 12.5h4" />
+    </StrokeSvg>
+  );
+}
+
+export function TrashIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M4.5 7h15M9.5 7V5h5v2M6.5 7l1 12a1.5 1.5 0 0 0 1.5 1.4h6a1.5 1.5 0 0 0 1.5-1.4l1-12M10 11v5.5M14 11v5.5" />
+    </StrokeSvg>
+  );
+}
+
+export function TagIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.5 1.5 0 0 1 0 2.1l-6.6 6.6a1.5 1.5 0 0 1-2.1 0z" />
+      <circle cx="8" cy="8" r="1.5" />
+    </StrokeSvg>
+  );
+}
+
+export function CalendarIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <rect x="3.5" y="5" width="17" height="15" rx="2.5" />
+      <path d="M3.5 10h17M8 3v4M16 3v4" />
+    </StrokeSvg>
+  );
+}
+
+export function TextIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M4 6h16M4 10.5h16M4 15h10M4 19.5h7" />
+    </StrokeSvg>
+  );
+}
+
+export function PaperclipIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="m20 11.5-7.8 7.8a5 5 0 0 1-7.1-7.1l8.1-8.1a3.4 3.4 0 0 1 4.8 4.8l-8 8a1.7 1.7 0 0 1-2.4-2.4l7.3-7.3" />
+    </StrokeSvg>
+  );
+}
+
+export function FileIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M14 3.5H7A2.5 2.5 0 0 0 4.5 6v12A2.5 2.5 0 0 0 7 20.5h10a2.5 2.5 0 0 0 2.5-2.5V9z" />
+      <path d="M14 3.5V9h5.5" />
+    </StrokeSvg>
+  );
+}
+
+export function ImageIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+      <circle cx="9" cy="10" r="1.8" />
+      <path d="m20.5 16-4.5-4.5-8.5 8" />
+    </StrokeSvg>
+  );
+}
+
+export function DownloadIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14" />
+    </StrokeSvg>
+  );
+}
+
+export function ExternalLinkIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M13.5 4.5h6v6M19.5 4.5 11 13M17 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h4" />
+    </StrokeSvg>
+  );
+}
+
+export function ArrowUpIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M12 19V5M6 11l6-6 6 6" />
+    </StrokeSvg>
+  );
+}

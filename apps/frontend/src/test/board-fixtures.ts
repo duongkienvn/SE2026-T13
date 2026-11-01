@@ -70,6 +70,7 @@ export function makeCard(overrides: Partial<Card> = {}): Card {
     title: `Card ${sequence}`,
     description: null,
     position: `${sequence * 100}.0000000000`,
+    startDate: null,
     dueDate: null,
     isArchived: false,
     archivedAt: null,

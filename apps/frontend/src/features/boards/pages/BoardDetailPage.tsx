@@ -290,6 +290,7 @@ export function BoardDetailPage() {
           boardId={data.id}
           readOnly={readOnly}
           canReadMembers={data.currentUserRole !== null}
+          boardName={data.name}
         />
       </div>
 

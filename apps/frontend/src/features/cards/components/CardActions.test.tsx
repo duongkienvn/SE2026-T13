@@ -20,7 +20,6 @@ import {
   type MockResponse,
 } from '../../../test/mock-api';
 import { renderApp } from '../../../test/render';
-import { dueDateFromInput } from '../validation';
 import type { Card } from '../types';
 
 type Handler =
@@ -174,20 +173,24 @@ describe('adding cards', () => {
     expect(
       screen.queryByRole('button', { name: 'Add a card to Frozen' }),
     ).toBeNull();
-    for (const label of ['Title', 'Description', 'Due date']) {
-      expect(
-        (within(dialog).getByLabelText(label) as HTMLInputElement).disabled,
-      ).toBe(true);
-    }
+    for (const name of [
+      'Edit title',
+      'Edit description',
+      'Edit dates',
+      'Edit labels',
+      'Add checklist',
+      'Add attachment',
+      'Duplicate',
+      'Archive card',
+      'Restore card',
+      'Add assignee',
+    ])
+      expect(within(dialog).queryByRole('button', { name })).toBeNull();
+    expect(within(dialog).queryByRole('textbox')).toBeNull();
+    // Reading and sharing stay available.
     expect(
-      within(dialog).queryByRole('button', { name: 'Save changes' }),
-    ).toBeNull();
-    expect(
-      within(dialog).queryByRole('button', { name: 'Archive card' }),
-    ).toBeNull();
-    expect(
-      within(dialog).queryByRole('button', { name: 'Add assignee' }),
-    ).toBeNull();
+      within(dialog).getByRole('button', { name: 'Copy link' }),
+    ).toBeTruthy();
   });
 });
 
@@ -196,7 +199,7 @@ describe('card detail', () => {
     overrides: Partial<Card> = {},
     extra: (card: Card, path: string) => Record<string, Handler> = () => ({}),
   ) {
-    const board = makeBoard();
+    const board = makeBoard({ name: 'Research' });
     const column = makeColumn({ boardId: board.id, name: 'Backlog' });
     const card = makeCard({
       boardId: board.id,
@@ -216,95 +219,122 @@ describe('card detail', () => {
     return { board, card, calls, path };
   }
 
-  it('shows the card with its column, keeping Save off until something changes', async () => {
+  it('shows the card with its column and board, read-only until Edit', async () => {
     setupCard();
     const dialog = await openCard('Feed research');
 
-    expect(within(dialog).getByText(/^In Backlog · Created/)).toBeTruthy();
     expect(
-      (within(dialog).getByLabelText('Title') as HTMLInputElement).value,
-    ).toBe('Feed research');
+      within(dialog).getByText(/^Backlog in Research · Created/),
+    ).toBeTruthy();
+    expect(within(dialog).getByText('Old notes')).toBeTruthy();
+    expect(within(dialog).queryByLabelText('Description')).toBeNull();
+    expect(within(dialog).queryByLabelText('Title')).toBeNull();
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Edit description' }),
+    );
     expect(
       (within(dialog).getByLabelText('Description') as HTMLTextAreaElement)
         .value,
     ).toBe('Old notes');
-    expect(
-      (
-        within(dialog).getByRole('button', {
-          name: 'Save changes',
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
   });
 
-  it('sends only the changed fields, blank description as null', async () => {
-    const { calls } = setupCard({}, (card, path) => ({
-      [`PATCH ${path}`]: ok({
-        ...card,
-        title: 'Feed research v2',
-        description: null,
-        dueDate: dueDateFromInput('2026-10-25'),
-      }),
+  it('saves the description only after the server confirms, blank as null', async () => {
+    let answer: (response: MockResponse) => void = () => {};
+    const { calls, card } = setupCard({}, (_card, path) => ({
+      [`PATCH ${path}`]: () =>
+        new Promise<MockResponse>((resolve) => {
+          answer = resolve;
+        }),
     }));
     const dialog = await openCard('Feed research');
 
-    fireEvent.change(within(dialog).getByLabelText('Title'), {
-      target: { value: ' Feed research v2 ' },
-    });
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Edit description' }),
+    );
     fireEvent.change(within(dialog).getByLabelText('Description'), {
       target: { value: '   ' },
     });
-    fireEvent.change(within(dialog).getByLabelText('Due date'), {
-      target: { value: '2026-10-25' },
-    });
-    fireEvent.click(
-      within(dialog).getByRole('button', { name: 'Save changes' }),
-    );
-
-    expect(await within(dialog).findByText('Changes saved.')).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    expect(
+      await within(dialog).findByRole('button', { name: 'Saving…' }),
+    ).toBeTruthy();
+    expect(within(dialog).queryByText('Description saved.')).toBeNull();
     expect(writes(calls)).toEqual([
-      expect.objectContaining({
-        method: 'PATCH',
-        body: {
-          title: 'Feed research v2',
-          description: null,
-          dueDate: dueDateFromInput('2026-10-25'),
-        },
-      }),
+      expect.objectContaining({ method: 'PATCH', body: { description: null } }),
     ]);
+    answer(ok({ ...card, description: null }));
+    expect(await within(dialog).findByText('Description saved.')).toBeTruthy();
+    expect(within(dialog).queryByLabelText('Description')).toBeNull();
   });
 
-  it('clears the due date with null and leaves other fields out', async () => {
-    const dueDate = dueDateFromInput('2026-11-01');
-    const { calls } = setupCard({ dueDate }, (card, path) => ({
-      [`PATCH ${path}`]: ok({ ...card, dueDate: null }),
+  it('cancels a description edit without saving and shows the saved text', async () => {
+    const { calls } = setupCard();
+    const dialog = await openCard('Feed research');
+
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Edit description' }),
+    );
+    fireEvent.change(within(dialog).getByLabelText('Description'), {
+      target: { value: 'Never sent' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    expect(within(dialog).getByText('Old notes')).toBeTruthy();
+    expect(within(dialog).queryByText('Never sent')).toBeNull();
+    expect(writes(calls)).toHaveLength(0);
+  });
+
+  it('keeps the draft and shows the error when saving fails', async () => {
+    setupCard({}, (_card, path) => ({
+      [`PATCH ${path}`]: fail(500, 'INTERNAL_ERROR'),
     }));
     const dialog = await openCard('Feed research');
 
-    expect(
-      (within(dialog).getByLabelText('Due date') as HTMLInputElement).value,
-    ).toBe('2026-11-01');
     fireEvent.click(
-      within(dialog).getByRole('button', { name: 'Clear due date' }),
+      within(dialog).getByRole('button', { name: 'Edit description' }),
     );
-    fireEvent.click(
-      within(dialog).getByRole('button', { name: 'Save changes' }),
-    );
+    fireEvent.change(within(dialog).getByLabelText('Description'), {
+      target: { value: 'Keep me' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
 
-    await within(dialog).findByText('Changes saved.');
-    expect(writes(calls)[0].body).toEqual({ dueDate: null });
+    expect(await within(dialog).findByRole('alert')).toBeTruthy();
+    expect(
+      (within(dialog).getByLabelText('Description') as HTMLTextAreaElement)
+        .value,
+    ).toBe('Keep me');
+    expect(within(dialog).queryByText('Description saved.')).toBeNull();
+  });
+
+  it('renames the card with only the title in the patch', async () => {
+    const { calls } = setupCard({}, (card, path) => ({
+      [`PATCH ${path}`]: ok({ ...card, title: 'Feed research v2' }),
+    }));
+    const dialog = await openCard('Feed research');
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Edit title' }));
+    fireEvent.change(within(dialog).getByLabelText('Title'), {
+      target: { value: ' Feed research v2 ' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save title' }));
+
+    await waitFor(() =>
+      expect(within(dialog).queryByLabelText('Title')).toBeNull(),
+    );
+    expect(writes(calls)).toEqual([
+      expect.objectContaining({ body: { title: 'Feed research v2' } }),
+    ]);
   });
 
   it('validates the title before saving', async () => {
     const { calls } = setupCard();
     const dialog = await openCard('Feed research');
 
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Edit title' }));
     fireEvent.change(within(dialog).getByLabelText('Title'), {
       target: { value: '  ' },
     });
-    fireEvent.click(
-      within(dialog).getByRole('button', { name: 'Save changes' }),
-    );
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save title' }));
 
     expect(within(dialog).getByText('Enter a card title.')).toBeTruthy();
     expect(writes(calls)).toHaveLength(0);

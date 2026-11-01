@@ -15,7 +15,9 @@ describe('card permalink detail', () => {
     const { router, path, cardPath } = openPermalink({ direct: true });
     const dialog = await detail();
     expect(router.state.location.pathname).toBe(cardPath);
-    expect(within(dialog).getByLabelText('Title')).toBeTruthy();
+    expect(
+      within(dialog).getByRole('button', { name: 'Edit description' }),
+    ).toBeTruthy();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close card' }));
     await waitFor(() => expect(router.state.location.pathname).toBe(path));
     expect(router.state.historyAction).toBe('REPLACE');
@@ -29,6 +31,9 @@ describe('card permalink detail', () => {
       await screen.findByRole('button', { name: 'Private card' }),
     );
     const dialog = await detail();
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Edit description' }),
+    );
     fireEvent.change(within(dialog).getByLabelText('Description'), {
       target: { value: 'Unsaved draft' },
     });

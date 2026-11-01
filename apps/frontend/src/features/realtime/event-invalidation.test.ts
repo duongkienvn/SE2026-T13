@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { boardKeys } from '../boards/query-keys';
 import { commentKeys } from '../comments/query-keys';
 import { avatarKeys } from '../auth/avatar-query-keys';
+import { attachmentKeys } from '../cards/attachments/hooks';
+import { checklistKeys } from '../cards/checklists/hooks';
+import { labelKeys } from '../labels/hooks';
 import {
   BOARD_EVENTS,
   boardResyncTargets,
@@ -280,6 +283,61 @@ describe('boardResyncTargets', () => {
       'commentsPage1',
       'commentsPage2',
       'otherCardComments',
+    ]);
+  });
+});
+
+describe('Card Detail V2 section caches', () => {
+  async function invalidatedKeys(
+    targets: ReturnType<typeof boardResyncTargets>,
+    keys: Record<string, QueryKey>,
+  ) {
+    const client = new QueryClient();
+    for (const key of Object.values(keys)) client.setQueryData(key, {});
+    await Promise.all(
+      targets.map((target) => client.invalidateQueries(target)),
+    );
+    return Object.keys(keys).filter(
+      (name) => client.getQueryState(keys[name])?.isInvalidated,
+    );
+  }
+  const sections = {
+    checklists: checklistKeys.card(BOARD, CARD),
+    cardLabels: labelKeys.card(BOARD, CARD),
+    attachments: attachmentKeys.page(BOARD, CARD, 1),
+    catalog: labelKeys.catalog(BOARD),
+    otherCatalog: labelKeys.catalog(OTHER),
+    otherChecklists: checklistKeys.card(BOARD, OTHER_CARD),
+  };
+
+  it('card:updated refreshes only that card’s checklists, labels and attachments', async () => {
+    expect(
+      await invalidatedKeys(
+        invalidationTargets('card:updated', {
+          boardId: BOARD,
+          cardId: CARD,
+          columnId: 'column',
+        }),
+        sections,
+      ),
+    ).toEqual(['checklists', 'cardLabels', 'attachments']);
+  });
+
+  it('labels:changed refreshes the board catalog and every card label list', async () => {
+    expect(
+      await invalidatedKeys(
+        invalidationTargets('labels:changed', {
+          boardId: BOARD,
+          labelId: 'label-1',
+        }),
+        sections,
+      ),
+    ).toEqual([
+      'checklists',
+      'cardLabels',
+      'attachments',
+      'catalog',
+      'otherChecklists',
     ]);
   });
 });

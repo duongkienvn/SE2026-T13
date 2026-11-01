@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Alert } from '../../../components/Alert';
-import { Button } from '../../../components/Button';
 import { TextField } from '../../../components/TextField';
+import { LinkIcon } from '../../../components/icons';
+import { railActionClass } from './detail/CardDetailSection';
 
 export function CopyCardLink({
   boardId,
@@ -29,10 +30,15 @@ export function CopyCardLink({
   };
 
   return (
-    <div className="space-y-3">
-      <Button variant="secondary" onClick={() => void copy()}>
+    <div className="space-y-2">
+      <button
+        type="button"
+        className={railActionClass}
+        onClick={() => void copy()}
+      >
+        <LinkIcon aria-hidden="true" className="size-4 text-muted" />
         Copy link
-      </Button>
+      </button>
       {status === 'copied' && <Alert variant="success">Link copied.</Alert>}
       {status === 'fallback' && (
         <TextField

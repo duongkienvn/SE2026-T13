@@ -86,11 +86,9 @@ describe('card permalink access and synchronization', () => {
       });
       const dialog = await detail();
       expect(
-        within(dialog).getByLabelText<HTMLInputElement>('Title').disabled,
-      ).toBe(true);
-      expect(
-        within(dialog).queryByRole('button', { name: 'Save changes' }),
+        within(dialog).queryByRole('button', { name: 'Edit description' }),
       ).toBeNull();
+      expect(within(dialog).queryByRole('textbox')).toBeNull();
       expect(
         within(dialog).queryByRole('button', { name: 'Archive card' }),
       ).toBeNull();
@@ -136,6 +134,9 @@ describe('card permalink access and synchronization', () => {
   it('keeps a draft during realtime refresh and reconnect', async () => {
     const { board, card, refuseCard } = openPermalink({ direct: true });
     const dialog = await detail();
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Edit description' }),
+    );
     const input =
       within(dialog).getByLabelText<HTMLTextAreaElement>('Description');
     fireEvent.change(input, { target: { value: 'My draft' } });
@@ -199,6 +200,9 @@ describe('card permalink access and synchronization', () => {
   it('drops private detail immediately on a session rejection, even with an unsaved draft', async () => {
     const { board, card, refuseCard } = openPermalink({ direct: true });
     const dialog = await detail();
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Edit description' }),
+    );
     fireEvent.change(within(dialog).getByLabelText('Description'), {
       target: { value: 'Draft' },
     });

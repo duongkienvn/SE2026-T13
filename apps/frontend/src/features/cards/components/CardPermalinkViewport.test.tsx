@@ -71,6 +71,9 @@ describe.each([375, 1280])('card navigation at %ipx', (width) => {
     opener.focus();
     fireEvent.click(opener);
     const dialog = await screen.findByRole('dialog', { name: 'First card' });
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Edit description' }),
+    );
     fireEvent.change(within(dialog).getByLabelText('Description'), {
       target: { value: 'Keep my draft' },
     });
@@ -86,10 +89,12 @@ describe.each([375, 1280])('card navigation at %ipx', (width) => {
     fireEvent.click(
       await screen.findByRole('button', { name: 'Discard changes' }),
     );
-    await screen.findByRole('dialog', { name: 'Second card' });
-    expect(
-      screen.getByLabelText<HTMLTextAreaElement>('Description').value,
-    ).toBe('');
+    const secondDialog = await screen.findByRole('dialog', {
+      name: 'Second card',
+    });
+    // The discarded draft never follows to another card.
+    expect(within(secondDialog).queryByLabelText('Description')).toBeNull();
+    expect(within(secondDialog).queryByText('Keep my draft')).toBeNull();
     fireEvent.keyDown(document, { key: 'Escape' });
     await waitFor(() => expect(router.state.location.pathname).toBe(path));
     expect(screen.getByRole('main')).toBe(main);
