@@ -11,6 +11,8 @@ export interface TextFieldProps extends Omit<
   icon?: ReactNode;
   /** Interactive control rendered inside the input on the right. */
   trailing?: ReactNode;
+  /** Opt-in entry-page presentation; other forms keep their existing styling. */
+  appearance?: 'default' | 'auth';
 }
 
 export function TextField({
@@ -19,6 +21,7 @@ export function TextField({
   hint,
   icon,
   trailing,
+  appearance = 'default',
   'aria-describedby': externalDescription,
   className = '',
   ...inputProps
@@ -31,12 +34,14 @@ export function TextField({
     undefined;
 
   return (
-    <div className={className}>
+    <div
+      className={`${appearance === 'auth' ? 'auth-entry-field' : ''} ${className}`}
+    >
       <label htmlFor={id} className="block text-sm font-medium text-ink">
         {label}
       </label>
       <div className="relative mt-1.5">
-        {icon && (
+        {icon && appearance !== 'auth' && (
           <span
             aria-hidden="true"
             className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-lg text-muted"
@@ -52,7 +57,7 @@ export function TextField({
             error
               ? 'border-danger focus:border-danger'
               : 'border-line focus:border-primary'
-          } ${icon ? 'pl-10' : 'pl-3.5'} ${trailing ? 'pr-11' : 'pr-3.5'}`}
+          } ${icon && appearance !== 'auth' ? 'pl-10' : 'pl-3.5'} ${trailing ? 'pr-11' : 'pr-3.5'} ${appearance === 'auth' ? 'auth-entry-input' : ''}`}
           {...inputProps}
         />
         {trailing && (

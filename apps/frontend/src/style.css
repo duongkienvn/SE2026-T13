@@ -258,6 +258,62 @@
   box-shadow: none;
 }
 
+.auth-entry-field > div {
+  margin-top: 8px;
+}
+
+.auth-entry-input {
+  font-size: 16px;
+  transition-duration: 140ms;
+}
+
+.auth-entry-input::placeholder {
+  color: var(--color-muted);
+  opacity: 1;
+}
+
+.auth-entry-input:not([aria-invalid='true']) {
+  border-color: var(--auth-control-line);
+}
+
+.auth-entry-input:not([aria-invalid='true']):hover:not(:disabled) {
+  border-color: var(--auth-control-hover);
+}
+
+.auth-entry-input:focus {
+  border-color: var(--color-primary);
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.auth-entry-input[aria-invalid='true']:focus {
+  border-color: var(--color-danger);
+  outline-color: var(--color-danger);
+}
+
+.auth-entry-field:has(.auth-entry-reveal) input {
+  padding-right: 56px;
+}
+
+.auth-entry-reveal {
+  transition: color 140ms;
+}
+
+.auth-entry a {
+  text-underline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-entry *,
+  .auth-entry *::before,
+  .auth-entry *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @media (min-width: 40rem) {
   .auth-entry {
     display: grid;
