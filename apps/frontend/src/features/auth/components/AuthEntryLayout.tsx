@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Brand } from '../../../components/Brand';
+import { ForwardTogetherIllustration } from './ForwardTogetherIllustration';
 
 /** Login and registration only; recovery and verification keep AuthLayout. */
 export function AuthEntryLayout({ children }: { children: ReactNode }) {
@@ -19,6 +20,7 @@ export function AuthEntryLayout({ children }: { children: ReactNode }) {
               teams.
             </p>
           </div>
+          <ForwardTogetherIllustration />
         </aside>
         <main className="auth-entry-main">
           <div className="auth-entry-content">

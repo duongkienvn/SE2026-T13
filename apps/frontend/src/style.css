@@ -178,6 +178,41 @@
   line-height: 1.6;
 }
 
+.auth-entry-illustration {
+  display: block;
+  flex: 1 1 0;
+  width: 100%;
+  min-height: 0;
+  max-height: 340px;
+  margin-block: auto 0;
+  padding-top: 24px;
+}
+
+.auth-art-lane {
+  fill: var(--auth-hero-ink);
+  fill-opacity: 0.035;
+}
+
+.auth-art-card {
+  fill: var(--color-surface);
+  stroke: var(--auth-hero-ink);
+  stroke-opacity: 0.12;
+}
+
+.auth-art-rule {
+  stroke: var(--auth-hero-ink);
+  stroke-opacity: 0.2;
+}
+
+.auth-art-route {
+  stroke: var(--auth-hero-ink);
+  stroke-opacity: 0.5;
+}
+
+.auth-art-node {
+  fill: var(--color-primary);
+}
+
 .auth-entry-main {
   display: flex;
   min-width: 0;
