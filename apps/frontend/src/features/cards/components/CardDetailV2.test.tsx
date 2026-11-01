@@ -113,6 +113,84 @@ describe('Card Detail V2 quick actions', () => {
 });
 
 describe('Card Detail V2 dates', () => {
+  it('waits for saved preferences before capturing a date editing time zone', async () => {
+    let answer: (response: MockResponse) => void = () => {};
+    const { calls, dialog } = openCardDetail({
+      extra: (card, path) => ({
+        'GET /users/me/preferences': () =>
+          new Promise<MockResponse>((resolve) => {
+            answer = resolve;
+          }),
+        [`PATCH ${path}`]: (request) =>
+          ok({ ...card, ...(request.body as object) }),
+      }),
+    });
+    const detail = await dialog();
+    const edit = within(detail).getByRole('button', {
+      name: 'Edit dates',
+    }) as HTMLButtonElement;
+    expect(edit.disabled).toBe(true);
+    fireEvent.click(edit);
+    expect(within(detail).queryByLabelText('Due date')).toBeNull();
+    expect(writes(calls)).toHaveLength(0);
+    answer(
+      ok({
+        theme: 'system',
+        timeZone: 'Asia/Ho_Chi_Minh',
+        dateFormat: 'YYYY-MM-DD',
+        weekStartsOn: 'monday',
+      }),
+    );
+    await waitFor(() => expect(edit.disabled).toBe(false));
+    fireEvent.click(edit);
+    expect(within(detail).getByText('Times in Asia/Ho_Chi_Minh.')).toBeTruthy();
+    fireEvent.change(within(detail).getByLabelText('Due date'), {
+      target: { value: '2026-11-03' },
+    });
+    fireEvent.click(within(detail).getByRole('button', { name: 'Save dates' }));
+    await within(detail).findByText('Dates saved.');
+    expect(writes(calls)[0].body).toEqual({
+      dueDate: '2026-11-03T10:00:00.000Z',
+    });
+  });
+
+  it.each([
+    ['Start', '09:00'],
+    ['Due', '17:00'],
+  ])(
+    'clearing a newly selected %s date clears its time and leaves no unsaved changes',
+    async (which, defaultTime) => {
+      const { calls, dialog, router, boardPath } = openCardDetail();
+      const detail = await dialog();
+      fireEvent.click(
+        within(detail).getByRole('button', { name: 'Edit dates' }),
+      );
+      const date = within(detail).getByLabelText(`${which} date`);
+      const time = within(detail).getByLabelText(
+        `${which} time`,
+      ) as HTMLInputElement;
+      fireEvent.change(date, { target: { value: '2026-11-03' } });
+      expect(time.value).toBe(defaultTime);
+      fireEvent.change(time, { target: { value: '11:23' } });
+      fireEvent.change(date, { target: { value: '' } });
+      expect(time.value).toBe('');
+      expect(time.disabled).toBe(true);
+      fireEvent.change(date, { target: { value: '2026-11-04' } });
+      expect(time.value).toBe(defaultTime);
+      fireEvent.change(date, { target: { value: '' } });
+      fireEvent.click(
+        within(detail).getByRole('button', { name: 'Close card' }),
+      );
+      await waitFor(() =>
+        expect(router.state.location.pathname).toBe(boardPath),
+      );
+      expect(
+        screen.queryByRole('button', { name: 'Discard changes' }),
+      ).toBeNull();
+      expect(writes(calls)).toHaveLength(0);
+    },
+  );
+
   it('saves start and due together as instants in the saved time zone', async () => {
     const { calls, path, dialog } = openCardDetail({
       timeZone: 'Asia/Ho_Chi_Minh',
@@ -241,6 +319,67 @@ describe('Card Detail V2 dates', () => {
 });
 
 describe('Card Detail V2 drafts', () => {
+  it.each(['cancel', 'remote'])(
+    'clears title form and field errors on %s without carrying them into the next draft',
+    async (action) => {
+      let title = 'Ship it';
+      const { calls, dialog } = openCardDetail({
+        extra: (card, path) => ({
+          [`GET ${path}`]: () => ok({ ...card, title }),
+          [`PATCH ${path}`]: fail(
+            400,
+            'VALIDATION_FAILED',
+            'Validation failed',
+            ['title: title is rejected', 'other: Try a different title'],
+          ),
+        }),
+      });
+      const detail = await dialog();
+      fireEvent.click(
+        within(detail).getByRole('button', { name: 'Edit title' }),
+      );
+      fireEvent.change(within(detail).getByLabelText('Title'), {
+        target: { value: 'Mine' },
+      });
+      fireEvent.click(
+        within(detail).getByRole('button', { name: 'Save title' }),
+      );
+      await within(detail).findByText('Title is rejected');
+      expect(within(detail).getByText('Try a different title')).toBeTruthy();
+      if (action === 'cancel') {
+        fireEvent.click(within(detail).getByRole('button', { name: 'Cancel' }));
+        fireEvent.click(
+          within(detail).getByRole('button', { name: 'Edit title' }),
+        );
+      } else {
+        title = 'Theirs';
+        await act(async () => {
+          const { focusManager } = await import('@tanstack/react-query');
+          focusManager.setFocused(false);
+          focusManager.setFocused(true);
+        });
+        await within(detail).findByText(/Someone else changed the title/);
+        expect(
+          (within(detail).getByLabelText('Title') as HTMLInputElement).value,
+        ).toBe('Mine');
+        fireEvent.click(
+          within(detail).getByRole('button', {
+            name: 'Discard mine and load theirs',
+          }),
+        );
+        expect(
+          within(detail).queryByText(/Someone else changed the title/),
+        ).toBeNull();
+      }
+      expect(
+        (within(detail).getByLabelText('Title') as HTMLInputElement).value,
+      ).toBe(title);
+      expect(within(detail).queryByText('Title is rejected')).toBeNull();
+      expect(within(detail).queryByText('Try a different title')).toBeNull();
+      expect(writes(calls)).toHaveLength(1);
+    },
+  );
+
   it('guards an unsaved title on Escape and keeps it on Keep editing', async () => {
     const { dialog, path, router } = openCardDetail();
     const detail = await dialog();

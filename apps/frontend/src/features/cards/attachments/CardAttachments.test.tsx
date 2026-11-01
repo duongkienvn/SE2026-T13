@@ -8,6 +8,7 @@ import {
 } from '../../../test/card-detail-fixtures';
 import { fail, ok, type MockResponse } from '../../../test/mock-api';
 import type { Card } from '../types';
+import { env } from '../../../lib/env';
 import { transferFile, type Attachment } from './api';
 import { safeHttpsUrl } from './CardAttachments';
 
@@ -471,6 +472,57 @@ describe('file transfer target', () => {
     const body = init.body as FormData;
     expect([...body.keys()]).toEqual(['key', 'policy', 'file']);
   });
+
+  it.each(['/api', 'https://api.example.test/api'])(
+    'resolves memory transfers safely with API base %s',
+    async (base) => {
+      const previous = env.apiBaseUrl;
+      env.apiBaseUrl = base;
+      try {
+        const fetchMock = vi.fn(
+          async () => new Response(null, { status: 204 }),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+        const path =
+          '/api/boards/board/cards/card/attachments/uploads/up-1/file';
+        const signal = new AbortController().signal;
+        const chosen = file('a.txt', 'text/plain');
+        await transferFile(
+          intent(path, 'memory'),
+          chosen,
+          'board',
+          'card',
+          'token',
+          signal,
+        );
+        expect(fetchMock).toHaveBeenCalledWith(
+          new URL(path, new URL(base, window.location.origin)).href,
+          expect.objectContaining({
+            method: 'POST',
+            signal,
+            headers: { Authorization: 'Bearer token' },
+          }),
+        );
+        for (const unsafe of [
+          '//evil.example.test' + path,
+          path.replace('/cards/card/', '/cards/other/'),
+        ])
+          await expect(
+            transferFile(
+              intent(unsafe, 'memory'),
+              chosen,
+              'board',
+              'card',
+              'token',
+              signal,
+            ),
+          ).rejects.toThrow('Invalid local upload target.');
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+      } finally {
+        env.apiBaseUrl = previous;
+      }
+    },
+  );
 
   it('refuses non-HTTPS storage and foreign memory targets', async () => {
     vi.stubGlobal('fetch', vi.fn());

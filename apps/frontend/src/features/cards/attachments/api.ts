@@ -194,7 +194,7 @@ export async function transferFile(
   body.append('file', file); // S3 requires the file field last.
   if (upload.kind === 'memory') {
     // An API-relative path such as `/api/boards/…/uploads/:id/file`.
-    const api = new URL(env.apiBaseUrl);
+    const api = new URL(env.apiBaseUrl, window.location.origin);
     const target = new URL(upload.url, api);
     const expected = `${attachmentsPath(boardId, cardId)}/uploads/${id(intent.uploadId)}/file`;
     if (

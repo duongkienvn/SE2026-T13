@@ -117,7 +117,7 @@ export function CardDates({
   onDraft: (value: CardDraft['dates']) => void;
   readOnly: boolean;
 }) {
-  const { timeZone, dateFormat } = useDatePreferences();
+  const { timeZone, dateFormat, loading } = useDatePreferences();
   const update = useUpdateCard(card.boardId, card.id);
   const [choice, setChoice] = useState<Record<Which, number | undefined>>({
     start: undefined,
@@ -129,6 +129,7 @@ export function CardDates({
   const editing = !!draft && !readOnly;
 
   const start = () => {
+    if (loading) return;
     const initial: DatesValue = {
       start: clockOf(card.startDate, timeZone),
       due: clockOf(card.dueDate, timeZone),
@@ -148,8 +149,9 @@ export function CardDates({
   const change = (which: Which, next: WallClock) => {
     if (!draft) return;
     // Picking a day first fills a sensible time instead of failing.
-    const value =
-      next.date && !next.time && !draft.value[which].time
+    const value = !next.date
+      ? empty
+      : !next.time && !draft.value[which].time
         ? { ...next, time: DEFAULT_TIME[which] }
         : next;
     setChoice((current) => ({ ...current, [which]: undefined }));
@@ -255,6 +257,7 @@ export function CardDates({
               <button
                 type="button"
                 className="mt-1 font-medium text-primary underline"
+                disabled={loading}
                 onClick={start}
               >
                 Discard mine and load theirs
@@ -400,6 +403,7 @@ export function CardDates({
             <button
               type="button"
               className={sectionActionClass}
+              disabled={loading}
               onClick={start}
             >
               <PencilIcon aria-hidden="true" className="size-4" />

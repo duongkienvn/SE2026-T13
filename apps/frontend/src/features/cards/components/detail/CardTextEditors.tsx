@@ -127,7 +127,11 @@ export function TitleEditor({
       {draft.base !== card.title && (
         <RemoteChange
           what="title"
-          onLoad={() => onDraft({ base: card.title, value: card.title })}
+          onLoad={() => {
+            setError(undefined);
+            setFieldError(undefined);
+            onDraft({ base: card.title, value: card.title });
+          }}
         />
       )}
       <TextField
@@ -146,7 +150,11 @@ export function TitleEditor({
           variant="secondary"
           size="sm"
           disabled={update.isPending}
-          onClick={() => onDraft(undefined)}
+          onClick={() => {
+            setError(undefined);
+            setFieldError(undefined);
+            onDraft(undefined);
+          }}
         >
           Cancel
         </Button>
