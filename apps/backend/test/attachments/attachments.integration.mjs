@@ -39,7 +39,9 @@ try {
   source = await new DataSource({ ...options, database }).initialize();
   const allMigrations = source.migrations;
   source.migrations = allMigrations.filter(
-    (m) => !m.name.startsWith('CardAttachments'),
+    (m) =>
+      !m.name.startsWith('CardAttachments') &&
+      !m.name.startsWith('PrivateCardFiles'),
   );
   await source.runMigrations();
   const [legacyOwner] = await source.query(
@@ -109,7 +111,7 @@ try {
   );
   const before = await snapshot();
   source.migrations = allMigrations;
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 2);
   assert.deepEqual(await snapshot(), before);
   assert.deepEqual(await legacyEpoch(), beforeEpoch);
   assert.equal(
@@ -117,8 +119,9 @@ try {
       .n,
     0,
   );
+  await source.undoLastMigration(); // Empty private-file extension.
   await source.undoLastMigration(); // Empty attachment tables; legacy Card values remain.
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 2);
   assert.deepEqual(await source.runMigrations(), []);
   assert.equal(source.options.synchronize, false);
   assert.equal(source.options.migrationsRun, false);
@@ -442,8 +445,8 @@ try {
   ) => {
     const id = randomUUID();
     await source.query(
-      `INSERT INTO card_attachments(id,card_id,board_id,uploader_id,kind,state,display_name,original_filename,pending_key,storage_key,requested_mime_type,reserved_bytes,expires_at,created_at,mime_type,byte_size,verified_at)
-      VALUES ($1::uuid,$2,$3,$4,'FILE',$5::varchar,'Private file','notes.txt','attachments/v1/pending/'||$1::text,'attachments/v1/active/'||$1::text,'text/plain',$6,now()+($7::int)*interval '1 minute',now()-interval '1 hour',CASE WHEN $5::varchar='ACTIVE' THEN 'text/plain' END,CASE WHEN $5::varchar='ACTIVE' THEN $6::bigint END,CASE WHEN $5::varchar='ACTIVE' THEN now() END)`,
+      `INSERT INTO card_attachments(id,card_id,board_id,uploader_id,kind,state,display_name,original_filename,pending_key,storage_key,requested_mime_type,reserved_bytes,declared_bytes,intent_auth_version,expires_at,created_at,mime_type,byte_size,verified_at)
+      VALUES ($1::uuid,$2,$3,$4,'FILE',$5::varchar,'Private file','notes.txt','attachments/v1/pending/'||$1::text,'attachments/v1/active/'||$1::text,'text/plain',$6,$6,0,now()+($7::int)*interval '1 minute',now()-interval '1 hour',CASE WHEN $5::varchar='ACTIVE' THEN 'text/plain' END,CASE WHEN $5::varchar='ACTIVE' THEN $6::bigint END,CASE WHEN $5::varchar='ACTIVE' THEN now() END)`,
       [
         id,
         parent.id,

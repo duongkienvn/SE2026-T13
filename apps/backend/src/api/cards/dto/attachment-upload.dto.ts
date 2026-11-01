@@ -9,11 +9,20 @@ import {
   StringField,
   StringFieldOptional,
 } from '../../../decorators/field.decorators';
+import { ATTACHMENT_FILE_POLICY } from '../attachments/attachment-file-policy';
 
 export class CreateAttachmentUploadDto implements CreateAttachmentUpload {
   @StringField({ maxLength: 255 }) filename!: string;
-  @StringField({ maxLength: 120 }) contentType!: string;
-  @NumberField({ integer: true, min: 1 }) fileSize!: number;
+  @ApiProperty({ enum: Object.keys(ATTACHMENT_FILE_POLICY.allowedTypes) })
+  @StringField({ maxLength: 120 })
+  contentType!: string;
+  @ApiProperty({
+    minimum: 1,
+    maximum: ATTACHMENT_FILE_POLICY.maximumFileBytes,
+    description: 'Exact source bytes; verified raster output may differ',
+  })
+  @NumberField({ integer: true, min: 1 })
+  fileSize!: number;
   @StringFieldOptional({ maxLength: 120 }) displayName?: string;
 }
 export class AttachmentUploadTargetDto {

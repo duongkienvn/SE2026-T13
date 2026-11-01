@@ -30,12 +30,10 @@ const reservation = () => ({
 
 describe('private file storage (mocked S3 only)', () => {
   it('constrains POST key/type/bytes/expiry and encryption without ACL or credentials', async () => {
-    jest
-      .mocked(createPresignedPost)
-      .mockResolvedValue({
-        url: 'https://test.invalid',
-        fields: { Policy: 'test-only' },
-      });
+    jest.mocked(createPresignedPost).mockResolvedValue({
+      url: 'https://test.invalid',
+      fields: { Policy: 'test-only' },
+    });
     const send = jest.fn();
     const storage = new S3AttachmentStorage(config, {
       send,
@@ -64,13 +62,11 @@ describe('private file storage (mocked S3 only)', () => {
   });
   it('bounds provider headers AND actual streaming bytes and cancels unusable streams', async () => {
     const oversized = Readable.from([Buffer.alloc(6)]),
-      send = jest
-        .fn()
-        .mockResolvedValue({
-          Body: oversized,
-          ContentLength: 6,
-          ContentType: 'text/plain',
-        });
+      send = jest.fn().mockResolvedValue({
+        Body: oversized,
+        ContentLength: 6,
+        ContentType: 'text/plain',
+      });
     const storage = new S3AttachmentStorage(config, {
       send,
     } as unknown as S3Client);
@@ -138,6 +134,18 @@ describe('private file storage (mocked S3 only)', () => {
         ifAbsent: true,
       }),
     ).rejects.toMatchObject({ status: 409 });
+    send.mockRejectedValue(
+      Object.assign(new Error('provider detail'), { $metadata: undefined }),
+    );
+    await expect(
+      storage.writeVerified({
+        storageKey,
+        body: Readable.from([Buffer.from('hello')]),
+        byteSize: 5,
+        mimeType: 'text/plain',
+        ifAbsent: true,
+      }),
+    ).rejects.toMatchObject({ status: 503 });
     send.mockRejectedValue(new Error('credential secret'));
     await expect(storage.delete(storageKey)).rejects.not.toThrow(
       /credential|secret/,

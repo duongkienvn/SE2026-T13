@@ -102,7 +102,12 @@ export class CardAttachmentsService {
     idempotencyKey?: string,
   ): Promise<AttachmentResponseDto> {
     return this.mutate(userId, boardId, cardId, async (manager, card) => {
-      if (input.kind === 'FILE') return attachmentFilesUnavailable();
+      if (input.kind === 'FILE') {
+        if (!this.fileStorage?.available) return attachmentFilesUnavailable();
+        return attachmentValidation(
+          'Use attachment /uploads with filename, contentType and fileSize',
+        );
+      }
       if (input.kind !== 'URL')
         return attachmentValidation('Unsupported attachment kind');
       const url = normalizeAttachmentUrl(input.url);

@@ -45,7 +45,8 @@ try {
   source.migrations = allMigrations.filter(
     (m) =>
       !m.name.startsWith('CardAdvancedDates') &&
-      !m.name.startsWith('CardAttachments'),
+      !m.name.startsWith('CardAttachments') &&
+      !m.name.startsWith('PrivateCardFiles'),
   );
   await source.runMigrations();
   const [legacyOwner] = await source.query(
@@ -111,7 +112,7 @@ try {
   );
   const before = await snapshot();
   source.migrations = allMigrations;
-  assert.equal((await source.runMigrations()).length, 2);
+  assert.equal((await source.runMigrations()).length, 3);
   assert.deepEqual(await snapshot(), before);
   assert.deepEqual(await legacyEpoch(), beforeEpoch);
   assert.equal(
@@ -122,9 +123,10 @@ try {
     )[0].n,
     0,
   );
+  await source.undoLastMigration(); // Empty private-file extension.
   await source.undoLastMigration(); // Empty attachment foundation.
   await source.undoLastMigration(); // Empty start_date column; legacy due_date values remain.
-  assert.equal((await source.runMigrations()).length, 2);
+  assert.equal((await source.runMigrations()).length, 3);
   assert.deepEqual(await source.runMigrations(), []);
   assert.equal(source.options.synchronize, false);
   assert.equal(source.options.migrationsRun, false);
@@ -416,6 +418,7 @@ try {
     ]),
     (error) => error.driverError?.code === '23514',
   );
+  await source.undoLastMigration(); // Empty private-file extension.
   await source.undoLastMigration(); // Empty attachment foundation.
   await assert.rejects(
     source.undoLastMigration(),

@@ -98,7 +98,7 @@ export class CardAttachmentsController {
   @ApiSuccess({
     type: AttachmentResponseDto,
     status: 201,
-    summary: 'Create HTTPS metadata only; FILE returns 503',
+    summary: 'Create HTTPS metadata; files use the upload-intent endpoint',
     description:
       'Provisional 20 ACTIVE/PENDING slots per Card. Optional UUID v4 Idempotency-Key replays return current metadata without another mutation/event.',
   })
@@ -225,7 +225,10 @@ export class CardAttachmentsController {
     response.set({
       'Cache-Control': 'private, no-store',
       'X-Content-Type-Options': 'nosniff',
-      'Content-Type': metadata.mimeType!,
+      'Content-Type':
+        metadata.mimeType === 'text/plain'
+          ? 'text/plain; charset=utf-8'
+          : metadata.mimeType!,
       'Content-Length': String(metadata.byteSize),
       'Content-Disposition': attachmentDisposition(
         metadata.originalFilename!,

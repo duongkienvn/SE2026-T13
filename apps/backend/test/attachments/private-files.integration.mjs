@@ -1,3 +1,5 @@
+import { verifyPrivateFileRealtime } from './private-files-realtime.mjs';
+import { verifyPrivateFileRaces } from './private-files-races.mjs';
 import { verifyPrivateFileCleanup } from './private-files-cleanup.mjs';
 import { Buffer } from 'node:buffer';
 import assert from 'node:assert/strict';
@@ -126,6 +128,59 @@ try {
   assert.deepEqual(schemaDiff.upQueries, []);
   pass(
     'fresh full chain, populated upgrade preserves archived Card/Comment/assignment data, empty down/up and ORM metadata',
+  );
+
+  // Rehearse the additive upgrade from populated P3-05 FILE metadata as well.
+  await source.undoLastMigration();
+  const legacyFile = randomUUID(),
+    legacyPending = randomUUID();
+  await source.query(
+    `INSERT INTO card_attachments(card_id,board_id,uploader_id,kind,state,display_name,url) VALUES($1,$2,$3,'URL','ACTIVE','Legacy URL','https://example.com/legacy')`,
+    [legacyCard.id, legacyBoard.id, legacyOwner.id],
+  );
+  for (const [id, parent, state] of [
+    [legacyFile, legacyCard.id, 'ACTIVE'],
+    [legacyPending, legacyActive.id, 'PENDING'],
+  ])
+    await source.query(
+      `INSERT INTO card_attachments(id,card_id,board_id,uploader_id,kind,state,display_name,original_filename,pending_key,storage_key,requested_mime_type,reserved_bytes,mime_type,byte_size,verified_at,expires_at)
+    VALUES($1::uuid,$2,$3,$4,'FILE',$5::varchar,'Legacy file','legacy.txt','attachments/v1/pending/'||$1::text,'attachments/v1/active/'||$1::text,'text/plain',5,CASE WHEN $5::varchar='ACTIVE' THEN 'text/plain' END,CASE WHEN $5::varchar='ACTIVE' THEN 5 END,CASE WHEN $5::varchar='ACTIVE' THEN now() END,now()+interval '15 minutes')`,
+      [id, parent, legacyBoard.id, legacyOwner.id, state],
+    );
+  const legacySnapshot = await source.query(
+    "SELECT id,to_jsonb(asset)-'revision' AS row FROM card_attachments asset ORDER BY id",
+  );
+  await source.runMigrations();
+  const upgraded = await source.query(
+    "SELECT id,to_jsonb(asset)-'revision'-'declared_bytes'-'content_sha256'-'intent_auth_version'-'verification_token'-'verification_expires_at' AS row FROM card_attachments asset ORDER BY id",
+  );
+  assert.deepEqual(upgraded, legacySnapshot);
+  assert.ok(
+    (
+      await source.query(
+        "SELECT declared_bytes,content_sha256,revision FROM card_attachments WHERE kind='FILE'",
+      )
+    ).every(
+      (row) =>
+        row.declared_bytes === '5' &&
+        row.content_sha256 === null &&
+        row.revision === 2,
+    ),
+  );
+  assert.equal(
+    (
+      await source.query(
+        'SELECT count(*)::int AS n FROM card_attachment_cleanup_jobs',
+      )
+    )[0].n,
+    4,
+  );
+  await assert.rejects(
+    source.undoLastMigration(),
+    /Refusing to discard attachment metadata or cleanup obligations/,
+  );
+  pass(
+    'populated P3-05 URL/FILE metadata upgrades without invented digests or pointer changes; ownership tombstones backfill and unsafe rollback is refused',
   );
 
   Object.assign(process.env, {
@@ -280,6 +335,13 @@ try {
     createCard,
     pass,
   };
+  tokens.legacy = await app.get(JwtService).signAsync({ sub: legacyOwner.id });
+  actors.legacy = legacyOwner.id;
+  await send(
+    'legacy',
+    'get',
+    `/api/boards/${legacyBoard.id}/cards/${legacyCard.id}/attachments/${legacyFile}/file`,
+  ).expect(503);
   const files = app.get(CardAttachmentFilesService);
   Object.assign(ctx, { files, storage, attachmentQuotaUsage });
   const actor = (name = 'owner') => ({
@@ -288,6 +350,7 @@ try {
     expiresAt: Date.now() + 3600_000,
   });
   ctx.actor = actor;
+  ctx.team = team;
   const input = {
     filename: 'résumé.txt',
     contentType: 'text/plain',
@@ -430,6 +493,11 @@ try {
   assert.equal(Number(record.reserved_bytes), 10 * 1024 * 1024);
   assert.equal(Number(record.declared_bytes), png.length);
   assert.match(record.content_sha256, /^[0-9a-f]{64}$/);
+  assert.equal(
+    (await attachmentQuotaUsage(source.manager, board.id, card.id))
+      .boardFileBytes,
+    BigInt(active.byteSize),
+  );
   pass(
     'raster bytes are decoded/normalized under prospective reservation and served inline with immutable verified digest',
   );
@@ -495,7 +563,8 @@ try {
 
   Object.assign(ctx, { begin, transfer, finish, input, activeFile: active });
   await verifyPrivateFileCleanup(ctx);
-  // Additional race and realtime assertions follow.
+  await verifyPrivateFileRaces(ctx);
+  await verifyPrivateFileRealtime(ctx);
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries,
     [],

@@ -338,8 +338,8 @@ export class S3AttachmentStorage extends AttachmentStorage {
         error instanceof Error &&
         (error.name === 'PreconditionFailed' ||
           ('\u0024metadata' in error &&
-            (error as { $metadata: { httpStatusCode?: number } }).$metadata
-              .httpStatusCode === 412))
+            (error as { $metadata?: { httpStatusCode?: number } }).$metadata
+              ?.httpStatusCode === 412))
       )
         throw fileError(
           409,

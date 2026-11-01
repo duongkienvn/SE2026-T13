@@ -52,12 +52,10 @@ import {
 export class LocalAttachmentUploadGuard implements CanActivate {
   constructor(private readonly files: CardAttachmentFilesService) {}
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context
-      .switchToHttp()
-      .getRequest<{
-        user: AuthenticatedUser;
-        params: Record<string, string>;
-      }>();
+    const request = context.switchToHttp().getRequest<{
+      user: AuthenticatedUser;
+      params: Record<string, string>;
+    }>();
     for (const field of ['boardId', 'cardId', 'uploadId'])
       if (!isUUID(request.params[field]))
         throw fileError(400, 'VALIDATION_FAILED', 'Invalid resource ID');
@@ -101,8 +99,10 @@ export class CardAttachmentUploadsController {
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Body() input: CreateAttachmentUploadDto,
+    @Query() query: AttachmentUploadEmptyDto,
     @Headers('Idempotency-Key') key?: string,
   ) {
+    void query;
     return this.files.createIntent(actor, boardId, cardId, input, key);
   }
 

@@ -436,7 +436,7 @@ try {
       'workspaces',
     ],
   );
-  assert.equal(source.migrations.length, 21);
+  assert.equal(source.migrations.length, 22);
 
   const originalDatabase = process.env.DATABASE_NAME;
   process.env.DATABASE_NAME = testDatabase;
@@ -472,7 +472,8 @@ try {
       !m.name.startsWith('CardChecklists') &&
       !m.name.startsWith('BoardCardLabels') &&
       !m.name.startsWith('CardAdvancedDates') &&
-      !m.name.startsWith('CardAttachments'),
+      !m.name.startsWith('CardAttachments') &&
+      !m.name.startsWith('PrivateCardFiles'),
   );
   assert.equal((await source.runMigrations()).length, 13);
   const cliOutput = execFileSync(
@@ -546,11 +547,12 @@ try {
   assert.equal((await source.runMigrations()).length, 10);
   await inspectSchema();
   source.migrations = allMigrations;
-  assert.equal((await source.runMigrations()).length, 8);
+  assert.equal((await source.runMigrations()).length, 9);
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries,
     [],
   );
+  await source.undoLastMigration(); // Empty private-file extension.
   await source.undoLastMigration(); // Empty attachment foundation.
   await source.undoLastMigration(); // Empty Card start-date extension.
   await source.undoLastMigration(); // Empty Board label extension.
@@ -562,7 +564,7 @@ try {
     source.undoLastMigration(),
     /Workspace policies require a forward fix/,
   );
-  assert.equal((await source.runMigrations()).length, 7);
+  assert.equal((await source.runMigrations()).length, 8);
   console.log(
     'Enum rollback retains existing values/history; idempotent reapply: PASS',
   );
