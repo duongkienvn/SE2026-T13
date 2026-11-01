@@ -20,6 +20,11 @@ keep the host lock for manual operations. See the CI/CD runbook for pending-run
 replacement semantics and the branch-protection inspection limits. This workflow
 refactor performs no production deployment and changes no deployment scripts.
 
+Private Card file storage remains disabled by default. Before separately
+authorized enablement, follow the [dedicated bucket, IAM, policy acknowledgement,
+capacity and rollback runbook](private-card-attachments.md). This extension does
+not provision AWS resources or change this deployment configuration.
+
 ## Architecture and verified repository facts
 
 ```text

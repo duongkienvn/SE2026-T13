@@ -84,8 +84,8 @@ export async function verifyAttachmentRaces(ctx) {
   const quota = await createCard('Quota race');
   const pendingId = randomUUID();
   await source.query(
-    `INSERT INTO card_attachments(id,card_id,board_id,uploader_id,kind,state,display_name,original_filename,pending_key,storage_key,requested_mime_type,reserved_bytes,expires_at)
-    VALUES ($1::uuid,$2,$3,$4,'FILE','PENDING','Pending','pending.txt','attachments/v1/pending/'||$1::text,'attachments/v1/active/'||$1::text,'text/plain',4096,now()+interval '15 minutes')`,
+    `INSERT INTO card_attachments(id,card_id,board_id,uploader_id,kind,state,display_name,original_filename,pending_key,storage_key,requested_mime_type,reserved_bytes,declared_bytes,intent_auth_version,expires_at)
+    VALUES ($1::uuid,$2,$3,$4,'FILE','PENDING','Pending','pending.txt','attachments/v1/pending/'||$1::text,'attachments/v1/active/'||$1::text,'text/plain',4096,4096,0,now()+interval '15 minutes')`,
     [pendingId, quota.id, board.id, actors.owner],
   );
   await source.query(

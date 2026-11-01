@@ -17,9 +17,7 @@ import {
   'CHK_attachment_cleanup_retry',
   'attempts >= 0 AND next_attempt_at >= not_before',
 )
-@Index('IDX_attachment_cleanup_due', ['nextAttemptAt', 'objectKey'], {
-  where: 'completed_at IS NULL',
-})
+@Index('IDX_attachment_cleanup_due', ['nextAttemptAt', 'objectKey'])
 export class AttachmentCleanupJob {
   @PrimaryColumn({
     name: 'object_key',

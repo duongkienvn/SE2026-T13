@@ -44,7 +44,8 @@ try {
     (m) =>
       !m.name.startsWith('BoardCardLabels') &&
       !m.name.startsWith('CardAdvancedDates') &&
-      !m.name.startsWith('CardAttachments'),
+      !m.name.startsWith('CardAttachments') &&
+      !m.name.startsWith('PrivateCardFiles'),
   );
   await source.runMigrations();
   const [legacyOwner] = await source.query(
@@ -97,12 +98,13 @@ try {
   );
   const before = await snapshot();
   source.migrations = allMigrations;
-  assert.equal((await source.runMigrations()).length, 3);
+  assert.equal((await source.runMigrations()).length, 4);
   assert.deepEqual(await snapshot(), before);
+  await source.undoLastMigration(); // Empty private-file extension.
   await source.undoLastMigration(); // Empty attachment foundation.
   await source.undoLastMigration(); // Empty Card start-date extension.
   await source.undoLastMigration(); // Empty label tables and their Card composite key only.
-  assert.equal((await source.runMigrations()).length, 3);
+  assert.equal((await source.runMigrations()).length, 4);
   assert.deepEqual(await source.runMigrations(), []);
   assert.equal(source.options.synchronize, false);
   assert.equal(source.options.migrationsRun, false);
@@ -399,6 +401,7 @@ try {
   assert.ok(
     indexes.some((row) => row.indexname === 'IDX_card_labels_label_board'),
   );
+  await source.undoLastMigration(); // Empty private-file extension.
   await source.undoLastMigration(); // Empty attachment foundation.
   await source.undoLastMigration(); // Empty Card start-date extension.
   await assert.rejects(

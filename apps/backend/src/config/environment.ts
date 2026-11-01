@@ -1,4 +1,8 @@
 import {
+  validateAttachmentEnvironment,
+  type AttachmentEnvironment,
+} from '../api/cards/attachments/attachment.config';
+import {
   validateAvatarEnvironment,
   type AvatarEnvironment,
 } from '../api/users/avatars/avatar.config';
@@ -9,7 +13,8 @@ export type MailTransport = 'fake' | 'resend';
 export type LogLevel =
   'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
 
-export interface EnvironmentConfig extends AvatarEnvironment {
+export interface EnvironmentConfig
+  extends AvatarEnvironment, AttachmentEnvironment {
   NODE_ENV: AppEnvironment;
   API_PORT: number;
   API_PREFIX: string;
@@ -201,6 +206,7 @@ export function validateEnvironment(
 
   return {
     ...validateAvatarEnvironment({ ...input, NODE_ENV: nodeEnv }),
+    ...validateAttachmentEnvironment({ ...input, NODE_ENV: nodeEnv }),
     MAIL_TRANSPORT: mailTransport,
     RESEND_API_KEY: resendKey,
     MAIL_FROM: mailFrom,

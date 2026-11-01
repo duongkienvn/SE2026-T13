@@ -155,9 +155,22 @@ See the [date representation, API and verification contract](../tasks/backend/ca
 ## Card attachment foundation (CD-03 part 1)
 
 `CardsModule` owns authenticated nested URL attachment CRUD. Mutations use the
-Board lock for current ACL, Card archive checks, provisional slot limits,
-idempotency and revision checks. Only ACTIVE allowlisted metadata is public;
-file operations remain 503 through an explicitly disabled private-storage boundary.
-Changes reuse one post-commit `card:updated` invalidation. Storage I/O and workers
-are reserved for P3-06; database triggers persist cleanup obligations on terminal
-states/hard deletes. See [schema, policy classifications and P3-06 handoff](../tasks/backend/card-attachments-foundation.md).
+Board lock for current ACL, Card archive checks, slot limits,
+idempotency and revision checks. Only ACTIVE allowlisted metadata is public.
+The [P3-05 foundation record](../tasks/backend/card-attachments-foundation.md)
+describes the original disabled file extension boundary.
+
+## Private Card files (CD-03 part 2)
+
+`CardAttachmentFilesService` adds owned upload intents, persisted verification
+leases, bounded actual-content verification and backend-streamed downloads.
+`AttachmentStorage` has disabled (default), development/test memory and private S3
+drivers. Reserve quota and finalize under the existing Board lock, with all
+provider I/O outside PostgreSQL transactions and a final ACL/session/archive check.
+Use explicit mutable-column updates so hidden immutable legacy timestamps survive.
+Images normalize before ACTIVE; metadata never exposes object keys or pending
+records. `AttachmentCleanupService` resumes durable expiry/deletion/reconciliation
+work, protecting referenced objects and retaining ownership tombstones permanently.
+Changes reuse one post-commit `card:updated` invalidation. See the
+[contracts, security, recovery and P3-10 guide](../tasks/backend/private-card-attachments.md)
+and [manual S3 rollout](../deployment/private-card-attachments.md).

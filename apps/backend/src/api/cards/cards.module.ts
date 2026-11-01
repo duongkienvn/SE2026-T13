@@ -1,3 +1,10 @@
+import { AttachmentCleanupService } from './attachments/attachment-cleanup.service';
+import { CardAttachmentFilesService } from './card-attachment-files.service';
+import {
+  CardAttachmentUploadsController,
+  LocalAttachmentUploadGuard,
+} from './card-attachment-uploads.controller';
+import { AttachmentContentService } from './attachments/attachment-content.service';
 import { Module } from '@nestjs/common';
 import { RealtimeDeliveryModule } from '../../realtime/realtime-delivery.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -19,10 +26,7 @@ import { CardChecklistItem } from './entities/card-checklist-item.entity';
 import { CardAttachmentsController } from './card-attachments.controller';
 import { CardAttachmentsService } from './card-attachments.service';
 import { CardAttachment } from './entities/card-attachment.entity';
-import {
-  AttachmentStorage,
-  DisabledAttachmentStorage,
-} from './attachments/attachment-storage';
+import { attachmentStorageProvider } from './attachments/attachment-storage.provider';
 
 @Module({
   imports: [
@@ -45,12 +49,17 @@ import {
     CardsController,
     CardChecklistsController,
     CardAttachmentsController,
+    CardAttachmentUploadsController,
   ],
   providers: [
     CardsService,
     CardChecklistsService,
     CardAttachmentsService,
-    { provide: AttachmentStorage, useClass: DisabledAttachmentStorage },
+    CardAttachmentFilesService,
+    AttachmentContentService,
+    AttachmentCleanupService,
+    LocalAttachmentUploadGuard,
+    attachmentStorageProvider,
   ],
   exports: [CardChecklistsService],
 })

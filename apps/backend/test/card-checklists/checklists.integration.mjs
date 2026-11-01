@@ -45,7 +45,8 @@ try {
       !m.name.startsWith('CardChecklists') &&
       !m.name.startsWith('BoardCardLabels') &&
       !m.name.startsWith('CardAdvancedDates') &&
-      !m.name.startsWith('CardAttachments'),
+      !m.name.startsWith('CardAttachments') &&
+      !m.name.startsWith('PrivateCardFiles'),
   );
   await source.runMigrations();
   const [legacyOwner] = await source.query(
@@ -88,13 +89,14 @@ try {
   };
   const before = await snapshot();
   source.migrations = allMigrations;
-  assert.equal((await source.runMigrations()).length, 4);
+  assert.equal((await source.runMigrations()).length, 5);
   assert.deepEqual(await snapshot(), before);
+  await source.undoLastMigration(); // Empty private-file extension.
   await source.undoLastMigration(); // Empty attachment foundation.
   await source.undoLastMigration(); // Empty Card start-date extension.
   await source.undoLastMigration(); // Empty Board label extension.
   await source.undoLastMigration(); // Empty checklist tables only.
-  assert.equal((await source.runMigrations()).length, 4);
+  assert.equal((await source.runMigrations()).length, 5);
   assert.deepEqual(await source.runMigrations(), []);
   assert.equal(source.options.synchronize, false);
   assert.equal(source.options.migrationsRun, false);
@@ -442,6 +444,7 @@ try {
   );
   assert.equal(constraints.length, 2);
   assert.ok(constraints.every((row) => row.condeferrable && row.condeferred));
+  await source.undoLastMigration(); // Empty private-file extension.
   await source.undoLastMigration(); // Empty attachment foundation.
   await source.undoLastMigration(); // Empty Card start-date extension.
   await source.undoLastMigration(); // Empty Board label extension.
