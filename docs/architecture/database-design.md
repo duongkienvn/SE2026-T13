@@ -493,3 +493,13 @@ quota decisions remain under the Board lock, using declared source versus
 reserved/verified byte semantics. Populated down refuses FILE rows or cleanup
 obligations; preserve evidence and roll forward. See
 [the schema, lifecycle, quota and migration contract](../tasks/backend/private-card-attachments.md).
+
+## Board discovery and backgrounds (BD-01/BD-04)
+
+`board_user_states` stores a user's star and last authorized Board view under a
+composite `(user_id, board_id)` key with cascading parent FKs. Partial indexes
+support starred and recent queries; retention limits recent timestamps to 100
+per user without discarding stars. Read queries always reapply Board ACL.
+`boards.background_preset` is constrained to the server's finite catalog and
+defaults to `blue` for existing rows. See the
+[API, retention and migration contract](../tasks/backend/board-discovery-customization.md).

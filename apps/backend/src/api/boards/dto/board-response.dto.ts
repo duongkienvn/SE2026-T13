@@ -6,6 +6,7 @@ import { Board } from '../entities/board.entity';
 import { BoardVisibility, type BoardCapabilities } from '@kanban/shared';
 import { Type } from 'class-transformer';
 import { boardCapabilities } from '../../board-members/board-permissions';
+import { BOARD_BACKGROUND_IDS } from '../board-backgrounds';
 
 export class BoardCapabilitiesDto implements BoardCapabilities {
   @Expose() @ApiProperty() canReadBoard!: boolean;
@@ -61,6 +62,18 @@ export class BoardResponseDto {
   @ApiProperty({ enum: BoardVisibility })
   visibility!: BoardVisibility;
   @Expose()
+  @ApiProperty({ enum: BOARD_BACKGROUND_IDS, example: 'blue' })
+  backgroundPreset!: string;
+  @Expose() @ApiProperty({ required: false }) isStarred?: boolean;
+  @Expose()
+  @ApiProperty({
+    required: false,
+    type: String,
+    nullable: true,
+    format: 'date-time',
+  })
+  lastViewedAt?: string | null;
+  @Expose()
   @Type(() => BoardCapabilitiesDto)
   @ApiProperty({ type: BoardCapabilitiesDto })
   capabilities!: BoardCapabilitiesDto;
@@ -82,6 +95,13 @@ export function toBoardResponseDto(
     currentUserRole,
     workspaceId: board.workspaceId,
     visibility: board.visibility,
+    backgroundPreset: board.backgroundPreset ?? 'blue',
+    ...(board.userState === undefined
+      ? {}
+      : {
+          isStarred: board.userState?.isStarred ?? false,
+          lastViewedAt: board.userState?.lastViewedAt?.toISOString() ?? null,
+        }),
     capabilities: boardCapabilities(board, currentUserRole),
   });
 }

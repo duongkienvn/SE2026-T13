@@ -11,7 +11,8 @@ import {
 import { ActivityWriterService } from '../activities/activity-writer.service';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { BoardResponseDto, toBoardResponseDto } from './dto/board-response.dto';
-import { PageQueryDto } from '../../common/dto/page-query.dto';
+import { ListBoardsDto } from './dto/list-boards.dto';
+import { BoardUserState } from './entities/board-user-state.entity';
 import {
   PaginatedResponse,
   paginate,
@@ -167,7 +168,7 @@ export class BoardsService {
 
   async list(
     userId: string,
-    query: PageQueryDto & { status?: 'active' | 'archived' },
+    query: Pick<ListBoardsDto, 'page' | 'limit'> & Partial<ListBoardsDto>,
   ): Promise<PaginatedResponse<BoardResponseDto>> {
     try {
       pageOffset(query);
@@ -179,23 +180,54 @@ export class BoardsService {
         ['Pagination offset must be a safe integer'],
       );
     }
+    const builder = this.boards
+      .createQueryBuilder('board')
+      .leftJoinAndMapOne(
+        'board.userState',
+        BoardUserState,
+        'userState',
+        'userState.boardId = board.id AND userState.userId = :userId',
+        { userId },
+      )
+      .innerJoinAndSelect('board.workspace', 'boardWorkspace')
+      .leftJoinAndSelect('board.members', 'member', 'member.userId = :userId', {
+        userId,
+      })
+      .where(readableBoardPredicate, readableBoardParameters(userId))
+      .andWhere('board.isArchived = :isArchived', {
+        isArchived: query.status === 'archived',
+      });
+    if (query.q) {
+      const literal = query.q.replace(/[\\%_]/g, '\\$&');
+      builder.andWhere('board.name ILIKE :search', { search: `%${literal}%` });
+    }
+    if (query.starred !== undefined)
+      builder.andWhere(
+        query.starred
+          ? 'userState.isStarred = true'
+          : 'COALESCE(userState.isStarred, false) = false',
+      );
+    if (query.recent) builder.andWhere('userState.lastViewedAt IS NOT NULL');
+    if (query.sort === 'recent') {
+      const [rows, total] = await builder
+        .orderBy('userState.lastViewedAt', 'DESC', 'NULLS LAST')
+        .addOrderBy('board.id', 'DESC')
+        .skip(pageOffset(query))
+        .take(query.limit)
+        .getManyAndCount();
+      return paginate(
+        rows.map((board) =>
+          toBoardResponseDto(board, board.members[0]?.role ?? null),
+        ),
+        total,
+        query,
+      );
+    }
     const page = await paginateQueryBuilder(
-      this.boards
-        .createQueryBuilder('board')
-        .innerJoinAndSelect('board.workspace', 'boardWorkspace')
-        .leftJoinAndSelect(
-          'board.members',
-          'member',
-          'member.userId = :userId',
-          { userId },
-        )
-        .where(readableBoardPredicate, readableBoardParameters(userId))
-        .andWhere('board.isArchived = :isArchived', {
-          isArchived: query.status === 'archived',
-        }),
+      builder,
       query,
-      query.status === 'archived' ? 'archivedAt' : 'createdAt',
-      'DESC',
+      query.sort ?? (query.status === 'archived' ? 'archivedAt' : 'createdAt'),
+      query.sort === 'name' ? 'ASC' : 'DESC',
     );
     return paginate(
       page.data.map((board) =>

@@ -27,6 +27,8 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Backend tasks
 
+- [Board discovery and customization backend](backend/board-discovery-customization.md)
+
 - [Phase 2 database integrity and deletion-policy audit](backend/phase2-database-integrity.md)
 - [Phase 2 PostgreSQL schema inventory](backend/phase2-schema-inventory.md)
 - [Board Member added email notification](backend/board-member-added-email.md)

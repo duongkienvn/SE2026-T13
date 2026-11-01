@@ -17,14 +17,20 @@ import { BoardColumn } from '../../columns/entities/board-column.entity';
 import { User } from '../../users/entities/user.entity';
 import { BoardVisibility } from '@kanban/shared';
 import { Workspace } from '../../workspaces/entities/workspace.entity';
+import type { BoardUserState } from './board-user-state.entity';
 
 @Entity('boards')
 @Check(
   'CK_boards_visibility',
   `"visibility" IN ('PRIVATE', 'WORKSPACE_VISIBLE')`,
 )
+@Check(
+  'CHK_boards_background_preset',
+  `background_preset IN ('blue','indigo','violet','rose','orange','amber','green','teal','mountains','forest','coast','lake')`,
+)
 @Index('IDX_boards_workspace_id', ['workspaceId'])
 export class Board {
+  userState?: BoardUserState | null;
   @PrimaryGeneratedColumn('uuid') id!: string;
   @Column({ type: 'varchar' }) name!: string;
   @Column({ type: 'text', nullable: true }) description!: string | null;
@@ -55,6 +61,13 @@ export class Board {
   workspace!: Workspace;
   @Column({ type: 'varchar', default: BoardVisibility.PRIVATE })
   visibility!: BoardVisibility;
+  @Column({
+    name: 'background_preset',
+    type: 'varchar',
+    length: 32,
+    default: 'blue',
+  })
+  backgroundPreset!: string;
   @Column({ name: 'is_archived', type: 'boolean', default: false })
   isArchived!: boolean;
   @Column({ name: 'archived_at', type: 'timestamptz', nullable: true })

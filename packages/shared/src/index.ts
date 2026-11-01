@@ -17,3 +17,4 @@ export * from './workspace.js';
 
 export * from './card-dates.js';
 export * from './card-attachments.js';
+export * from './board-discovery.js';

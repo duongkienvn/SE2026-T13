@@ -1,7 +1,10 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn } from 'class-validator';
 import { WorkspacePageQueryDto } from './workspace-page-query.dto';
-import { StringFieldOptional } from '../../../decorators/field.decorators';
+import {
+  BooleanFieldOptional,
+  StringFieldOptional,
+} from '../../../decorators/field.decorators';
 
 export class WorkspaceBoardsQueryDto extends WorkspacePageQueryDto {
   @IsIn(['active', 'archived'])
@@ -12,10 +15,16 @@ export class WorkspaceBoardsQueryDto extends WorkspacePageQueryDto {
   @ApiPropertyOptional({ maxLength: 120 })
   search?: string;
 
-  @IsIn(['createdAt', 'updatedAt', 'name'])
+  @StringFieldOptional({ trim: true, minLength: 0, maxLength: 120 })
+  q?: string;
+
+  @BooleanFieldOptional() starred?: boolean;
+  @BooleanFieldOptional() recent?: boolean;
+
+  @IsIn(['createdAt', 'updatedAt', 'name', 'recent'])
   @ApiPropertyOptional({
-    enum: ['createdAt', 'updatedAt', 'name'],
+    enum: ['createdAt', 'updatedAt', 'name', 'recent'],
     default: 'updatedAt',
   })
-  sort: 'createdAt' | 'updatedAt' | 'name' = 'updatedAt';
+  sort: 'createdAt' | 'updatedAt' | 'name' | 'recent' = 'updatedAt';
 }
