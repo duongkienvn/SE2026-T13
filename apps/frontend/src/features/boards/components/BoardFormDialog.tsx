@@ -230,8 +230,17 @@ export function EditBoardDialog({
     },
     [onDirtyChange],
   );
+  const submitted = useRef<BoardValues | null>(null);
+  // A matching realtime/refetch update can beat our successful REST response.
+  // Keep detecting genuinely different updates, including while saving.
+  const matchesPendingSave =
+    update.isPending &&
+    submitted.current !== null &&
+    board.name === submitted.current.name &&
+    board.description === submitted.current.description;
   const changedRemotely =
-    board.name !== initial.name || board.description !== initial.description;
+    !matchesPendingSave &&
+    (board.name !== initial.name || board.description !== initial.description);
   useEffect(() => {
     if (!dirty) return;
     const warn = (event: BeforeUnloadEvent) => {
@@ -277,6 +286,7 @@ export function EditBoardDialog({
           if (values.name !== initial.name) patch.name = values.name;
           if (values.description !== initial.description)
             patch.description = values.description;
+          submitted.current = values;
           onSaved(await update.mutateAsync(patch));
         }}
       />
