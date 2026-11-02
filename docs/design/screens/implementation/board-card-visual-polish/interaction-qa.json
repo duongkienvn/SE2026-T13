@@ -1,0 +1,169 @@
+[
+  {
+    "theme": "light",
+    "width": 375,
+    "screen": "create",
+    "result": {
+      "dialogOverflow": false,
+      "photos": 4,
+      "focusInside": true
+    }
+  },
+  {
+    "theme": "light",
+    "width": 375,
+    "focus": {
+      "closed": true,
+      "focus": "Create Board"
+    }
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "screen": "create",
+    "result": {
+      "dialogOverflow": false,
+      "photos": 4,
+      "focusInside": true
+    }
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "focus": {
+      "closed": true,
+      "focus": "Create Board"
+    }
+  },
+  {
+    "theme": "dark",
+    "width": 375,
+    "screen": "create",
+    "result": {
+      "dialogOverflow": false,
+      "photos": 4,
+      "focusInside": true
+    }
+  },
+  {
+    "theme": "dark",
+    "width": 375,
+    "focus": {
+      "closed": true,
+      "focus": "Create Board"
+    }
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "screen": "create",
+    "result": {
+      "dialogOverflow": false,
+      "photos": 4,
+      "focusInside": true
+    }
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "focus": {
+      "closed": true,
+      "focus": "Create Board"
+    }
+  },
+  {
+    "theme": "light",
+    "width": 375,
+    "screen": "filter",
+    "result": {
+      "dialogOverflow": false,
+      "focusInside": true,
+      "nestedScrollAreas": 0,
+      "actions": true
+    }
+  },
+  {
+    "theme": "light",
+    "width": 375,
+    "screen": "filter-focus",
+    "focus": {
+      "closed": true,
+      "focus": "Filter"
+    }
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "screen": "filter",
+    "result": {
+      "dialogOverflow": false,
+      "focusInside": true,
+      "nestedScrollAreas": 0,
+      "actions": true
+    }
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "screen": "filter-focus",
+    "focus": {
+      "closed": true,
+      "focus": "Filter"
+    }
+  },
+  {
+    "theme": "dark",
+    "width": 375,
+    "screen": "filter",
+    "result": {
+      "dialogOverflow": false,
+      "focusInside": true,
+      "nestedScrollAreas": 0,
+      "actions": true
+    }
+  },
+  {
+    "theme": "dark",
+    "width": 375,
+    "screen": "filter-focus",
+    "focus": {
+      "closed": true,
+      "focus": "Filter"
+    }
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "screen": "filter",
+    "result": {
+      "dialogOverflow": false,
+      "focusInside": true,
+      "nestedScrollAreas": 0,
+      "actions": true
+    }
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "screen": "filter-focus",
+    "focus": {
+      "closed": true,
+      "focus": "Filter"
+    }
+  },
+  {
+    "screen": "star-non-navigation",
+    "title": "Boards",
+    "starred": "true"
+  },
+  {
+    "screen": "board-actions",
+    "width": 1440,
+    "theme": "light",
+    "overflow": "visible",
+    "zIndex": 20,
+    "editAndArchiveUnobscured": true,
+    "editOpenedFor": "Frontend Development",
+    "escapeRestoredTo": "Actions for Frontend Development"
+  }
+]

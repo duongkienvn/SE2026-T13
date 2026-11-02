@@ -1,0 +1,292 @@
+[
+  {
+    "screen": "global",
+    "width": 320,
+    "theme": "light",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 6,
+    "covers": 6
+  },
+  {
+    "screen": "global",
+    "width": 375,
+    "theme": "light",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 6,
+    "covers": 6
+  },
+  {
+    "screen": "global",
+    "width": 768,
+    "theme": "light",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 6,
+    "covers": 6
+  },
+  {
+    "screen": "global",
+    "width": 1280,
+    "theme": "light",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 6,
+    "covers": 6
+  },
+  {
+    "screen": "global",
+    "width": 1440,
+    "theme": "light",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 6,
+    "covers": 6
+  },
+  {
+    "screen": "global",
+    "width": 320,
+    "theme": "dark",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 6,
+    "covers": 6
+  },
+  {
+    "screen": "global",
+    "width": 375,
+    "theme": "dark",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 6,
+    "covers": 6
+  },
+  {
+    "screen": "global",
+    "width": 768,
+    "theme": "dark",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 6,
+    "covers": 6
+  },
+  {
+    "screen": "global",
+    "width": 1280,
+    "theme": "dark",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 6,
+    "covers": 6
+  },
+  {
+    "screen": "global",
+    "width": 1440,
+    "theme": "dark",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 6,
+    "covers": 6
+  },
+  {
+    "screen": "workspace",
+    "width": 320,
+    "theme": "light",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 6,
+    "covers": 6,
+    "statusHeight": 44
+  },
+  {
+    "screen": "workspace",
+    "width": 375,
+    "theme": "light",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 6,
+    "covers": 6,
+    "statusHeight": 44
+  },
+  {
+    "screen": "workspace",
+    "width": 768,
+    "theme": "light",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 6,
+    "covers": 6,
+    "statusHeight": 44
+  },
+  {
+    "screen": "workspace",
+    "width": 1280,
+    "theme": "light",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 6,
+    "covers": 6,
+    "statusHeight": 44
+  },
+  {
+    "screen": "workspace",
+    "width": 1440,
+    "theme": "light",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 6,
+    "covers": 6,
+    "statusHeight": 44
+  },
+  {
+    "screen": "workspace",
+    "width": 320,
+    "theme": "dark",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 6,
+    "covers": 6,
+    "statusHeight": 44
+  },
+  {
+    "screen": "workspace",
+    "width": 375,
+    "theme": "dark",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 6,
+    "covers": 6,
+    "statusHeight": 44
+  },
+  {
+    "screen": "workspace",
+    "width": 768,
+    "theme": "dark",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 6,
+    "covers": 6,
+    "statusHeight": 44
+  },
+  {
+    "screen": "workspace",
+    "width": 1280,
+    "theme": "dark",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 6,
+    "covers": 6,
+    "statusHeight": 44
+  },
+  {
+    "screen": "workspace",
+    "width": 1440,
+    "theme": "dark",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 6,
+    "covers": 6,
+    "statusHeight": 44
+  },
+  {
+    "screen": "kanban",
+    "width": 320,
+    "theme": "light",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 10,
+    "footers": true,
+    "background": "background-color: rgb(51, 65, 85); background-image: linear-gradient(rgba(0, 0, 0, 0.267), rgba(0, 0, 0, 0.267)), url(\"/board-backgrounds/mountains.jpg\"); background-position: center center; background-size: cover;"
+  },
+  {
+    "screen": "kanban",
+    "width": 375,
+    "theme": "light",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 10,
+    "footers": true,
+    "background": "background-color: rgb(51, 65, 85); background-image: linear-gradient(rgba(0, 0, 0, 0.267), rgba(0, 0, 0, 0.267)), url(\"/board-backgrounds/mountains.jpg\"); background-position: center center; background-size: cover;"
+  },
+  {
+    "screen": "kanban",
+    "width": 768,
+    "theme": "light",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 10,
+    "footers": true,
+    "background": "background-color: rgb(51, 65, 85); background-image: linear-gradient(rgba(0, 0, 0, 0.267), rgba(0, 0, 0, 0.267)), url(\"/board-backgrounds/mountains.jpg\"); background-position: center center; background-size: cover;"
+  },
+  {
+    "screen": "kanban",
+    "width": 1280,
+    "theme": "light",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 10,
+    "footers": true,
+    "background": "background-color: rgb(51, 65, 85); background-image: linear-gradient(rgba(0, 0, 0, 0.267), rgba(0, 0, 0, 0.267)), url(\"/board-backgrounds/mountains.jpg\"); background-position: center center; background-size: cover;"
+  },
+  {
+    "screen": "kanban",
+    "width": 1440,
+    "theme": "light",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 10,
+    "footers": true,
+    "background": "background-color: rgb(51, 65, 85); background-image: linear-gradient(rgba(0, 0, 0, 0.267), rgba(0, 0, 0, 0.267)), url(\"/board-backgrounds/mountains.jpg\"); background-position: center center; background-size: cover;"
+  },
+  {
+    "screen": "kanban",
+    "width": 320,
+    "theme": "dark",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 10,
+    "footers": true,
+    "background": "background-color: rgb(51, 65, 85); background-image: linear-gradient(rgba(0, 0, 0, 0.267), rgba(0, 0, 0, 0.267)), url(\"/board-backgrounds/mountains.jpg\"); background-position: center center; background-size: cover;"
+  },
+  {
+    "screen": "kanban",
+    "width": 375,
+    "theme": "dark",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 10,
+    "footers": true,
+    "background": "background-color: rgb(51, 65, 85); background-image: linear-gradient(rgba(0, 0, 0, 0.267), rgba(0, 0, 0, 0.267)), url(\"/board-backgrounds/mountains.jpg\"); background-position: center center; background-size: cover;"
+  },
+  {
+    "screen": "kanban",
+    "width": 768,
+    "theme": "dark",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 10,
+    "footers": true,
+    "background": "background-color: rgb(51, 65, 85); background-image: linear-gradient(rgba(0, 0, 0, 0.267), rgba(0, 0, 0, 0.267)), url(\"/board-backgrounds/mountains.jpg\"); background-position: center center; background-size: cover;"
+  },
+  {
+    "screen": "kanban",
+    "width": 1280,
+    "theme": "dark",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 10,
+    "footers": true,
+    "background": "background-color: rgb(51, 65, 85); background-image: linear-gradient(rgba(0, 0, 0, 0.267), rgba(0, 0, 0, 0.267)), url(\"/board-backgrounds/mountains.jpg\"); background-position: center center; background-size: cover;"
+  },
+  {
+    "screen": "kanban",
+    "width": 1440,
+    "theme": "dark",
+    "pageOverflow": false,
+    "mainOverflow": false,
+    "cards": 10,
+    "footers": true,
+    "background": "background-color: rgb(51, 65, 85); background-image: linear-gradient(rgba(0, 0, 0, 0.267), rgba(0, 0, 0, 0.267)), url(\"/board-backgrounds/mountains.jpg\"); background-position: center center; background-size: cover;"
+  }
+]
