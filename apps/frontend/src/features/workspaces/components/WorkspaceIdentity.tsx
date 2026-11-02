@@ -1,5 +1,12 @@
 import { Link, useLocation } from 'react-router';
-import { LayersIcon, PlusIcon, UserIcon } from '../../../components/icons';
+import { buttonClassName } from '../../../components/Button';
+import './workspace-overview.css';
+import {
+  ColumnsIcon,
+  LayersIcon,
+  PlusIcon,
+  UsersIcon,
+} from '../../../components/icons';
 import { workspacePath } from '../navigation';
 import { WorkspaceIconGlyph } from '../settings/icons';
 import type { WorkspaceSummary } from '../types';
@@ -30,10 +37,14 @@ export function WorkspaceAvatar({
 export function WorkspaceIdentity({
   workspace,
   memberCount,
+  visibleBoardCount,
+  showCreateBoard = false,
   loading = false,
 }: {
   workspace?: WorkspaceSummary;
   memberCount?: number | null;
+  visibleBoardCount?: number | null;
+  showCreateBoard?: boolean;
   loading?: boolean;
 }) {
   const location = useLocation();
@@ -45,59 +56,82 @@ export function WorkspaceIdentity({
   );
   inviteParams.set('invite', '1');
   return (
-    <header className="flex flex-wrap items-center gap-4 py-6 short:py-3">
+    <header className="workspace-hero my-4 grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-4 rounded-2xl border border-primary/15 p-4 sm:gap-x-5 sm:p-5 xl:grid-cols-[auto_minmax(0,1fr)_auto] xl:items-center">
       <WorkspaceAvatar
         workspace={workspace}
-        className="size-16 text-2xl sm:size-18 short:size-12 short:text-xl"
+        className="size-12 text-xl shadow-card sm:size-16 sm:text-2xl"
       />
-      <div className="min-w-0 flex-1 basis-40">
+      <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="min-w-0 max-w-full text-xl font-semibold tracking-tight text-ink sm:text-2xl [overflow-wrap:anywhere]">
+          <h1
+            title={workspace?.name}
+            className="line-clamp-2 min-w-0 max-w-full text-xl leading-tight font-bold tracking-tight text-ink sm:text-2xl [overflow-wrap:anywhere]"
+          >
             {workspace?.name ??
               (loading ? 'Loading workspace…' : 'Workspace overview')}
           </h1>
           {workspace && (
-            <span className="rounded-md bg-primary-soft px-2 py-1 text-xs font-medium text-primary">
+            <span className="rounded-md bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary-hover">
               {workspace.type === 'PERSONAL' ? 'Personal' : 'Team'}
             </span>
           )}
         </div>
-        <p className="mt-1.5 text-sm leading-relaxed break-words text-muted [overflow-wrap:anywhere]">
+        <p
+          title={workspace?.description ?? undefined}
+          className="mt-1.5 line-clamp-1 text-sm sm:line-clamp-2 leading-relaxed text-muted [overflow-wrap:anywhere]"
+        >
           {workspace?.description ||
             (workspace
               ? 'A shared space for your boards and ideas.'
               : 'Your boards, people and work, together in one place.')}
         </p>
-      </div>
-      <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
-        <span className="flex items-center gap-2">
-          <UserIcon className="size-4" />
-          {memberCount != null
-            ? `${memberCount} ${memberCount === 1 ? 'member' : 'members'}`
-            : 'Member summary unavailable'}
-        </span>
-        {workspace?.type === 'TEAM' && workspace.role === 'ADMIN' ? (
-          <Link
-            to={`${membersPath}?${inviteParams}`}
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-line bg-surface px-3 text-sm font-medium text-primary hover:bg-primary-soft/40 focus-visible:outline-2 focus-visible:outline-primary"
-          >
-            <PlusIcon className="size-4" />
-            Invite
-          </Link>
-        ) : workspace?.type === 'TEAM' ? (
-          <span
-            aria-disabled="true"
-            title="Only workspace admins can invite people."
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-line px-3 text-xs"
-          >
-            <PlusIcon className="size-4" />
-            Invite
-            <span className="sr-only">
-              , unavailable: only workspace admins can invite people
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs leading-5 text-muted">
+          {visibleBoardCount != null && (
+            <span className="inline-flex items-center gap-1.5">
+              <ColumnsIcon className="size-3.5 shrink-0" />
+              {visibleBoardCount} {visibleBoardCount === 1 ? 'board' : 'boards'}
             </span>
+          )}
+          <span className="inline-flex items-center gap-1.5">
+            <UsersIcon className="size-3.5 shrink-0" />
+            {memberCount != null
+              ? `${memberCount} ${memberCount === 1 ? 'member' : 'members'}`
+              : 'Member summary unavailable'}
           </span>
-        ) : null}
+          {workspace && (
+            <span className="hidden items-center gap-1.5 sm:inline-flex">
+              <LayersIcon className="size-3.5 shrink-0" />
+              {workspace.type === 'PERSONAL'
+                ? 'Personal workspace'
+                : 'Team workspace'}
+            </span>
+          )}
+        </div>
       </div>
+      {workspace &&
+        ((workspace.type === 'TEAM' && workspace.role === 'ADMIN') ||
+          (showCreateBoard && workspace.canCreateBoards)) && (
+          <div className="col-span-2 flex flex-col gap-2 sm:flex-row sm:justify-end xl:col-span-1">
+            {workspace.type === 'TEAM' && workspace.role === 'ADMIN' && (
+              <Link
+                to={`${membersPath}?${inviteParams}`}
+                className={`${buttonClassName('secondary', 'lg')} whitespace-nowrap`}
+              >
+                <UsersIcon className="size-4" />
+                Invite
+              </Link>
+            )}
+            {showCreateBoard && workspace.canCreateBoards && (
+              <Link
+                to={`${workspacePath(workspace.id)}/boards?create=board`}
+                className={`${buttonClassName('primary', 'lg')} whitespace-nowrap`}
+              >
+                <PlusIcon className="size-4" />
+                Create Board
+              </Link>
+            )}
+          </div>
+        )}
     </header>
   );
 }

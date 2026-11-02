@@ -15,6 +15,7 @@ import '../src/style.css';
 
 const params = new URLSearchParams(location.search);
 const scenario = params.get('scenario') ?? 'team';
+const overviewPreview = scenario.startsWith('overview');
 const id = '00000000-0000-4000-8000-000000000113';
 const personalId = '00000000-0000-4000-8000-000000000115';
 const boardId = '00000000-0000-4000-8000-000000000114';
@@ -30,15 +31,19 @@ const user = {
 const team = {
   id,
   type: 'TEAM',
-  name:
-    scenario === 'long'
-      ? 'DevelopmentWithoutSpaces'.repeat(5)
-      : 'Development Team',
-  description: 'Build amazing products together.',
-  icon: null,
-  role: 'ADMIN',
-  canManage: true,
-  canCreateBoards: true,
+  name: ['long', 'overview-long'].includes(scenario)
+    ? 'DevelopmentWithoutSpaces'.repeat(4)
+    : 'Development Team',
+  description:
+    scenario === 'overview-long'
+      ? 'Plan, build and ship accessible collaboration together. '.repeat(8)
+      : 'Build amazing products together.',
+  icon: overviewPreview ? 'users' : null,
+  role: ['overview-member', 'overview-reader'].includes(scenario)
+    ? 'MEMBER'
+    : 'ADMIN',
+  canManage: !['overview-member', 'overview-reader'].includes(scenario),
+  canCreateBoards: scenario !== 'overview-reader',
   joinedAt: time,
   createdAt: time,
   updatedAt: time,
@@ -47,7 +52,8 @@ const personal = {
   ...team,
   id: personalId,
   type: 'PERSONAL',
-  name: 'Kanvexa Workspace',
+  name: overviewPreview ? 'My Workspace' : 'Kanvexa Workspace',
+  icon: overviewPreview ? 'briefcase' : null,
   description: 'A home for your boards.',
 };
 const memberships =
@@ -70,19 +76,19 @@ const board = {
   description: 'Board navigation and authorized Workspace context.',
   createdById: user.id,
   workspaceId: id,
-  visibility: 'PRIVATE',
-  currentUserRole: 'OWNER',
+  visibility: scenario === 'overview-reader' ? 'WORKSPACE_VISIBLE' : 'PRIVATE',
+  currentUserRole: scenario === 'overview-reader' ? null : 'OWNER',
   isArchived: scenario === 'archived',
   archivedAt: null,
   createdAt: time,
   updatedAt: time,
   canEdit: true,
-  memberCount: 1,
+  memberCount: scenario === 'overview-reader' ? null : 1,
   capabilities: {
     canReadBoard: true,
-    canWriteBoard: scenario !== 'archived',
-    canManageBoard: scenario !== 'archived',
-    canManageMembers: true,
+    canWriteBoard: !['archived', 'overview-reader'].includes(scenario),
+    canManageBoard: !['archived', 'overview-reader'].includes(scenario),
+    canManageMembers: scenario !== 'overview-reader',
     canRestoreBoard: scenario === 'archived',
   },
 };
@@ -155,31 +161,56 @@ window.fetch = async (input, init) => {
         Object.assign(workspace, JSON.parse(String(init?.body)));
       return response(workspace);
     }
-    if (path === `${root}/overview`)
+    if (path === `${root}/overview`) {
+      if (scenario === 'overview-loading')
+        return new Promise<Response>(() => undefined);
+      if (scenario === 'overview-error') return response(null, false, 503);
+      if (scenario === 'overview-denied') return response(null, false, 404);
+      const recentBoards =
+        scenario === 'overview-empty'
+          ? []
+          : overviewPreview
+            ? [
+                board,
+                {
+                  ...board,
+                  id: '00000000-0000-4000-8000-000000000116',
+                  name: 'Release planning',
+                  visibility: 'WORKSPACE_VISIBLE',
+                  currentUserRole: null,
+                  memberCount: null,
+                  updatedAt: '2026-10-30T00:00:00Z',
+                },
+              ]
+            : [board];
       return response({
         workspace,
-        visibleBoardCount: 1,
-        activeBoardCount: 1,
+        visibleBoardCount: recentBoards.length,
+        activeBoardCount: recentBoards.length,
         archivedBoardCount: 0,
         memberCount: 1,
-        recentBoards: [board],
+        recentBoards: recentBoards.map((item) => ({
+          ...item,
+          workspaceId: workspace.id,
+        })),
       });
+    }
     if (path === `${root}/activity`) {
-      if (scenario === 'activity-error') return response(null, false, 503);
-      const events =
-        scenario === 'activity-empty'
-          ? []
-          : Array.from({ length: 8 }, (_, i) => ({
-              id: `qa-event-${i}`,
-              eventType: i === 0 ? 'BOARD_MOVED' : 'WORKSPACE_UPDATED',
-              createdAt: time,
-              actor: {
-                id: user.id,
-                displayName: user.displayName,
-                avatarUrl: null,
-              },
-              board: i === 0 ? { id: boardId, name: board.name } : null,
-            }));
+      if (['activity-error', 'overview-activity-error'].includes(scenario))
+        return response(null, false, 503);
+      const events = ['activity-empty', 'overview-empty'].includes(scenario)
+        ? []
+        : Array.from({ length: overviewPreview ? 2 : 8 }, (_, i) => ({
+            id: `qa-event-${i}`,
+            eventType: i === 0 ? 'BOARD_MOVED' : 'WORKSPACE_UPDATED',
+            createdAt: time,
+            actor: {
+              id: user.id,
+              displayName: user.displayName,
+              avatarUrl: null,
+            },
+            board: i === 0 ? { id: boardId, name: board.name } : null,
+          }));
       const page = Number(url.searchParams.get('page') ?? 1),
         limit = Number(url.searchParams.get('limit') ?? 5);
       return new Response(

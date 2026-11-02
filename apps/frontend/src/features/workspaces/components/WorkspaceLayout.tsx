@@ -45,11 +45,12 @@ export function WorkspaceLayout() {
           <li aria-hidden="true">
             <ChevronRightIcon className="size-3.5" />
           </li>
-          <li className="min-w-0 max-w-full break-words [overflow-wrap:anywhere]">
+          <li className="min-w-0 max-w-[55%]">
             {workspace ? (
               <Link
                 to={workspacePath(workspaceId)}
-                className="rounded hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
+                title={workspace.name}
+                className="block truncate rounded hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
               >
                 {workspace.name}
               </Link>
@@ -68,6 +69,8 @@ export function WorkspaceLayout() {
       <WorkspaceIdentity
         workspace={workspace}
         memberCount={query.overview?.memberCount}
+        visibleBoardCount={query.overview?.visibleBoardCount}
+        showCreateBoard={current === workspacePath(workspaceId)}
         loading={query.state === 'loading'}
       />
       <WorkspaceSections workspaceId={workspaceId} />

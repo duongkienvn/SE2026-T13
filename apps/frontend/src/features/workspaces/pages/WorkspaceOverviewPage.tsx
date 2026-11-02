@@ -12,7 +12,7 @@ export function WorkspaceOverviewPage() {
   return (
     <div className="space-y-5">
       <WorkspaceSummaryCards overview={overview} state={state} />
-      <div className="grid items-start gap-4 md:grid-cols-2">
+      <div className="grid items-stretch gap-4 lg:grid-cols-[1.2fr_minmax(0,1fr)]">
         <RecentWorkspaceBoards overview={overview} state={state} />
         <WorkspaceActivity state={state} />
       </div>
