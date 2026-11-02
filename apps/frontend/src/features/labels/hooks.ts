@@ -52,17 +52,20 @@ export function useCardLabels(boardId: string, cardId: string) {
 function useInvalidateLabels(boardId: string) {
   const client = useQueryClient();
   const cards = boardKeys.cards(boardId);
-  return () =>
-    Promise.all([
+  return () => {
+    void client.invalidateQueries({ queryKey: [...cards, 'filtered'] });
+    void client.invalidateQueries({
+      queryKey: [...cards, 'preview-summaries'],
+    });
+    return Promise.all([
       client.invalidateQueries({ queryKey: labelKeys.catalog(boardId) }),
-      client.invalidateQueries({ queryKey: [...cards, 'filtered'] }),
-      client.invalidateQueries({ queryKey: [...cards, 'preview-summaries'] }),
       client.invalidateQueries({
         predicate: ({ queryKey }) =>
           queryKey.at(-1) === 'labels' &&
           cards.every((part, index) => queryKey[index] === part),
       }),
     ]);
+  };
 }
 
 export function useCreateLabel(boardId: string) {
@@ -128,16 +131,15 @@ export function useToggleCardLabel(boardId: string, cardId: string) {
           queryKey: labelKeys.catalog(boardId),
         });
     },
-    onSettled: () =>
-      Promise.all([
-        client.invalidateQueries({ queryKey: key, exact: true }),
-        client.invalidateQueries({
-          queryKey: [...boardKeys.cards(boardId), 'filtered'],
-        }),
-        client.invalidateQueries({
-          queryKey: [...boardKeys.cards(boardId), 'preview-summaries'],
-        }),
-      ]),
+    onSettled: () => {
+      void client.invalidateQueries({
+        queryKey: [...boardKeys.cards(boardId), 'filtered'],
+      });
+      void client.invalidateQueries({
+        queryKey: [...boardKeys.cards(boardId), 'preview-summaries'],
+      });
+      return client.invalidateQueries({ queryKey: key, exact: true });
+    },
   });
 }
 

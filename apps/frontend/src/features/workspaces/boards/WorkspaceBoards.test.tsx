@@ -1004,3 +1004,19 @@ describe('Access revocation and session isolation', () => {
     expect(router.state.location.pathname).toBe('/login');
   });
 });
+
+it('forwards creation backgrounds through the Workspace gateway in one request', async () => {
+  const calls = mockApi({
+    'POST /boards': ok(makeBoard({ backgroundPreset: 'coast' })),
+  });
+  await realBoardsGateway.create('token', space.id, {
+    name: 'Coastal board',
+    backgroundPreset: 'coast',
+  });
+  expect(calls).toHaveLength(1);
+  expect(calls[0].body).toEqual({
+    workspaceId: space.id,
+    name: 'Coastal board',
+    backgroundPreset: 'coast',
+  });
+});

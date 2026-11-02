@@ -61,8 +61,36 @@ window.fetch = async (input, init) => {
     return Response.json({
       success: true,
       data: [
-        { id: 'blue', kind: 'color', value: '#2563EB', foreground: 'light' },
-        { id: 'forest', kind: 'photo', value: '', foreground: 'light' },
+        ...[
+          'blue',
+          'indigo',
+          'violet',
+          'rose',
+          'orange',
+          'amber',
+          'green',
+          'teal',
+        ].map((id, index) => ({
+          id,
+          kind: 'color',
+          value: [
+            '#2563EB',
+            '#4F46E5',
+            '#7C3AED',
+            '#BE123C',
+            '#C2410C',
+            '#FCD34D',
+            '#15803D',
+            '#0F766E',
+          ][index],
+          foreground: 'light',
+        })),
+        ...['mountains', 'forest', 'coast', 'lake'].map((id) => ({
+          id,
+          kind: 'photo',
+          value: '',
+          foreground: 'light',
+        })),
       ],
     });
   if (
@@ -85,6 +113,7 @@ window.fetch = async (input, init) => {
       success: true,
       data: filtered.slice((page - 1) * limit, page * limit).map((board) => ({
         ...board,
+        isStarred: fixtureStars.has(board.id),
         createdById: 'qa',
         createdAt: board.updatedAt,
         archivedAt: board.isArchived ? board.updatedAt : null,
@@ -154,7 +183,15 @@ const boards: WorkspaceBoardSummary[] = Array.from(
         : `${names[index % 6]}${index >= 6 ? ` ${index + 1}` : ''}`,
     description: null,
     updatedAt: '2026-10-27T09:00:00Z',
-    backgroundPreset: index % 2 ? 'blue' : 'forest',
+    backgroundPreset: [
+      'mountains',
+      'violet',
+      'forest',
+      'rose',
+      'coast',
+      'teal',
+    ][index % 6],
+    isStarred: false,
     isArchived: scenario === 'archived',
     visibility: index % 4 === 3 ? 'WORKSPACE_VISIBLE' : 'PRIVATE',
     currentUserRole: index % 4 === 3 ? null : index % 2 ? 'MEMBER' : 'OWNER',

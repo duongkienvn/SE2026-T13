@@ -178,3 +178,31 @@ export function cardDueStatus(
     return null;
   }
 }
+
+/** Compact preview; exact preferred date/time remains available in its tooltip. */
+export function formatCardPreviewDate(
+  instant: string,
+  dateFormat: DateFormat,
+  timeZone: string,
+  now = Date.now(),
+): string {
+  const date = new Date(instant);
+  if (Number.isNaN(date.getTime())) return 'Date unavailable';
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).formatToParts(date);
+  const part = (type: string) =>
+    parts.find((item) => item.type === type)?.value ?? '';
+  const year = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+  }).format(new Date(now));
+  const compact =
+    dateFormat === 'DD/MM/YYYY'
+      ? `${part('day')} ${part('month')}`
+      : `${part('month')} ${part('day')}`;
+  return part('year') === year ? compact : `${compact}, ${part('year')}`;
+}

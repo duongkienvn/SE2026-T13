@@ -39,6 +39,7 @@ describe('Board filter draft', () => {
     expect((screen.getByLabelText('Keyword') as HTMLInputElement).value).toBe(
       'saved',
     );
+    fireEvent.click(screen.getByText('Labels', { exact: true }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Bug' }));
     fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
     expect(apply).toHaveBeenCalledWith({ q: 'saved', labelIds: [labelId] });

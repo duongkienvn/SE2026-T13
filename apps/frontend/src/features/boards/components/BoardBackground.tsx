@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { BoardBackgroundPreset } from '@kanban/shared';
+import type {
+  BoardBackgroundPreset,
+  BoardBackgroundPresetId,
+} from '@kanban/shared';
 import { Dialog } from '../../../components/Dialog';
+import { CheckCircleIcon } from '../../../components/icons';
 import { Button } from '../../../components/Button';
 import { apiRequest, isApiError } from '../../../lib/api-client';
 import { useAuth } from '../../auth/useAuth';
@@ -16,7 +20,12 @@ import { revokeBoardAccess } from '../revoke-board-access';
 const photos = ['mountains', 'forest', 'coast', 'lake'];
 export function backgroundStyle(preset: BoardBackgroundPreset | undefined) {
   if (!preset) return undefined;
-  if (preset.kind === 'color') return { backgroundColor: preset.value };
+  if (preset.kind === 'color')
+    return {
+      backgroundColor: preset.value,
+      backgroundImage:
+        'linear-gradient(135deg, #ffffff38, #ffffff08 48%, #00000018)',
+    };
   if (!photos.includes(preset.id)) return undefined;
   return {
     backgroundColor: '#334155',
@@ -26,7 +35,7 @@ export function backgroundStyle(preset: BoardBackgroundPreset | undefined) {
   };
 }
 
-export function useBackgroundPresets() {
+export function useBackgroundPresets({ enabled = true } = {}) {
   const { user, runAuthorized } = useAuth();
   const scope = useAuthSession();
   return useQuery({
@@ -41,7 +50,8 @@ export function useBackgroundPresets() {
       if (!Array.isArray(presets)) throw new Error('Backgrounds unavailable');
       return presets;
     },
-    enabled: !!user,
+    enabled: !!user && enabled,
+    staleTime: 5 * 60_000,
     retry: false,
   });
 }
@@ -228,4 +238,83 @@ export function BoardBackgroundDialog({
       </div>
     </Dialog>
   );
+}
+
+/** Same server catalog and bundled previews for both Board creation flows. */
+export function BackgroundPresetChoices({
+  presets,
+  selected,
+  onSelect,
+  disabled,
+}: {
+  presets: BoardBackgroundPreset[];
+  selected: string;
+  onSelect: (id: BoardBackgroundPresetId) => void;
+  disabled?: boolean;
+}) {
+  const [category, setCategory] = useState<'color' | 'photo'>('color');
+  return (
+    <fieldset disabled={disabled} className="min-w-0 space-y-3">
+      <legend className="mb-2 text-sm font-medium text-ink">Background</legend>
+      <div
+        role="group"
+        aria-label="Background category"
+        className="flex w-full max-w-72 rounded-lg bg-app p-1"
+      >
+        {(['color', 'photo'] as const).map((kind) => (
+          <button
+            type="button"
+            key={kind}
+            aria-pressed={category === kind}
+            onClick={() => setCategory(kind)}
+            className={`min-h-9 flex-1 rounded-md text-sm font-medium focus-visible:outline-2 focus-visible:outline-primary ${category === kind ? 'bg-surface text-primary shadow-sm' : 'text-muted'}`}
+          >
+            {kind === 'color' ? 'Color' : 'Photo'}
+          </button>
+        ))}
+      </div>
+      <div
+        className={`grid gap-2 ${category === 'photo' ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-4 sm:grid-cols-8'}`}
+      >
+        {presets
+          .filter(
+            (item) =>
+              item.kind === category &&
+              (item.kind !== 'photo' || photos.includes(item.id)),
+          )
+          .map((item) => (
+            <button
+              type="button"
+              key={item.id}
+              title={item.id}
+              aria-label={`${item.id} background`}
+              aria-pressed={selected === item.id}
+              onClick={() => onSelect(item.id)}
+              className={`relative min-h-10 rounded-lg border-2 border-surface outline-offset-2 focus-visible:outline-2 focus-visible:outline-primary ${category === 'photo' ? 'h-16' : 'aspect-square max-h-12'} ${selected === item.id ? 'outline-2 outline-primary' : ''}`}
+              style={backgroundStyle(item)}
+            >
+              {selected === item.id && (
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-0 grid place-items-center rounded-md bg-black/20 text-lg font-bold text-white"
+                >
+                  <CheckCircleIcon className="size-5" />
+                </span>
+              )}
+            </button>
+          ))}
+      </div>
+    </fieldset>
+  );
+}
+
+/** Softer color on a large canvas; photographic presets keep their full scene. */
+export function canvasBackgroundStyle(
+  preset: BoardBackgroundPreset | undefined,
+) {
+  if (preset?.kind !== 'color') return backgroundStyle(preset);
+  return {
+    ...backgroundStyle(preset),
+    backgroundColor: `color-mix(in srgb, ${preset.value} 18%, var(--color-app))`,
+  };
 }

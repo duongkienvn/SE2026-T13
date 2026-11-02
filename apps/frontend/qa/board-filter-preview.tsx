@@ -37,7 +37,7 @@ const board: Board = {
   workspaceId:
     scenario === 'workspace-owner' ? 'joined-destination' : 'source-not-joined',
   visibility: scenario === 'reader' ? 'WORKSPACE_VISIBLE' : 'PRIVATE',
-  backgroundPreset: 'blue',
+  backgroundPreset: params.get('background') ?? 'mountains',
   backgroundVersion: 0,
   currentUserRole:
     scenario === 'reader' ? null : scenario === 'member' ? 'MEMBER' : 'OWNER',
@@ -286,18 +286,33 @@ window.fetch = async (input, init) => {
             id: `card-${index}`,
             boardId: board.id,
             columnId: `column-${index % 5}`,
-            title: `Example card ${index + 1}`,
+            title: [
+              'Design landing page',
+              'Implement board filter',
+              'Review release notes',
+              'Update dependencies',
+              'Write documentation',
+            ][index % 5],
             description:
               'A longer description to check the compact preview layout.',
             position: `${index + 1}.0000000000`,
             createdById: board.createdById,
-            startDate: null,
-            dueDate: '2027-04-15T12:00:00Z',
+            startDate: index % 3 === 1 ? '2027-04-12T08:00:00Z' : null,
+            dueDate: index % 3 === 2 ? null : '2027-04-15T12:00:00Z',
             isArchived: false,
             archivedAt: null,
             createdAt: board.createdAt,
             updatedAt: board.updatedAt,
-            assignees: [],
+            assignees:
+              index % 3 === 0
+                ? []
+                : [
+                    {
+                      userId: `qa-member-${index % 5}`,
+                      assignedById: board.createdById,
+                      createdAt: board.createdAt,
+                    },
+                  ],
           };
         },
       );

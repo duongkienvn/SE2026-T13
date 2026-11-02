@@ -9,11 +9,13 @@ export function WorkspaceBoardGrid({
   state,
   filtered = false,
   actions,
+  stateUpdatedAt,
 }: {
   boards: WorkspaceBoardSummary[];
   state: WorkspaceViewState;
   filtered?: boolean;
   actions?: (board: WorkspaceBoardSummary) => ReactNode;
+  stateUpdatedAt?: number;
 }) {
   const grid = 'grid grid-cols-1 gap-4 min-[640px]:grid-cols-2 xl:grid-cols-3';
   if (state === 'loading')
@@ -44,6 +46,7 @@ export function WorkspaceBoardGrid({
           <WorkspaceBoardCard
             key={board.id}
             board={board}
+            stateUpdatedAt={stateUpdatedAt}
             actions={actions?.(board)}
           />
         ))}

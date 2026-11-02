@@ -44,6 +44,7 @@ import { useRecordBoardView } from '../useRecordBoardView';
 import {
   BoardBackgroundDialog,
   backgroundStyle,
+  canvasBackgroundStyle,
   useBackgroundPresets,
 } from '../components/BoardBackground';
 import { EditBoardDialog } from '../components/BoardFormDialog';
@@ -394,7 +395,12 @@ export function BoardDetailPage() {
           )}
         </div>
       ) : (
-        <div className="mt-5 min-h-0 flex-1 short:mt-3">
+        <div
+          className="board-canvas mt-4 min-h-0 flex-1 rounded-xl border border-line p-2 short:mt-3 sm:p-3"
+          style={canvasBackgroundStyle(
+            presets.data?.find((item) => item.id === data.backgroundPreset),
+          )}
+        >
           <KanbanBoard
             boardId={data.id}
             readOnly={readOnly}

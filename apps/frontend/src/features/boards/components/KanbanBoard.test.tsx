@@ -89,9 +89,13 @@ describe('KanbanBoard', () => {
       .getByRole('heading', { name: 'Match' })
       .closest('article')!;
     await within(tile).findByText('Release');
-    expect(within(tile).getByText('Checklist 1/3')).toBeTruthy();
-    expect(within(tile).getByText('Attachments 2')).toBeTruthy();
-    expect(within(tile).getByText('Comments 4')).toBeTruthy();
+    expect(
+      within(tile)
+        .getByRole('progressbar', { name: 'Checklist progress' })
+        .getAttribute('aria-valuenow'),
+    ).toBe('1');
+    expect(within(tile).getByTitle('Attachments 2')).toBeTruthy();
+    expect(within(tile).getByTitle('Comments 4')).toBeTruthy();
     expect(
       screen.queryByRole('button', { name: 'Move card Match' }),
     ).toBeNull();

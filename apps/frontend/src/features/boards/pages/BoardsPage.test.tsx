@@ -89,7 +89,9 @@ describe('server-backed Board directory', () => {
     await waitFor(() =>
       expect(calls.some((call) => call.path.includes('sort=name'))).toBe(true),
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Archived' }));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Board status' }), {
+      target: { value: 'archived' },
+    });
     await waitFor(() =>
       expect(calls.some((call) => call.path.includes('status=archived'))).toBe(
         true,

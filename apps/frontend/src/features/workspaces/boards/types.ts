@@ -16,6 +16,7 @@ export interface WorkspaceBoardSummary {
   memberCount: number | null;
   backgroundPreset?: string;
   lastViewedAt?: string | null;
+  isStarred?: boolean;
 }
 
 /** Safe Board fields only; no source Workspace membership or metadata needed. */

@@ -1,7 +1,4 @@
-import { useId } from 'react';
-import { SoonBadge } from '../../../app/layout/SoonBadge';
 import { Button } from '../../../components/Button';
-import { ColumnsIcon, SlidersIcon } from '../../../components/icons';
 import { SearchField } from '../../../components/SearchField';
 import type { WorkspaceBoardsGateway } from './types';
 import type { useBoardFilters } from './useBoardFilters';
@@ -17,50 +14,51 @@ export function WorkspaceBoardsToolbar({
   available: boolean;
   personal?: boolean;
 }) {
-  const hintId = useId();
-  const statusStyle =
-    'inline-flex min-h-11 items-center justify-center gap-1.5 border-b-2 px-3 text-sm focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed';
   return (
-    <div className="space-y-4">
-      <div
-        aria-label="Board status"
-        role="group"
-        className="grid grid-cols-2 border-b border-line sm:flex sm:flex-wrap sm:gap-2"
-      >
-        <button
-          type="button"
-          disabled={!available || !features.status}
-          aria-pressed={
-            control.filters.status === 'active' && !control.filters.view
-          }
-          onClick={() => control.status('active')}
-          className={`${statusStyle} ${control.filters.status === 'active' && !control.filters.view ? 'border-primary font-medium text-primary' : 'border-transparent text-muted'}`}
+    <div className="min-w-0 space-y-3">
+      {!personal && (
+        <div
+          role="group"
+          aria-label="Board status"
+          className="flex max-w-full gap-1 overflow-x-auto border-b border-line pb-1"
         >
-          {personal ? 'Active' : 'All Boards'}
-        </button>
-        {features.discovery &&
-          (['recent', 'starred'] as const).map((view) => (
-            <button
-              key={view}
-              type="button"
-              disabled={!available}
-              aria-pressed={control.filters.view === view}
-              onClick={() => control.view(view)}
-              className={`${statusStyle} ${control.filters.view === view ? 'border-primary font-medium text-primary' : 'border-transparent text-muted'}`}
-            >
-              {view === 'recent' ? 'Recent' : 'Starred'}
-            </button>
-          ))}
-        <button
-          type="button"
-          disabled={!available || !features.status}
-          aria-pressed={control.filters.status === 'archived'}
-          onClick={() => control.status('archived')}
-          className={`${statusStyle} ${control.filters.status === 'archived' ? 'border-primary font-medium text-primary' : 'border-transparent text-muted'}`}
-        >
-          Archived
-        </button>
-      </div>
+          {(['active', 'recent', 'starred', 'archived'] as const)
+            .filter(
+              (value) =>
+                features.discovery ||
+                value === 'active' ||
+                value === 'archived',
+            )
+            .map((value) => {
+              const selected =
+                value === 'recent' || value === 'starred'
+                  ? control.filters.view === value
+                  : control.filters.status === value && !control.filters.view;
+              return (
+                <button
+                  type="button"
+                  key={value}
+                  disabled={!available || !features.status}
+                  aria-pressed={selected}
+                  onClick={() =>
+                    value === 'recent' || value === 'starred'
+                      ? control.view(value)
+                      : control.status(value)
+                  }
+                  className={`min-h-10 shrink-0 whitespace-nowrap rounded-lg px-3 text-xs font-medium focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary ${selected ? 'bg-primary-soft text-primary' : 'text-muted hover:bg-app'}`}
+                >
+                  {value === 'active'
+                    ? 'All Boards'
+                    : value === 'recent'
+                      ? 'Recent'
+                      : value === 'starred'
+                        ? 'Starred'
+                        : 'Archived'}
+                </button>
+              );
+            })}
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2.5">
         <SearchField
           label={personal ? 'Search boards' : 'Search workspace boards'}
@@ -68,25 +66,33 @@ export function WorkspaceBoardsToolbar({
           value={control.draft}
           onChange={control.search}
           disabled={!available || !features.search}
-          describedBy={hintId}
-          className="min-w-0 flex-1 basis-full [&_input]:h-11 sm:basis-52"
+          className="min-w-0 flex-1 basis-full [&_input]:h-10 sm:basis-52"
         />
-        <span
-          aria-disabled="true"
-          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-line bg-surface px-3 text-xs text-muted"
-        >
-          <SlidersIcon className="size-4" />
-          Filter
-          <SoonBadge />
-          <span className="sr-only">Advanced filters, coming soon</span>
-        </span>
-        <label className="relative min-w-0">
+        {personal && (
+          <label className="min-w-0">
+            <span className="sr-only">Board status</span>
+            <select
+              aria-label="Board status"
+              value={control.filters.status}
+              disabled={!available || !features.status}
+              onChange={(event) =>
+                control.status(
+                  event.target.value === 'archived' ? 'archived' : 'active',
+                )
+              }
+              className="h-10 max-w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              <option value="active">Active boards</option>
+              <option value="archived">Archived boards</option>
+            </select>
+          </label>
+        )}
+        <label className="min-w-0">
           <span className="sr-only">
             {personal ? 'Sort boards' : 'Sort workspace boards'}
           </span>
           <select
             name="sort"
-            aria-describedby={hintId}
             value={control.filters.sort}
             disabled={!available || !features.sorts.length}
             onChange={(event) =>
@@ -98,7 +104,7 @@ export function WorkspaceBoardsToolbar({
                     : 'updated-desc',
               )
             }
-            className="h-11 max-w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:text-muted"
+            className="h-10 max-w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink focus-visible:outline-2 focus-visible:outline-primary disabled:text-muted"
           >
             <option
               value="updated-desc"
@@ -120,38 +126,18 @@ export function WorkspaceBoardsToolbar({
             </option>
           </select>
         </label>
-        <div
-          role="group"
-          aria-label="Board presentation"
-          className="inline-flex min-h-11 shrink-0 items-center rounded-lg border border-line bg-surface"
-        >
-          <span
-            role="img"
-            className="grid size-11 place-items-center rounded-l-lg bg-primary-soft text-primary"
-            aria-label="Grid view selected"
-          >
-            <ColumnsIcon className="size-4" />
-          </span>
-          <span
-            aria-disabled="true"
-            className="flex min-h-11 items-center gap-1 px-2 text-xs text-muted"
-          >
-            List
-            <SoonBadge />
-            <span className="sr-only">, coming soon</span>
-          </span>
-        </div>
         {control.filtered && (
-          <Button variant="secondary" size="lg" onClick={control.clear}>
+          <Button variant="secondary" onClick={control.clear}>
             Clear filters
           </Button>
         )}
       </div>
-      <p id={hintId} className="text-xs leading-relaxed text-muted">
-        {available
-          ? 'Search, status and sorting use server results. List view is coming soon.'
-          : 'Search, status, sorting and pagination are unavailable until Workspace services are connected.'}
-      </p>
+      {!available && (
+        <p className="text-xs text-muted">
+          Search, status, sorting and pagination are unavailable until Workspace
+          services are connected.
+        </p>
+      )}
     </div>
   );
 }

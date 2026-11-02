@@ -15,7 +15,7 @@ import {
   useUpdateCard,
 } from './hooks';
 import { useColumns } from '../columns/hooks';
-import { useFilteredCards } from './board-filter';
+import { useFilteredCards, usePreviewSummaries } from './board-filter';
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <AppProviders>{children}</AppProviders>
@@ -361,4 +361,45 @@ describe('card hooks', () => {
     await waitFor(() => expect(cardCalls).toBe(2));
     await waitFor(() => expect(columnCalls).toBe(2));
   });
+});
+
+it('finishes saving after the required card refresh while preview refetch remains pending', async () => {
+  storeSession();
+  const card = makeCard({ boardId: BOARD, title: 'Saved' });
+  let summaryCalls = 0;
+  let saving = false;
+  let finish!: () => void;
+  const pending = new Promise<ReturnType<typeof ok>>((resolve) => {
+    finish = () => resolve(ok({ summaries: [] }));
+  });
+  mockApi({
+    'GET /users/me': ok(testUser),
+    [page(CARDS, 1)]: okPage([card]),
+    [`PATCH ${CARDS}/${card.id}`]: ok(card),
+    [`GET /boards/${BOARD}/card-preview-summaries?cardIds=${card.id}`]: () =>
+      saving ? (++summaryCalls, pending) : ok({ summaries: [] }),
+  });
+  const { result } = renderHook(
+    () => ({
+      cards: useCards(BOARD),
+      preview: usePreviewSummaries(BOARD, [card.id]),
+      update: useUpdateCard(BOARD, card.id),
+    }),
+    { wrapper },
+  );
+  await waitFor(() =>
+    expect(
+      result.current.preview.isSuccess && result.current.cards.isSuccess,
+    ).toBe(true),
+  );
+  saving = true;
+  await act(() => result.current.update.mutateAsync({ title: 'Saved' }));
+  expect(result.current.update.isPending).toBe(false);
+  await waitFor(() => expect(result.current.preview.isFetching).toBe(true));
+  expect(summaryCalls).toBe(1);
+  await act(async () => {
+    finish();
+    await pending;
+  });
+  await waitFor(() => expect(result.current.preview.isFetching).toBe(false));
 });

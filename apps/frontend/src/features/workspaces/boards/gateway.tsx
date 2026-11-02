@@ -42,6 +42,9 @@ export const workspaceBoardsGateway: WorkspaceBoardsGateway = {
     createBoard(token, {
       name: input.name,
       description: input.description,
+      ...(input.backgroundPreset
+        ? { backgroundPreset: input.backgroundPreset }
+        : {}),
       workspaceId,
     }),
 };

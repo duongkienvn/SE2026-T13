@@ -50,6 +50,7 @@ export function CreateWorkspaceBoardDialog({
       </div>
       <BoardForm
         initial={{ name: '', description: null }}
+        createBackground
         submitLabel="Create Board"
         pendingLabel="Creating…"
         pending={create.isPending}

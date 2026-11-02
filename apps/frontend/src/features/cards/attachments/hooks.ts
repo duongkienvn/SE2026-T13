@@ -44,15 +44,14 @@ export function useAttachments(boardId: string, cardId: string, page: number) {
 
 function useRefreshAttachments(boardId: string, cardId: string) {
   const client = useQueryClient();
-  return () =>
-    Promise.all([
-      client.invalidateQueries({
-        queryKey: attachmentKeys.all(boardId, cardId),
-      }),
-      client.invalidateQueries({
-        queryKey: [...boardKeys.cards(boardId), 'preview-summaries'],
-      }),
-    ]);
+  return () => {
+    void client.invalidateQueries({
+      queryKey: [...boardKeys.cards(boardId), 'preview-summaries'],
+    });
+    return client.invalidateQueries({
+      queryKey: attachmentKeys.all(boardId, cardId),
+    });
+  };
 }
 
 export function useAddUrlAttachment(boardId: string, cardId: string) {

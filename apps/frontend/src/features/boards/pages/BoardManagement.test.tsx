@@ -77,9 +77,9 @@ describe('create board', () => {
       description: null,
     });
     expect(await screen.findByRole('link', { name: 'Roadmap' })).toBeTruthy();
-    expect(screen.getAllByRole('button', { name: 'New Board' })).toHaveLength(
-      1,
-    );
+    expect(
+      screen.getAllByRole('button', { name: 'Create Board' }),
+    ).toHaveLength(1);
     expect(screen.queryByRole('button', { name: 'Create board' })).toBeNull();
   });
 
@@ -137,7 +137,9 @@ describe('create board', () => {
   it('offers creation from the header when boards exist', async () => {
     openBoards({ [LIST]: okPage([makeBoard()]) });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'New Board' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create Board' }),
+    );
     expect(
       screen.getByRole('dialog', { name: 'Create a new board' }),
     ).toBeTruthy();
@@ -167,9 +169,9 @@ describe('edit and archive board', () => {
       },
     });
     await screen.findByRole('link', { name: 'Round trip' });
-    expect(screen.getAllByRole('button', { name: 'New Board' })).toHaveLength(
-      1,
-    );
+    expect(
+      screen.getAllByRole('button', { name: 'Create Board' }),
+    ).toHaveLength(1);
     fireEvent.click(
       screen.getByRole('button', { name: 'Actions for Round trip' }),
     );
@@ -181,12 +183,14 @@ describe('edit and archive board', () => {
     );
     await screen.findByText('Board “Round trip” archived.');
     await screen.findByRole('heading', { name: 'No boards yet' });
-    expect(screen.queryByRole('button', { name: 'New Board' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Create Board' })).toBeNull();
     expect(
       screen.getAllByRole('button', { name: 'Create board' }),
     ).toHaveLength(1);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Archived' }));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Board status' }), {
+      target: { value: 'archived' },
+    });
     await screen.findByRole('link', { name: 'Round trip' });
     expect(
       screen.queryByRole('button', { name: /New Board|Create.*board/i }),
@@ -206,11 +210,13 @@ describe('edit and archive board', () => {
       screen.queryByRole('button', { name: /New Board|Create.*board/i }),
     ).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Active' }));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Board status' }), {
+      target: { value: 'active' },
+    });
     await screen.findByRole('link', { name: 'Round trip' });
-    expect(screen.getAllByRole('button', { name: 'New Board' })).toHaveLength(
-      1,
-    );
+    expect(
+      screen.getAllByRole('button', { name: 'Create Board' }),
+    ).toHaveLength(1);
     expect(
       calls
         .filter(

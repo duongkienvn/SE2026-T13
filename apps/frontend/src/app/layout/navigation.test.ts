@@ -71,3 +71,15 @@ describe('findActiveNavItemId', () => {
     expect(findActiveNavItemId(groups, '/boards/2')).toBe('all');
   });
 });
+
+it('selects only Starred for its directory URL and Boards for other board URLs', () => {
+  expect(findActiveNavItemId(navGroups, '/boards', '?view=starred')).toBe(
+    'starred',
+  );
+  expect(findActiveNavItemId(navGroups, '/boards', '?view=recent')).toBe(
+    'boards',
+  );
+  expect(findActiveNavItemId(navGroups, '/boards/one', '?view=starred')).toBe(
+    'boards',
+  );
+});

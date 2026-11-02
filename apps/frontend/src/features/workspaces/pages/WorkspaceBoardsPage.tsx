@@ -107,6 +107,7 @@ function WorkspaceBoardsContent({ workspaceId }: { workspaceId: string }) {
       )}
       <WorkspaceBoardGrid
         boards={query.pageData?.items ?? []}
+        stateUpdatedAt={query.dataUpdatedAt}
         state={query.state}
         filtered={control.filtered}
         actions={(board) => (

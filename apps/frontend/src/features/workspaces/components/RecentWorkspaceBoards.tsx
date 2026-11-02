@@ -23,7 +23,7 @@ export function RecentWorkspaceBoards({
     { search: '', status: 'active', sort: 'recent', page: 1, view: 'recent' },
     state,
   );
-  const boards = recent.pageData?.items ?? [];
+  const boards = (recent.pageData?.items ?? []).slice(0, 5);
   const recentState = recent.state;
   return (
     <section
