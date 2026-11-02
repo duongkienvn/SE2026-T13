@@ -145,6 +145,65 @@ describe('Workspace runtime and navigation', () => {
       expect(main().getByText('Board member count private')).toBeTruthy();
     },
   );
+  it.each([
+    { workspace: personal, invite: false, create: true },
+    { workspace: team, invite: true, create: true },
+    {
+      workspace: { ...team, role: 'MEMBER' as const },
+      invite: false,
+      create: true,
+    },
+    {
+      workspace: { ...team, role: 'MEMBER' as const, canCreateBoards: false },
+      invite: false,
+      create: false,
+    },
+  ])(
+    'gates hero actions by type and capabilities: %j',
+    async ({ workspace, invite, create }) => {
+      mount(
+        `/workspaces/${workspace.id}`,
+        makeGateway({ overview: async () => ({ ...overview, workspace }) }),
+      );
+      await screen.findByRole('heading', { level: 1, name: workspace.name });
+      const inviteAction = main().queryByRole('link', { name: 'Invite' });
+      expect(!!inviteAction).toBe(invite);
+      if (invite)
+        expect(inviteAction?.getAttribute('href')).toBe(
+          `/workspaces/${workspace.id}/members?invite=1`,
+        );
+      const createAction = main().queryByRole('link', { name: 'Create Board' });
+      expect(!!createAction).toBe(create);
+      if (create)
+        expect(createAction?.getAttribute('href')).toBe(
+          `/workspaces/${workspace.id}/boards?create=board`,
+        );
+      expect(main().getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    },
+  );
+
+  it('keeps both missing metrics unavailable rather than inventing zero', async () => {
+    mount(
+      `/workspaces/${team.id}`,
+      makeGateway({
+        overview: async () => ({
+          ...overview,
+          visibleBoardCount: null,
+          memberCount: null,
+        }),
+      }),
+    );
+    await loaded();
+    const summary = within(
+      main().getByRole('region', { name: 'Workspace summary' }),
+    );
+    expect(
+      summary.getAllByRole('definition').map((item) => item.textContent),
+    ).toEqual(['—Unavailable', '—Unavailable']);
+    expect(summary.queryByText('0')).toBeNull();
+    expect(main().queryByText('Private')).toBeNull();
+  });
+
   it('renders the entire unavailable composition without calling a speculative API', async () => {
     const { calls } = mount('/workspaces/unknown', {
       ...workspaceGateway,

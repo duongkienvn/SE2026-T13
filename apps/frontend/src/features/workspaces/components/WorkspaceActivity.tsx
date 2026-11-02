@@ -1,8 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import { Link, useParams } from 'react-router';
 import { Dialog } from '../../../components/Dialog';
 import { Pagination } from '../../../components/Pagination';
-import { ActivityIcon, ArrowRightIcon } from '../../../components/icons';
+import {
+  ActivityIcon,
+  ArrowRightIcon,
+  BriefcaseIcon,
+  ColumnsIcon,
+  MailIcon,
+  PencilIcon,
+  ShieldCheckIcon,
+  UsersIcon,
+  type IconProps,
+} from '../../../components/icons';
 import { useWorkspaceActivity } from '../hooks';
 import type { WorkspaceActivityItem, WorkspaceViewState } from '../types';
 
@@ -20,38 +30,67 @@ const labels: Record<string, string> = {
   BOARD_MOVED: 'moved a board into the workspace',
 };
 
+const activityIcons: Record<string, ComponentType<IconProps>> = {
+  WORKSPACE_CREATED: BriefcaseIcon,
+  WORKSPACE_UPDATED: PencilIcon,
+  POLICY_UPDATED: ShieldCheckIcon,
+  MEMBER_JOINED: UsersIcon,
+  MEMBER_ROLE_CHANGED: UsersIcon,
+  MEMBER_REMOVED: UsersIcon,
+  MEMBER_LEFT: UsersIcon,
+  INVITATION_REQUESTED: MailIcon,
+  INVITATION_REVOKED: MailIcon,
+  INVITATION_DECLINED: MailIcon,
+  BOARD_MOVED: ColumnsIcon,
+};
+
 function ActivityRows({ items }: { items: WorkspaceActivityItem[] }) {
   return (
-    <ul className="divide-y divide-line">
-      {items.map((item) => (
-        <li key={item.id} className="flex gap-3 py-3">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
-            <ActivityIcon aria-hidden="true" className="size-4" />
-          </span>
-          <div className="min-w-0 text-sm text-ink [overflow-wrap:anywhere]">
-            <p>
-              <strong>{item.actor?.displayName || 'Unknown user'}</strong>{' '}
-              {Object.hasOwn(labels, item.eventType)
-                ? labels[item.eventType]
-                : 'performed a workspace action'}
-              {item.board && (
-                <>
-                  :{' '}
-                  <Link
-                    className="text-primary underline"
-                    to={`/boards/${encodeURIComponent(item.board.id)}`}
-                  >
-                    {item.board.name}
-                  </Link>
-                </>
-              )}
-            </p>
-            <time className="text-xs text-muted" dateTime={item.createdAt}>
-              {new Date(item.createdAt).toLocaleString()}
-            </time>
-          </div>
-        </li>
-      ))}
+    <ul className="workspace-activity-timeline">
+      {items.map((item) => {
+        const Icon = Object.hasOwn(activityIcons, item.eventType)
+          ? activityIcons[item.eventType]
+          : ActivityIcon;
+        return (
+          <li key={item.id} className="relative flex gap-3 py-2.5 pl-4">
+            <span
+              aria-hidden="true"
+              className="absolute top-[23px] left-0 size-1.5 rounded-full bg-primary"
+            />
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
+              <Icon aria-hidden="true" className="size-4" />
+            </span>
+            <div className="min-w-0 text-sm leading-5 text-ink [overflow-wrap:anywhere]">
+              <p>
+                <strong className="font-semibold">
+                  {item.actor?.displayName || 'Unknown user'}
+                </strong>{' '}
+                {Object.hasOwn(labels, item.eventType)
+                  ? labels[item.eventType]
+                  : 'performed a workspace action'}
+                {item.board && (
+                  <>
+                    :{' '}
+                    <Link
+                      className="text-primary underline"
+                      to={`/boards/${encodeURIComponent(item.board.id)}`}
+                    >
+                      {item.board.name}
+                    </Link>
+                  </>
+                )}
+              </p>
+              <time
+                className="mt-1 block text-xs text-muted"
+                title={new Date(item.createdAt).toLocaleString()}
+                dateTime={item.createdAt}
+              >
+                {new Date(item.createdAt).toLocaleString()}
+              </time>
+            </div>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -165,8 +204,12 @@ function ActivityPanel({
       aria-labelledby="workspace-activity"
       className="min-w-0 rounded-xl border border-line bg-surface p-4 shadow-card sm:p-5"
     >
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 id="workspace-activity" className="text-sm font-semibold text-ink">
+      <header className="mb-1 flex flex-wrap items-center justify-between gap-2">
+        <h2
+          id="workspace-activity"
+          className="flex items-center gap-2 text-base font-semibold text-ink"
+        >
+          <ActivityIcon className="size-4 text-primary" />
           Activity
         </h2>
         <button
@@ -175,7 +218,7 @@ function ActivityPanel({
           onClick={() => {
             if (query.pageData?.meta.total) setOpen(true);
           }}
-          className="flex min-h-11 items-center gap-1.5 rounded text-xs text-primary focus-visible:outline-2 focus-visible:outline-primary aria-disabled:text-muted aria-disabled:opacity-50"
+          className="flex min-h-11 items-center gap-1.5 rounded text-xs font-semibold text-primary focus-visible:outline-2 focus-visible:outline-primary aria-disabled:text-muted aria-disabled:opacity-50"
         >
           View all <ArrowRightIcon aria-hidden="true" className="size-3.5" />
         </button>

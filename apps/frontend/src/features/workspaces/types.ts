@@ -1,4 +1,8 @@
-import type { WorkspaceRole, WorkspaceType } from '@kanban/shared';
+import type {
+  BoardVisibility,
+  WorkspaceRole,
+  WorkspaceType,
+} from '@kanban/shared';
 
 export interface WorkspaceActivityItem {
   id: string;
@@ -21,6 +25,7 @@ export interface WorkspaceSummary {
 }
 
 export interface RecentWorkspaceBoard {
+  visibility?: BoardVisibility;
   id: string;
   name: string;
   updatedAt: string;

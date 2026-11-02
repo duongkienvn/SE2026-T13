@@ -1,0 +1,47 @@
+/* The approved Overview treatment uses the existing semantic theme tokens. */
+.workspace-hero {
+  background:
+    radial-gradient(
+      ellipse at 110% 120%,
+      color-mix(in srgb, var(--color-primary) 13%, transparent) 0 40%,
+      transparent 41%
+    ),
+    linear-gradient(
+      110deg,
+      color-mix(in srgb, var(--color-primary-soft) 65%, var(--color-surface)),
+      color-mix(in srgb, var(--color-primary) 10%, var(--color-surface))
+    );
+}
+
+.workspace-metric {
+  background: linear-gradient(
+    120deg,
+    var(--color-surface),
+    color-mix(in srgb, var(--color-primary-soft) 50%, var(--color-surface))
+  );
+}
+
+.workspace-metric-members {
+  background: linear-gradient(
+    120deg,
+    var(--color-surface),
+    color-mix(in srgb, var(--color-primary-soft) 30%, var(--color-surface))
+  );
+}
+
+.workspace-activity-timeline > li::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--color-line);
+}
+
+.workspace-activity-timeline > li:first-child::before {
+  top: 26px;
+}
+.workspace-activity-timeline > li:last-child::before {
+  bottom: calc(100% - 26px);
+}
