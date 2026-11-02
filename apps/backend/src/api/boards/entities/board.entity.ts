@@ -68,6 +68,8 @@ export class Board {
     default: 'blue',
   })
   backgroundPreset!: string;
+  @Column({ name: 'background_version', type: 'integer', default: 0 })
+  backgroundVersion!: number;
   @Column({ name: 'is_archived', type: 'boolean', default: false })
   isArchived!: boolean;
   @Column({ name: 'archived_at', type: 'timestamptz', nullable: true })

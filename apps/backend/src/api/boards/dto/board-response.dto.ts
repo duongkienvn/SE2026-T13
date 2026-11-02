@@ -64,6 +64,7 @@ export class BoardResponseDto {
   @Expose()
   @ApiProperty({ enum: BOARD_BACKGROUND_IDS, example: 'blue' })
   backgroundPreset!: string;
+  @Expose() @ApiProperty({ minimum: 0 }) backgroundVersion!: number;
   @Expose() @ApiProperty({ required: false }) isStarred?: boolean;
   @Expose()
   @ApiProperty({
@@ -96,6 +97,7 @@ export function toBoardResponseDto(
     workspaceId: board.workspaceId,
     visibility: board.visibility,
     backgroundPreset: board.backgroundPreset ?? 'blue',
+    backgroundVersion: board.backgroundVersion ?? 0,
     ...(board.userState === undefined
       ? {}
       : {

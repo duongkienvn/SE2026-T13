@@ -37,4 +37,5 @@ export interface BoardBackgroundPreset {
 
 export interface UpdateBoardBackgroundRequest {
   preset: BoardBackgroundPresetId;
+  expectedVersion?: number;
 }

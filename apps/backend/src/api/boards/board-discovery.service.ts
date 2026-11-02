@@ -124,7 +124,12 @@ export class BoardDiscoveryService {
     });
   }
 
-  async background(userId: string, boardId: string, preset: string) {
+  async background(
+    userId: string,
+    boardId: string,
+    preset: string,
+    expectedVersion?: number,
+  ) {
     if (!(BOARD_BACKGROUND_IDS as readonly string[]).includes(preset))
       throw new ApplicationException(
         400,
@@ -137,12 +142,22 @@ export class BoardDiscoveryService {
         boardId,
         manager,
       );
+      if (
+        expectedVersion !== undefined &&
+        (board.backgroundVersion ?? 0) !== expectedVersion
+      )
+        throw new ApplicationException(
+          409,
+          'BACKGROUND_CONFLICT',
+          'Board background changed. Reload and try again.',
+        );
       board.workspace = await manager
         .getRepository(Workspace)
         .findOneByOrFail({ id: board.workspaceId });
       const changed = board.backgroundPreset !== preset;
       if (changed) {
         board.backgroundPreset = preset;
+        board.backgroundVersion = (board.backgroundVersion ?? 0) + 1;
         await manager.getRepository(Board).save(board);
         await this.activities.record(manager, {
           boardId,

@@ -55,6 +55,7 @@ const PUBLIC_FIELDS = [
   'workspaceId',
   'visibility',
   'backgroundPreset',
+  'backgroundVersion',
   'capabilities',
 ];
 
