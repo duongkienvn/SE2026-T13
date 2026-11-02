@@ -1,0 +1,10 @@
+[
+  {
+    "cards": 1000,
+    "summaries": 1000,
+    "heap": 110039073,
+    "cardPageRequests": 10,
+    "summaryRequests": 10,
+    "elapsedMs": 16333
+  }
+]

@@ -1,0 +1,34 @@
+[
+  {
+    "scenario": "reader",
+    "width": 375,
+    "cards": 10,
+    "filter": true,
+    "move": false,
+    "add": false
+  },
+  {
+    "scenario": "reader",
+    "width": 1280,
+    "cards": 10,
+    "filter": true,
+    "move": false,
+    "add": false
+  },
+  {
+    "scenario": "archived",
+    "width": 375,
+    "cards": 10,
+    "filter": true,
+    "move": false,
+    "add": false
+  },
+  {
+    "scenario": "archived",
+    "width": 1280,
+    "cards": 10,
+    "filter": true,
+    "move": false,
+    "add": false
+  }
+]
