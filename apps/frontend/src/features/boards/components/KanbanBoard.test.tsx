@@ -43,6 +43,95 @@ const member = (id: string, displayName: string) =>
   });
 
 describe('KanbanBoard', () => {
+  it('uses server-filtered cards and batched preview metadata, and disables dragging', async () => {
+    const column = makeColumn({ name: 'Backlog' });
+    const card = makeCard({
+      id: '11111111-1111-4111-8111-111111111111',
+      columnId: column.id,
+      title: 'Match',
+    });
+    const label = {
+      id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      boardId: board.id,
+      name: 'Release',
+      color: '#615CF7',
+    };
+    openKanban({
+      [listPath('columns')]: okPage([column]),
+      [listPath('cards')]: okPage([card]),
+      [`GET /boards/${board.id}/labels?page=1&limit=100`]: okPage([label]),
+      [`GET /boards/${board.id}/cards?page=1&limit=100&q=Match`]: okPage(
+        [card],
+        { total: 1 },
+      ),
+      [`GET /boards/${board.id}/card-preview-summaries?cardIds=${card.id}`]: ok(
+        {
+          summaries: [
+            {
+              cardId: card.id,
+              labelIds: [label.id],
+              checklist: { checkedItems: 1, totalItems: 3 },
+              attachmentCount: 2,
+              commentCount: 4,
+            },
+          ],
+        },
+      ),
+    });
+    await screen.findByRole('heading', { name: 'Match' });
+    fireEvent.click(screen.getByRole('button', { name: 'Filter' }));
+    fireEvent.change(screen.getByLabelText('Keyword'), {
+      target: { value: 'Match' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+    await screen.findByText(/1 matching cards/);
+    const tile = screen
+      .getByRole('heading', { name: 'Match' })
+      .closest('article')!;
+    await within(tile).findByText('Release');
+    expect(within(tile).getByText('Checklist 1/3')).toBeTruthy();
+    expect(within(tile).getByText('Attachments 2')).toBeTruthy();
+    expect(within(tile).getByText('Comments 4')).toBeTruthy();
+    expect(
+      screen.queryByRole('button', { name: 'Move card Match' }),
+    ).toBeNull();
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Clear filters' })[0],
+    );
+    await screen.findByRole('button', { name: 'Move card Match' });
+  });
+
+  it('hides cached card previews when the filtered request loses access', async () => {
+    const column = makeColumn({ name: 'Private column' });
+    const card = makeCard({ columnId: column.id, title: 'Private card' });
+    let boardReads = 0;
+    openKanban({
+      [`GET /boards/${board.id}`]: () =>
+        ++boardReads === 1 ? ok(board) : fail(404, 'NOT_FOUND'),
+      [listPath('columns')]: okPage([column]),
+      [listPath('cards')]: okPage([card]),
+      [`GET /boards/${board.id}/cards?page=1&limit=100&q=Private`]: fail(
+        404,
+        'NOT_FOUND',
+      ),
+    });
+    await screen.findByRole('heading', { name: 'Private card' });
+    fireEvent.click(screen.getByRole('button', { name: 'Filter' }));
+    fireEvent.change(screen.getByLabelText('Keyword'), {
+      target: { value: 'Private' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', { name: 'Private card' }),
+      ).toBeNull(),
+    );
+    await waitFor(() => expect(boardReads).toBeGreaterThan(1));
+    expect(
+      screen.queryByRole('heading', { name: 'Private column' }),
+    ).toBeNull();
+  });
+
   it('shows columns in position order with their active card counts', async () => {
     const done = makeColumn({ name: 'Done', position: '300.0000000000' });
     const todo = makeColumn({ name: 'To Do', position: '100.0000000000' });
