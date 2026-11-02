@@ -42,7 +42,7 @@ const board: Board = {
   updatedAt: '2026-10-30T00:00:00Z',
   capabilities: {
     canReadBoard: true,
-    canWriteBoard: scenario === 'guest-owner',
+    canWriteBoard: scenario === 'guest-owner' || scenario === 'wide',
     canManageBoard: !['reader', 'member', 'archived'].includes(scenario),
     canManageMembers: true,
     canRestoreBoard: scenario === 'archived',
@@ -121,8 +121,43 @@ window.fetch = async (input, init) => {
     return response(board);
   }
   if (path === `/boards/${board.id}`) return response(board);
-  if (/^\/boards\/qa-board\/(columns|cards|members)\?/.test(path))
+  if (/^\/boards\/qa-board\/(columns|cards|members)\?/.test(path)) {
+    if (scenario === 'wide' && path.includes('/columns?'))
+      return response(
+        ['To do', 'In progress', 'Review', 'Done', 'Later'].map(
+          (name, index) => ({
+            id: `column-${index}`,
+            boardId: board.id,
+            name,
+            position: `${index + 1}.0000000000`,
+            createdAt: board.createdAt,
+            updatedAt: board.updatedAt,
+          }),
+        ),
+        true,
+      );
+    if (scenario === 'wide' && path.includes('/cards?'))
+      return response(
+        Array.from({ length: 10 }, (_, index) => ({
+          id: `card-${index}`,
+          boardId: board.id,
+          columnId: `column-${Math.floor(index / 2)}`,
+          title: `Example card ${index + 1}`,
+          description: null,
+          position: `${index + 1}.0000000000`,
+          createdById: board.createdById,
+          startDate: null,
+          dueDate: null,
+          isArchived: false,
+          archivedAt: null,
+          createdAt: board.createdAt,
+          updatedAt: board.updatedAt,
+          assignees: [],
+        })),
+        true,
+      );
     return response([], true);
+  }
   throw new Error(`Unexpected QA request: ${path}`);
 };
 const auth: AuthContextValue = {
@@ -146,10 +181,20 @@ const router = createMemoryRouter(
   [
     {
       element: <AuthenticatedLayout />,
-      children: [{ path: '/boards/:boardId', element: <BoardDetailPage /> }],
+      children: [
+        {
+          path: '/boards/:boardId',
+          element: <BoardDetailPage />,
+          children: [{ path: 'settings', element: null }],
+        },
+      ],
     },
   ],
-  { initialEntries: [`/boards/${board.id}`] },
+  {
+    initialEntries: [
+      `/boards/${board.id}${params.get('settings') === 'true' ? '/settings' : ''}`,
+    ],
+  },
 );
 if (import.meta.env.DEV)
   createRoot(document.getElementById('root')!).render(
