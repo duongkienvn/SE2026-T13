@@ -101,13 +101,31 @@ describe('Workspace activity authorization and session', () => {
           queryKey: [...workspaceKeys.activity(testUser.id, 0, 'one'), 1, 5],
         });
       });
+      // Revocation must clear both caches and abort history before its late reply.
+      for (const limit of [5, 20])
+        expect(
+          client.getQueryState([
+            ...workspaceKeys.activity(testUser.id, 0, 'one'),
+            1,
+            limit,
+          ]),
+        ).toMatchObject({ data: null, status: 'error', error: { status } });
+      const historyCall = vi
+        .mocked(fetch)
+        .mock.calls.find(([url]) =>
+          String(url).endsWith('/activity?page=1&limit=20'),
+        )!;
+      expect((historyCall[1]?.signal as AbortSignal).aborted).toBe(true);
       await act(async () => {
         history.resolve(
           workspacePage([event('Late protected history')], 1, 1, 20),
         );
       });
-      expect(screen.queryByText('Authorized summary')).toBeNull();
-      expect(screen.queryByText('Late protected history')).toBeNull();
+      // Query invalidation settles before batched observer notifications render.
+      await waitFor(() => {
+        expect(screen.queryByText('Authorized summary')).toBeNull();
+        expect(screen.queryByText('Late protected history')).toBeNull();
+      });
       expect(
         client.getQueryData([
           ...workspaceKeys.activity(testUser.id, 0, 'one'),
