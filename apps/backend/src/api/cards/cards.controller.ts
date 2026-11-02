@@ -73,6 +73,37 @@ export class CardsController {
     enum: ['active', 'archived'],
     description: 'Default active; archived ordered by archivedAt DESC, id DESC',
   })
+  @ApiQuery({
+    name: 'q',
+    required: false,
+    description:
+      'Trimmed literal case-insensitive substring, maximum 200 characters',
+  })
+  @ApiQuery({
+    name: 'labelIds',
+    required: false,
+    description: '1-50 unique comma-separated Board label UUIDs; matches any',
+  })
+  @ApiQuery({
+    name: 'assigneeIds',
+    required: false,
+    description: '1-50 unique comma-separated Board member UUIDs; matches any',
+  })
+  @ApiQuery({
+    name: 'dueStatus',
+    required: false,
+    enum: ['OVERDUE', 'DUE_TODAY', 'UPCOMING', 'NO_DUE_DATE'],
+  })
+  @ApiQuery({
+    name: 'dueFrom',
+    required: false,
+    description: 'Inclusive ISO instant with explicit offset',
+  })
+  @ApiQuery({
+    name: 'dueTo',
+    required: false,
+    description: 'Exclusive ISO instant with explicit offset',
+  })
   @ApiCommonErrors()
   list(
     @CurrentUser() user: AuthenticatedUser,

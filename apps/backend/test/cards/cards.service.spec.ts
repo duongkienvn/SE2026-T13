@@ -368,6 +368,40 @@ describe('CardsService', () => {
       }),
     ).rejects.toMatchObject({ status: 404 });
   });
+  it('rechecks access before returning filtered results after revocation', async () => {
+    h.authorization.requireRead
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(new NotFoundException());
+    await expect(
+      h.service.list(ID.user, ID.board, { page: 1, limit: 20, q: 'secret' }),
+    ).rejects.toMatchObject({ status: 404 });
+    expect(h.authorization.requireRead).toHaveBeenCalledTimes(2);
+    expect(h.builder.andWhere).toHaveBeenCalledWith(
+      expect.stringContaining('ILIKE'),
+      { term: '%secret%' },
+    );
+  });
+
+  it('does not return preview metadata after Board access is revoked', async () => {
+    h.manager.query.mockResolvedValue([
+      {
+        cardId: ID.card,
+        labelIds: [],
+        checkedItems: 1,
+        totalItems: 1,
+        attachmentCount: 1,
+        commentCount: 1,
+      },
+    ]);
+    h.authorization.requireRead
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(new NotFoundException());
+    await expect(
+      h.service.previewSummaries(ID.user, ID.board, [ID.card]),
+    ).rejects.toMatchObject({ status: 404 });
+    expect(h.manager.query).toHaveBeenCalledTimes(1);
+  });
+
   it('allows archived detail reads and scopes card lookup to the board', async () => {
     h.cards.findOne.mockResolvedValue(cardFixture({ isArchived: true }));
     await expect(

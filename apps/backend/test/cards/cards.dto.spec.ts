@@ -1,3 +1,4 @@
+import { PreviewQueryDto } from '../../src/api/cards/dto/preview-query.dto';
 import { CreateCardDto } from '../../src/api/cards/dto/create-card.dto';
 import { UpdateCardDto } from '../../src/api/cards/dto/update-card.dto';
 import { MoveCardDto } from '../../src/api/cards/dto/move-card.dto';
@@ -97,6 +98,36 @@ describe('Card DTO contracts', () => {
     await expect(
       validate(UpdateCardDto, { description: 'x'.repeat(2001) }),
     ).rejects.toMatchObject({ status: 400 });
+  });
+  it('validates bounded comma-separated filters and preview IDs', async () => {
+    expect(
+      await validate(ListCardsDto, {
+        q: '  Card  ',
+        labelIds: ID,
+        assigneeIds: ID,
+        dueStatus: 'DUE_TODAY',
+      }),
+    ).toMatchObject({ q: 'Card', labelIds: [ID], assigneeIds: [ID] });
+    for (const input of [
+      { labelIds: '' },
+      { labelIds: `${ID},${ID}` },
+      { assigneeIds: 'bad' },
+      { q: 'x'.repeat(201) },
+      { dueStatus: 'bad' },
+      { dueFrom: '2026-01-01' },
+    ]) {
+      await expect(validate(ListCardsDto, input)).rejects.toMatchObject({
+        status: 400,
+      });
+    }
+    await expect(
+      validate(PreviewQueryDto, { cardIds: ID }),
+    ).resolves.toMatchObject({ cardIds: [ID] });
+    for (const cardIds of ['', `${ID},${ID}`, Array(101).fill(ID).join(',')]) {
+      await expect(
+        validate(PreviewQueryDto, { cardIds }),
+      ).rejects.toMatchObject({ status: 400 });
+    }
   });
   it('maps dates to UTC and whitelists nested public data', () => {
     const date = new Date('2026-10-16T10:00:00+07:00');

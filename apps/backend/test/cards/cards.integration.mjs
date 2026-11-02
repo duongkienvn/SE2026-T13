@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import process from 'node:process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath, URL } from 'node:url';
+import { checkFiltering } from './cards-filtering-checks.mjs';
 import { checkCardRestore } from './cards-restore-checks.mjs';
 
 const require = createRequire(import.meta.url);
@@ -649,6 +650,62 @@ try {
     'real AppModule/REST login/Card HTTP and joined-assignee pagination match persisted SQL ordering',
   );
 
+  // P3-07: exercise the real SQL and HTTP envelope on the migrated database.
+  const filtered = await api(
+    'get',
+    `${path}?q=HTTP%20card&assigneeIds=${owner.id}&columnId=${httpColumn.id}`,
+  ).expect(200);
+  assert.deepEqual(
+    filtered.body.data.map((row) => row.id),
+    [httpCard.id],
+  );
+  assert.equal(filtered.body.meta.total, 1);
+  const literalWildcard = await api('get', `${path}?q=%25`).expect(200);
+  assert.equal(literalWildcard.body.meta.total, 0);
+  await api('get', `${path}?labelIds=${randomUUID()}`).expect(404);
+  await api('get', `${path}?assigneeIds=${outsider.id}`).expect(404);
+  const previewPath = `/api/boards/${board.id}/card-preview-summaries`;
+  const preview = await api(
+    'get',
+    `${previewPath}?cardIds=${httpCard.id},${randomUUID()}`,
+  ).expect(200);
+  assert.equal(preview.headers['cache-control'], 'no-store');
+  assert.deepEqual(preview.body.data.summaries, [
+    {
+      cardId: httpCard.id,
+      labelIds: [],
+      checklist: { checkedItems: 0, totalItems: 0 },
+      attachmentCount: 0,
+      commentCount: 0,
+    },
+  ]);
+  await api(
+    'get',
+    `${previewPath}?cardIds=${httpCard.id},${httpCard.id}`,
+  ).expect(400);
+  await request(app.getHttpServer())
+    .get(`${previewPath}?cardIds=${httpCard.id}`)
+    .expect(401);
+  pass('filtered Card and preview HTTP SQL contracts');
+
+  await checkFiltering({
+    source,
+    service,
+    owner,
+    member,
+    outsider,
+    board,
+    foreign,
+    column: httpColumn,
+    foreignColumn,
+    foreignCard,
+    api,
+    request,
+    server: app.getHttpServer(),
+    jwt: app.get(JwtService),
+    user,
+  });
+
   await checkCardRestore({
     source,
     service,
@@ -667,6 +724,7 @@ try {
   );
   await boards.update(board.id, { isArchived: true, archivedAt: new Date() });
   await api('get', path).expect(200);
+  await api('get', `${previewPath}?cardIds=${httpCard.id}`).expect(200);
   await api('get', `${path}/${httpCard.id}`).expect(200);
   for (const operation of [
     () => create(httpColumn.id, 'No'),
