@@ -62,7 +62,13 @@ export const navGroups: NavGroup[] = [
         availability: 'available',
         path: '/boards',
       },
-      { id: 'starred', label: 'Starred', icon: StarIcon, availability: 'soon' },
+      {
+        id: 'starred',
+        label: 'Starred',
+        icon: StarIcon,
+        availability: 'available',
+        path: '/boards?view=starred',
+      },
     ],
   },
   {
