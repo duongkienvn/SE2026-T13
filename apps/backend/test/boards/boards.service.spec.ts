@@ -144,6 +144,34 @@ describe('BoardsService', () => {
     expect(result).not.toHaveProperty('members');
   });
 
+  it('creates the selected background inside the owner membership transaction', async () => {
+    const result = await service.create(USER_ID, {
+      name: 'Board',
+      backgroundPreset: 'forest',
+    });
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(txBoards.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        backgroundPreset: 'forest',
+        visibility: 'PRIVATE',
+      }),
+    );
+    expect(txMembers.save).toHaveBeenCalledTimes(1);
+    expect(result.backgroundPreset).toBe('forest');
+  });
+
+  it('does not persist a background or membership when Workspace creation is forbidden', async () => {
+    workspaces.requireMember.mockResolvedValue({
+      role: 'MEMBER',
+      workspace: { boardCreationAdminOnly: true },
+    });
+    await expect(
+      service.create(USER_ID, { name: 'Board', backgroundPreset: 'forest' }),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(txBoards.save).not.toHaveBeenCalled();
+    expect(txMembers.save).not.toHaveBeenCalled();
+  });
+
   it('returns policy-aware membership capabilities for owner detail, update and restore', async () => {
     txWorkspace.findOneByOrFail.mockResolvedValue({
       boardInvitesEnabled: false,

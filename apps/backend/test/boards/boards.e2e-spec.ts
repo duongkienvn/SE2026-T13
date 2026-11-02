@@ -239,7 +239,11 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
     const response = await request(app.getHttpServer())
       .post('/api/boards')
       .set('Authorization', `Bearer ${tokens[OWNER]}`)
-      .send({ name: ' New board ', description: null })
+      .send({
+        name: ' New board ',
+        description: null,
+        backgroundPreset: 'forest',
+      })
       .expect(201);
     expect(response.body).toMatchObject({
       success: true,
@@ -247,6 +251,7 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
       message: 'Created',
       data: {
         name: 'New board',
+        backgroundPreset: 'forest',
         description: null,
         createdById: OWNER,
         currentUserRole: 'OWNER',

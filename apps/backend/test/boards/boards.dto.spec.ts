@@ -76,6 +76,40 @@ describe('board request validation', () => {
     }
   });
 
+  it.each([
+    'blue',
+    'indigo',
+    'violet',
+    'rose',
+    'orange',
+    'amber',
+    'green',
+    'teal',
+    'mountains',
+    'forest',
+    'coast',
+    'lake',
+  ])('accepts canonical creation background %s', async (backgroundPreset) => {
+    await expect(
+      validate(CreateBoardDto, { name: 'Board', backgroundPreset }),
+    ).resolves.toMatchObject({ backgroundPreset });
+  });
+
+  it.each([
+    null,
+    '',
+    'unknown',
+    'https://example.com/image.jpg',
+    1,
+    false,
+    [],
+    {},
+  ])('rejects invalid creation background %p', async (backgroundPreset) => {
+    await expect(
+      validate(CreateBoardDto, { name: 'Board', backgroundPreset }),
+    ).rejects.toMatchObject({ status: 400 });
+  });
+
   it('rejects invalid path UUIDs', async () => {
     const uuid = new ParseUUIDPipe();
     await expect(

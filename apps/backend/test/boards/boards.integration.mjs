@@ -168,7 +168,13 @@ try {
   const first = await service.create(owner.id, {
     name: 'First',
     description: 'Keep',
+    backgroundPreset: 'forest',
   });
+  assert.equal(first.backgroundPreset, 'forest');
+  assert.equal(
+    (await boards.findOneByOrFail({ id: first.id })).backgroundPreset,
+    'forest',
+  );
   const {
     BoardDiscoveryService,
   } = require('../../dist/api/boards/board-discovery.service.js');
