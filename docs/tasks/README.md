@@ -57,6 +57,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 - [Board archive management](backend/board-archive-management.md)
 - [Board members management](backend/board-members-management.md)
 - [Column management API](backend/column-management-api.md)
+- [Board Card filtering and preview summaries](backend/board-card-filtering.md)
 - [Card management API](backend/card-management-api.md)
 - [Same-Board Card duplicate API](backend/card-duplicate.md)
 - [Advanced Card start/due dates](backend/card-advanced-dates.md)
