@@ -1,13 +1,18 @@
 import { BoardRole } from '@kanban/shared';
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate, useOutletContext, useParams } from 'react-router';
+import {
+  Link,
+  useMatch,
+  useNavigate,
+  useOutletContext,
+  useParams,
+} from 'react-router';
 import type { WorkspaceSummary } from '../../workspaces/types';
 import { workspacePath } from '../../workspaces/navigation';
 import { ActionMenu } from '../../../components/ActionMenu';
 import { Alert } from '../../../components/Alert';
 import { Button, buttonClassName } from '../../../components/Button';
-import { ActivityIcon, UsersIcon } from '../../../components/icons';
 import { PageContainer } from '../../../components/PageContainer';
 import { PageHeader } from '../../../components/PageHeader';
 import {
@@ -69,6 +74,7 @@ export function BoardDetailPage() {
   const workspace = useOutletContext<WorkspaceSummary | undefined>();
   const { boardId = '' } = useParams();
   const navigate = useNavigate();
+  const settings = useMatch('/boards/:boardId/settings') !== null;
   const { board, verified } = useVerifiedBoard(boardId);
   const client = useQueryClient();
   const unavailable = board.isError && isBoardUnavailable(board.error);
@@ -143,11 +149,17 @@ export function BoardDetailPage() {
   const data = board.data!;
   // UI hint only: the backend enforces OWNER-only actions.
   const canManage =
-    data.currentUserRole === BoardRole.OWNER && !data.isArchived;
+    (data.capabilities?.canManageBoard ??
+      data.currentUserRole === BoardRole.OWNER) &&
+    !data.isArchived;
   const readOnly =
     data.isArchived ||
     data.currentUserRole === null ||
     data.capabilities?.canWriteBoard === false;
+  const canRestore =
+    data.isArchived &&
+    (data.capabilities?.canRestoreBoard ??
+      data.currentUserRole === BoardRole.OWNER);
 
   return (
     <PageContainer fill>
@@ -200,21 +212,12 @@ export function BoardDetailPage() {
                 />
                 <RealtimeStatus {...realtime} />
                 <RoleChip role={data.currentUserRole} />
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowingActivity(true)}
-                >
-                  <ActivityIcon aria-hidden="true" className="size-4.5" />
-                  Activity
-                </Button>
-                {data.currentUserRole !== null && (
-                  <Link
-                    to={`/boards/${data.id}/members`}
-                    className={buttonClassName('secondary')}
-                  >
-                    <UsersIcon aria-hidden="true" className="size-4.5" />
-                    Members
-                  </Link>
+                {data.visibility && (
+                  <span className="rounded-full border border-line px-3 py-1 text-xs font-medium text-muted">
+                    {data.visibility === 'PRIVATE'
+                      ? 'Private'
+                      : 'Workspace visible'}
+                  </span>
                 )}
                 {
                   <ActionMenu
@@ -222,8 +225,21 @@ export function BoardDetailPage() {
                     label={`Actions for ${data.name}`}
                     items={[
                       {
+                        label: 'About this board',
+                        onSelect: () =>
+                          navigate(`/boards/${data.id}/settings#board-general`),
+                      },
+                      {
+                        label: 'Activity history',
+                        onSelect: () => setShowingActivity(true),
+                      },
+                      {
                         label: 'Archived cards',
                         onSelect: () => setShowingArchivedCards(true),
+                      },
+                      {
+                        label: 'Board settings',
+                        onSelect: () => navigate(`/boards/${data.id}/settings`),
                       },
                       ...(canManage
                         ? [
@@ -262,8 +278,7 @@ export function BoardDetailPage() {
                             },
                           ]
                         : []),
-                      ...(data.isArchived &&
-                      data.currentUserRole === BoardRole.OWNER
+                      ...(canRestore
                         ? [
                             {
                               label: 'Restore board',
@@ -279,6 +294,41 @@ export function BoardDetailPage() {
           />
         </div>
       </div>
+
+      <nav
+        aria-label="Board navigation"
+        className="mt-5 flex flex-wrap gap-x-5 gap-y-2 border-b border-line text-sm"
+      >
+        <Link
+          className={`border-b-2 py-3 font-medium hover:text-primary ${!settings ? 'border-primary text-primary' : 'border-transparent'}`}
+          aria-current={!settings ? 'page' : undefined}
+          to={`/boards/${data.id}`}
+        >
+          Kanban
+        </Link>
+        {data.currentUserRole !== null && (
+          <Link
+            className="py-3 font-medium hover:text-primary"
+            to={`/boards/${data.id}/members`}
+          >
+            Members
+          </Link>
+        )}
+        <button
+          type="button"
+          className="border-b-2 border-transparent py-3 font-medium hover:text-primary"
+          onClick={() => setShowingActivity(true)}
+        >
+          Activity
+        </button>
+        <Link
+          className={`border-b-2 py-3 font-medium hover:text-primary ${settings ? 'border-primary text-primary' : 'border-transparent'}`}
+          aria-current={settings ? 'page' : undefined}
+          to={`/boards/${data.id}/settings`}
+        >
+          Board settings
+        </Link>
+      </nav>
 
       <div className="mt-4 space-y-3">
         {notice && <Alert variant="success">{notice}</Alert>}
@@ -336,7 +386,7 @@ export function BoardDetailPage() {
           }}
         />
       )}
-      {data.currentUserRole === BoardRole.OWNER && restoring && (
+      {canRestore && restoring && (
         <RestoreBoardDialog
           board={data}
           open

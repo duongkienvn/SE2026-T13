@@ -86,7 +86,10 @@ export const routes: RouteObject[] = [
               {
                 path: 'boards/:boardId',
                 element: <BoardDetailPage />,
-                children: [{ path: 'cards/:cardId', element: null }],
+                children: [
+                  { path: 'cards/:cardId', element: null },
+                  { path: 'settings', element: null },
+                ],
               },
               {
                 path: 'boards/:boardId/members',
