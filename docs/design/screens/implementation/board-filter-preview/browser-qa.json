@@ -1,0 +1,102 @@
+[
+  {
+    "theme": "light",
+    "width": 320,
+    "left": 16,
+    "right": 304,
+    "top": 459,
+    "bottom": 796,
+    "focus": true,
+    "escapeFocusReturned": true
+  },
+  {
+    "theme": "light",
+    "width": 375,
+    "left": 16,
+    "right": 359,
+    "top": 435,
+    "bottom": 796,
+    "focus": true,
+    "escapeFocusReturned": true
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "left": 100,
+    "right": 548,
+    "top": 383,
+    "bottom": 1008,
+    "focus": true,
+    "escapeFocusReturned": true
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "left": 308,
+    "right": 756,
+    "top": 383,
+    "bottom": 784,
+    "focus": true,
+    "escapeFocusReturned": true
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "left": 308,
+    "right": 756,
+    "top": 383,
+    "bottom": 784,
+    "focus": true,
+    "escapeFocusReturned": true
+  },
+  {
+    "theme": "dark",
+    "width": 320,
+    "left": 16,
+    "right": 304,
+    "top": 459,
+    "bottom": 796,
+    "focus": true,
+    "escapeFocusReturned": true
+  },
+  {
+    "theme": "dark",
+    "width": 375,
+    "left": 16,
+    "right": 359,
+    "top": 435,
+    "bottom": 796,
+    "focus": true,
+    "escapeFocusReturned": true
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "left": 100,
+    "right": 548,
+    "top": 383,
+    "bottom": 1008,
+    "focus": true,
+    "escapeFocusReturned": true
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "left": 308,
+    "right": 756,
+    "top": 383,
+    "bottom": 784,
+    "focus": true,
+    "escapeFocusReturned": true
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "left": 308,
+    "right": 756,
+    "top": 383,
+    "bottom": 784,
+    "focus": true,
+    "escapeFocusReturned": true
+  }
+]

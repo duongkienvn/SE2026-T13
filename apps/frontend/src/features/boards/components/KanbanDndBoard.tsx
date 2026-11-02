@@ -67,6 +67,7 @@ interface KanbanDndBoardProps {
   onOpenCard: (card: Card) => void;
   /** Shown after the last column (the "Add column" tile). */
   trailing?: ReactNode;
+  filterActive?: boolean;
 }
 
 const isType = (type: 'column' | 'card') => (id: UniqueIdentifier) =>
@@ -142,6 +143,7 @@ export function KanbanDndBoard({
   actions,
   onOpenCard,
   trailing,
+  filterActive = false,
 }: KanbanDndBoardProps) {
   const moveCard = useMoveCard(boardId);
   const moveColumn = useMoveColumn(boardId);
@@ -151,7 +153,7 @@ export function KanbanDndBoard({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [error, setError] = useState<string>();
   const saving = moveCard.isPending || moveColumn.isPending;
-  const dragDisabled = !actions || saving;
+  const dragDisabled = !actions || saving || filterActive;
 
   const serverLayout = useMemo<KanbanLayout>(
     () => ({
@@ -374,6 +376,7 @@ export function KanbanDndBoard({
                     actions={actions}
                     onOpenCard={onOpenCard}
                     dragDisabled={dragDisabled}
+                    filterActive={filterActive}
                   />
                 );
               })}

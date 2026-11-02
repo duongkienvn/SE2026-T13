@@ -15,6 +15,7 @@ import {
   useUpdateCard,
 } from './hooks';
 import { useColumns } from '../columns/hooks';
+import { useFilteredCards } from './board-filter';
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <AppProviders>{children}</AppProviders>
@@ -25,6 +26,32 @@ const CARDS = `/boards/${BOARD}/cards`;
 const page = (path: string, n: number) => `GET ${path}?page=${n}&limit=100`;
 
 describe('card hooks', () => {
+  it('refreshes filtered results after a local card update without relying on realtime', async () => {
+    storeSession();
+    const card = makeCard({ title: 'Before' });
+    const saved = { ...card, title: 'After' };
+    let calls = 0;
+    mockApi({
+      'GET /users/me': ok(testUser),
+      [`GET ${CARDS}?page=1&limit=100&q=After`]: () =>
+        okPage(++calls === 1 ? [] : [saved]),
+      [`PATCH ${CARDS}/${card.id}`]: ok(saved),
+    });
+    const { result } = renderHook(
+      () => ({
+        filtered: useFilteredCards(BOARD, { q: 'After' }, 1, true),
+        update: useUpdateCard(BOARD, card.id),
+      }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.filtered.isSuccess).toBe(true));
+    await act(() => result.current.update.mutateAsync({ title: 'After' }));
+    await waitFor(() =>
+      expect(result.current.filtered.data?.items).toEqual([saved]),
+    );
+    expect(calls).toBeGreaterThanOrEqual(2);
+  });
+
   it('loads every page of active cards', async () => {
     storeSession();
     const first = makeCard();

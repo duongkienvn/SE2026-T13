@@ -6,6 +6,7 @@ import {
   Outlet,
   useBlocker,
   useMatch,
+  useLocation,
   useNavigate,
   useOutletContext,
   useParams,
@@ -18,6 +19,10 @@ import { buttonClassName } from '../../../components/Button';
 import { PageContainer } from '../../../components/PageContainer';
 import { TextField } from '../../../components/TextField';
 import { BoardNavigation } from '../components/BoardNavigation';
+import {
+  filterSearchParams,
+  parseBoardFilters,
+} from '../../cards/board-filter';
 import { BoardSettings } from '../components/BoardSettings';
 import {
   EmptyState,
@@ -100,6 +105,7 @@ export function BoardDetailPage() {
   const workspace = useOutletContext<WorkspaceSummary | undefined>();
   const { boardId = '' } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const settings = useMatch('/boards/:boardId/settings') !== null;
   const membersPage = useMatch('/boards/:boardId/members') !== null;
   const { board, verified } = useVerifiedBoard(boardId);
@@ -132,7 +138,10 @@ export function BoardDetailPage() {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'fallback'>(
     'idle',
   );
-  const boardUrl = `${window.location.origin}/boards/${encodeURIComponent(boardId)}`;
+  const boardQuery = filterSearchParams(
+    parseBoardFilters(new URLSearchParams(location.search)),
+  ).toString();
+  const boardUrl = `${window.location.origin}/boards/${encodeURIComponent(boardId)}${boardQuery ? `?${boardQuery}` : ''}`;
   const copyBoardLink = async () => {
     setCopyStatus('idle');
     try {

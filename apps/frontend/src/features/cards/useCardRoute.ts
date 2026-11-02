@@ -14,7 +14,7 @@ export function useCardRoute(boardId: string) {
     cardId,
     openCard: (id: string) => {
       source.current = { key: location.key, cardId: id };
-      void navigate(`${boardPath}/cards/${id}`, {
+      void navigate(`${boardPath}/cards/${id}${location.search}`, {
         state: {
           cardSourceKey: location.key,
           cardReturnTo: `${location.pathname}${location.search}${location.hash}`,
@@ -29,7 +29,7 @@ export function useCardRoute(boardId: string) {
         'cardReturnTo' in state &&
         typeof state.cardReturnTo === 'string'
           ? state.cardReturnTo
-          : boardPath;
+          : `${boardPath}${location.search}`;
       if (
         state &&
         typeof state === 'object' &&

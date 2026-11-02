@@ -1,3 +1,4 @@
+import type { BoardCardFilters, CardPreviewSummaries } from '@kanban/shared';
 import {
   apiRequest,
   apiRequestPage,
@@ -169,5 +170,41 @@ export function unassignCard(
   return apiRequest<void>(
     `${cardsPath(boardId, cardId)}/assignees/${encodeURIComponent(userId)}`,
     { method: 'DELETE', accessToken },
+  );
+}
+
+/** Filter and page on the server; list order is never reconstructed locally. */
+export function listFilteredCards(
+  token: string,
+  boardId: string,
+  filters: BoardCardFilters,
+  page: number,
+  signal?: AbortSignal,
+): Promise<Page<Card>> {
+  const query = new URLSearchParams({
+    page: String(page),
+    limit: String(MAX_PAGE_LIMIT),
+  });
+  for (const [key, value] of Object.entries(filters)) {
+    if (value === undefined || (Array.isArray(value) && !value.length))
+      continue;
+    query.set(key, Array.isArray(value) ? value.join(',') : String(value));
+  }
+  return apiRequestPage<Card>(`${cardsPath(boardId)}?${query}`, {
+    accessToken: token,
+    signal,
+  });
+}
+
+export function listPreviewSummaries(
+  token: string,
+  boardId: string,
+  ids: string[],
+  signal?: AbortSignal,
+): Promise<CardPreviewSummaries> {
+  const query = new URLSearchParams({ cardIds: ids.join(',') });
+  return apiRequest<CardPreviewSummaries>(
+    `/boards/${encodeURIComponent(boardId)}/card-preview-summaries?${query}`,
+    { accessToken: token, signal },
   );
 }

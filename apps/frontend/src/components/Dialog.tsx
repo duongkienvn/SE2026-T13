@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { useModalFocus } from '../hooks/useModalFocus';
 
 interface DialogProps {
+  id?: string;
+  anchor?: DOMRect;
   open: boolean;
   onClose: () => void;
   title: string;
@@ -22,6 +24,8 @@ interface DialogProps {
  * focus to the opener and hides the page from assistive tech while open.
  */
 export function Dialog({
+  id,
+  anchor,
   open,
   onClose,
   title,
@@ -51,6 +55,29 @@ export function Dialog({
       />
       <div
         ref={panelRef}
+        id={id}
+        style={
+          anchor
+            ? {
+                position: 'fixed',
+                width: `min(28rem, calc(100vw - 2rem))`,
+                left: Math.max(
+                  16,
+                  Math.min(
+                    anchor.left,
+                    window.innerWidth -
+                      Math.min(448, window.innerWidth - 32) -
+                      16,
+                  ),
+                ),
+                top: Math.max(
+                  16,
+                  Math.min(anchor.bottom + 8, window.innerHeight - 250),
+                ),
+                maxHeight: `calc(100dvh - ${Math.max(16, Math.min(anchor.bottom + 8, window.innerHeight - 250)) + 16}px)`,
+              }
+            : undefined
+        }
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

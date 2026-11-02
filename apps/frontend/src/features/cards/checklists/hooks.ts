@@ -224,7 +224,12 @@ export function useChecklistAction(boardId: string, cardId: string) {
       void refresh();
     },
     onSettled: () => {
-      if (pendingCount(client, boardId, cardId) <= 1) void refresh();
+      if (pendingCount(client, boardId, cardId) <= 1) {
+        void refresh();
+        void client.invalidateQueries({
+          queryKey: [...boardKeys.cards(boardId), 'preview-summaries'],
+        });
+      }
     },
   });
   const run = (requested: ChecklistAction) => {
