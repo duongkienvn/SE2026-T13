@@ -110,10 +110,18 @@ function useSaveCard(boardId: string) {
           ? list.map((item) => (item.id === card.id ? card : item))
           : [...list, card];
       });
-      return queryClient.invalidateQueries({
-        queryKey: boardKeys.cards(boardId),
-        exact: true,
-      });
+      return Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: boardKeys.cards(boardId),
+          exact: true,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: [...boardKeys.cards(boardId), 'filtered'],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: [...boardKeys.cards(boardId), 'preview-summaries'],
+        }),
+      ]);
     },
   };
 }
@@ -242,6 +250,9 @@ function useInvalidateCard(boardId: string, cardId: string) {
       queryClient.invalidateQueries({
         queryKey: boardKeys.cards(boardId),
         exact: true,
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [...boardKeys.cards(boardId), 'filtered'],
       }),
     ]);
 }

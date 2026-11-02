@@ -84,13 +84,20 @@ export function invalidationTargets<E extends BoardEventName>(
     case 'card:moved':
     case 'card:assignees-changed': {
       const { cardId } = payload as BoardEventPayload<'card:updated'>;
-      return [cardList(boardId), card(boardId, cardId)];
+      return [
+        cardList(boardId),
+        { queryKey: [...boardKeys.cards(boardId), 'filtered'] },
+        { queryKey: [...boardKeys.cards(boardId), 'preview-summaries'] },
+        card(boardId, cardId),
+      ];
     }
     case 'card:archived':
     case 'card:restored': {
       const { cardId } = payload as BoardEventPayload<'card:archived'>;
       return [
         cardList(boardId),
+        { queryKey: [...boardKeys.cards(boardId), 'filtered'] },
+        { queryKey: [...boardKeys.cards(boardId), 'preview-summaries'] },
         card(boardId, cardId),
         { queryKey: boardKeys.archivedCards(boardId) },
       ];
@@ -132,7 +139,10 @@ export function invalidationTargets<E extends BoardEventName>(
     case 'comment:updated':
     case 'comment:deleted': {
       const { cardId } = payload as BoardEventPayload<'comment:created'>;
-      return [{ queryKey: commentKeys.card(boardId, cardId) }];
+      return [
+        { queryKey: commentKeys.card(boardId, cardId) },
+        { queryKey: [...boardKeys.cards(boardId), 'preview-summaries'] },
+      ];
     }
     default:
       return [];

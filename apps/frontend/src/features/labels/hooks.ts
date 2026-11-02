@@ -55,6 +55,8 @@ function useInvalidateLabels(boardId: string) {
   return () =>
     Promise.all([
       client.invalidateQueries({ queryKey: labelKeys.catalog(boardId) }),
+      client.invalidateQueries({ queryKey: [...cards, 'filtered'] }),
+      client.invalidateQueries({ queryKey: [...cards, 'preview-summaries'] }),
       client.invalidateQueries({
         predicate: ({ queryKey }) =>
           queryKey.at(-1) === 'labels' &&
@@ -126,7 +128,16 @@ export function useToggleCardLabel(boardId: string, cardId: string) {
           queryKey: labelKeys.catalog(boardId),
         });
     },
-    onSettled: () => client.invalidateQueries({ queryKey: key, exact: true }),
+    onSettled: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: key, exact: true }),
+        client.invalidateQueries({
+          queryKey: [...boardKeys.cards(boardId), 'filtered'],
+        }),
+        client.invalidateQueries({
+          queryKey: [...boardKeys.cards(boardId), 'preview-summaries'],
+        }),
+      ]),
   });
 }
 
