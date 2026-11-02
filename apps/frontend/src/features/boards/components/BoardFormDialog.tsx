@@ -1,4 +1,11 @@
-import { useId, useRef, useState, type FormEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
 import { Dialog } from '../../../components/Dialog';
@@ -34,6 +41,7 @@ interface BoardFormProps {
   onSubmit: (values: BoardValues) => Promise<unknown>;
   onCancel: () => void;
   disabledReason?: string;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 export function BoardForm({
@@ -45,6 +53,7 @@ export function BoardForm({
   onSubmit,
   onCancel,
   disabledReason,
+  onDirtyChange,
 }: BoardFormProps) {
   const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
   const [name, setName] = useState(initial.name);
@@ -62,6 +71,10 @@ export function BoardForm({
   };
   const changed =
     values.name !== initial.name || values.description !== initial.description;
+
+  useEffect(() => {
+    onDirtyChange?.(changed);
+  }, [changed, onDirtyChange]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -144,7 +157,9 @@ export function BoardForm({
           {pending
             ? pendingLabel
             : disabledReason
-              ? 'Create unavailable'
+              ? requireChange
+                ? 'Save unavailable'
+                : 'Create unavailable'
               : submitLabel}
         </Button>
       </div>
@@ -190,6 +205,8 @@ interface EditBoardDialogProps {
   open: boolean;
   onClose: () => void;
   onSaved: (board: Board) => void;
+  onDirtyChange?: (dirty: boolean) => void;
+  disabledReason?: string;
 }
 
 export function EditBoardDialog({
@@ -197,24 +214,63 @@ export function EditBoardDialog({
   open,
   onClose,
   onSaved,
+  onDirtyChange,
+  disabledReason,
 }: EditBoardDialogProps) {
   const update = useUpdateBoard(board.id);
-  const initial = { name: board.name, description: board.description };
+  const [initial] = useState(() => ({
+    name: board.name,
+    description: board.description,
+  }));
+  const [dirty, setDirty] = useState(false);
+  const reportDirty = useCallback(
+    (value: boolean) => {
+      setDirty(value);
+      onDirtyChange?.(value);
+    },
+    [onDirtyChange],
+  );
+  const changedRemotely =
+    board.name !== initial.name || board.description !== initial.description;
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+  const close = () => {
+    if (!dirty || window.confirm('Discard unsaved board changes?')) onClose();
+  };
 
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={close}
       title="Edit board"
       dismissible={!update.isPending}
     >
+      {changedRemotely && (
+        <Alert variant="error">
+          This board changed while you were editing. Copy your draft, cancel,
+          and reopen the editor to review the latest values.
+        </Alert>
+      )}
       <BoardForm
         initial={initial}
         submitLabel="Save changes"
         pendingLabel="Saving…"
         requireChange
         pending={update.isPending}
-        onCancel={onClose}
+        onCancel={close}
+        onDirtyChange={reportDirty}
+        disabledReason={
+          disabledReason ??
+          (changedRemotely
+            ? 'The board changed remotely. Reopen the editor before saving.'
+            : undefined)
+        }
         onSubmit={async (values) => {
           // Send only what changed; the API rejects an empty update.
           const patch: UpdateBoardRequest = {};

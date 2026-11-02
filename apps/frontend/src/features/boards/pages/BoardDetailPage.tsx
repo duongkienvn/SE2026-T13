@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Link,
+  useBlocker,
   useMatch,
   useNavigate,
   useOutletContext,
@@ -70,6 +71,16 @@ export function BoardUnavailable() {
   );
 }
 
+function BoardEditNavigationGuard() {
+  const blocker = useBlocker(true);
+  useEffect(() => {
+    if (blocker.state !== 'blocked') return;
+    if (window.confirm('Discard unsaved board changes?')) blocker.proceed();
+    else blocker.reset();
+  }, [blocker]);
+  return null;
+}
+
 export function BoardDetailPage() {
   const workspace = useOutletContext<WorkspaceSummary | undefined>();
   const { boardId = '' } = useParams();
@@ -82,6 +93,7 @@ export function BoardDetailPage() {
     enabled: verified && board.data !== undefined && !unavailable,
   });
   const [editing, setEditing] = useState(false);
+  const [editDirty, setEditDirty] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [showingActivity, setShowingActivity] = useState(false);
   const [showingArchivedCards, setShowingArchivedCards] = useState(false);
@@ -163,6 +175,7 @@ export function BoardDetailPage() {
 
   return (
     <PageContainer fill>
+      {editing && editDirty && <BoardEditNavigationGuard />}
       <nav
         aria-label="Board breadcrumb"
         className="mb-4 text-xs leading-6 text-muted md:hidden"
@@ -494,13 +507,23 @@ export function BoardDetailPage() {
           onClose={() => setShowingActivity(false)}
         />
       )}
-      {canManage && editing && (
+      {editing && (
         <EditBoardDialog
           board={data}
           open
-          onClose={() => setEditing(false)}
+          onClose={() => {
+            setEditing(false);
+            setEditDirty(false);
+          }}
+          onDirtyChange={setEditDirty}
+          disabledReason={
+            !canManage
+              ? 'Editing is no longer available for this board.'
+              : undefined
+          }
           onSaved={(saved) => {
             setEditing(false);
+            setEditDirty(false);
             setNotice(`Board “${saved.name}” updated.`);
           }}
         />
