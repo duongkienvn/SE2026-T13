@@ -86,4 +86,44 @@ describe('scoped auth entry presentation', () => {
     );
     expect(password.getAttribute('aria-invalid')).toBe('true');
   });
+
+  it('retains all four simultaneous registration errors, guidance and actions', () => {
+    const calls = mockApi({});
+    renderApp('/register');
+    const values = {
+      'Display name': 'A',
+      'Email address': 'invalid',
+      Password: 'Abcdefg1',
+      'Confirm password': 'different',
+    };
+    for (const [label, value] of Object.entries(values))
+      fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    for (const label of Object.keys(values)) {
+      const input = screen.getByLabelText(label);
+      expect(input.getAttribute('aria-invalid')).toBe('true');
+      const descriptions = input
+        .getAttribute('aria-describedby')!
+        .split(' ')
+        .map((id) => document.getElementById(id));
+      expect(
+        descriptions.every((element) => Boolean(element?.textContent)),
+      ).toBe(true);
+    }
+    expect(
+      screen.getByText(
+        'Password must contain a special character (punctuation or symbol, not whitespace).',
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('list', { name: 'Password requirements' }),
+    ).toBeTruthy();
+    expect(screen.getByText('Maximum 128 characters')).toBeTruthy();
+    expect(
+      screen.getByRole('region', { name: 'Alternative sign-in' }),
+    ).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Log in' })).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByLabelText('Display name'));
+    expect(calls).toHaveLength(0);
+  });
 });

@@ -19,9 +19,10 @@ and migrations are unchanged.
   primary indigo. Wrap only Login/Sign Up's desktop and mobile brand placements
   in React Router links to `/`, with accessible name **Kanvexa home** and visible
   keyboard focus. Other logo behavior stays as implemented previously.
-- Recreate the approximately 52/48 composition, oversized product statement,
-  lavender secondary line, indigo lighting, corner arc, and curved foreground.
-  The desktop frame is capped at 1496px; forms scale from 400px to 480px.
+- Preserve the approved Kanban composition, lavender secondary line, indigo
+  lighting, corner arc, and curved foreground. The current compact correction
+  uses a 42/58 split, a 1280px maximum frame and a 400px form. The hero statement
+  is 32–36px; the logo and illustration styling scale down approximately 25–30%.
 - Replace the minimal arrow diagram with maintainable React task/column
   components, CSS depth and layering, and SVG route, wave, and cursor geometry.
   The three columns contain illustrative tasks, labels, checklist progress,
@@ -31,7 +32,7 @@ and migrations are unchanged.
   not demo business state, a live board, or additional controls. The composition
   is `aria-hidden`, has no focusable descendants, and does not intercept input.
   Collaborators use abstract initials instead of extracted reference faces.
-- Keep Login's form aligned with the reference: larger desktop typography,
+- Keep Login's form aligned with the reference with compact 28px headings,
   restored leading field icons, clearer boundaries and focus/error states, and
   a flat canonical indigo primary action. Keep Sign Up sequential and slightly
   denser, with persistent password rules directly beneath the new password.
@@ -44,18 +45,54 @@ and migrations are unchanged.
 
 ## Responsive sizing and scrollbar fix
 
-The split begins at 64rem of available container width: a 29rem hero and a 25rem
-form plus actual control padding and breathing room. With default font size and
-outer gutters, 1072px supports the split and 1071px uses one column. The form
-never shrinks to preserve the illustration.
+The split begins at 70rem of available container width. At the 42% proportion,
+that leaves roughly 464px for the hero's feature highlights plus padding, while
+retaining the 400px form and its padding. Below that budget, use the existing
+single-column form rather than squeezing either side.
 
-The previous fixed height and `overflow-y: auto` on the form pane are removed.
-The frame has a viewport-aware **minimum** height and grows to its content.
-Both pages fit normal desktop captures; short screens or long validation use
-natural document scrolling. Content is never concealed to suppress a scrollbar.
-Below the split budget, only the form and linked brand remain. Below 640px,
-the outer card is removed. Inputs stay at least 48px tall, reveal controls remain
-44px, input text remains at least 16px, and reduced motion disables transitions.
+The container has no forced height or large minimum height. Both panels use
+normal document flow. Inputs, primary buttons and reveal controls remain 44px;
+the official Google button stays provider-owned and unchanged. Reduced gaps,
+14px desktop panel padding and a compact normal-laptop-height variant budget for
+four simultaneous registration errors, including a wrapping password error.
+There are no capped, hidden, overlaid or truncated validation messages.
+
+At 1440×900 and 1366×768, both forms fit in default and error states. The 390px
+mobile view remains form-first; genuinely short screens use natural document
+scrolling. No page scrollbar is hidden, and the form pane never scrolls itself.
+The approved illustration component/data/SVG and logo navigation are unchanged;
+only CSS scale, density, proportions and spacing were corrected.
+
+## Compact correction verification (current)
+
+Chrome DevTools inspected all 12 combinations of Login/Sign Up, default/errors,
+and 1440×900, 1366×768 and 390×844. The registration error case uses an invalid
+name, invalid email, a password missing a special character (two-line error),
+and mismatched confirmation. All required fields, errors, checklist, buttons,
+Google section and account switch remain visible on both desktop viewports.
+
+| Desktop  | Document scrollHeight / clientHeight | All four states            |
+| -------- | ------------------------------------ | -------------------------- |
+| 1440×900 | 900 / 900                            | Pass, no vertical overflow |
+| 1366×768 | 768 / 768                            | Pass, no vertical overflow |
+
+Additional light-theme registration errors also fit at both desktop sizes.
+At 390×540, document height is 820px with natural scrolling and visible overflow;
+this is intentional. First-invalid focus remains on Display name. Inputs measure
+44px, form width measures 400px on desktop, and no horizontal overflow was found.
+Errors remain in normal flow; the layout budgets for them rather than hiding
+content or adding empty reserved rows.
+
+- Focused frontend suites: **5 files, 62 tests passed**.
+- Frontend lint: `pnpm exec eslint apps/frontend/src` passed.
+- Production build: `pnpm --filter @kanban/frontend build` passed, retaining the
+  existing environment/chunk-size warnings.
+- Changed-file Prettier and `git diff --check` passed.
+- Backend/full workspace suites were not rerun for this CSS-focused correction.
+
+[Four necessary error-state captures and Chrome measurements](../../design/screens/implementation/auth-v2-compact/)
+record the correction. The earlier reference-iteration evidence below is
+historical; its larger dimensions are superseded by this compact correction.
 
 ## Regression and visual verification
 
@@ -81,7 +118,7 @@ Actual browser zoom, a physical mobile keyboard, and OAuth completion are not
 claimed. The existing Google client rejects localhost as an authorized origin;
 the official button still renders, and its implementation is untouched.
 
-## Checks
+## Initial reference-iteration checks (historical)
 
 | Check                                                | Result                                                                                 |
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------- |
