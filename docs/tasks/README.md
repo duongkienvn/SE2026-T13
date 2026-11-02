@@ -76,6 +76,8 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Frontend tasks
 
+- [Board discovery and customization UI](frontend/board-discovery-customization-ui.md)
+
 - [Board Settings and Board UX V2](frontend/board-settings-ux-v2.md)
 
 - [Auth V2 reference refinement and home-logo navigation](frontend/auth-v2-reference-refinement.md)
