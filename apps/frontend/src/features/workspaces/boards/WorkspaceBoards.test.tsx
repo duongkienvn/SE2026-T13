@@ -191,6 +191,72 @@ afterEach(() => {
 });
 
 describe('Workspace Boards route and capabilities', () => {
+  it('passes the recent and starred views to the server and stores them in the URL', async () => {
+    const api = gateway({
+      features: {
+        search: true,
+        discovery: true,
+        status: true,
+        sorts: ['updated-desc', 'name-asc', 'recent'],
+        pagination: true,
+      },
+    });
+    const { router } = mount(undefined, api);
+    await ready();
+    fireEvent.click(main().getByRole('button', { name: 'Recent' }));
+    await waitFor(() =>
+      expect(router.state.location.search).toContain('view=recent'),
+    );
+    await waitFor(() =>
+      expect(api.list).toHaveBeenCalledWith(
+        expect.anything(),
+        space.id,
+        expect.objectContaining({ view: 'recent', sort: 'recent' }),
+        expect.anything(),
+      ),
+    );
+    fireEvent.click(main().getByRole('button', { name: 'Starred' }));
+    await waitFor(() =>
+      expect(router.state.location.search).toContain('view=starred'),
+    );
+    await waitFor(() =>
+      expect(api.list).toHaveBeenCalledWith(
+        expect.anything(),
+        space.id,
+        expect.objectContaining({ view: 'starred' }),
+        expect.anything(),
+      ),
+    );
+  });
+  it('persists star changes and keeps the saved state when unstar fails', async () => {
+    const { calls } = mount(undefined, gateway(), {
+      'GET /boards/board-one/user-state': ok({
+        isStarred: false,
+        lastViewedAt: null,
+      }),
+      'PUT /boards/board-one/star': ok({ isStarred: true, lastViewedAt: null }),
+      'DELETE /boards/board-one/star': fail(503, 'UNAVAILABLE'),
+    });
+    await ready();
+    fireEvent.click(
+      await main().findByRole('button', {
+        name: 'Add to starred: Authorized board',
+      }),
+    );
+    const starred = await main().findByRole('button', {
+      name: 'Remove from starred: Authorized board',
+    });
+    expect(starred.getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(starred);
+    await main().findByRole('alert');
+    expect(starred.getAttribute('aria-pressed')).toBe('true');
+    expect(
+      calls.some(
+        (call) =>
+          call.method === 'PUT' && call.path === '/boards/board-one/star',
+      ),
+    ).toBe(true);
+  });
   it('shares identity and active Boards navigation with correct breadcrumb', async () => {
     mount();
     await ready();
@@ -305,16 +371,16 @@ describe('Workspace Boards route and capabilities', () => {
       main().queryByRole('button', { name: /Starred|Recent|List/ }),
     ).toBeNull();
   });
-  it('renders only returned authorized metadata without fetching members or backgrounds', async () => {
+  it('renders only returned authorized metadata without fetching members', async () => {
     const { calls } = mount();
     await ready();
     expect(main().getByText('Private')).toBeTruthy();
     expect(main().getByText('Board member count private')).toBeTruthy();
-    expect(calls.some((c) => /members|background/.test(c.path))).toBe(false);
+    expect(calls.some((c) => /members/.test(c.path))).toBe(false);
     expect(main().queryByText(/WORKSPACE_VISIBLE/)).toBeNull();
     expect(
-      main().getByText('Star board, coming soon').closest('a, button'),
-    ).toBeNull();
+      main().getByRole('button', { name: 'Add to starred: Authorized board' }),
+    ).toBeTruthy();
   });
 
   it.each([0, 1, 7, null])(
@@ -421,7 +487,7 @@ describe('Workspace Boards route and capabilities', () => {
     const { router } = mount(undefined, api);
     await ready();
     fireEvent.click(screen.getByRole('link', { name: other.name }));
-    await screen.findByRole('heading', { name: 'No accessible boards yet' });
+    await screen.findByRole('heading', { name: 'No recently viewed boards' });
     expect(router.state.location.pathname).toBe(`/workspaces/${other.id}`);
     expect(
       main().queryByRole('link', { name: `Open ${board.name}` }),
@@ -429,7 +495,7 @@ describe('Workspace Boards route and capabilities', () => {
     await act(() => router.navigate(-1));
     await ready();
     await act(() => router.navigate(1));
-    await screen.findByRole('heading', { name: 'No accessible boards yet' });
+    await screen.findByRole('heading', { name: 'No recently viewed boards' });
   });
 });
 

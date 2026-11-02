@@ -70,6 +70,8 @@ export function mapWorkspaceBoard(
     canArchive: item.currentUserRole === 'OWNER' && !item.isArchived,
     canRestore: item.currentUserRole === 'OWNER' && item.isArchived,
     memberCount: item.memberCount,
+    backgroundPreset: item.backgroundPreset,
+    lastViewedAt: item.lastViewedAt,
   };
 }
 
