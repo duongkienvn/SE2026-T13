@@ -93,7 +93,7 @@ describe('BoardMembersPage (as OWNER)', () => {
     });
     await screen.findByRole('table');
     const back = within(screen.getByRole('main')).getByRole('link', {
-      name: 'Back to board',
+      name: 'Kanban',
     });
     expect(back.getAttribute('href')).toBe(`/boards/${board.id}`);
     fireEvent.click(back);
@@ -103,7 +103,7 @@ describe('BoardMembersPage (as OWNER)', () => {
     await screen.findByRole('table');
     expect(
       within(screen.getByRole('main')).getByRole('link', {
-        name: 'Back to board',
+        name: 'Kanban',
       }),
     ).toBeTruthy();
   });
@@ -133,7 +133,11 @@ describe('BoardMembersPage (as OWNER)', () => {
     expect(
       await screen.findByRole('button', { name: 'Add member' }),
     ).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /^Actions for/ })).toBeNull();
+    expect(
+      within(screen.getByRole('table')).queryByRole('button', {
+        name: /^Actions for/,
+      }),
+    ).toBeNull();
   });
 
   it('does not show management controls if policy capability cannot be loaded', async () => {
@@ -147,7 +151,11 @@ describe('BoardMembersPage (as OWNER)', () => {
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: 'Add member' })).toBeNull(),
     );
-    expect(screen.queryByRole('button', { name: /^Actions for/ })).toBeNull();
+    expect(
+      within(screen.getByRole('table')).queryByRole('button', {
+        name: /^Actions for/,
+      }),
+    ).toBeNull();
   });
 
   it('splits a long member list into numbered pages', async () => {
@@ -464,7 +472,11 @@ describe('BoardMembersPage (as MEMBER)', () => {
 
     expect(await screen.findByRole('table')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Add member' })).toBeNull();
-    expect(screen.queryByRole('button', { name: /^Actions for/ })).toBeNull();
+    expect(
+      within(screen.getByRole('table')).queryByRole('button', {
+        name: /^Actions for/,
+      }),
+    ).toBeNull();
     expect(screen.queryByRole('columnheader', { name: 'Actions' })).toBeNull();
   });
 });
@@ -480,7 +492,11 @@ describe('BoardMembersPage (archived board)', () => {
       ),
     ).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Add member' })).toBeNull();
-    expect(screen.queryByRole('button', { name: /^Actions for/ })).toBeNull();
+    expect(
+      within(await screen.findByRole('table')).queryByRole('button', {
+        name: /^Actions for/,
+      }),
+    ).toBeNull();
   });
 });
 
@@ -488,7 +504,7 @@ describe('BoardMembersPage errors', () => {
   afterEach(() => focusManager.setFocused(undefined));
 
   it.each([403, 404])(
-    'removes the mobile return link and roster on membership denial %s',
+    'removes board navigation and roster on membership denial %s',
     async (status) => {
       const board = makeBoard({
         name: 'Protected Board',
@@ -501,7 +517,7 @@ describe('BoardMembersPage errors', () => {
       await screen.findByRole('table');
       expect(
         within(screen.getByRole('main')).getByRole('link', {
-          name: 'Back to board',
+          name: 'Kanban',
         }),
       ).toBeTruthy();
       denied = true;
@@ -510,7 +526,7 @@ describe('BoardMembersPage errors', () => {
         focusManager.setFocused(true);
       });
       await screen.findByRole('heading', { name: 'Board not found' });
-      expect(screen.queryByRole('link', { name: 'Back to board' })).toBeNull();
+      expect(screen.queryByRole('link', { name: 'Kanban' })).toBeNull();
       expect(screen.queryByRole('table')).toBeNull();
       expect(screen.queryByText('Grace Hopper')).toBeNull();
     },
@@ -537,7 +553,7 @@ describe('BoardMembersPage errors', () => {
     expect(screen.queryByRole('table')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Add member' })).toBeNull();
     expect(screen.queryByText('Secret plans')).toBeNull();
-    expect(screen.queryByRole('link', { name: 'Back to board' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Kanban' })).toBeNull();
   });
 
   it.each(['/boards/abc', '/boards/abc/members'])(
@@ -572,7 +588,7 @@ describe('BoardMembersPage errors', () => {
     expect(
       await screen.findByRole('heading', { name: 'Board not found' }),
     ).toBeTruthy();
-    expect(screen.queryByRole('link', { name: 'Back to board' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Kanban' })).toBeNull();
   });
 });
 
@@ -635,7 +651,11 @@ describe('BoardMembersPage edge cases', () => {
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: 'Add member' })).toBeNull(),
     );
-    expect(screen.queryByRole('button', { name: /^Actions for/ })).toBeNull();
+    expect(
+      within(screen.getByRole('table')).queryByRole('button', {
+        name: /^Actions for/,
+      }),
+    ).toBeNull();
   });
 
   it('sends one role change at a time', async () => {

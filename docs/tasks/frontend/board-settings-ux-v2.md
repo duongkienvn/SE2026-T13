@@ -1,5 +1,9 @@
 # Board Settings and Board UX V2
 
+This record describes the initial implementation. See the subsequent
+[Board Navigation & Settings UX Polish](board-navigation-settings-polish.md)
+for the shared Members shell, simplified menu, settings panels and follow-up QA.
+
 The Board detail route accepts `/boards/:boardId/settings`; Card permalinks and
 the existing Members route remain separate. Settings reuses Board mutations,
 owner dialogs, and the Board Members page. Workspace metadata is shown only

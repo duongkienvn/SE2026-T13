@@ -78,6 +78,10 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 - [Board discovery and customization UI](frontend/board-discovery-customization-ui.md)
 
+- [Workspace Overview visual redesign](frontend/workspace-overview-redesign.md)
+
+- [Board Navigation & Settings UX Polish](frontend/board-navigation-settings-polish.md)
+
 - [Board Settings and Board UX V2](frontend/board-settings-ux-v2.md)
 
 - [Auth V2 reference refinement and home-logo navigation](frontend/auth-v2-reference-refinement.md)

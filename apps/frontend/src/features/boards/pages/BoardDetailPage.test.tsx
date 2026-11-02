@@ -165,10 +165,10 @@ describe('BoardDetailPage', () => {
     expect(
       await screen.findByRole('heading', { name: 'Permissions' }),
     ).toBeTruthy();
-    expect(screen.getByText('Background: blue')).toBeTruthy();
+    expect(screen.queryByText(/Background:/)).toBeNull();
     expect(
-      screen.getByText('Member details are available to board members.'),
-    ).toBeTruthy();
+      screen.queryByRole('link', { name: 'View board members' }),
+    ).toBeNull();
     expect(screen.queryByRole('button', { name: 'Edit board' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Archive board' })).toBeNull();
     expect(calls.some((call) => call.path.includes('/members'))).toBe(false);
@@ -301,7 +301,7 @@ describe('BoardDetailPage', () => {
     });
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Actions for Old project' }),
+      await screen.findByRole('link', { name: 'Board settings' }),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Archive board' }));
     const dialog = screen.getByRole('dialog');
@@ -387,7 +387,7 @@ describe('BoardDetailPage', () => {
         'This board is archived. It can be viewed but no longer changed.',
       ),
     ).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Actions for Frozen' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Board settings' }));
     expect(screen.getByRole('button', { name: 'Restore board' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Edit board' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Add column' })).toBeNull();
@@ -427,16 +427,15 @@ describe('Board Detail OWNER visibility and move', () => {
       ),
       ...extra,
     });
-  async function openAction(board: Board, action: string) {
+  async function openAction(_board: Board, action: string) {
     fireEvent.click(
-      await screen.findByRole('button', { name: `Actions for ${board.name}` }),
+      await screen.findByRole('link', { name: 'Board settings' }),
     );
-    const button = screen.getByRole('button', {
+    const button = await screen.findByRole('button', {
       name: new RegExp(`^${action}`),
     });
-    await waitFor(() =>
-      expect(button.getAttribute('aria-disabled')).toBeNull(),
-    );
+    await waitFor(() => expect(button.matches(':disabled')).toBe(false));
+    button.focus();
     fireEvent.click(button);
     return screen.findByRole('dialog');
   }
@@ -469,7 +468,7 @@ describe('Board Detail OWNER visibility and move', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: `Actions for ${board.name}` }),
+      screen.getByRole('button', { name: 'Change visibility' }),
     );
     const move = await openAction(board, 'Move to workspace');
     await chooseDestination(move);
@@ -529,7 +528,7 @@ describe('Board Detail OWNER visibility and move', () => {
       [`GET /boards/${board.id}/policy-capabilities`]: policy(false),
     });
     fireEvent.click(
-      await screen.findByRole('button', { name: `Actions for ${board.name}` }),
+      await screen.findByRole('link', { name: 'Board settings' }),
     );
     await screen.findByText('Workspace rules do not allow visibility changes.');
     fireEvent.click(screen.getByRole('button', { name: /Change visibility/ }));
@@ -764,7 +763,9 @@ describe('Board Detail OWNER visibility and move', () => {
           calls.filter((c) => c.path === `/boards/${board.id}`).length,
         ).toBeGreaterThan(1),
       );
-      expect(router.state.location.pathname).toBe(`/boards/${board.id}`);
+      expect(router.state.location.pathname).toBe(
+        `/boards/${board.id}/settings`,
+      );
     },
   );
 

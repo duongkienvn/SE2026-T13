@@ -13,33 +13,33 @@ export function WorkspaceSummaryCards({
       label: 'Visible boards',
       value: overview?.visibleBoardCount,
       icon: ColumnsIcon,
-      accent: 'bg-primary-soft text-primary',
+      hint: 'Boards you can access',
+      tone: 'workspace-metric',
     },
     {
       label: 'Members',
       value: overview?.memberCount,
       icon: UsersIcon,
-      accent: 'bg-primary-soft text-primary',
+      hint: 'People in this workspace',
+      tone: 'workspace-metric-members',
     },
   ];
   return (
     <section aria-label="Workspace summary">
-      <dl className="grid grid-cols-2 gap-3">
-        {metrics.map(({ label, value, icon: Icon, accent }) => (
+      <dl className="grid gap-3 sm:grid-cols-2">
+        {metrics.map(({ label, value, icon: Icon, hint, tone }) => (
           <div
             key={label}
-            className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 shadow-card sm:flex-row sm:items-center sm:gap-4 sm:p-5"
+            className={`${tone} flex min-w-0 items-center gap-4 rounded-xl border border-line p-4 shadow-card`}
           >
-            <span
-              className={`grid size-10 shrink-0 place-items-center rounded-full ${accent}`}
-            >
+            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
               <Icon className="size-5" />
             </span>
             <div className="flex min-w-0 flex-col">
-              <dt className="order-2 mt-1 text-xs leading-relaxed text-muted">
+              <dt className="order-2 text-sm leading-relaxed font-semibold text-ink">
                 {label}
               </dt>
-              <dd className="text-xl font-semibold tracking-tight text-ink">
+              <dd className="text-2xl leading-7 font-bold tracking-tight text-ink tabular-nums">
                 {value != null ? (
                   value
                 ) : (
@@ -51,10 +51,11 @@ export function WorkspaceSummaryCards({
                   </>
                 )}
               </dd>
+              <span className="order-3 mt-0.5 text-xs text-muted">{hint}</span>
               {value == null && (
                 <span
                   aria-hidden="true"
-                  className="order-3 mt-1 text-[11px] text-muted"
+                  className="order-4 mt-1 text-xs text-muted"
                 >
                   {state === 'loading' ? 'Loading…' : 'Unavailable'}
                 </span>

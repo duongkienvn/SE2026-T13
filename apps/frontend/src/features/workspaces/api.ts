@@ -92,6 +92,7 @@ export const workspaceGateway: WorkspaceGateway = {
           name: board.name,
           updatedAt: item.updatedAt,
           archived: board.isArchived,
+          visibility: board.visibility,
           memberCount: board.memberCount,
         };
       }),

@@ -1,13 +1,12 @@
 import { BoardRole } from '@kanban/shared';
 import { useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { useOutletContext, useParams } from 'react-router';
 import { ActionMenu } from '../../../components/ActionMenu';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
-import { ChevronLeftIcon, PlusIcon } from '../../../components/icons';
+import { PlusIcon } from '../../../components/icons';
 import { PageContainer } from '../../../components/PageContainer';
-import { PageHeader } from '../../../components/PageHeader';
 import { Pagination } from '../../../components/Pagination';
 import { SearchField } from '../../../components/SearchField';
 import {
@@ -17,7 +16,6 @@ import {
 } from '../../../components/states';
 import { useFitGrid } from '../../../hooks/useFitGrid';
 import { usePageParam } from '../../../hooks/usePageParam';
-import { usePageTitle } from '../../../hooks/usePageTitle';
 import { BOARD_ARCHIVED, isApiError } from '../../../lib/api-client';
 import { formatDate } from '../../../lib/format';
 import { paginate } from '../../../lib/pagination';
@@ -25,11 +23,8 @@ import { toFormErrors } from '../../../lib/form-errors';
 import { UserAvatar } from '../../auth/components/UserAvatar';
 import { useAuth } from '../../auth/useAuth';
 import { RoleChip } from '../../boards/components/RoleChip';
-import { useBoard } from '../../boards/hooks';
-import { RealtimeStatus } from '../../realtime/components/RealtimeStatus';
-import { useBoardRealtime } from '../../realtime/useBoardRealtime';
+import type { useBoard } from '../../boards/hooks';
 import {
-  ArchivedBoardNotice,
   BoardUnavailable,
   isBoardUnavailable,
 } from '../../boards/pages/BoardDetailPage';
@@ -59,17 +54,16 @@ function actionErrorMessage(error: unknown): string | undefined {
 export function BoardMembersPage() {
   const { boardId = '' } = useParams();
   const { user: currentUser } = useAuth();
-  const board = useBoard(boardId);
+  const { board } = useOutletContext<{ board: ReturnType<typeof useBoard> }>();
   const members = useBoardMembers(boardId);
   const owner =
-    board.data?.currentUserRole === BoardRole.OWNER && !board.data.isArchived;
+    board.data?.currentUserRole === BoardRole.OWNER &&
+    !board.data.isArchived &&
+    board.data.capabilities?.canManageMembers !== false;
   const policy = useBoardPolicyCapabilities(boardId, owner);
   const unavailable =
     (board.isError && isBoardUnavailable(board.error)) ||
     (members.isError && isBoardUnavailable(members.error));
-  const realtime = useBoardRealtime(boardId, {
-    enabled: board.data !== undefined && !unavailable,
-  });
   const updateRole = useUpdateMemberRole(boardId);
   const remove = useRemoveMember(boardId);
 
@@ -81,7 +75,6 @@ export function BoardMembersPage() {
   const [removing, setRemoving] = useState<BoardMember | null>(null);
   const [notice, setNotice] = useState<string>();
   const [actionError, setActionError] = useState<string>();
-  usePageTitle(board.data ? `Members · ${board.data.name}` : 'Members');
 
   const sorted = useMemo(() => sortMembers(members.data ?? []), [members.data]);
   const query = search.trim().toLowerCase();
@@ -170,49 +163,40 @@ export function BoardMembersPage() {
   };
 
   return (
-    <PageContainer fill>
-      <Link
-        to={`/boards/${encodeURIComponent(boardData.id)}`}
-        className="mb-4 inline-flex min-h-11 w-fit items-center gap-1 rounded-lg px-2 text-sm font-medium text-muted hover:text-primary focus-visible:outline-2 focus-visible:outline-primary md:hidden"
-      >
-        <ChevronLeftIcon aria-hidden="true" className="size-4" />
-        Back to board
-      </Link>
-      <PageHeader
-        title="Board members"
-        description={`People who can access “${boardData.name}”.`}
-        actions={
-          <>
-            <RealtimeStatus {...realtime} />
-            {/* Keep the box while a query is active, so it can always be cleared. */}
-            {(all.length > 1 || search) && (
-              <SearchField
-                label="Search members"
-                placeholder="Search members..."
-                value={search}
-                onChange={changeSearch}
-                className="w-full sm:w-[280px]"
-              />
-            )}
-            {canInvite && (
-              <Button
-                onClick={() => {
-                  setNotice(undefined);
-                  setAdding(true);
-                }}
-              >
-                <PlusIcon aria-hidden="true" className="size-4.5" />
-                Add member
-              </Button>
-            )}
-          </>
-        }
-      />
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Board members</h2>
+          <p className="mt-1 text-sm text-muted">
+            People who can collaborate on this board.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Keep the box while a query is active, so it can always be cleared. */}
+          {(all.length > 1 || search) && (
+            <SearchField
+              label="Search members"
+              placeholder="Search members..."
+              value={search}
+              onChange={changeSearch}
+              className="w-full sm:w-[280px]"
+            />
+          )}
+          {canInvite && (
+            <Button
+              onClick={() => {
+                setNotice(undefined);
+                setAdding(true);
+              }}
+            >
+              <PlusIcon aria-hidden="true" className="size-4.5" />
+              Add member
+            </Button>
+          )}
+        </div>
+      </div>
 
-      {(notice ||
-        actionError ||
-        boardData.isArchived ||
-        (owner && policy.isError)) && (
+      {(notice || actionError || (owner && policy.isError)) && (
         <div className="mt-4 space-y-3">
           {notice && <Alert variant="success">{notice}</Alert>}
           {owner && policy.isError && (
@@ -221,10 +205,8 @@ export function BoardMembersPage() {
             </Alert>
           )}
           {/* Once the board shows as archived, its notice explains any refusal. */}
-          {boardData.isArchived ? (
-            <ArchivedBoardNotice />
-          ) : (
-            actionError && <Alert variant="error">{actionError}</Alert>
+          {!boardData.isArchived && actionError && (
+            <Alert variant="error">{actionError}</Alert>
           )}
         </div>
       )}
@@ -391,6 +373,6 @@ export function BoardMembersPage() {
           onConfirm={confirmRemove}
         />
       )}
-    </PageContainer>
+    </div>
   );
 }

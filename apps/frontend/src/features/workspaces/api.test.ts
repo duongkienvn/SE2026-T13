@@ -102,6 +102,7 @@ describe('Workspace HTTP adapters', () => {
         name: board.name,
         updatedAt: board.updatedAt,
         archived: true,
+        visibility: board.visibility,
         memberCount: 1,
       },
     ]);

@@ -220,6 +220,36 @@ describe('Workspace routes using production HTTP adapters', () => {
     expect(screen.getByText('2 members')).toBeTruthy();
   });
 
+  it('opens Board creation from the Overview hero and reuses the verified creation flow', async () => {
+    const { calls, router } = mount(`/workspaces/${workspace.id}`, {
+      [`GET /workspaces/${workspace.id}/activity?page=1&limit=5`]:
+        workspacePage([], 1, 0, 5),
+      'POST /boards': ok(board, 201),
+    });
+    fireEvent.click(await screen.findByRole('link', { name: 'Create Board' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(router.state.location.pathname).toBe(
+      `/workspaces/${workspace.id}/boards`,
+    );
+    expect(screen.queryByRole('link', { name: 'Create Board' })).toBeNull();
+    const submit = await within(dialog).findByRole('button', {
+      name: 'Create Board',
+    });
+    await waitFor(() => expect(submit.matches(':disabled')).toBe(false));
+    fireEvent.change(within(dialog).getByLabelText('Board name'), {
+      target: { value: 'From Overview' },
+    });
+    fireEvent.submit(dialog.querySelector('form')!);
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(`/boards/${board.id}`),
+    );
+    expect(calls.find((call) => call.method === 'POST')?.body).toEqual({
+      name: 'From Overview',
+      description: null,
+      workspaceId: workspace.id,
+    });
+  });
+
   it('creates a Board as a Workspace MEMBER and navigates to the existing Board route', async () => {
     const { calls, router } = mount(undefined, {
       'POST /boards': ok(board, 201),

@@ -1,0 +1,422 @@
+{
+  "viewports": [
+    {
+      "width": 320,
+      "type": "personal",
+      "theme": "light",
+      "overflow": false,
+      "h1s": 1,
+      "metrics": 2,
+      "heroHeight": 205.75,
+      "navRows": 1,
+      "invite": false
+    },
+    {
+      "width": 320,
+      "type": "personal",
+      "theme": "dark",
+      "overflow": false,
+      "h1s": 1,
+      "metrics": 2,
+      "heroHeight": 205.75,
+      "navRows": 1,
+      "invite": false
+    },
+    {
+      "width": 320,
+      "type": "team",
+      "theme": "light",
+      "overflow": false,
+      "h1s": 1,
+      "metrics": 2,
+      "heroHeight": 257.75,
+      "navRows": 1,
+      "invite": true
+    },
+    {
+      "width": 320,
+      "type": "team",
+      "theme": "dark",
+      "overflow": false,
+      "h1s": 1,
+      "metrics": 2,
+      "heroHeight": 257.75,
+      "navRows": 1,
+      "invite": true
+    },
+    {
+      "width": 375,
+      "type": "personal",
+      "theme": "light",
+      "overflow": false,
+      "h1s": 1,
+      "metrics": 2,
+      "heroHeight": 177.75,
+      "navRows": 1,
+      "invite": false
+    },
+    {
+      "width": 375,
+      "type": "personal",
+      "theme": "dark",
+      "overflow": false,
+      "h1s": 1,
+      "metrics": 2,
+      "heroHeight": 177.75,
+      "navRows": 1,
+      "invite": false
+    },
+    {
+      "width": 375,
+      "type": "team",
+      "theme": "light",
+      "overflow": false,
+      "h1s": 1,
+      "metrics": 2,
+      "heroHeight": 229.75,
+      "navRows": 1,
+      "invite": true
+    },
+    {
+      "width": 375,
+      "type": "team",
+      "theme": "dark",
+      "overflow": false,
+      "h1s": 1,
+      "metrics": 2,
+      "heroHeight": 229.75,
+      "navRows": 1,
+      "invite": true
+    },
+    {
+      "width": 768,
+      "type": "personal",
+      "theme": "light",
+      "overflow": false,
+      "h1s": 1,
+      "metrics": 2,
+      "heroHeight": 190.75,
+      "navRows": 1,
+      "invite": false
+    },
+    {
+      "width": 768,
+      "type": "personal",
+      "theme": "dark",
+      "overflow": false,
+      "h1s": 1,
+      "metrics": 2,
+      "heroHeight": 190.75,
+      "navRows": 1,
+      "invite": false
+    },
+    {
+      "width": 768,
+      "type": "team",
+      "theme": "light",
+      "overflow": false,
+      "h1s": 1,
+      "metrics": 2,
+      "heroHeight": 190.75,
+      "navRows": 1,
+      "invite": true
+    },
+    {
+      "width": 768,
+      "type": "team",
+      "theme": "dark",
+      "overflow": false,
+      "h1s": 1,
+      "metrics": 2,
+      "heroHeight": 190.75,
+      "navRows": 1,
+      "invite": true
+    },
+    {
+      "width": 1280,
+      "type": "personal",
+      "theme": "light",
+      "overflow": false,
+      "h1s": 1,
+      "metrics": 2,
+      "heroHeight": 130.75,
+      "navRows": 1,
+      "invite": false
+    },
+    {
+      "width": 1280,
+      "type": "personal",
+      "theme": "dark",
+      "overflow": false,
+      "h1s": 1,
+      "metrics": 2,
+      "heroHeight": 130.75,
+      "navRows": 1,
+      "invite": false
+    },
+    {
+      "width": 1280,
+      "type": "team",
+      "theme": "light",
+      "overflow": false,
+      "h1s": 1,
+      "metrics": 2,
+      "heroHeight": 130.75,
+      "navRows": 1,
+      "invite": true
+    },
+    {
+      "width": 1280,
+      "type": "team",
+      "theme": "dark",
+      "overflow": false,
+      "h1s": 1,
+      "metrics": 2,
+      "heroHeight": 130.75,
+      "navRows": 1,
+      "invite": true
+    },
+    {
+      "width": 1440,
+      "type": "personal",
+      "theme": "light",
+      "overflow": false,
+      "h1s": 1,
+      "metrics": 2,
+      "heroHeight": 130.75,
+      "navRows": 1,
+      "invite": false
+    },
+    {
+      "width": 1440,
+      "type": "personal",
+      "theme": "dark",
+      "overflow": false,
+      "h1s": 1,
+      "metrics": 2,
+      "heroHeight": 130.75,
+      "navRows": 1,
+      "invite": false
+    },
+    {
+      "width": 1440,
+      "type": "team",
+      "theme": "light",
+      "overflow": false,
+      "h1s": 1,
+      "metrics": 2,
+      "heroHeight": 130.75,
+      "navRows": 1,
+      "invite": true
+    },
+    {
+      "width": 1440,
+      "type": "team",
+      "theme": "dark",
+      "overflow": false,
+      "h1s": 1,
+      "metrics": 2,
+      "heroHeight": 130.75,
+      "navRows": 1,
+      "invite": true
+    }
+  ],
+  "states": [
+    {
+      "width": 320,
+      "scenario": "overview-member",
+      "overflow": false,
+      "h1s": 1,
+      "invite": false,
+      "create": true,
+      "metricValues": ["2", "1"],
+      "protectedName": "Development Team",
+      "alerts": [],
+      "recentRows": 2
+    },
+    {
+      "width": 320,
+      "scenario": "overview-reader",
+      "overflow": false,
+      "h1s": 1,
+      "invite": false,
+      "create": false,
+      "metricValues": ["2", "1"],
+      "protectedName": "Development Team",
+      "alerts": [],
+      "recentRows": 2
+    },
+    {
+      "width": 320,
+      "scenario": "overview-empty",
+      "overflow": false,
+      "h1s": 1,
+      "invite": true,
+      "create": true,
+      "metricValues": ["0", "1"],
+      "protectedName": "Development Team",
+      "alerts": [],
+      "recentRows": 0
+    },
+    {
+      "width": 320,
+      "scenario": "overview-loading",
+      "overflow": false,
+      "h1s": 1,
+      "invite": false,
+      "create": false,
+      "metricValues": ["—Loading", "—Loading"],
+      "protectedName": "Loading workspace…",
+      "alerts": [],
+      "recentRows": 0
+    },
+    {
+      "width": 320,
+      "scenario": "overview-error",
+      "overflow": false,
+      "h1s": 1,
+      "invite": false,
+      "create": false,
+      "metricValues": ["—Unavailable", "—Unavailable"],
+      "protectedName": "Workspace overview",
+      "alerts": [
+        "Could not load workspaceCheck your connection and try again.Try again"
+      ],
+      "recentRows": 0
+    },
+    {
+      "width": 320,
+      "scenario": "overview-denied",
+      "overflow": false,
+      "h1s": 1,
+      "invite": false,
+      "create": false,
+      "metricValues": ["—Unavailable", "—Unavailable"],
+      "protectedName": "Workspace overview",
+      "alerts": [],
+      "recentRows": 0
+    },
+    {
+      "width": 320,
+      "scenario": "overview-long",
+      "overflow": false,
+      "h1s": 1,
+      "invite": true,
+      "create": true,
+      "metricValues": ["2", "1"],
+      "protectedName": "DevelopmentWithoutSpacesDevelopmentWithoutSpacesDevelopmentWithoutSpacesDevelopmentWithoutSpaces",
+      "alerts": [],
+      "recentRows": 2
+    },
+    {
+      "width": 320,
+      "scenario": "overview-activity-error",
+      "overflow": false,
+      "h1s": 1,
+      "invite": true,
+      "create": true,
+      "metricValues": ["2", "1"],
+      "protectedName": "Development Team",
+      "alerts": ["Unable to load activity. Retry"],
+      "recentRows": 2
+    },
+    {
+      "width": 1440,
+      "scenario": "overview-member",
+      "overflow": false,
+      "h1s": 1,
+      "invite": false,
+      "create": true,
+      "metricValues": ["2", "1"],
+      "protectedName": "Development Team",
+      "alerts": [],
+      "recentRows": 2
+    },
+    {
+      "width": 1440,
+      "scenario": "overview-reader",
+      "overflow": false,
+      "h1s": 1,
+      "invite": false,
+      "create": false,
+      "metricValues": ["2", "1"],
+      "protectedName": "Development Team",
+      "alerts": [],
+      "recentRows": 2
+    },
+    {
+      "width": 1440,
+      "scenario": "overview-empty",
+      "overflow": false,
+      "h1s": 1,
+      "invite": true,
+      "create": true,
+      "metricValues": ["0", "1"],
+      "protectedName": "Development Team",
+      "alerts": [],
+      "recentRows": 0
+    },
+    {
+      "width": 1440,
+      "scenario": "overview-loading",
+      "overflow": false,
+      "h1s": 1,
+      "invite": false,
+      "create": false,
+      "metricValues": ["—Loading", "—Loading"],
+      "protectedName": "Loading workspace…",
+      "alerts": [],
+      "recentRows": 0
+    },
+    {
+      "width": 1440,
+      "scenario": "overview-error",
+      "overflow": false,
+      "h1s": 1,
+      "invite": false,
+      "create": false,
+      "metricValues": ["—Unavailable", "—Unavailable"],
+      "protectedName": "Workspace overview",
+      "alerts": [
+        "Could not load workspaceCheck your connection and try again.Try again"
+      ],
+      "recentRows": 0
+    },
+    {
+      "width": 1440,
+      "scenario": "overview-denied",
+      "overflow": false,
+      "h1s": 1,
+      "invite": false,
+      "create": false,
+      "metricValues": ["—Unavailable", "—Unavailable"],
+      "protectedName": "Workspace overview",
+      "alerts": [],
+      "recentRows": 0
+    },
+    {
+      "width": 1440,
+      "scenario": "overview-long",
+      "overflow": false,
+      "h1s": 1,
+      "invite": true,
+      "create": true,
+      "metricValues": ["2", "1"],
+      "protectedName": "DevelopmentWithoutSpacesDevelopmentWithoutSpacesDevelopmentWithoutSpacesDevelopmentWithoutSpaces",
+      "alerts": [],
+      "recentRows": 2
+    },
+    {
+      "width": 1440,
+      "scenario": "overview-activity-error",
+      "overflow": false,
+      "h1s": 1,
+      "invite": true,
+      "create": true,
+      "metricValues": ["2", "1"],
+      "protectedName": "Development Team",
+      "alerts": ["Unable to load activity. Retry"],
+      "recentRows": 2
+    }
+  ]
+}
