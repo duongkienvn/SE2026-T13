@@ -92,7 +92,9 @@ export function cardsHarness() {
   ]);
   const manager = {
     getRepository: jest.fn((entity) => repositories.get(entity) ?? {}),
+    query: jest.fn().mockResolvedValue([]),
   };
+  Object.assign(cards, { manager });
   const transaction = jest.fn(async (callback) => callback(manager));
   const boards = { manager: { transaction } };
   const authorization = {
