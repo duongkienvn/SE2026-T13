@@ -31,6 +31,13 @@ import { ArchiveBoardDialog } from '../components/ArchiveBoardDialog';
 import { RestoreBoardDialog } from '../components/RestoreBoardDialog';
 import { KanbanBoard } from '../components/KanbanBoard';
 import { BoardIcon } from '../components/BoardIcon';
+import { BoardStar } from '../components/BoardStar';
+import { useRecordBoardView } from '../useRecordBoardView';
+import {
+  BoardBackgroundDialog,
+  backgroundStyle,
+  useBackgroundPresets,
+} from '../components/BoardBackground';
 import { EditBoardDialog } from '../components/BoardFormDialog';
 import { RoleChip } from '../components/RoleChip';
 import { useVerifiedBoard } from '../useVerifiedBoard';
@@ -88,11 +95,14 @@ export function BoardDetailPage() {
   const settings = useMatch('/boards/:boardId/settings') !== null;
   const { board, verified } = useVerifiedBoard(boardId);
   const client = useQueryClient();
+  useRecordBoardView(boardId, verified && !board.isError && !settings);
   const unavailable = board.isError && isBoardUnavailable(board.error);
   const realtime = useBoardRealtime(boardId, {
     enabled: verified && board.data !== undefined && !unavailable,
   });
   const [editing, setEditing] = useState(false);
+  const [changingBackground, setChangingBackground] = useState(false);
+  const presets = useBackgroundPresets();
   const [editDirty, setEditDirty] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [showingActivity, setShowingActivity] = useState(false);
@@ -211,14 +221,22 @@ export function BoardDetailPage() {
           </li>
         </ol>
       </nav>
-      <div className="flex flex-col gap-5 md:flex-row md:items-start">
+      <div
+        className="flex flex-col gap-5 rounded-xl p-3 md:flex-row md:items-start"
+        style={backgroundStyle(
+          presets.data?.find(
+            (item) => item.id === board.data?.backgroundPreset,
+          ),
+        )}
+      >
         <BoardIcon boardId={data.id} className="size-12 rounded-xl text-2xl" />
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 rounded-lg bg-surface p-3">
           <PageHeader
             title={data.name}
             description={data.description ?? undefined}
             actions={
               <>
+                <BoardStar boardId={data.id} boardName={data.name} />
                 <BoardPresence
                   boardId={data.id}
                   canReadMembers={data.currentUserRole !== null}
@@ -260,6 +278,15 @@ export function BoardDetailPage() {
                               label: 'Edit board',
                               onSelect: () => setEditing(true),
                             },
+                            ...(data.capabilities?.canManageBoard === true &&
+                            data.currentUserRole === BoardRole.OWNER
+                              ? [
+                                  {
+                                    label: 'Change background',
+                                    onSelect: () => setChangingBackground(true),
+                                  },
+                                ]
+                              : []),
                             ...(ownsActive
                               ? [
                                   {
@@ -382,9 +409,6 @@ export function BoardDetailPage() {
                   Background: {data.backgroundPreset}
                 </p>
               )}
-              <p className="text-sm text-muted">
-                Background customization will be available in a future update.
-              </p>
               {canManage && (
                 <Button variant="secondary" onClick={() => setEditing(true)}>
                   Edit board
@@ -529,6 +553,17 @@ export function BoardDetailPage() {
         />
       )}
       {ownerActions.dialog}
+      {changingBackground && (
+        <BoardBackgroundDialog
+          board={data}
+          canManage={
+            data.capabilities?.canManageBoard === true &&
+            data.currentUserRole === BoardRole.OWNER &&
+            !data.isArchived
+          }
+          onClose={() => setChangingBackground(false)}
+        />
+      )}
       {canManage && archiving && (
         <ArchiveBoardDialog
           board={data}

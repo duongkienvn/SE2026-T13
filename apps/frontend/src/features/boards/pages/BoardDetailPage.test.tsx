@@ -310,9 +310,9 @@ describe('BoardDetailPage', () => {
     );
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/boards'));
-    expect((await screen.findByRole('status')).textContent).toContain(
-      'Board “Old project” archived.',
-    );
+    expect(
+      await screen.findByText('Board “Old project” archived.'),
+    ).toBeTruthy();
     await waitFor(() => expect(router.state.location.state).toBeNull());
   });
 
@@ -629,7 +629,9 @@ describe('Board Detail OWNER visibility and move', () => {
     const dialog = await openAction(board, 'Move to workspace');
     await within(dialog).findByText(/Could not load your joined workspaces/);
     fireEvent.submit(dialog.querySelector('form')!);
-    expect(calls.some((c) => c.method === 'POST')).toBe(false);
+    expect(
+      calls.some((c) => c.method === 'POST' && !c.path.endsWith('/views')),
+    ).toBe(false);
     expect(
       within(dialog).queryByText(/No eligible destination workspace/),
     ).toBeNull();
@@ -653,7 +655,9 @@ describe('Board Detail OWNER visibility and move', () => {
     refocusWindow();
     await within(dialog).findByText(/No eligible destination workspace/);
     fireEvent.submit(dialog.querySelector('form')!);
-    expect(calls.some((c) => c.method === 'POST')).toBe(false);
+    expect(
+      calls.some((c) => c.method === 'POST' && !c.path.endsWith('/views')),
+    ).toBe(false);
   });
 
   it('disables an open visibility form when policy is revoked', async () => {
@@ -732,8 +736,13 @@ describe('Board Detail OWNER visibility and move', () => {
             : /^Board moved\./,
         ),
       ).toBeNull();
-      expect(calls.filter((c) => c.method === method)).toHaveLength(1);
-      expect(calls.find((c) => c.method === method)?.body).toEqual(
+      expect(
+        calls.filter((c) => c.method === method && !c.path.endsWith('/views')),
+      ).toHaveLength(1);
+      expect(
+        calls.find((c) => c.method === method && !c.path.endsWith('/views'))
+          ?.body,
+      ).toEqual(
         action === 'visibility'
           ? { visibility: 'WORKSPACE_VISIBLE' }
           : { destinationWorkspaceId: destination.id },
@@ -857,7 +866,9 @@ describe('Board Detail OWNER visibility and move', () => {
       refocusWindow();
       await screen.findByRole('heading', { name: board.name });
       expect(screen.queryByRole('dialog')).toBeNull();
-      expect(calls.filter((c) => c.method === method)).toHaveLength(1);
+      expect(
+        calls.filter((c) => c.method === method && !c.path.endsWith('/views')),
+      ).toHaveLength(1);
     },
   );
 
@@ -999,7 +1010,9 @@ describe('Board Detail OWNER visibility and move', () => {
     act(() => createdSockets.at(-1)!.socket.push('access:changed', {}));
     await act(async () => firstCheck.resolve(ok(board)));
     await screen.findByRole('heading', { name: 'Board not found' });
-    expect(calls.filter((c) => c.method === 'POST')).toHaveLength(1);
+    expect(
+      calls.filter((c) => c.method === 'POST' && !c.path.endsWith('/views')),
+    ).toHaveLength(1);
     expect(screen.queryByText(/^Board moved\./)).toBeNull();
   });
 
