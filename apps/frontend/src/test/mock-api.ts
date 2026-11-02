@@ -60,6 +60,19 @@ function defaultCardSection(method: string, path: string) {
   if (card?.[2] === 'labels') return ok({ cardId: card[1], labels: [] });
   if (card?.[2] === 'attachments') return page([], 5);
   if (/^\/boards\/[^/]+\/labels\?/.test(path)) return page([], 100);
+  if (/^\/boards\/[^/]+\/card-preview-summaries\?/.test(path)) {
+    const ids =
+      new URLSearchParams(path.split('?')[1]).get('cardIds')?.split(',') ?? [];
+    return ok({
+      summaries: ids.map((cardId) => ({
+        cardId,
+        labelIds: [],
+        checklist: { checkedItems: 0, totalItems: 0 },
+        attachmentCount: 0,
+        commentCount: 0,
+      })),
+    });
+  }
   return undefined;
 }
 

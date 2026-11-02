@@ -33,6 +33,7 @@ interface KanbanColumnProps {
   onOpenCard: (card: Card) => void;
   /** Read-only board, or a move is still saving. */
   dragDisabled: boolean;
+  filterActive?: boolean;
 }
 
 /** Keeps a press on a header button from starting a column drag. */
@@ -45,6 +46,7 @@ export function KanbanColumn({
   actions,
   onOpenCard,
   dragDisabled,
+  filterActive = false,
 }: KanbanColumnProps) {
   const headingId = useId();
   const [composing, setComposing] = useState(false);
@@ -133,8 +135,9 @@ export function KanbanColumn({
                   label: 'Delete column',
                   tone: 'danger',
                   onSelect: () => actions.onDelete(column),
-                  disabledReason:
-                    cards.length > 0
+                  disabledReason: filterActive
+                    ? 'Clear filters before deleting a column.'
+                    : cards.length > 0
                       ? 'Move or archive its cards first.'
                       : undefined,
                 },
@@ -151,7 +154,7 @@ export function KanbanColumn({
         >
           {cards.length === 0 && !composing && (
             <p className="rounded-lg border border-dashed border-line px-3 py-6 text-center text-sm text-muted">
-              No cards yet
+              {filterActive ? 'No matching cards' : 'No cards yet'}
             </p>
           )}
           {cards.length > 0 && (

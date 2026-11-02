@@ -12,6 +12,15 @@ import { useBoardMembers } from '../../board-members/hooks';
 import type { MemberUser } from '../../board-members/types';
 import { CardDetailDialog } from '../../cards/components/CardDetailDialog';
 import { useCards } from '../../cards/hooks';
+import {
+  BoardFilter,
+  useBoardFilters,
+  useFilteredCards,
+  usePreviewSummaries,
+} from '../../cards/board-filter';
+import { PreviewContext } from '../../cards/components/preview-context';
+import { useDatePreferences } from '../../cards/components/detail/CardDates';
+import { useLabelCatalog } from '../../labels/hooks';
 import { useCardRoute } from '../../cards/useCardRoute';
 import type { Card } from '../../cards/types';
 import { groupCardsByColumn } from '../../cards/ordering';
@@ -49,26 +58,84 @@ export function KanbanBoard({
 }: KanbanBoardProps) {
   const { cardId, openCard, closeCard } = useCardRoute(boardId);
   const columns = useColumns(boardId);
-  const cards = useCards(boardId);
+  const { filters, apply, active } = useBoardFilters();
+  const allCards = useCards(boardId, { enabled: !active });
+  const [page, setPage] = useState(1);
+  const filteredCards = useFilteredCards(boardId, filters, page, active);
+  const cards = active
+    ? { ...filteredCards, data: filteredCards.data?.items }
+    : allCards;
+  const filterKey = JSON.stringify(filters);
+  useEffect(() => setPage(1), [filterKey, boardId]);
+  useEffect(() => {
+    if (
+      active &&
+      filteredCards.data &&
+      page > Math.max(1, filteredCards.data.meta.totalPages)
+    )
+      setPage(Math.max(1, filteredCards.data.meta.totalPages));
+  }, [active, filteredCards.data, page]);
+  const labels = useLabelCatalog(boardId);
+  const { timeZone, dateFormat } = useDatePreferences();
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const current = Date.now();
+    const nextMinute = 60_000 - (current % 60_000);
+    const nextDue = (cards.data ?? []).reduce((delay, card) => {
+      const remaining = card.dueDate
+        ? Date.parse(card.dueDate) - current + 1
+        : Infinity;
+      return remaining > 0 ? Math.min(delay, remaining) : delay;
+    }, nextMinute);
+    const timer = setTimeout(() => setNow(Date.now()), nextDue);
+    return () => clearTimeout(timer);
+  }, [cards.data, now]);
+  const summaries = usePreviewSummaries(
+    boardId,
+    cards.data?.map((card) => card.id) ?? [],
+  );
   // Only for assignee names and avatars: the board still shows without them.
   const members = useBoardMembers(boardId, { enabled: canReadMembers });
   const queryClient = useQueryClient();
+  useEffect(() => {
+    if (active && filters.dueStatus)
+      void queryClient.invalidateQueries({
+        queryKey: [...boardKeys.cards(boardId), 'filtered'],
+      });
+  }, [active, boardId, filters.dueStatus, now, queryClient]);
   const [dialog, setDialog] = useState<OpenDialog>();
 
   // 403/404 here means access was lost or the board is gone. Cached columns
   // and cards would keep it on screen, so refetch the board itself: the page
   // then shows "Board not found". Only the board (`exact`), not this data.
-  const lostAccess = [columns.error, cards.error].some(
+  const lostAccess = [
+    columns.error,
+    active ? null : cards.error,
+    summaries.error,
+    labels.error,
+  ].some(
     (error) =>
       isApiError(error) && (error.status === 403 || error.status === 404),
   );
   useEffect(() => {
-    if (!lostAccess) return;
+    if (
+      !lostAccess &&
+      !(
+        active &&
+        isApiError(cards.error) &&
+        [403, 404].includes(cards.error.status)
+      )
+    )
+      return;
     void queryClient.invalidateQueries({
       queryKey: boardKeys.detail(boardId),
       exact: true,
     });
-  }, [lostAccess, boardId, queryClient]);
+  }, [lostAccess, active, cards.error, boardId, queryClient]);
+  const filterDenied =
+    active &&
+    isApiError(cards.error) &&
+    [403, 404].includes(cards.error.status);
   const closeDialog = () => setDialog(undefined);
 
   const membersById = useMemo(
@@ -95,7 +162,17 @@ export function KanbanBoard({
   const openedCard = cards.data?.find((card) => card.id === cardId);
 
   let content;
-  if (columns.isPending || cards.isPending) {
+  if (filterDenied) {
+    content = (
+      <ErrorState
+        title="We couldn't load these filters"
+        description="A selected label or member may no longer be available. Clear the filters or try again."
+        onRetry={() => void cards.refetch()}
+      />
+    );
+  } else if (lostAccess) {
+    content = <LoadingState label="Checking board access..." />;
+  } else if (columns.isPending || cards.isPending) {
     content = <LoadingState label="Loading columns and cards…" />;
   } else if (!columns.data || !cards.data) {
     // A failed background refresh keeps the loaded board on screen.
@@ -129,6 +206,7 @@ export function KanbanBoard({
       <KanbanDndBoard
         boardId={boardId}
         groups={groups}
+        filterActive={active}
         members={membersById}
         actions={columnActions}
         onOpenCard={(card: Card) => openCard(card.id)}
@@ -149,18 +227,130 @@ export function KanbanBoard({
   }
 
   return (
-    <>
-      {content}
-      {!readOnly && dialog?.kind === 'create-column' && (
-        <CreateColumnDialog boardId={boardId} open onClose={closeDialog} />
+    <div className="flex h-full min-h-0 flex-col">
+      {!lostAccess && !filterDenied && (
+        <BoardFilter
+          filters={filters}
+          apply={apply}
+          labels={labels.data ?? []}
+          labelsPending={labels.isPending}
+          labelsError={labels.isError}
+          membersPending={canReadMembers && members.isPending}
+          membersError={canReadMembers && members.isError}
+          retryLabels={() => void labels.refetch()}
+          retryMembers={() => void members.refetch()}
+          members={canReadMembers ? (members.data ?? []) : []}
+        />
       )}
-      {!readOnly && dialog?.kind === 'rename-column' && (
-        <RenameColumnDialog column={dialog.column} open onClose={closeDialog} />
+      {filterDenied && (
+        <button
+          type="button"
+          className="mb-3 self-start text-sm text-primary underline"
+          onClick={() => apply({})}
+        >
+          Clear filters
+        </button>
       )}
-      {!readOnly && dialog?.kind === 'delete-column' && (
-        <DeleteColumnDialog column={dialog.column} open onClose={closeDialog} />
+      {active && !lostAccess && !filterDenied && (
+        <p className="mb-3 text-sm text-muted" role="status">
+          {cards.isPending
+            ? 'Loading matches...'
+            : cards.isError
+              ? 'Could not load matches'
+              : `${filteredCards.data?.meta.total ?? 0} matching cards`}
+          . Column counts show cards on this page. Reordering is disabled while
+          filters are active.{' '}
+          <button
+            type="button"
+            className="text-primary underline"
+            onClick={() => apply({})}
+          >
+            Clear filters
+          </button>
+        </p>
       )}
-      {cardId && (
+      {active &&
+        !lostAccess &&
+        !filterDenied &&
+        filteredCards.data &&
+        filteredCards.data.meta.totalPages > 1 && (
+          <nav
+            className="mb-3 flex items-center gap-3 text-sm"
+            aria-label="Card results pages"
+          >
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage(page - 1)}
+              className="rounded border border-line px-2 py-1 disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <span>
+              Page {page} of {filteredCards.data.meta.totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={page >= filteredCards.data.meta.totalPages}
+              onClick={() => setPage(page + 1)}
+              className="rounded border border-line px-2 py-1 disabled:opacity-50"
+            >
+              Next
+            </button>
+          </nav>
+        )}
+      {summaries.isError && !lostAccess && !filterDenied && (
+        <p role="alert" className="mb-2 text-sm text-danger">
+          Card preview details could not be loaded.{' '}
+          <button
+            type="button"
+            className="underline"
+            onClick={() => void summaries.refetch()}
+          >
+            Retry
+          </button>
+        </p>
+      )}
+      <PreviewContext.Provider
+        value={{
+          summaries: new Map(
+            (summaries.data ?? []).map((item) => [item.cardId, item]),
+          ),
+          labels: labels.data ?? [],
+          timeZone,
+          dateFormat,
+          now,
+        }}
+      >
+        <div className="min-h-0 flex-1">{content}</div>
+      </PreviewContext.Provider>
+      {!lostAccess &&
+        !filterDenied &&
+        !readOnly &&
+        dialog?.kind === 'create-column' && (
+          <CreateColumnDialog boardId={boardId} open onClose={closeDialog} />
+        )}
+      {!lostAccess &&
+        !filterDenied &&
+        !readOnly &&
+        dialog?.kind === 'rename-column' && (
+          <RenameColumnDialog
+            column={dialog.column}
+            open
+            onClose={closeDialog}
+          />
+        )}
+      {!lostAccess &&
+        !filterDenied &&
+        !readOnly &&
+        dialog?.kind === 'delete-column' && (
+          <DeleteColumnDialog
+            column={dialog.column}
+            open
+            onClose={closeDialog}
+          />
+        )}
+      {cardId && !lostAccess && !filterDenied && (
         <CardDetailDialog
           key={`${boardId}:${cardId}`}
           boardId={boardId}
@@ -174,10 +364,18 @@ export function KanbanBoard({
           canReadMembers={canReadMembers}
           boardName={boardName}
           boardReadOnly={readOnly}
-          onClose={closeCard}
+          onClose={() => {
+            closeCard();
+            void queryClient.invalidateQueries({
+              queryKey: [...boardKeys.cards(boardId), 'filtered'],
+            });
+            void queryClient.invalidateQueries({
+              queryKey: [...boardKeys.cards(boardId), 'preview-summaries'],
+            });
+          }}
           onOpenCard={openCard}
         />
       )}
-    </>
+    </div>
   );
 }

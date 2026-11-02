@@ -1,6 +1,8 @@
-import type { ReactNode } from 'react';
+import { useContext, type ReactNode } from 'react';
 import { ClockIcon } from '../../../components/icons';
-import { formatDate } from '../../../lib/format';
+import { formatCardInstant } from '../card-dates';
+import { DueStatusBadge } from './detail/CardDates';
+import { PreviewContext } from './preview-context';
 import { UserAvatar } from '../../auth/components/UserAvatar';
 import type { MemberUser } from '../../board-members/types';
 import type { Card } from '../types';
@@ -26,12 +28,22 @@ export function KanbanCard({
   dragHandle,
   now = Date.now(),
 }: KanbanCardProps) {
+  const {
+    summaries,
+    labels,
+    timeZone,
+    dateFormat,
+    now: boardNow,
+  } = useContext(PreviewContext);
+  const summary = summaries.get(card.id);
+  const cardLabels = labels.filter((label) =>
+    summary?.labelIds.includes(label.id),
+  );
   const assignees = card.assignees
     .map((assignee) => members.get(assignee.userId))
     .filter((user): user is MemberUser => !!user);
   const shown = assignees.slice(0, MAX_AVATARS);
   const hidden = assignees.length - shown.length;
-  const overdue = !!card.dueDate && new Date(card.dueDate).getTime() < now;
 
   return (
     <article
@@ -44,14 +56,13 @@ export function KanbanCard({
           {dragHandle}
           {card.dueDate && (
             <p
-              className={`ml-auto flex items-center gap-1 text-xs ${
-                overdue ? 'font-medium text-danger' : 'text-muted'
-              }`}
+              className={`ml-auto flex items-center gap-1 text-xs ${'text-muted'}`}
             >
               <ClockIcon aria-hidden="true" className="size-3.5" />
               <span className="sr-only">Due </span>
-              <time dateTime={card.dueDate}>{formatDate(card.dueDate)}</time>
-              {overdue && <span>· Overdue</span>}
+              <time title={timeZone} dateTime={card.dueDate}>
+                {formatCardInstant(card.dueDate, dateFormat, timeZone)}
+              </time>
             </p>
           )}
         </div>
@@ -75,6 +86,60 @@ export function KanbanCard({
           {card.description}
         </p>
       )}
+      {card.startDate && (
+        <p className="mt-2 text-xs text-muted">
+          Starts{' '}
+          <time dateTime={card.startDate}>
+            {formatCardInstant(card.startDate, dateFormat, timeZone)}
+          </time>
+        </p>
+      )}
+      {card.dueDate && (
+        <div className="mt-2">
+          <DueStatusBadge
+            dueDate={card.dueDate}
+            timeZone={timeZone}
+            now={boardNow || now}
+          />
+        </div>
+      )}
+      {cardLabels.length > 0 && (
+        <ul className="mt-2 flex flex-wrap gap-1">
+          {cardLabels.map((label) => (
+            <li
+              key={label.id}
+              title={label.name}
+              className="max-w-full truncate rounded bg-app px-2 py-0.5 text-xs text-ink"
+            >
+              <span
+                aria-hidden="true"
+                style={{ backgroundColor: label.color }}
+                className="mr-1 inline-block size-2 rounded-full"
+              />
+              {label.name}
+            </li>
+          ))}
+        </ul>
+      )}
+      {summary &&
+        (summary.checklist.totalItems > 0 ||
+          summary.attachmentCount > 0 ||
+          summary.commentCount > 0) && (
+          <p className="mt-2 flex flex-wrap gap-x-3 text-xs text-muted">
+            {summary.checklist.totalItems > 0 && (
+              <span>
+                Checklist {summary.checklist.checkedItems}/
+                {summary.checklist.totalItems}
+              </span>
+            )}
+            {summary.attachmentCount > 0 && (
+              <span>Attachments {summary.attachmentCount}</span>
+            )}
+            {summary.commentCount > 0 && (
+              <span>Comments {summary.commentCount}</span>
+            )}
+          </p>
+        )}
       {assignees.length > 0 && (
         <div className="mt-3 flex justify-end">
           <ul
