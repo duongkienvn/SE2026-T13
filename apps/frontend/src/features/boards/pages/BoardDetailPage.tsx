@@ -34,6 +34,13 @@ import { ArchiveBoardDialog } from '../components/ArchiveBoardDialog';
 import { RestoreBoardDialog } from '../components/RestoreBoardDialog';
 import { KanbanBoard } from '../components/KanbanBoard';
 import { BoardIcon } from '../components/BoardIcon';
+import { BoardStar } from '../components/BoardStar';
+import { useRecordBoardView } from '../useRecordBoardView';
+import {
+  BoardBackgroundDialog,
+  backgroundStyle,
+  useBackgroundPresets,
+} from '../components/BoardBackground';
 import { EditBoardDialog } from '../components/BoardFormDialog';
 import { RoleChip } from '../components/RoleChip';
 import { useVerifiedBoard } from '../useVerifiedBoard';
@@ -102,10 +109,16 @@ export function BoardDetailPage() {
   const unavailable =
     (board.isError && isBoardUnavailable(board.error)) ||
     (members.isError && isBoardUnavailable(members.error));
+  useRecordBoardView(
+    boardId,
+    verified && !board.isError && !unavailable && !settings && !membersPage,
+  );
   const realtime = useBoardRealtime(boardId, {
     enabled: verified && board.data !== undefined && !unavailable,
   });
   const [editing, setEditing] = useState(false);
+  const [changingBackground, setChangingBackground] = useState(false);
+  const presets = useBackgroundPresets();
   const [editDirty, setEditDirty] = useState(false);
   const closeEditor = useCallback(() => {
     setEditing(false);
@@ -249,40 +262,51 @@ export function BoardDetailPage() {
           </li>
         </ol>
       </nav>
-      <div className="flex items-start gap-3 md:gap-4">
-        <BoardIcon
-          boardId={data.id}
-          className="size-10 shrink-0 rounded-xl text-xl md:size-12 md:text-2xl"
-        />
-        <div className="min-w-0 flex-1">
-          <h1
-            title={data.name}
-            className="line-clamp-2 text-xl leading-tight font-bold tracking-tight text-ink [overflow-wrap:anywhere] md:text-2xl"
-          >
-            {data.name}
-          </h1>
-          {data.description && (
-            <p
-              title={data.description}
-              className="mt-1 line-clamp-2 text-sm text-muted [overflow-wrap:anywhere]"
+      <div
+        className="rounded-xl p-3"
+        style={backgroundStyle(
+          presets.data?.find((item) => item.id === data.backgroundPreset),
+        )}
+      >
+        <div className="flex items-start gap-3 rounded-lg bg-surface p-3 md:gap-4">
+          <BoardIcon
+            boardId={data.id}
+            className="size-10 shrink-0 rounded-xl text-xl md:size-12 md:text-2xl"
+          />
+          <div className="min-w-0 flex-1">
+            <h1
+              title={data.name}
+              className="line-clamp-2 text-xl leading-tight font-bold tracking-tight text-ink [overflow-wrap:anywhere] md:text-2xl"
             >
-              {data.description}
-            </p>
-          )}
+              {data.name}
+            </h1>
+            {data.description && (
+              <p
+                title={data.description}
+                className="mt-1 line-clamp-2 text-sm text-muted [overflow-wrap:anywhere]"
+              >
+                {data.description}
+              </p>
+            )}
+          </div>
+          <ActionMenu
+            className="shrink-0 [&>button]:size-11"
+            label={`Actions for ${data.name}`}
+            items={[
+              {
+                label: 'Archived cards',
+                onSelect: () => setShowingArchivedCards(true),
+              },
+              {
+                label: 'Copy board link',
+                onSelect: () => void copyBoardLink(),
+              },
+            ]}
+          />
         </div>
-        <ActionMenu
-          className="shrink-0 [&>button]:size-11"
-          label={`Actions for ${data.name}`}
-          items={[
-            {
-              label: 'Archived cards',
-              onSelect: () => setShowingArchivedCards(true),
-            },
-            { label: 'Copy board link', onSelect: () => void copyBoardLink() },
-          ]}
-        />
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
+        <BoardStar boardId={data.id} boardName={data.name} />
         <RoleChip role={data.currentUserRole} />
         {data.visibility && (
           <span className="text-muted">
@@ -326,6 +350,11 @@ export function BoardDetailPage() {
           board={data}
           workspace={workspace}
           canManage={canManage}
+          canChangeBackground={
+            canManage &&
+            data.capabilities?.canManageBoard === true &&
+            data.currentUserRole === BoardRole.OWNER
+          }
           canRestore={canRestore}
           canMove={ownsActive}
           canChangeVisibility={
@@ -341,6 +370,7 @@ export function BoardDetailPage() {
               : undefined
           }
           onEdit={() => setEditing(true)}
+          onChangeBackground={() => setChangingBackground(true)}
           onVisibility={() => ownerActions.open(ownerBoard!, 'visibility')}
           onMove={() => ownerActions.open(ownerBoard!, 'move')}
           onArchive={() => setArchiving(true)}
@@ -400,6 +430,17 @@ export function BoardDetailPage() {
         />
       )}
       {ownerActions.dialog}
+      {changingBackground && (
+        <BoardBackgroundDialog
+          board={data}
+          canManage={
+            data.capabilities?.canManageBoard === true &&
+            data.currentUserRole === BoardRole.OWNER &&
+            !data.isArchived
+          }
+          onClose={() => setChangingBackground(false)}
+        />
+      )}
       {canManage && archiving && (
         <ArchiveBoardDialog
           board={data}

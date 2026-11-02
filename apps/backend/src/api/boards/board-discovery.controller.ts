@@ -19,7 +19,7 @@ import {
   ApiExtraModels,
   getSchemaPath,
 } from '@nestjs/swagger';
-import { IsIn } from 'class-validator';
+import { IsIn, IsInt, Min, ValidateIf } from 'class-validator';
 import { Expose } from 'class-transformer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -38,6 +38,11 @@ class UpdateBackgroundDto {
   @IsIn(BOARD_BACKGROUND_IDS)
   @ApiProperty({ enum: BOARD_BACKGROUND_IDS })
   preset!: string;
+  @ValidateIf((_object: unknown, value: unknown) => value !== undefined)
+  @IsInt()
+  @Min(0)
+  @ApiProperty({ required: false, minimum: 0 })
+  expectedVersion?: number;
 }
 class BoardUserStateDto {
   @Expose() @ApiProperty() isStarred!: boolean;
@@ -139,6 +144,11 @@ export class BoardDiscoveryController {
     @Param('boardId', ParseUUIDPipe) id: string,
     @Body() input: UpdateBackgroundDto,
   ) {
-    return this.discovery.background(user.userId, id, input.preset);
+    return this.discovery.background(
+      user.userId,
+      id,
+      input.preset,
+      input.expectedVersion,
+    );
   }
 }

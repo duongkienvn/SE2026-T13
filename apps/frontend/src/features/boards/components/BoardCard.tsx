@@ -5,6 +5,8 @@ import { formatRelativeTime } from '../../../lib/format';
 import type { Board } from '../types';
 import { BoardIcon } from './BoardIcon';
 import { RoleChip } from './RoleChip';
+import { BoardStar } from './BoardStar';
+import { backgroundStyle, useBackgroundPresets } from './BoardBackground';
 
 interface BoardCardProps {
   board: Board;
@@ -24,6 +26,10 @@ export function BoardCard({
   onArchive,
   onRestore,
 }: BoardCardProps) {
+  const presets = useBackgroundPresets();
+  const background = presets.data?.find(
+    (item) => item.id === board.backgroundPreset,
+  );
   const actions = [
     onEdit && { label: 'Edit board', onSelect: onEdit },
     onArchive && {
@@ -35,7 +41,14 @@ export function BoardCard({
   ].filter((item) => !!item);
 
   return (
-    <article className="relative flex h-34 w-full flex-col rounded-xl border border-line bg-surface p-4 shadow-card transition-shadow focus-within:ring-3 focus-within:ring-primary/20 hover:shadow-frame">
+    <article className="relative flex h-34 w-full min-w-0 flex-col rounded-xl border border-line bg-surface p-4 shadow-card transition-shadow focus-within:ring-3 focus-within:ring-primary/20 hover:shadow-frame">
+      {background && (
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 top-0 h-2 rounded-t-xl"
+          style={backgroundStyle(background)}
+        />
+      )}
       {/* Compact row layout (icon beside the title) so more boards fit per page. */}
       <div className="flex items-start gap-3">
         <BoardIcon boardId={board.id} className="size-10 rounded-lg text-xl" />
@@ -61,6 +74,7 @@ export function BoardCard({
             </p>
           </div>
         </div>
+        <BoardStar boardId={board.id} boardName={board.name} />
         {actions.length > 0 && (
           // Above the card-wide link overlay so the menu stays clickable.
           <ActionMenu

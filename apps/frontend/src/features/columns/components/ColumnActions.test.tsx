@@ -45,7 +45,7 @@ function sequence(before: Column[], after: Column[]) {
 }
 
 const writes = (calls: { method: string; path: string; body: unknown }[]) =>
-  calls.filter((c) => c.method !== 'GET');
+  calls.filter((c) => c.method !== 'GET' && !c.path.endsWith('/views'));
 
 describe('column actions', () => {
   it('adds the first column from the empty board, validating the name', async () => {

@@ -76,6 +76,8 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Frontend tasks
 
+- [Board discovery and customization UI](frontend/board-discovery-customization-ui.md)
+
 - [Workspace Overview visual redesign](frontend/workspace-overview-redesign.md)
 
 - [Board Navigation & Settings UX Polish](frontend/board-navigation-settings-polish.md)

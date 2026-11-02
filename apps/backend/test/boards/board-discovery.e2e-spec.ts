@@ -56,5 +56,20 @@ describe('board discovery HTTP validation', () => {
         .send({ preset })
         .expect(400);
     expect(discovery.background).toHaveBeenCalledTimes(2);
+    await request(app.getHttpServer())
+      .patch(`/boards/${id}/background`)
+      .send({ preset: 'blue', expectedVersion: 2 })
+      .expect(200);
+    expect(discovery.background).toHaveBeenLastCalledWith(
+      'owner',
+      id,
+      'blue',
+      2,
+    );
+    for (const expectedVersion of [-1, 1.5, '2', null])
+      await request(app.getHttpServer())
+        .patch(`/boards/${id}/background`)
+        .send({ preset: 'blue', expectedVersion })
+        .expect(400);
   });
 });

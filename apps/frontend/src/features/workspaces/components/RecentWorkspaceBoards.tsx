@@ -8,6 +8,7 @@ import {
 import { formatRelativeTime } from '../../../lib/format';
 import { workspacePath } from '../navigation';
 import type { WorkspaceOverview, WorkspaceViewState } from '../types';
+import { useWorkspaceBoards } from '../boards/hooks';
 
 export function RecentWorkspaceBoards({
   overview,
@@ -16,8 +17,14 @@ export function RecentWorkspaceBoards({
   overview?: WorkspaceOverview;
   state: WorkspaceViewState;
 }) {
-  const boards = overview?.recentBoards ?? [];
   const { workspaceId = '' } = useParams();
+  const recent = useWorkspaceBoards(
+    workspaceId,
+    { search: '', status: 'active', sort: 'recent', page: 1, view: 'recent' },
+    state,
+  );
+  const boards = recent.pageData?.items ?? [];
+  const recentState = recent.state;
   return (
     <section
       aria-labelledby="recent-workspace-boards"
@@ -32,13 +39,13 @@ export function RecentWorkspaceBoards({
           Recent Boards
         </h2>
         <Link
-          to={`${workspacePath(workspaceId)}/boards`}
+          to={`${workspacePath(workspaceId)}/boards?view=recent&sort=recent`}
           className="flex min-h-11 items-center gap-1.5 rounded text-xs font-semibold text-primary focus-visible:outline-2 focus-visible:outline-primary"
         >
           View all <ArrowRightIcon className="size-3.5" />
         </Link>
       </header>
-      {state === 'loading' ? (
+      {recentState === 'loading' ? (
         <div
           aria-label="Loading recent boards"
           className="space-y-5 motion-safe:animate-pulse"
@@ -76,7 +83,7 @@ export function RecentWorkspaceBoards({
                     {board.name}
                   </h3>
                   <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs leading-5 text-muted">
-                    {board.archived && (
+                    {board.isArchived && (
                       <span className="rounded bg-app px-1.5 font-medium">
                         Archived · Read only
                       </span>
@@ -97,13 +104,17 @@ export function RecentWorkspaceBoards({
                       </>
                     )}
                     <span>
-                      Updated{' '}
-                      <time
-                        dateTime={board.updatedAt}
-                        title={new Date(board.updatedAt).toLocaleString()}
-                      >
-                        {formatRelativeTime(board.updatedAt)}
-                      </time>
+                      Viewed{' '}
+                      {board.lastViewedAt ? (
+                        <time
+                          dateTime={board.lastViewedAt}
+                          title={new Date(board.lastViewedAt).toLocaleString()}
+                        >
+                          {formatRelativeTime(board.lastViewedAt)}
+                        </time>
+                      ) : (
+                        'Unavailable'
+                      )}
                     </span>
                     <span aria-hidden="true">·</span>
                     <span>
@@ -124,16 +135,16 @@ export function RecentWorkspaceBoards({
             <ColumnsIcon className="size-5" />
           </span>
           <h3 className="text-sm font-medium text-ink">
-            {state === 'ready'
-              ? 'No accessible boards yet'
+            {recentState === 'ready'
+              ? 'No recently viewed boards'
               : 'Recent boards unavailable'}
           </h3>
           <p className="mt-2 max-w-xs text-xs leading-relaxed text-muted">
-            {state === 'ready'
-              ? 'Boards you have access to will appear here.'
+            {recentState === 'ready'
+              ? 'Boards you open will appear here.'
               : 'Your accessible boards will appear here when Workspace services are available.'}
           </p>
-          {state === 'ready' && overview?.workspace.canCreateBoards && (
+          {recentState === 'ready' && overview?.workspace.canCreateBoards && (
             <Link
               to={`${workspacePath(workspaceId)}/boards?create=board`}
               className="mt-3 inline-flex min-h-11 items-center rounded text-sm text-primary focus-visible:outline-2 focus-visible:outline-primary"

@@ -75,6 +75,37 @@ afterEach(() => {
 });
 
 describe('Board navigation polish', () => {
+  it('keeps star and background customization accessible in the updated settings', async () => {
+    const { board } = setup(
+      '/settings',
+      {
+        backgroundPreset: 'blue',
+        backgroundVersion: 0,
+        currentUserRole: 'OWNER',
+        capabilities: {
+          canReadBoard: true,
+          canWriteBoard: true,
+          canManageBoard: true,
+          canManageMembers: true,
+          canRestoreBoard: false,
+        },
+      },
+      {
+        'GET /boards/background-presets': ok([
+          { id: 'blue', kind: 'color', value: '#2563EB', foreground: 'light' },
+        ]),
+      },
+    );
+    expect(
+      await screen.findByRole('button', {
+        name: `Add to starred: ${board.name}`,
+      }),
+    ).toBeTruthy();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Change background' }),
+    );
+    expect(await screen.findByRole('dialog')).toBeTruthy();
+  });
   it('switches Kanban → Members → Settings → Kanban with a stable header and realtime room', async () => {
     const { board, router } = setup();
     await screen.findByRole('heading', { name: board.name });

@@ -84,8 +84,18 @@ export function mockApi(overrides: Record<string, Handler>): MockRequest[] {
       };
       calls.push(request);
 
+      // Older route fixtures describe the same first-page data using the
+      // pre-discovery query. Keep them useful for unrelated navigation tests;
+      // directory tests provide and assert the exact new server query.
+      const legacyBoardList =
+        method === 'GET' &&
+        path === '/boards?page=1&limit=20&status=active&sort=updatedAt'
+          ? handlers['GET /boards?page=1&limit=100']
+          : undefined;
       const handler =
-        handlers[`${method} ${path}`] ?? defaultCardSection(method, path);
+        handlers[`${method} ${path}`] ??
+        legacyBoardList ??
+        defaultCardSection(method, path);
       if (!handler) throw new Error(`Unexpected request: ${method} ${path}`);
       const { status, body } =
         typeof handler === 'function' ? await handler(request) : handler;

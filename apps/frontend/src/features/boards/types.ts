@@ -23,6 +23,8 @@ export interface Board {
   workspaceId?: string;
   visibility?: BoardVisibility;
   backgroundPreset?: string;
+  backgroundVersion?: number;
+  lastViewedAt?: string | null;
   capabilities?: BoardCapabilities;
 }
 

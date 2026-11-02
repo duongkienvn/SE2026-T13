@@ -16,6 +16,7 @@ describe('board discovery background', () => {
     id: 'board',
     workspaceId: 'workspace',
     backgroundPreset: 'blue',
+    backgroundVersion: 0,
     name: 'Board',
     description: null,
     createdById: 'owner',
@@ -51,6 +52,7 @@ describe('board discovery background', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     board.backgroundPreset = 'blue';
+    board.backgroundVersion = 0;
   });
 
   it('provides eight colors and four distinct photographic presets', () => {
@@ -100,6 +102,19 @@ describe('board discovery background', () => {
     await expect(
       service.background('owner', 'board', 'forest'),
     ).rejects.toThrow('audit failed');
+    expect(events.publish).not.toHaveBeenCalled();
+  });
+
+  it('rejects stale versions even when the preset changed back', async () => {
+    await service.background('owner', 'board', 'forest', 0);
+    await service.background('owner', 'board', 'blue', 1);
+    expect(board.backgroundVersion).toBe(2);
+    jest.clearAllMocks();
+    await expect(
+      service.background('owner', 'board', 'teal', 0),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(board.backgroundPreset).toBe('blue');
+    expect(save).not.toHaveBeenCalled();
     expect(events.publish).not.toHaveBeenCalled();
   });
 });

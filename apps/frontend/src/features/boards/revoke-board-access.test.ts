@@ -25,6 +25,8 @@ describe('Board access loss in Workspace caches', () => {
     client.setQueryData(boardKeys.detail('revoked'), {
       name: 'Protected Board',
     });
+    const starKey = ['board-discovery', 'user', 3, 'state', 'REVOKED'];
+    client.setQueryData(starKey, { isStarred: true });
 
     revokeBoardAccess(client, 'revoked');
 
@@ -39,6 +41,7 @@ describe('Board access loss in Workspace caches', () => {
       { id: 'workspace', name: 'Member workspace' },
     ]);
     expect(client.getQueryData(boardKeys.detail('revoked'))).toBeUndefined();
+    expect(client.getQueryData(starKey)).toBeUndefined();
     client.clear();
   });
 });

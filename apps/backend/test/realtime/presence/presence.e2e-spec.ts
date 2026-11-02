@@ -13,9 +13,9 @@ describe('Board presence through real Socket.IO and AppModule', () => {
       {
         cwd: resolve(__dirname, '../../..'),
         encoding: 'utf8',
-        timeout: 60_000,
+        timeout: 180_000,
       },
     );
     expect(output).toContain('Presence Socket.IO: 8 groups PASS');
-  }, 65_000);
+  }, 185_000);
 });

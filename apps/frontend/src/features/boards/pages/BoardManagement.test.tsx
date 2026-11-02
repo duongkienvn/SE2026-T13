@@ -11,7 +11,7 @@ import {
 } from '../../../test/mock-api';
 import { renderApp } from '../../../test/render';
 
-const LIST = 'GET /boards?page=1&limit=100';
+const LIST = 'GET /boards?page=1&limit=20&status=active&sort=updatedAt';
 type Handler = MockResponse | (() => MockResponse | Promise<MockResponse>);
 
 function openBoards(handlers: Record<string, Handler>) {
@@ -49,7 +49,11 @@ describe('create board', () => {
       within(dialog).getByRole('button', { name: 'Create board' }),
     );
     expect(within(dialog).getByText('Enter a board name.')).toBeTruthy();
-    expect(calls.some((call) => call.method === 'POST')).toBe(false);
+    expect(
+      calls.some(
+        (call) => call.method === 'POST' && !call.path.endsWith('/views'),
+      ),
+    ).toBe(false);
 
     fireEvent.change(name, { target: { value: '  Roadmap  ' } });
     fireEvent.change(within(dialog).getByLabelText('Description'), {
@@ -59,11 +63,16 @@ describe('create board', () => {
       within(dialog).getByRole('button', { name: 'Create board' }),
     );
 
-    expect((await screen.findByRole('status')).textContent).toContain(
-      'Board “Roadmap” created.',
-    );
+    expect(
+      (await screen.findByText(/Board “.*” (created|updated|archived)\./))
+        .textContent,
+    ).toContain('Board “Roadmap” created.');
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(calls.find((call) => call.method === 'POST')!.body).toEqual({
+    expect(
+      calls.find(
+        (call) => call.method === 'POST' && !call.path.endsWith('/views'),
+      )!.body,
+    ).toEqual({
       name: 'Roadmap',
       description: null,
     });
@@ -91,7 +100,11 @@ describe('create board', () => {
     expect(
       within(dialog).getByText('Board name must be at most 120 characters.'),
     ).toBeTruthy();
-    expect(calls.some((call) => call.method === 'POST')).toBe(false);
+    expect(
+      calls.some(
+        (call) => call.method === 'POST' && !call.path.endsWith('/views'),
+      ),
+    ).toBe(false);
   });
 
   it('shows server validation errors on the field and keeps the dialog open', async () => {
@@ -135,7 +148,8 @@ describe('edit and archive board', () => {
   it('keeps a single creation action through archive/restore and refreshes both status lists', async () => {
     const board = makeBoard({ name: 'Round trip' });
     let current = board;
-    const archivedList = 'GET /boards?page=1&limit=100&status=archived';
+    const archivedList =
+      'GET /boards?page=1&limit=20&status=archived&sort=updatedAt';
     const calls = openBoards({
       [LIST]: () => okPage(current.isArchived ? [] : [current]),
       [archivedList]: () => okPage(current.isArchived ? [current] : []),
@@ -198,7 +212,11 @@ describe('edit and archive board', () => {
       1,
     );
     expect(
-      calls.filter((call) => call.method === 'POST').map((call) => call.path),
+      calls
+        .filter(
+          (call) => call.method === 'POST' && !call.path.endsWith('/views'),
+        )
+        .map((call) => call.path),
     ).toEqual([`/boards/${board.id}/archive`, `/boards/${board.id}/restore`]);
   });
 
@@ -215,6 +233,28 @@ describe('edit and archive board', () => {
     ).toBeTruthy();
     expect(
       screen.queryByRole('button', { name: 'Actions for Theirs' }),
+    ).toBeNull();
+  });
+
+  it('does not offer owner actions when the server withholds management capability', async () => {
+    openBoards({
+      [LIST]: okPage([
+        makeBoard({
+          name: 'Restricted',
+          currentUserRole: 'OWNER',
+          capabilities: {
+            canReadBoard: true,
+            canWriteBoard: true,
+            canManageBoard: false,
+            canManageMembers: false,
+            canRestoreBoard: false,
+          },
+        }),
+      ]),
+    });
+    await screen.findByRole('link', { name: 'Restricted' });
+    expect(
+      screen.queryByRole('button', { name: 'Actions for Restricted' }),
     ).toBeNull();
   });
 
@@ -242,9 +282,10 @@ describe('edit and archive board', () => {
     fireEvent.change(name, { target: { value: 'New name' } });
     fireEvent.click(save);
 
-    expect((await screen.findByRole('status')).textContent).toContain(
-      'Board “New name” updated.',
-    );
+    expect(
+      (await screen.findByText(/Board “.*” (created|updated|archived)\./))
+        .textContent,
+    ).toContain('Board “New name” updated.');
     expect(calls.find((call) => call.method === 'PATCH')!.body).toEqual({
       name: 'New name',
     });
@@ -277,9 +318,10 @@ describe('edit and archive board', () => {
       within(dialog).getByRole('button', { name: 'Archive board' }),
     );
 
-    expect((await screen.findByRole('status')).textContent).toContain(
-      'Board “Old project” archived.',
-    );
+    expect(
+      (await screen.findByText(/Board “.*” (created|updated|archived)\./))
+        .textContent,
+    ).toContain('Board “Old project” archived.');
     await waitFor(() =>
       expect(screen.queryByRole('link', { name: 'Old project' })).toBeNull(),
     );
@@ -289,6 +331,7 @@ describe('edit and archive board', () => {
     const board = makeBoard({ name: 'Old project' });
     openBoards({
       [LIST]: listThatChanges([board], []),
+      [`${LIST}&q=old`]: listThatChanges([board], []),
       [`POST /boards/${board.id}/archive`]: ok({ ...board, isArchived: true }),
     });
 
@@ -297,7 +340,7 @@ describe('edit and archive board', () => {
       { target: { value: 'old' } },
     );
     fireEvent.click(
-      screen.getByRole('button', { name: 'Actions for Old project' }),
+      await screen.findByRole('button', { name: 'Actions for Old project' }),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Archive board' }));
     fireEvent.click(

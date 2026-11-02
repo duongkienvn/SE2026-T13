@@ -16,6 +16,10 @@ import { AuthProvider } from '../auth/AuthProvider';
 import { workspaceGateway, type WorkspaceGateway } from './api';
 import { WorkspaceGatewayContext } from './gateway-context';
 import { workspaceKeys } from './query-keys';
+import {
+  WorkspaceBoardsGatewayContext,
+  workspaceBoardsGateway,
+} from './boards/gateway';
 import type { WorkspaceOverview, WorkspaceSummary } from './types';
 
 const team: WorkspaceSummary = {
@@ -84,11 +88,38 @@ function mount(path: string, gateway: WorkspaceGateway = makeGateway()) {
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   const router = createMemoryRouter(routes, { initialEntries: [path] });
+  const boardsGateway = {
+    ...workspaceBoardsGateway,
+    list: async (
+      token: string,
+      id: string,
+      _filters: unknown,
+      signal: AbortSignal,
+    ) => {
+      const data = await gateway.overview(token, id, signal);
+      const items = data.recentBoards.map((board) => ({
+        id: board.id,
+        name: board.name,
+        description: null,
+        updatedAt: board.updatedAt,
+        lastViewedAt: board.updatedAt,
+        isArchived: false,
+        visibility: 'PRIVATE' as const,
+        currentUserRole: 'OWNER' as const,
+        canArchive: true,
+        canRestore: false,
+        memberCount: board.memberCount,
+      }));
+      return { items, total: items.length, page: 1, pageCount: 1 };
+    },
+  };
   const result = render(
     <QueryClientProvider client={client}>
       <AuthProvider>
         <WorkspaceGatewayContext.Provider value={gateway}>
-          <RouterProvider router={router} />
+          <WorkspaceBoardsGatewayContext.Provider value={boardsGateway}>
+            <RouterProvider router={router} />
+          </WorkspaceBoardsGatewayContext.Provider>
         </WorkspaceGatewayContext.Provider>
       </AuthProvider>
     </QueryClientProvider>,
@@ -124,7 +155,7 @@ describe('Workspace runtime and navigation', () => {
       );
       await loaded();
       expect(main().getByText('5 members')).toBeTruthy();
-      expect(main().getByText('1 member')).toBeTruthy();
+      expect(await main().findByText('1 member')).toBeTruthy();
       const summary = main().getByRole('region', { name: 'Workspace summary' });
       expect(within(summary).getByText('5')).toBeTruthy();
     },
@@ -142,7 +173,9 @@ describe('Workspace runtime and navigation', () => {
           `${memberCount} ${memberCount === 1 ? 'member' : 'members'}`,
         ),
       ).toBeTruthy();
-      expect(main().getByText('Board member count private')).toBeTruthy();
+      expect(
+        await main().findByText('Board member count private'),
+      ).toBeTruthy();
     },
   );
   it.each([
@@ -269,11 +302,11 @@ describe('Workspace runtime and navigation', () => {
         .filter((item) => item.textContent?.includes('Unavailable')),
     ).toHaveLength(1);
     expect(
-      main()
-        .getByRole('link', { name: /Allowed board/ })
-        .getAttribute('href'),
+      (await main().findByRole('link', { name: /Allowed board/ })).getAttribute(
+        'href',
+      ),
     ).toBe('/boards/visible-board');
-    expect(main().getByText(/Archived · Read only/)).toBeTruthy();
+    expect(main().getByText(/Viewed/)).toBeTruthy();
     expect(main().getByText('Member summary unavailable')).toBeTruthy();
   });
 
@@ -435,7 +468,7 @@ describe('Workspace states and access isolation', () => {
     await act(() => router.navigate(`/workspaces/${team.id}`));
     await loaded();
     expect(
-      main().getByRole('heading', { name: 'No accessible boards yet' }),
+      await main().findByRole('heading', { name: 'No recently viewed boards' }),
     ).toBeTruthy();
     expect(
       main().getByRole('region', { name: 'Workspace summary' }).textContent,
@@ -522,7 +555,8 @@ describe('Workspace states and access isolation', () => {
     await screen.findByRole('heading', { name: 'Could not load workspace' });
     fireEvent.click(main().getByRole('button', { name: 'Try again' }));
     await loaded();
-    expect(getOverview).toHaveBeenCalledTimes(2);
+    // The recent-boards fixture also reads the overview after the retry.
+    expect(getOverview).toHaveBeenCalledTimes(3);
   });
 
   it('retries discovery after a failure without retaining old directory rows', async () => {

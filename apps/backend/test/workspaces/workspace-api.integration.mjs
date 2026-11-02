@@ -40,6 +40,7 @@ try {
   created = true;
   source = await new DataSource({ ...options, database: name }).initialize();
   await source.runMigrations();
+  await source.undoLastMigration(); // Empty Board background version extension.
   await source.undoLastMigration(); // Empty Board discovery extension.
   await source.undoLastMigration(); // Empty private-file extension.
   await source.undoLastMigration(); // Empty attachment foundation.
@@ -53,7 +54,7 @@ try {
     source.undoLastMigration(),
     /Workspace policies require a forward fix/,
   );
-  assert.equal((await source.runMigrations()).length, 9);
+  assert.equal((await source.runMigrations()).length, 10);
   assert.deepEqual(await source.runMigrations(), []);
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries,

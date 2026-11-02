@@ -16,7 +16,7 @@ describe('navGroups', () => {
           'home:soon',
           'my-tasks:soon',
           'boards:available',
-          'starred:soon',
+          'starred:available',
         ],
       },
       { id: 'workspaces', items: ['create-workspace:soon'] },

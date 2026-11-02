@@ -14,6 +14,8 @@ export interface WorkspaceBoardSummary {
   canRestore: boolean;
   /** Explicit Board roster count; null is withheld for privacy. */
   memberCount: number | null;
+  backgroundPreset?: string;
+  lastViewedAt?: string | null;
 }
 
 /** Safe Board fields only; no source Workspace membership or metadata needed. */
@@ -29,9 +31,10 @@ export function canUseBoardOwnerActions(board: BoardOwnerActionModel) {
     board.canManageBoard
   );
 }
-export type WorkspaceBoardSort = 'updated-desc' | 'name-asc';
+export type WorkspaceBoardSort = 'updated-desc' | 'name-asc' | 'recent';
 export interface WorkspaceBoardFilters {
   search: string;
+  view?: 'recent' | 'starred';
   status: 'active' | 'archived';
   sort: WorkspaceBoardSort;
   page: number;
@@ -47,6 +50,7 @@ export interface WorkspaceBoardsGateway {
   available: boolean;
   features: {
     search: boolean;
+    discovery?: boolean;
     status: boolean;
     sorts: readonly WorkspaceBoardSort[];
     pagination: boolean;

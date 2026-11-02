@@ -26,11 +26,13 @@ export function BoardSettings({
   board,
   workspace,
   canManage,
+  canChangeBackground,
   canRestore,
   canMove,
   canChangeVisibility,
   policyMessage,
   onEdit,
+  onChangeBackground,
   onVisibility,
   onMove,
   onArchive,
@@ -39,11 +41,13 @@ export function BoardSettings({
   board: Board;
   workspace?: WorkspaceSummary;
   canManage: boolean;
+  canChangeBackground: boolean;
   canRestore: boolean;
   canMove: boolean;
   canChangeVisibility: boolean;
   policyMessage?: string;
   onEdit: () => void;
+  onChangeBackground: () => void;
   onVisibility: () => void;
   onMove: () => void;
   onArchive: () => void;
@@ -109,6 +113,18 @@ export function BoardSettings({
               />
               {board.isArchived ? 'Archived' : 'Active'}
             </span>
+          </SettingRow>
+          <SettingRow label="Background">
+            <span>{board.backgroundPreset ?? 'Default'}</span>
+            {canChangeBackground && (
+              <Button
+                variant="secondary"
+                className="ml-3"
+                onClick={onChangeBackground}
+              >
+                Change background
+              </Button>
+            )}
           </SettingRow>
         </dl>
       </section>

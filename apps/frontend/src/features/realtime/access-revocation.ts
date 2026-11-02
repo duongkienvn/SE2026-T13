@@ -11,9 +11,18 @@ import {
   changeBoardAccessVersion,
 } from '../boards/access-version';
 
+const privateDiscoveryState = {
+  queryKey: ['board-discovery'] as const,
+  predicate: (query: { queryKey: readonly unknown[] }) =>
+    query.queryKey[3] === 'state',
+};
+
 /** Drop potentially stale protected data before asking REST to authorize it again. */
 export function clearAccessSnapshots(client: QueryClient): void {
   changeAllBoardAccessVersions(client);
+  void client.cancelQueries(privateDiscoveryState);
+  for (const query of client.getQueryCache().findAll(privateDiscoveryState))
+    query.setState({ data: undefined, status: 'pending', error: null });
   for (const key of [boardKeys.all, workspaceKeys.all, avatarKeys.all]) {
     void client.cancelQueries({ queryKey: key });
     for (const query of client.getQueryCache().findAll({ queryKey: key })) {
@@ -24,6 +33,7 @@ export function clearAccessSnapshots(client: QueryClient): void {
 
 export function refreshAccessSnapshots(client: QueryClient): void {
   clearAccessSnapshots(client);
+  void client.invalidateQueries(privateDiscoveryState);
   for (const key of [boardKeys.all, workspaceKeys.all, avatarKeys.all])
     void client.invalidateQueries({ queryKey: key });
 }

@@ -70,4 +70,6 @@ export function openCardDetail({
 }
 
 export const writes = (calls: MockRequest[]) =>
-  calls.filter((call) => call.method !== 'GET');
+  calls.filter(
+    (call) => call.method !== 'GET' && !call.path.endsWith('/views'),
+  );

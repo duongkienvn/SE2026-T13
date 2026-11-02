@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
-import {
-  ColumnsIcon,
-  LockIcon,
-  StarIcon,
-  UsersIcon,
-} from '../../../components/icons';
+import { ColumnsIcon, LockIcon, UsersIcon } from '../../../components/icons';
 import { formatRelativeTime } from '../../../lib/format';
 import type { WorkspaceBoardSummary } from './types';
+import { BoardStar } from '../../boards/components/BoardStar';
+import {
+  backgroundStyle,
+  useBackgroundPresets,
+} from '../../boards/components/BoardBackground';
 
 export function WorkspaceBoardCard({
   board,
@@ -16,21 +16,23 @@ export function WorkspaceBoardCard({
   board: WorkspaceBoardSummary;
   actions?: ReactNode;
 }) {
+  const presets = useBackgroundPresets();
   return (
     <article className="relative flex min-w-0 flex-col rounded-xl border border-line bg-surface shadow-card transition-colors hover:border-primary/40">
-      <span
-        aria-disabled="true"
-        className="absolute top-4 left-4 z-10 inline-flex items-center gap-1 rounded-md bg-surface px-2 py-1 text-[11px] text-muted"
-      >
-        <StarIcon className="size-3" />
-        Soon<span className="sr-only">Star board, coming soon</span>
-      </span>
+      <div className="absolute top-3 left-3 z-10">
+        <BoardStar boardId={board.id} boardName={board.name} />
+      </div>
       <Link
         to={`/boards/${encodeURIComponent(board.id)}`}
         aria-label={`Open ${board.name}${board.isArchived ? ', archived and read only' : ''}`}
         className="group block min-w-0 flex-1 rounded-t-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
-        <div className="relative m-2 mb-0 flex h-24 items-center justify-center rounded-lg border border-line bg-app text-muted">
+        <div
+          className="relative m-2 mb-0 flex h-24 items-center justify-center rounded-lg border border-line bg-app text-muted"
+          style={backgroundStyle(
+            presets.data?.find((item) => item.id === board.backgroundPreset),
+          )}
+        >
           <ColumnsIcon className="size-8" />
           <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-medium">
             {board.visibility === 'PRIVATE' ? (

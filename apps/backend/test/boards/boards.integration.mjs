@@ -61,7 +61,9 @@ try {
     await upgradeSource.initialize();
     const migrations = [...upgradeSource.migrations];
     upgradeSource.migrations = migrations.filter(
-      (migration) => !migration.name.startsWith('BoardDiscovery'),
+      (migration) =>
+        !migration.name.startsWith('BoardDiscovery') &&
+        !migration.name.startsWith('BoardBackgroundVersion'),
     );
     await upgradeSource.runMigrations();
     const [legacyUser] = await upgradeSource.query(
@@ -74,11 +76,13 @@ try {
     upgradeSource.migrations = migrations;
     await upgradeSource.runMigrations();
     const [after] = await upgradeSource.query(
-      'SELECT id, updated_at, workspace_id, visibility, background_preset FROM boards WHERE id=$1',
+      'SELECT id, updated_at, workspace_id, visibility, background_preset, background_version FROM boards WHERE id=$1',
       [legacy.id],
     );
     assert.equal(after.background_preset, 'blue');
+    assert.equal(after.background_version, 0);
     delete after.background_preset;
+    delete after.background_version;
     assert.deepEqual(after, legacy);
     await assert.rejects(
       upgradeSource.query(
@@ -91,6 +95,19 @@ try {
       'INSERT INTO board_user_states(user_id,board_id,is_starred) VALUES ($1,$2,true)',
       [legacyUser.id, legacy.id],
     );
+    await upgradeSource.query(
+      'UPDATE boards SET background_version=1 WHERE id=$1',
+      [legacy.id],
+    );
+    await assert.rejects(
+      upgradeSource.undoLastMigration(),
+      /must be preserved/,
+    );
+    await upgradeSource.query(
+      'UPDATE boards SET background_version=0 WHERE id=$1',
+      [legacy.id],
+    );
+    await upgradeSource.undoLastMigration();
     await assert.rejects(
       upgradeSource.undoLastMigration(),
       /must be preserved/,
@@ -100,7 +117,7 @@ try {
       [legacyUser.id, legacy.id],
     );
     await upgradeSource.undoLastMigration();
-    assert.equal((await upgradeSource.runMigrations()).length, 1);
+    assert.equal((await upgradeSource.runMigrations()).length, 2);
     console.log(
       'Populated Board upgrade preserves legacy fields and backfills default: PASS',
     );
@@ -203,7 +220,20 @@ try {
   );
   await rejectsStatus(discovery.setStar(outsider.id, first.id, true), 404);
   await rejectsStatus(discovery.background(member.id, first.id, 'forest'), 403);
-  for (const preset of ['teal', 'forest']) {
+  for (const preset of [
+    'teal',
+    'forest',
+    'blue',
+    'indigo',
+    'violet',
+    'rose',
+    'orange',
+    'amber',
+    'green',
+    'mountains',
+    'coast',
+    'lake',
+  ]) {
     assert.equal(
       (await discovery.background(owner.id, first.id, preset)).backgroundPreset,
       preset,
@@ -217,13 +247,31 @@ try {
     discovery.background(owner.id, first.id, 'https://invalid.test'),
     400,
   );
-  assert.equal(delivered.length, 2);
+  assert.equal(delivered.length, 12);
   assert.ok(
     delivered.every(
       ({ event, payload }) =>
         event === 'board:access-changed' &&
         Object.keys(payload).join() === 'boardId',
     ),
+  );
+  const version = (await boards.findOneByOrFail({ id: first.id }))
+    .backgroundVersion;
+  const concurrent = await Promise.allSettled([
+    discovery.background(owner.id, first.id, 'blue', version),
+    discovery.background(owner.id, first.id, 'teal', version),
+  ]);
+  assert.equal(
+    concurrent.filter((result) => result.status === 'fulfilled').length,
+    1,
+  );
+  const backgroundRejected = concurrent.find(
+    (result) => result.status === 'rejected',
+  );
+  assert.equal(backgroundRejected.reason.getStatus(), 409);
+  assert.equal(
+    (await boards.findOneByOrFail({ id: first.id })).backgroundVersion,
+    version + 1,
   );
   const starred = await service.list(owner.id, {
     page: 1,

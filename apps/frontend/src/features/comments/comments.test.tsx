@@ -321,7 +321,11 @@ describe('card comments', () => {
       (within(dialog).getByLabelText('Write a comment') as HTMLTextAreaElement)
         .value,
     ).toBe('draft');
-    expect(calls.filter((call) => call.method === 'POST')).toHaveLength(1);
+    expect(
+      calls.filter(
+        (call) => call.method === 'POST' && !call.path.endsWith('/views'),
+      ),
+    ).toHaveLength(1);
     fireEvent.change(within(dialog).getByLabelText('Write a comment'), {
       target: { value: 'corrected draft' },
     });
@@ -408,8 +412,13 @@ describe('card comments', () => {
     fireEvent.click(post);
     fireEvent.click(post);
     await within(dialog).findByText('Xin chào');
-    expect(calls.filter((c) => c.method === 'POST')).toHaveLength(1);
-    expect(calls.find((c) => c.method === 'POST')?.body).toEqual({
+    expect(
+      calls.filter((c) => c.method === 'POST' && !c.path.endsWith('/views')),
+    ).toHaveLength(1);
+    expect(
+      calls.find((c) => c.method === 'POST' && !c.path.endsWith('/views'))
+        ?.body,
+    ).toEqual({
       content: 'Xin chào',
     });
     expect(calls.some((c) => c.method === 'PATCH' && c.path === path)).toBe(

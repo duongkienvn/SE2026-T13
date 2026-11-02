@@ -8,13 +8,19 @@ export function useBoardFilters(features: WorkspaceBoardsGateway['features']) {
   const requestedPage = Number(params.get('page') ?? 1);
   const filters: WorkspaceBoardFilters = {
     search: features.search ? (params.get('q') ?? '').slice(0, 120).trim() : '',
+    view:
+      features.discovery &&
+      (params.get('view') === 'recent' || params.get('view') === 'starred')
+        ? (params.get('view') as 'recent' | 'starred')
+        : undefined,
     status:
       features.status && params.get('status') === 'archived'
         ? 'archived'
         : 'active',
     sort:
-      requestedSort === 'name-asc' && features.sorts.includes('name-asc')
-        ? 'name-asc'
+      (requestedSort === 'name-asc' || requestedSort === 'recent') &&
+      features.sorts.includes(requestedSort)
+        ? requestedSort
         : 'updated-desc',
     page:
       features.pagination &&
@@ -48,13 +54,21 @@ export function useBoardFilters(features: WorkspaceBoardsGateway['features']) {
     draft: features.search ? (params.get('q') ?? '').slice(0, 120) : '',
     debouncing: filters.search !== settledSearch,
     search: (value: string) => update({ q: value || null }, true),
+    view: (value: 'recent' | 'starred') =>
+      update({
+        view: value,
+        status: null,
+        sort: value === 'recent' ? 'recent' : null,
+      }),
     status: (value: WorkspaceBoardFilters['status']) =>
-      update({ status: value === 'archived' ? value : null }),
+      update({ status: value === 'archived' ? value : null, view: null }),
     sort: (value: WorkspaceBoardFilters['sort']) =>
-      update({ sort: value === 'name-asc' ? value : null }),
+      update({ sort: value === 'updated-desc' ? null : value }),
     page: (value: number) => update({ page: value > 1 ? String(value) : null }),
-    clear: () => update({ q: null, status: null, sort: null, page: null }),
+    clear: () =>
+      update({ q: null, status: null, sort: null, page: null, view: null }),
     filtered:
+      !!filters.view ||
       !!filters.search ||
       filters.status === 'archived' ||
       filters.sort !== 'updated-desc',

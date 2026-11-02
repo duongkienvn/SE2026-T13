@@ -44,6 +44,11 @@ The presets use photographs offered under the [Unsplash License](https://unsplas
 their CDN is an external runtime dependency.
 An active OWNER can call `PATCH /api/boards/:id/background` with
 `{ "preset": "forest" }`; arbitrary URLs and unlisted IDs are rejected.
+Board responses also expose `backgroundVersion`. Clients can send that value as
+`expectedVersion` in the PATCH to reject stale writes with 409; this comparison
+and increment occur under the Board row lock. The optional field preserves the
+legacy unconditional contract, so legacy clients must migrate to gain conflict
+protection. The version migration must be applied before deploying this code.
 The existing `board:access-changed` ID-only event invalidates Board and
 Workspace caches after commit; private state is never broadcast.
 

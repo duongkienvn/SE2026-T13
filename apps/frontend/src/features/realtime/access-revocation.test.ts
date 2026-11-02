@@ -53,10 +53,14 @@ describe('access-loss cache isolation', () => {
     const client = new QueryClient();
     const board = boardKeys.detail('board');
     const workspace = workspaceKeys.overview('user', 1, 'team');
+    const discovery = ['board-discovery', 'user', 1, 'state', 'board'];
+    const presets = ['board-discovery', 'presets'];
     const pendingListOnlyBoardVersion = boardAccessVersion(client, 'list-only');
     const grantVersion = boardGrantVersion(client, 'list-only');
     client.setQueryData(board, { name: 'Private Board' });
     client.setQueryData(workspace, { recentBoards: ['Private Board'] });
+    client.setQueryData(discovery, { isStarred: true });
+    client.setQueryData(presets, ['blue']);
     let finish: (value: object) => void = () => undefined;
     const deferred = new Promise<object>((resolve) => {
       finish = resolve;
@@ -69,6 +73,8 @@ describe('access-loss cache isolation', () => {
     await running;
     expect(client.getQueryData(board)).toBeUndefined();
     expect(client.getQueryData(workspace)).toBeUndefined();
+    expect(client.getQueryData(discovery)).toBeUndefined();
+    expect(client.getQueryData(presets)).toEqual(['blue']);
     expect(boardAccessVersion(client, 'list-only')).not.toBe(
       pendingListOnlyBoardVersion,
     );
