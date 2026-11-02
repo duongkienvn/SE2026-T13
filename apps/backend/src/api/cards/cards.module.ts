@@ -15,6 +15,7 @@ import { Board } from '../boards/entities/board.entity';
 import { BoardColumn } from '../columns/entities/board-column.entity';
 import { Card } from './entities/card.entity';
 import { CardAssignee } from './entities/card-assignee.entity';
+import { CardPreviewSummariesController } from './card-preview-summaries.controller';
 import { CardsController } from './cards.controller';
 import { CardsService } from './cards.service';
 import { ActivityWriterModule } from '../activities/activity-writer.module';
@@ -47,6 +48,7 @@ import { attachmentStorageProvider } from './attachments/attachment-storage.prov
   ],
   controllers: [
     CardsController,
+    CardPreviewSummariesController,
     CardChecklistsController,
     CardAttachmentsController,
     CardAttachmentUploadsController,

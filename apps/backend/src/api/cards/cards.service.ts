@@ -669,6 +669,47 @@ export class CardsService {
     return paginate(cards.map(toCardResponseDto), total, query);
   }
 
+  async previewSummaries(
+    userId: string,
+    boardId: string,
+    cardIds: string[],
+  ): Promise<{
+    summaries: {
+      cardId: string;
+      labelIds: string[];
+      checklist: { checkedItems: number; totalItems: number };
+      attachmentCount: number;
+      commentCount: number;
+    }[];
+  }> {
+    await this.authorization.requireRead(userId, boardId);
+    const rows: {
+      cardId: string;
+      labelIds: string[];
+      checkedItems: number;
+      totalItems: number;
+      attachmentCount: number;
+      commentCount: number;
+    }[] = await this.cards.manager.query(
+      `
+      SELECT c.id AS "cardId",
+        ARRAY(SELECT cl.label_id FROM card_labels cl WHERE cl.card_id = c.id AND cl.board_id = c.board_id ORDER BY cl.label_id) AS "labelIds",
+        (SELECT count(*)::int FROM card_checklists ch JOIN card_checklist_items i ON i.checklist_id = ch.id WHERE ch.card_id = c.id AND i.is_checked) AS "checkedItems",
+        (SELECT count(*)::int FROM card_checklists ch JOIN card_checklist_items i ON i.checklist_id = ch.id WHERE ch.card_id = c.id) AS "totalItems",
+        (SELECT count(*)::int FROM card_attachments a WHERE a.card_id = c.id AND a.board_id = c.board_id AND a.state = 'ACTIVE') AS "attachmentCount",
+        (SELECT count(*)::int FROM comments co WHERE co.card_id = c.id AND co.deleted_at IS NULL) AS "commentCount"
+      FROM cards c WHERE c.board_id = $1 AND c.id = ANY($2::uuid[]) AND NOT c.is_archived ORDER BY c.id`,
+      [boardId, cardIds],
+    );
+    await this.authorization.requireRead(userId, boardId);
+    return {
+      summaries: rows.map(({ checkedItems, totalItems, ...row }) => ({
+        ...row,
+        checklist: { checkedItems, totalItems },
+      })),
+    };
+  }
+
   async get(
     userId: string,
     boardId: string,
