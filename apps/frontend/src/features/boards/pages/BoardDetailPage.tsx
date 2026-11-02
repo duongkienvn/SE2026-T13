@@ -1,13 +1,19 @@
 import { BoardRole } from '@kanban/shared';
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate, useOutletContext, useParams } from 'react-router';
+import {
+  Link,
+  useBlocker,
+  useMatch,
+  useNavigate,
+  useOutletContext,
+  useParams,
+} from 'react-router';
 import type { WorkspaceSummary } from '../../workspaces/types';
 import { workspacePath } from '../../workspaces/navigation';
 import { ActionMenu } from '../../../components/ActionMenu';
 import { Alert } from '../../../components/Alert';
 import { Button, buttonClassName } from '../../../components/Button';
-import { ActivityIcon, UsersIcon } from '../../../components/icons';
 import { PageContainer } from '../../../components/PageContainer';
 import { PageHeader } from '../../../components/PageHeader';
 import {
@@ -65,10 +71,21 @@ export function BoardUnavailable() {
   );
 }
 
+function BoardEditNavigationGuard() {
+  const blocker = useBlocker(true);
+  useEffect(() => {
+    if (blocker.state !== 'blocked') return;
+    if (window.confirm('Discard unsaved board changes?')) blocker.proceed();
+    else blocker.reset();
+  }, [blocker]);
+  return null;
+}
+
 export function BoardDetailPage() {
   const workspace = useOutletContext<WorkspaceSummary | undefined>();
   const { boardId = '' } = useParams();
   const navigate = useNavigate();
+  const settings = useMatch('/boards/:boardId/settings') !== null;
   const { board, verified } = useVerifiedBoard(boardId);
   const client = useQueryClient();
   const unavailable = board.isError && isBoardUnavailable(board.error);
@@ -76,6 +93,7 @@ export function BoardDetailPage() {
     enabled: verified && board.data !== undefined && !unavailable,
   });
   const [editing, setEditing] = useState(false);
+  const [editDirty, setEditDirty] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [showingActivity, setShowingActivity] = useState(false);
   const [showingArchivedCards, setShowingArchivedCards] = useState(false);
@@ -143,14 +161,21 @@ export function BoardDetailPage() {
   const data = board.data!;
   // UI hint only: the backend enforces OWNER-only actions.
   const canManage =
-    data.currentUserRole === BoardRole.OWNER && !data.isArchived;
+    (data.capabilities?.canManageBoard ??
+      data.currentUserRole === BoardRole.OWNER) &&
+    !data.isArchived;
   const readOnly =
     data.isArchived ||
     data.currentUserRole === null ||
     data.capabilities?.canWriteBoard === false;
+  const canRestore =
+    data.isArchived &&
+    (data.capabilities?.canRestoreBoard ??
+      data.currentUserRole === BoardRole.OWNER);
 
   return (
     <PageContainer fill>
+      {editing && editDirty && <BoardEditNavigationGuard />}
       <nav
         aria-label="Board breadcrumb"
         className="mb-4 text-xs leading-6 text-muted md:hidden"
@@ -200,21 +225,12 @@ export function BoardDetailPage() {
                 />
                 <RealtimeStatus {...realtime} />
                 <RoleChip role={data.currentUserRole} />
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowingActivity(true)}
-                >
-                  <ActivityIcon aria-hidden="true" className="size-4.5" />
-                  Activity
-                </Button>
-                {data.currentUserRole !== null && (
-                  <Link
-                    to={`/boards/${data.id}/members`}
-                    className={buttonClassName('secondary')}
-                  >
-                    <UsersIcon aria-hidden="true" className="size-4.5" />
-                    Members
-                  </Link>
+                {data.visibility && (
+                  <span className="rounded-full border border-line px-3 py-1 text-xs font-medium text-muted">
+                    {data.visibility === 'PRIVATE'
+                      ? 'Private'
+                      : 'Workspace visible'}
+                  </span>
                 )}
                 {
                   <ActionMenu
@@ -222,8 +238,21 @@ export function BoardDetailPage() {
                     label={`Actions for ${data.name}`}
                     items={[
                       {
+                        label: 'About this board',
+                        onSelect: () =>
+                          navigate(`/boards/${data.id}/settings#board-general`),
+                      },
+                      {
+                        label: 'Activity history',
+                        onSelect: () => setShowingActivity(true),
+                      },
+                      {
                         label: 'Archived cards',
                         onSelect: () => setShowingArchivedCards(true),
+                      },
+                      {
+                        label: 'Board settings',
+                        onSelect: () => navigate(`/boards/${data.id}/settings`),
                       },
                       ...(canManage
                         ? [
@@ -262,8 +291,7 @@ export function BoardDetailPage() {
                             },
                           ]
                         : []),
-                      ...(data.isArchived &&
-                      data.currentUserRole === BoardRole.OWNER
+                      ...(canRestore
                         ? [
                             {
                               label: 'Restore board',
@@ -280,19 +308,187 @@ export function BoardDetailPage() {
         </div>
       </div>
 
+      <nav
+        aria-label="Board navigation"
+        className="mt-5 flex flex-wrap gap-x-5 gap-y-2 border-b border-line text-sm"
+      >
+        <Link
+          className={`border-b-2 py-3 font-medium hover:text-primary ${!settings ? 'border-primary text-primary' : 'border-transparent'}`}
+          aria-current={!settings ? 'page' : undefined}
+          to={`/boards/${data.id}`}
+        >
+          Kanban
+        </Link>
+        {data.currentUserRole !== null && (
+          <Link
+            className="py-3 font-medium hover:text-primary"
+            to={`/boards/${data.id}/members`}
+          >
+            Members
+          </Link>
+        )}
+        <button
+          type="button"
+          className="border-b-2 border-transparent py-3 font-medium hover:text-primary"
+          onClick={() => setShowingActivity(true)}
+        >
+          Activity
+        </button>
+        <Link
+          className={`border-b-2 py-3 font-medium hover:text-primary ${settings ? 'border-primary text-primary' : 'border-transparent'}`}
+          aria-current={settings ? 'page' : undefined}
+          to={`/boards/${data.id}/settings`}
+        >
+          Board settings
+        </Link>
+      </nav>
+
       <div className="mt-4 space-y-3">
         {notice && <Alert variant="success">{notice}</Alert>}
         {data.isArchived && <ArchivedBoardNotice />}
       </div>
 
-      <div className="mt-5 min-h-0 flex-1 short:mt-3">
-        <KanbanBoard
-          boardId={data.id}
-          readOnly={readOnly}
-          canReadMembers={data.currentUserRole !== null}
-          boardName={data.name}
-        />
-      </div>
+      {settings ? (
+        <div className="mt-6 grid gap-8 pb-10 lg:grid-cols-[12rem_minmax(0,1fr)]">
+          <nav
+            aria-label="Settings sections"
+            className="flex flex-wrap gap-4 text-sm lg:flex-col"
+          >
+            <a href="#board-general">General</a>
+            <a href="#board-permissions">Permissions</a>
+            <a href="#board-members">Members</a>
+            <a href="#board-danger">Danger zone</a>
+          </nav>
+          <div className="max-w-3xl space-y-10">
+            <section id="board-general" className="space-y-3">
+              <h2 className="text-xl font-semibold">General</h2>
+              <p className="text-sm text-muted">Board name and description</p>
+              <p className="font-medium [overflow-wrap:anywhere]">
+                {data.name}
+              </p>
+              <p className="text-sm text-muted [overflow-wrap:anywhere]">
+                {data.description || 'No description added.'}
+              </p>
+              <p className="text-sm text-muted">
+                Status: {data.isArchived ? 'Archived' : 'Active'}
+              </p>
+              {workspace && (
+                <p className="text-sm text-muted">
+                  Workspace: {workspace.name}
+                </p>
+              )}
+              {data.backgroundPreset && (
+                <p className="text-sm text-muted">
+                  Background: {data.backgroundPreset}
+                </p>
+              )}
+              <p className="text-sm text-muted">
+                Background customization will be available in a future update.
+              </p>
+              {canManage && (
+                <Button variant="secondary" onClick={() => setEditing(true)}>
+                  Edit board
+                </Button>
+              )}
+            </section>
+            <section
+              id="board-permissions"
+              className="space-y-3 border-t border-line pt-6"
+            >
+              <h2 className="text-xl font-semibold">Permissions</h2>
+              <p className="text-sm text-muted">
+                Visibility:{' '}
+                {data.visibility === 'WORKSPACE_VISIBLE'
+                  ? 'Workspace visible'
+                  : data.visibility === 'PRIVATE'
+                    ? 'Private'
+                    : 'Unavailable'}
+              </p>
+              <p className="text-sm text-muted">
+                Private boards are accessible to board members.
+                Workspace-visible boards can be viewed by workspace members;
+                editing requires board membership.
+              </p>
+              {ownsActive && (
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    variant="secondary"
+                    disabled={!policy.data?.canChangeVisibility}
+                    onClick={() => ownerActions.open(ownerBoard!, 'visibility')}
+                  >
+                    Change visibility
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => ownerActions.open(ownerBoard!, 'move')}
+                  >
+                    Move to workspace
+                  </Button>
+                </div>
+              )}
+              {ownsActive && !policy.data?.canChangeVisibility && (
+                <p className="text-sm text-muted">
+                  {policy.isError
+                    ? 'Could not check workspace rules. Try again later.'
+                    : policy.isPending
+                      ? 'Checking workspace rules…'
+                      : 'Workspace rules do not allow visibility changes.'}
+                </p>
+              )}
+            </section>
+            <section
+              id="board-members"
+              className="space-y-3 border-t border-line pt-6"
+            >
+              <h2 className="text-xl font-semibold">Members</h2>
+              <p className="text-sm text-muted">
+                Board membership determines who can collaborate on this board.
+              </p>
+              {data.currentUserRole !== null ? (
+                <Link
+                  className={buttonClassName('secondary')}
+                  to={`/boards/${data.id}/members`}
+                >
+                  View board members
+                </Link>
+              ) : (
+                <p className="text-sm text-muted">
+                  Member details are available to board members.
+                </p>
+              )}
+            </section>
+            <section
+              id="board-danger"
+              className="space-y-3 border-t border-line pt-6"
+            >
+              <h2 className="text-xl font-semibold">Danger zone</h2>
+              <p className="text-sm text-muted">
+                Archiving makes this board read-only while preserving its cards
+                and history.
+              </p>
+              {canManage && (
+                <Button variant="secondary" onClick={() => setArchiving(true)}>
+                  Archive board
+                </Button>
+              )}
+              {canRestore && (
+                <Button variant="secondary" onClick={() => setRestoring(true)}>
+                  Restore board
+                </Button>
+              )}
+            </section>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-5 min-h-0 flex-1 short:mt-3">
+          <KanbanBoard
+            boardId={data.id}
+            readOnly={readOnly}
+            canReadMembers={data.currentUserRole !== null}
+            boardName={data.name}
+          />
+        </div>
+      )}
 
       {showingArchivedCards && (
         <ArchivedCardsDialog
@@ -311,13 +507,23 @@ export function BoardDetailPage() {
           onClose={() => setShowingActivity(false)}
         />
       )}
-      {canManage && editing && (
+      {editing && (
         <EditBoardDialog
           board={data}
           open
-          onClose={() => setEditing(false)}
+          onClose={() => {
+            setEditing(false);
+            setEditDirty(false);
+          }}
+          onDirtyChange={setEditDirty}
+          disabledReason={
+            !canManage
+              ? 'Editing is no longer available for this board.'
+              : undefined
+          }
           onSaved={(saved) => {
             setEditing(false);
+            setEditDirty(false);
             setNotice(`Board “${saved.name}” updated.`);
           }}
         />
@@ -336,7 +542,7 @@ export function BoardDetailPage() {
           }}
         />
       )}
-      {data.currentUserRole === BoardRole.OWNER && restoring && (
+      {canRestore && restoring && (
         <RestoreBoardDialog
           board={data}
           open

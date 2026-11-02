@@ -6,7 +6,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Board } from '../types';
 import { makeActivity, makeBoard, okPage } from '../../../test/board-fixtures';
 import {
@@ -55,6 +55,125 @@ function refocusWindow() {
 afterEach(() => focusManager.setFocused(undefined));
 
 describe('BoardDetailPage', () => {
+  it('keeps the draft but disables saving if board management permission is revoked', async () => {
+    const capabilities = {
+      canReadBoard: true,
+      canWriteBoard: true,
+      canManageBoard: true,
+      canManageMembers: true,
+      canRestoreBoard: false,
+    };
+    const board = makeBoard({ capabilities });
+    const updated = {
+      ...board,
+      currentUserRole: 'MEMBER' as const,
+      capabilities: { ...capabilities, canManageBoard: false },
+    };
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    openBoard(board, {
+      [`GET /boards/${board.id}`]: then(ok(board), ok(updated)),
+    });
+    await screen.findByRole('heading', { name: board.name });
+    fireEvent.click(screen.getByRole('link', { name: 'Board settings' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit board' }));
+    fireEvent.change(screen.getByLabelText('Board name'), {
+      target: { value: 'My draft' },
+    });
+    refocusWindow();
+    await screen.findByText('Editing is no longer available for this board.');
+    expect(
+      (screen.getByLabelText('Board name') as HTMLInputElement).value,
+    ).toBe('My draft');
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Save unavailable',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    confirm.mockRestore();
+  });
+
+  it('preserves a draft and blocks saving when the board changes remotely', async () => {
+    const board = makeBoard({ name: 'Original' });
+    const updated = { ...board, name: 'Remote update' };
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    openBoard(board, {
+      [`GET /boards/${board.id}`]: then(ok(board), ok(updated)),
+    });
+    await screen.findByRole('heading', { name: 'Original' });
+    fireEvent.click(screen.getByRole('link', { name: 'Board settings' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit board' }));
+    fireEvent.change(screen.getByLabelText('Board name'), {
+      target: { value: 'My draft' },
+    });
+    refocusWindow();
+    await screen.findByText(/This board changed while you were editing/);
+    expect(
+      (screen.getByLabelText('Board name') as HTMLInputElement).value,
+    ).toBe('My draft');
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Save unavailable',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    confirm.mockRestore();
+  });
+
+  it('keeps a dirty board draft when navigation is cancelled', async () => {
+    const board = makeBoard();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const { router } = openBoard(board);
+    await screen.findByRole('heading', { name: board.name });
+    fireEvent.click(screen.getByRole('link', { name: 'Board settings' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit board' }));
+    fireEvent.change(screen.getByLabelText('Board name'), {
+      target: { value: 'Draft board' },
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Save changes' }),
+      ).not.toHaveProperty('disabled', true),
+    );
+    act(() => {
+      void router.navigate(`/boards/${board.id}`);
+    });
+    await waitFor(() => expect(confirm).toHaveBeenCalled());
+    expect(router.state.location.pathname).toBe(`/boards/${board.id}/settings`);
+    expect(
+      (screen.getByLabelText('Board name') as HTMLInputElement).value,
+    ).toBe('Draft board');
+    confirm.mockRestore();
+  });
+
+  it('opens settings for a workspace viewer without fetching the board roster or exposing owner actions', async () => {
+    const board = makeBoard({
+      currentUserRole: null,
+      visibility: 'WORKSPACE_VISIBLE',
+      backgroundPreset: 'blue',
+    });
+    storeSession();
+    const calls = mockApi({
+      'GET /users/me': ok(testUser),
+      [`GET /boards/${board.id}`]: ok(board),
+    });
+    renderApp(`/boards/${board.id}/settings`);
+    expect(
+      await screen.findByRole('heading', { name: 'Permissions' }),
+    ).toBeTruthy();
+    expect(screen.getByText('Background: blue')).toBeTruthy();
+    expect(
+      screen.getByText('Member details are available to board members.'),
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Edit board' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Archive board' })).toBeNull();
+    expect(calls.some((call) => call.path.includes('/members'))).toBe(false);
+  });
+
   it('renders a Workspace-only viewer without membership details or write controls', async () => {
     const board = makeBoard({
       name: 'Workspace view',
@@ -399,8 +518,8 @@ describe('Board Detail OWNER visibility and move', () => {
       ).toBeTruthy();
       if (board.isArchived)
         expect(
-          screen.getByRole('button', { name: 'Restore board' }),
-        ).toBeTruthy();
+          screen.queryByRole('button', { name: 'Restore board' }),
+        ).toBeNull();
     },
   );
 

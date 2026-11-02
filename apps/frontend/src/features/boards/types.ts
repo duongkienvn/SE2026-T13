@@ -22,6 +22,7 @@ export interface Board {
   currentUserRole: BoardRole | null;
   workspaceId?: string;
   visibility?: BoardVisibility;
+  backgroundPreset?: string;
   capabilities?: BoardCapabilities;
 }
 
