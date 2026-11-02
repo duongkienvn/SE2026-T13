@@ -63,7 +63,43 @@ scrolling. No page scrollbar is hidden, and the form pane never scrolls itself.
 The approved illustration component/data/SVG and logo navigation are unchanged;
 only CSS scale, density, proportions and spacing were corrected.
 
-## Compact correction verification (current)
+## Sign Up rhythm refinement (current)
+
+Login is approved and unchanged. This follow-up appends only selectors scoped
+to `[data-auth-kind='register']`; no page/component, illustration, auth handler,
+Google implementation, validation, route or API code changed.
+
+On wide screens at least 860px tall, Sign Up has its own 760px minimum container
+height. It remains content-driven when errors need more room. The form retains
+its 400px width, 44px inputs/actions and existing font sizes. Increased group
+spacing and panel padding provide breathing room without matching Login's height.
+The existing password checklist is grouped on a quiet tinted surface; only empty
+decorative markers are dimmed. Rule text, met-state checks, live announcements,
+character limit/counter, descriptions and validation behavior remain intact.
+Normal laptop-height screens retain compact spacing and natural overflow.
+
+Chrome inspected both themes at 1440×900 and default/error states at 1366×768
+and 390×844. The simultaneous-error case includes four invalid fields and the
+two-line missing-special-character password message. All fields, hints, actions
+and the account switch are visible, with no desktop document or nested scrolling.
+
+| Viewport / state     | Container height | Space above / below form | Document / viewport height |
+| -------------------- | ---------------- | ------------------------ | -------------------------- |
+| 1440×900 empty       | 760px            | about 56px / 56px        | 900 / 900                  |
+| 1440×900 four errors | about 796px      | 25px / 25px              | 900 / 900                  |
+| 1366×768 empty       | about 636px      | 16px / 16px              | 768 / 768                  |
+| 1366×768 four errors | about 734px      | 16px / 16px              | 768 / 768                  |
+
+Login geometry and computed styles were compared before/after at 1440×900 in
+both themes, 1366×768 dark and 390×844 dark: all four comparisons are identical.
+No illustration dimensions or artwork were changed by this follow-up.
+
+- Focused registration, auth layout and Google auth suites: **3 files, 46 tests passed**.
+- Frontend production build passed, with the existing environment/chunk warnings.
+- Changed-file formatting and `git diff --check` passed. No backend/full suite run.
+- [Four Sign Up captures and measured results](../../design/screens/implementation/signup-presentation/).
+
+## Compact correction verification (previous iteration)
 
 Chrome DevTools inspected all 12 combinations of Login/Sign Up, default/errors,
 and 1440×900, 1366×768 and 390×844. The registration error case uses an invalid
