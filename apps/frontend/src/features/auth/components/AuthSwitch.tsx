@@ -16,7 +16,7 @@ export function AuthSwitch({
   const state: RedirectState | undefined = from ? { from } : undefined;
 
   return (
-    <p className="mt-5 flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line px-4 text-sm text-ink short:mt-4">
+    <p className="auth-switch mt-5 flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line px-4 text-sm text-ink short:mt-4">
       {prompt}
       <Link
         to={to}

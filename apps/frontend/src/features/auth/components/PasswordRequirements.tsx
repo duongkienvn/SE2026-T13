@@ -8,9 +8,11 @@ import {
 export function PasswordRequirements({
   id,
   password,
+  appearance = 'default',
 }: {
   id: string;
   password: string;
+  appearance?: 'default' | 'auth';
 }) {
   const requirements = newPasswordRequirements(password);
   const length = passwordLength(password);
@@ -18,7 +20,10 @@ export function PasswordRequirements({
   const met = requirements.filter((requirement) => requirement.met).length;
 
   return (
-    <div id={id} className="space-y-2 short:space-y-1 text-xs">
+    <div
+      id={id}
+      className={`space-y-2 short:space-y-1 text-xs ${appearance === 'auth' ? 'auth-entry-requirements' : ''}`}
+    >
       <ul
         aria-label="Password requirements"
         className="grid grid-cols-1 gap-x-4 gap-y-2 short:gap-y-1 min-[360px]:grid-cols-2 sm:gap-x-6"

@@ -10,7 +10,7 @@ import { TextField } from '../../../components/TextField';
 import { login } from '../api';
 import { useAuthSession, type AuthSessionScope } from '../auth-session-context';
 import type { LoginRequest } from '../types';
-import { AuthLayout } from '../components/AuthLayout';
+import { AuthEntryLayout } from '../components/AuthEntryLayout';
 import { AuthSwitch } from '../components/AuthSwitch';
 import { GoogleAuth } from '../components/GoogleAuth';
 import { toFormErrors } from '../../../lib/form-errors';
@@ -107,19 +107,16 @@ export function LoginPage() {
   };
 
   return (
-    <AuthLayout>
-      <h1 className="text-2xl leading-tight font-bold tracking-tight text-ink">
-        Welcome back
-      </h1>
-      <p className="mt-1.5 text-[15px] text-muted">
-        Log in to your account to continue.
-      </p>
+    <AuthEntryLayout>
+      <h1>Welcome back</h1>
+      <p className="auth-entry-intro">Log in to your account to continue.</p>
 
       <form
         ref={formRef}
         noValidate
         onSubmit={handleSubmit}
-        className="mt-6 space-y-5 short:mt-4 short:space-y-3"
+        className="auth-entry-form"
+        aria-busy={mutation.isPending}
       >
         {passwordUpdated && (
           <Alert variant="success">
@@ -141,17 +138,19 @@ export function LoginPage() {
         )}
 
         <TextField
+          appearance="auth"
           label="Email address"
+          icon={<MailIcon />}
           type="email"
           name="email"
           autoComplete="username"
           placeholder="you@company.com"
-          icon={<MailIcon />}
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           error={fieldErrors.email}
         />
         <PasswordField
+          appearance="auth"
           label="Password"
           name="password"
           autoComplete="current-password"
@@ -163,14 +162,14 @@ export function LoginPage() {
 
         <Link
           to="/forgot-password"
-          className="block text-right text-sm font-semibold text-primary underline"
+          className="auth-entry-recovery text-sm font-medium text-primary underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
           Forgot password?
         </Link>
         <Button
           type="submit"
           size="lg"
-          className="w-full"
+          className="auth-entry-submit"
           disabled={mutation.isPending}
         >
           {mutation.isPending ? 'Logging in…' : 'Log In'}
@@ -183,6 +182,6 @@ export function LoginPage() {
         to="/register"
         action="Create one"
       />
-    </AuthLayout>
+    </AuthEntryLayout>
   );
 }

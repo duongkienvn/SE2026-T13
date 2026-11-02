@@ -75,6 +75,10 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Frontend tasks
 
+- [Auth V2 reference refinement and home-logo navigation](frontend/auth-v2-reference-refinement.md)
+
+- [Auth pages redesign — Forward, together](frontend/auth-pages-redesign.md)
+
 - [Card Detail V2, safe duplicate and quick actions](frontend/card-detail-v2.md)
 - [Card checklists and Board-scoped labels UI](frontend/checklists-labels.md)
 - [Card attachments and advanced dates UI](frontend/card-attachments-advanced-dates.md)

@@ -7,6 +7,14 @@
 
 ## 1. Visual source of truth
 
+The approved [Auth V2 reference](screens/reference/auth-v2.png) supersedes the
+original Login and earlier Forward, together composition for Login and Sign Up
+only. Its scoped layout, responsive budget, home-logo navigation, and
+verification evidence are recorded in
+[Auth V2 refinement](../tasks/frontend/auth-v2-reference-refinement.md). Recovery and
+email-verification pages retain the original shared `AuthLayout`; the other
+screen baselines below remain in force.
+
 Use the five unmodified images in `docs/design/screens/reference/` as visual acceptance baselines. Screenshots of the running application belong in `docs/design/screens/implementation/<task-slug>/` and are evidence, not design sources:
 
 | File                                 | Target screen                  | Source image dimensions |
@@ -110,8 +118,9 @@ These are measured design guides, not hard-coded fixed dimensions. Use CSS grid/
 The reference images were drawn at about 1672 px wide, so copying their pixel sizes 1:1 made screens scroll on common laptops (for example 1366×657 and 1536×730 browser viewports). The frontend therefore uses compact sizes and should fit normal content within the viewport. Auth forms with long errors or very small viewports may scroll inside their form panel so controls remain reachable:
 
 - Controls: inputs and large buttons are 44 px high, regular buttons 40 px, field labels 14 px. The header is 60 px high and the side rail 60 px wide.
-- Login and Register share the same frame: up to 1380 px wide, the existing 48/52 desktop panel split, and a form content width up to 560 px. Outer margins are 16 px on mobile and 24 px from `sm`. Card height is viewport minus those margins, capped at 720 px from `sm`; navigation between the two forms does not change the frame dimensions. Form horizontal padding is 24/40/48/64 px across the base/`sm`/`lg`/`xl` breakpoints. The right panel scrolls when necessary and centers shorter forms with auto margins, keeping taller forms reachable from the top. The shared layout also applies to Check Email and Verify Email.
-- Register keeps Display name/Email and Password/Confirm Password in pairs from `sm`. Login/Register form groups are separated by 20 px normally (12 px in short viewports); the register field pairs use 16 px gaps (12 px when short), and checklist rows use 8 px (4 px when short). The form column omits the duplicate brand on large screens because the side panel already shows it.
+- Login and Sign Up use the scoped `AuthEntryLayout`: frame up to 1280px wide, 400px desktop form content, and a compact 42/58 split retaining the approved Auth V2 illustration. A 70rem **available container width** budget leaves room for the hero highlights at the narrower proportion. Login remains content-sized; Sign Up's independent vertical spacing is described below. Neither form pane scrolls independently. Both pages fit at 1440×900 and 1366×768, including simultaneous inline validation errors; genuinely short viewports use natural document scrolling. Below the split budget, the layout is single-column; below 640px the outer card treatment is removed.
+- Sign Up fields remain sequential, with persistent requirements directly below the new password in a quiet helper group. Sign Up alone has a 760px minimum container height on wide screens at least 860px tall, with content-driven growth for errors, 24px form-panel padding and 10px group gaps; normal laptop-height screens retain compact spacing. Login's approved layout is unchanged. Both retain 14px labels, 16px input text, 44px inputs, 28px form headings and 44px password toggles; the hero headline remains 32–36px. Desktop branding appears in the hero; single-column layouts place it above the form. Both entry-page logo placements are accessible links named “Kanvexa home” to `/`; other routes keep their existing logo behavior.
+- Recovery and email verification retain the original `AuthLayout`: up to 1380px wide, 48/52 split, content up to 560px, and height capped at 720px. This redesign does not change those routes or their controls.
 - `short:` is a custom Tailwind variant (`max-height: 640px`, defined in `apps/frontend/src/style.css`) that tightens vertical spacing on short viewports.
 - When data does not fit (for example many boards or members), use numbered pagination sized to the available space instead of scrolling or "Load more".
 - Board cards use a compact row layout (icon beside the title, role chip and update time under it, then a two-line description) at a fixed 136 px height, instead of the taller icon-on-top card in `boards.png`, so two rows fit on a 1366×657 laptop. Long board descriptions in page headers are clamped to two lines.
@@ -121,6 +130,11 @@ The reference images were drawn at about 1672 px wide, so copying their pixel si
 ## 3. Screen-by-screen contract
 
 ### A. `login.png`
+
+The composition below is the historical baseline. For `/login` and `/register`,
+use the approved [Forward, together record](../tasks/frontend/auth-pages-redesign.md).
+The original artwork remains a reference for the unchanged recovery and
+verification layout.
 
 - Match the pastel lavender grid/gradient background and centered large white/light panel.
 - Match split composition: product narrative and embedded board visual left; login form right.

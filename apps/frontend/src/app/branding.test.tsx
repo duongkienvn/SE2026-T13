@@ -22,9 +22,7 @@ describe('Kanvexa authentication branding', () => {
       // Both responsive placements share the same artwork. The visible wordmark
       // supplies its accessible name, so the adjacent image is decorative.
       const mobileBrand = within(screen.getByRole('main')).getByText('Kanvexa');
-      const desktopBrand = screen.getByText(
-        'Organize work. Move ideas forward.',
-      ).parentElement!;
+      const desktopBrand = screen.getByRole('complementary');
       for (const placement of [mobileBrand.parentElement!, desktopBrand]) {
         const logo = placement.querySelector('img');
         expect(logo?.getAttribute('src')).toBe('/branding/kanvexa-logo-v1.png');

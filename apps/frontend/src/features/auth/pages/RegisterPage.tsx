@@ -10,7 +10,7 @@ import { TextField } from '../../../components/TextField';
 import { register } from '../api';
 import { useAuthSession, type AuthSessionScope } from '../auth-session-context';
 import type { RegisterRequest } from '../types';
-import { AuthLayout } from '../components/AuthLayout';
+import { AuthEntryLayout } from '../components/AuthEntryLayout';
 import { AuthSwitch } from '../components/AuthSwitch';
 import { GoogleAuth } from '../components/GoogleAuth';
 import { PasswordRequirements } from '../components/PasswordRequirements';
@@ -130,48 +130,45 @@ export function RegisterPage() {
   };
 
   return (
-    <AuthLayout>
-      <h1 className="text-2xl leading-tight font-bold tracking-tight text-ink">
-        Create your account
-      </h1>
-      <p className="mt-1.5 text-[15px] text-muted">
-        Start organizing work with your team.
-      </p>
+    <AuthEntryLayout kind="register">
+      <h1>Create your account</h1>
+      <p className="auth-entry-intro">Start organizing work with your team.</p>
 
       <form
         ref={formRef}
         noValidate
         onSubmit={handleSubmit}
-        className="mt-6 space-y-5 short:mt-4 short:space-y-3"
+        className="auth-entry-form"
+        aria-busy={mutation.isPending}
       >
         {formError && <Alert variant="error">{formError}</Alert>}
 
-        <div className="grid items-start gap-4 short:gap-3 sm:grid-cols-2">
-          <TextField
-            label="Display name"
-            name="displayName"
-            autoComplete="name"
-            placeholder="Your name"
-            icon={<UserIcon />}
-            value={values.displayName}
-            onChange={update('displayName')}
-            error={fieldErrors.displayName}
-          />
-          <TextField
-            label="Email address"
-            type="email"
-            name="email"
-            autoComplete="email"
-            placeholder="you@company.com"
-            icon={<MailIcon />}
-            value={values.email}
-            onChange={update('email')}
-            error={fieldErrors.email}
-          />
-        </div>
-        {/* Side by side on wider screens so the form fits without scrolling. */}
-        <div className="grid items-start gap-4 short:gap-3 sm:grid-cols-2">
+        <TextField
+          appearance="auth"
+          label="Display name"
+          icon={<UserIcon />}
+          name="displayName"
+          autoComplete="name"
+          placeholder="Your name"
+          value={values.displayName}
+          onChange={update('displayName')}
+          error={fieldErrors.displayName}
+        />
+        <TextField
+          appearance="auth"
+          label="Email address"
+          icon={<MailIcon />}
+          type="email"
+          name="email"
+          autoComplete="email"
+          placeholder="you@company.com"
+          value={values.email}
+          onChange={update('email')}
+          error={fieldErrors.email}
+        />
+        <div className="auth-entry-password-group">
           <PasswordField
+            appearance="auth"
             label="Password"
             name="password"
             autoComplete="new-password"
@@ -181,26 +178,27 @@ export function RegisterPage() {
             onChange={update('password')}
             error={fieldErrors.password}
           />
-          <PasswordField
-            label="Confirm password"
-            name="confirmPassword"
-            autoComplete="new-password"
-            placeholder="Repeat password"
-            value={values.confirmPassword}
-            onChange={update('confirmPassword')}
-            error={fieldErrors.confirmPassword}
+          <PasswordRequirements
+            id={passwordRequirementsId}
+            password={values.password}
+            appearance="auth"
           />
         </div>
-
-        <PasswordRequirements
-          id={passwordRequirementsId}
-          password={values.password}
+        <PasswordField
+          appearance="auth"
+          label="Confirm password"
+          name="confirmPassword"
+          autoComplete="new-password"
+          placeholder="Repeat password"
+          value={values.confirmPassword}
+          onChange={update('confirmPassword')}
+          error={fieldErrors.confirmPassword}
         />
 
         <Button
           type="submit"
           size="lg"
-          className="w-full"
+          className="auth-entry-submit"
           disabled={mutation.isPending}
         >
           {mutation.isPending ? 'Creating account…' : 'Create account'}
@@ -213,6 +211,6 @@ export function RegisterPage() {
         to="/login"
         action="Log in"
       />
-    </AuthLayout>
+    </AuthEntryLayout>
   );
 }
