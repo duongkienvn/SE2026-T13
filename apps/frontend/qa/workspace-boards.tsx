@@ -27,12 +27,78 @@ import type {
 import type { WorkspaceSummary } from '../src/features/workspaces/types';
 import { WorkspaceLayout } from '../src/features/workspaces/components/WorkspaceLayout';
 import { WorkspaceBoardsPage } from '../src/features/workspaces/pages/WorkspaceBoardsPage';
+import { BoardDiscoveryPage } from '../src/features/boards/pages/BoardDiscoveryPage';
 import { WorkspaceOverviewPage } from '../src/features/workspaces/pages/WorkspaceOverviewPage';
 import { WorkspacesPage } from '../src/features/workspaces/pages/WorkspacesPage';
 import { ApiError } from '../src/lib/api-client';
 import '../src/style.css';
 
 const params = new URLSearchParams(location.search);
+// Isolated fixture only: no request or mutation reaches a real account.
+const fixtureStars = new Set<string>();
+const originalFetch = window.fetch.bind(window);
+window.fetch = async (input, init) => {
+  const url = new URL(
+    typeof input === 'string'
+      ? input
+      : input instanceof URL
+        ? input.href
+        : input.url,
+    location.href,
+  );
+  const match = /\/boards\/(qa-private-board-\d+)\/(user-state|star)$/.exec(
+    url.pathname,
+  );
+  if (match) {
+    if (init?.method === 'PUT') fixtureStars.add(match[1]);
+    if (init?.method === 'DELETE') fixtureStars.delete(match[1]);
+    return Response.json({
+      success: true,
+      data: { isStarred: fixtureStars.has(match[1]), lastViewedAt: null },
+    });
+  }
+  if (url.pathname.endsWith('/boards/background-presets'))
+    return Response.json({
+      success: true,
+      data: [
+        { id: 'blue', kind: 'color', value: '#2563EB', foreground: 'light' },
+        { id: 'forest', kind: 'photo', value: '', foreground: 'light' },
+      ],
+    });
+  if (
+    url.pathname.endsWith('/boards') &&
+    (!init?.method || init.method === 'GET')
+  ) {
+    const term = (url.searchParams.get('q') ?? '').toLowerCase();
+    const archived = url.searchParams.get('status') === 'archived';
+    const filtered = boards.filter(
+      (board) =>
+        board.isArchived === archived &&
+        board.name.toLowerCase().includes(term) &&
+        (url.searchParams.get('starred') !== 'true' ||
+          fixtureStars.has(board.id)) &&
+        url.searchParams.get('recent') !== 'true',
+    );
+    const page = Number(url.searchParams.get('page') ?? 1);
+    const limit = Number(url.searchParams.get('limit') ?? 20);
+    return Response.json({
+      success: true,
+      data: filtered.slice((page - 1) * limit, page * limit).map((board) => ({
+        ...board,
+        createdById: 'qa',
+        createdAt: board.updatedAt,
+        archivedAt: board.isArchived ? board.updatedAt : null,
+      })),
+      meta: {
+        page,
+        limit,
+        total: filtered.length,
+        totalPages: Math.max(1, Math.ceil(filtered.length / limit)),
+      },
+    });
+  }
+  return originalFetch(input, init);
+};
 const scenario = params.get('scenario') ?? 'ready';
 const theme =
   params.get('theme') === 'dark'
@@ -88,6 +154,7 @@ const boards: WorkspaceBoardSummary[] = Array.from(
         : `${names[index % 6]}${index >= 6 ? ` ${index + 1}` : ''}`,
     description: null,
     updatedAt: '2026-10-27T09:00:00Z',
+    backgroundPreset: index % 2 ? 'blue' : 'forest',
     isArchived: scenario === 'archived',
     visibility: index % 4 === 3 ? 'WORKSPACE_VISIBLE' : 'PRIVATE',
     currentUserRole: index % 4 === 3 ? null : index % 2 ? 'MEMBER' : 'OWNER',
@@ -128,8 +195,9 @@ const gateway: WorkspaceBoardsGateway =
         available: true,
         features: {
           search: true,
+          discovery: true,
           status: true,
-          sorts: ['updated-desc', 'name-asc'],
+          sorts: ['updated-desc', 'name-asc', 'recent'],
           pagination: true,
         },
         list: async (_token, id, filters, signal) => {
@@ -199,6 +267,7 @@ const router = createMemoryRouter(
       element: <AuthenticatedLayout />,
       children: [
         { path: '/workspaces', element: <WorkspacesPage /> },
+        { path: '/boards', element: <BoardDiscoveryPage /> },
         {
           path: '/workspaces/:workspaceId',
           element: <WorkspaceLayout />,

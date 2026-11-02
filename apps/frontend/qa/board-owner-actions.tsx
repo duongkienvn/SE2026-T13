@@ -33,6 +33,8 @@ const board: Board = {
   description: 'Board OWNER actions without source Workspace membership.',
   workspaceId: 'source-not-joined',
   visibility: 'PRIVATE',
+  backgroundPreset: 'blue',
+  backgroundVersion: 0,
   currentUserRole:
     scenario === 'reader' ? null : scenario === 'member' ? 'MEMBER' : 'OWNER',
   isArchived: scenario === 'archived',
@@ -85,6 +87,59 @@ function response(data: unknown, page = false) {
 // Every API request is intercepted locally; this fixture never contacts a backend.
 window.fetch = async (input, init) => {
   const path = String(input).replace(env.apiBaseUrl, '');
+  if (path === '/boards/background-presets')
+    return response([
+      ...[
+        'blue',
+        'indigo',
+        'violet',
+        'rose',
+        'orange',
+        'amber',
+        'green',
+        'teal',
+      ].map((id, index) => ({
+        id,
+        kind: 'color',
+        value: [
+          '#2563EB',
+          '#4F46E5',
+          '#7C3AED',
+          '#BE123C',
+          '#C2410C',
+          '#FCD34D',
+          '#15803D',
+          '#0F766E',
+        ][index],
+        foreground: 'light',
+      })),
+      ...['mountains', 'forest', 'coast', 'lake'].map((id) => ({
+        id,
+        kind: 'photo',
+        value: '',
+        foreground: 'light',
+      })),
+    ]);
+  if (
+    path === `/boards/${board.id}/user-state` ||
+    path === `/boards/${board.id}/views`
+  )
+    return response({ isStarred: false, lastViewedAt: null });
+  if (path === `/boards/${board.id}/background` && init?.method === 'PATCH') {
+    const input = JSON.parse(String(init.body));
+    if (input.expectedVersion !== board.backgroundVersion)
+      return new Response(
+        JSON.stringify({
+          success: false,
+          code: 'BACKGROUND_CONFLICT',
+          message: 'Background changed',
+        }),
+        { status: 409 },
+      );
+    board.backgroundPreset = input.preset;
+    board.backgroundVersion = (board.backgroundVersion ?? 0) + 1;
+    return response(board);
+  }
   if (path === '/workspaces?page=1&limit=100')
     return response(
       scenario === 'empty'
