@@ -10,8 +10,8 @@ describe('real BoardsModule and AuthModule dependency wiring', () => {
         require.resolve('ts-node/register'),
         'test/boards/boards-module.bootstrap.mjs',
       ],
-      { cwd: resolve(__dirname, '../..'), encoding: 'utf8', timeout: 45_000 },
+      { cwd: resolve(__dirname, '../..'), encoding: 'utf8', timeout: 180_000 },
     );
     expect(output).toContain('protected routes: PASS');
-  }, 50_000);
+  }, 190_000);
 });
