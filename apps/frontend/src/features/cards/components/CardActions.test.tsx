@@ -64,7 +64,7 @@ function openBoard({
 }
 
 const writes = (calls: MockRequest[]) =>
-  calls.filter((c) => c.method !== 'GET');
+  calls.filter((c) => c.method !== 'GET' && !c.path.endsWith('/views'));
 
 /** Answers with `first` once, then `after` for every refetch. */
 function then<T>(first: T, after: T) {

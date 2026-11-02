@@ -115,7 +115,9 @@ describe('Archived cards in board context', () => {
       confirm.click();
       confirm.click();
     });
-    const count = calls.filter((call) => call.method === 'POST').length;
+    const count = calls.filter(
+      (call) => call.method === 'POST' && !call.path.endsWith('/views'),
+    ).length;
     release();
     expect(count).toBe(1);
     expect(
@@ -130,7 +132,11 @@ describe('Archived cards in board context', () => {
         name: 'Restore Preserved archived card',
       }),
     );
-    expect(calls.filter((call) => call.method === 'POST')).toHaveLength(0);
+    expect(
+      calls.filter(
+        (call) => call.method === 'POST' && !call.path.endsWith('/views'),
+      ),
+    ).toHaveLength(0);
     fireEvent.click(screen.getByRole('button', { name: 'Restore card' }));
     expect(
       await screen.findByText('Card “Preserved archived card” restored.'),
@@ -139,7 +145,11 @@ describe('Archived cards in board context', () => {
       await screen.findByRole('heading', { name: 'No archived cards' }),
     ).toBeTruthy();
     await waitFor(() =>
-      expect(calls.filter((call) => call.method === 'POST')).toHaveLength(1),
+      expect(
+        calls.filter(
+          (call) => call.method === 'POST' && !call.path.endsWith('/views'),
+        ),
+      ).toHaveLength(1),
     );
   });
 

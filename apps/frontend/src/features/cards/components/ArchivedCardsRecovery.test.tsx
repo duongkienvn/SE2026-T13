@@ -104,7 +104,9 @@ describe('archived card restore recovery', () => {
       ).toBeTruthy();
       expect(screen.queryByText(/This board is archived/)).toBeNull();
       expect(screen.queryByRole('button', { name: /^Restore / })).toBeNull();
-      expect(h.calls.some((c) => c.method === 'POST')).toBe(false);
+      expect(
+        h.calls.some((c) => c.method === 'POST' && !c.path.endsWith('/views')),
+      ).toBe(false);
     },
   );
   it('closes a pending confirmation on lost write capability while the Board stays active', async () => {
@@ -117,14 +119,20 @@ describe('archived card restore recovery', () => {
       ),
     ).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Restore card' })).toBeNull();
-    expect(h.calls.some((c) => c.method === 'POST')).toBe(false);
+    expect(
+      h.calls.some((c) => c.method === 'POST' && !c.path.endsWith('/views')),
+    ).toBe(false);
   });
   it('recovers when the board is archived and restored during a pending request', async () => {
     const h = setup(409, 'CARD_NOT_ARCHIVED', true);
     await h.select();
     h.confirm();
     await waitFor(() =>
-      expect(h.calls.filter((call) => call.method === 'POST')).toHaveLength(1),
+      expect(
+        h.calls.filter(
+          (call) => call.method === 'POST' && !call.path.endsWith('/views'),
+        ),
+      ).toHaveLength(1),
     );
     h.readOnly(true);
     expect(
@@ -146,7 +154,11 @@ describe('archived card restore recovery', () => {
     expect(
       await screen.findByText('Card “Recovery card” restored.'),
     ).toBeTruthy();
-    expect(h.calls.filter((call) => call.method === 'POST')).toHaveLength(2);
+    expect(
+      h.calls.filter(
+        (call) => call.method === 'POST' && !call.path.endsWith('/views'),
+      ),
+    ).toHaveLength(2);
   });
 
   it('allows retry after a restore failure without announcing false success', async () => {
@@ -164,7 +176,11 @@ describe('archived card restore recovery', () => {
     expect(
       await screen.findByText('Card “Recovery card” restored.'),
     ).toBeTruthy();
-    expect(h.calls.filter((call) => call.method === 'POST')).toHaveLength(2);
+    expect(
+      h.calls.filter(
+        (call) => call.method === 'POST' && !call.path.endsWith('/views'),
+      ),
+    ).toHaveLength(2);
   });
 
   it.each([403, 404])(
