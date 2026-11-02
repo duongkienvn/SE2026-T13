@@ -10,6 +10,15 @@ export const BOARD_ACCESS_REVOKED = 'BOARD_ACCESS_REVOKED';
 
 /** Keep a denial tombstone so mounted observers cannot revive protected data. */
 export function revokeBoardAccess(client: QueryClient, boardId: string) {
+  const discoveryState = {
+    queryKey: ['board-discovery'],
+    predicate: (query: { queryKey: readonly unknown[] }) =>
+      query.queryKey[3] === 'state' &&
+      typeof query.queryKey[4] === 'string' &&
+      query.queryKey[4].toLowerCase() === boardId.toLowerCase(),
+  };
+  void client.cancelQueries(discoveryState);
+  client.removeQueries(discoveryState);
   changeBoardAccessVersion(client, boardId);
   clearBoardDrafts(client, boardId);
   // A shared Board may have been the only permission to read another avatar.
