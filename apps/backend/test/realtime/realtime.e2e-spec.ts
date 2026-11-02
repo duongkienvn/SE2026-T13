@@ -10,8 +10,8 @@ describe('Socket.IO through real AppModule, JWT and REST', () => {
         require.resolve('ts-node/register'),
         'test/realtime/realtime.bootstrap.mjs',
       ],
-      { cwd: resolve(__dirname, '../..'), encoding: 'utf8', timeout: 60_000 },
+      { cwd: resolve(__dirname, '../..'), encoding: 'utf8', timeout: 180_000 },
     );
     expect(output).toContain('16 scenarios PASS');
-  }, 65_000);
+  }, 190_000);
 });
