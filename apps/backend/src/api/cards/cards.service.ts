@@ -2,7 +2,10 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { RealtimeServerEvent } from '@kanban/shared';
 import { BoardEventPublisher } from '../../realtime/board-event-publisher.service';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
+import { parseCardDateInstant } from '@kanban/shared';
+import { BoardLabel } from '../labels/entities/board-label.entity';
+import { UserPreferences } from '../users/entities/user-preferences.entity';
 import { ApplicationException } from '../../exceptions/application.exception';
 import {
   ActivityActionType,
@@ -571,6 +574,35 @@ export class CardsService {
     }
     if (query.columnId)
       await this.requireColumn(this.columns, boardId, query.columnId);
+    const manager = this.cards.manager;
+    for (const [ids, entity, field] of [
+      [query.labelIds, BoardLabel, 'id'],
+      [query.assigneeIds, BoardMember, 'userId'],
+    ] as const) {
+      if (ids?.length) {
+        const count = await manager.getRepository(entity).count({
+          where: { boardId, [field]: In(ids) },
+        });
+        if (count !== ids.length)
+          throw new ApplicationException(
+            HttpStatus.NOT_FOUND,
+            'NOT_FOUND',
+            'Filter value not found',
+          );
+      }
+    }
+    let from: Date | undefined, to: Date | undefined;
+    try {
+      from = query.dueFrom ? parseCardDateInstant(query.dueFrom) : undefined;
+      to = query.dueTo ? parseCardDateInstant(query.dueTo) : undefined;
+      if (from && to && from >= to) throw new Error();
+    } catch {
+      throw new ApplicationException(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_FAILED',
+        'Invalid due date range',
+      );
+    }
     const builder = this.cards
       .createQueryBuilder('card')
       .leftJoinAndSelect('card.assignees', 'assignee')
@@ -582,6 +614,42 @@ export class CardsService {
       builder.andWhere('card.columnId = :columnId', {
         columnId: query.columnId,
       });
+    }
+    if (query.q) {
+      const term = query.q.replace(/[\\%_]/g, '\\$&');
+      builder.andWhere(
+        "(card.title ILIKE :term ESCAPE '\\' OR card.description ILIKE :term ESCAPE '\\')",
+        { term: `%${term}%` },
+      );
+    }
+    if (query.labelIds?.length)
+      builder.andWhere(
+        'EXISTS (SELECT 1 FROM card_labels cl WHERE cl.card_id = card.id AND cl.board_id = :boardId AND cl.label_id IN (:...labelIds))',
+        { labelIds: query.labelIds },
+      );
+    if (query.assigneeIds?.length)
+      builder.andWhere(
+        'EXISTS (SELECT 1 FROM card_assignees ca WHERE ca.card_id = card.id AND ca.user_id IN (:...assigneeIds))',
+        { assigneeIds: query.assigneeIds },
+      );
+    if (from) builder.andWhere('card.dueDate >= :dueFrom', { dueFrom: from });
+    if (to) builder.andWhere('card.dueDate < :dueTo', { dueTo: to });
+    if (query.dueStatus === 'NO_DUE_DATE')
+      builder.andWhere('card.dueDate IS NULL');
+    else if (query.dueStatus) {
+      const now = new Date();
+      if (query.dueStatus === 'OVERDUE')
+        builder.andWhere('card.dueDate < :now', { now });
+      else {
+        const zone =
+          (await manager.getRepository(UserPreferences).findOneBy({ userId }))
+            ?.timeZone ?? 'UTC';
+        builder.andWhere('card.dueDate >= :now', { now });
+        builder.andWhere(
+          `(card.dueDate AT TIME ZONE :zone)::date ${query.dueStatus === 'DUE_TODAY' ? '=' : '<>'} (CAST(:now AS timestamptz) AT TIME ZONE :zone)::date`,
+          { zone },
+        );
+      }
     }
     if (query.status === 'archived') {
       builder.orderBy('card.archivedAt', 'DESC');
@@ -597,6 +665,7 @@ export class CardsService {
       .skip(offset)
       .take(query.limit)
       .getManyAndCount();
+    await this.authorization.requireRead(userId, boardId);
     return paginate(cards.map(toCardResponseDto), total, query);
   }
 
