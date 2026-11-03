@@ -27,6 +27,8 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Backend tasks
 
+- [P4-03 Persistent Notification Foundation](backend/p4-notification-foundation.md)
+
 - [P4-02 ACL-safe Global Search backend](backend/p4-global-search.md)
 
 - [P4-01 Cross-board My Tasks and Home API](backend/p4-my-tasks-home-api.md)
