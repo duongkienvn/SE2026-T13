@@ -192,8 +192,8 @@ function ItemRow({
       </li>
     );
   return (
-    <li className="group flex min-h-10 items-center gap-2 rounded-md hover:bg-app/60">
-      <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-1.5 has-disabled:cursor-default">
+    <li className="group flex min-h-9 flex-wrap items-center gap-x-2 rounded-md hover:bg-app/60">
+      <label className="flex min-w-24 flex-1 cursor-pointer items-center gap-2.5 py-1.5 has-disabled:cursor-default">
         <input
           type="checkbox"
           className="size-4 shrink-0 accent-[var(--color-primary-solid)]"
@@ -216,7 +216,7 @@ function ItemRow({
         </span>
       </label>
       {!readOnly && (
-        <div className="flex shrink-0 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
+        <div className="ml-auto flex shrink-0 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
           <button
             type="button"
             aria-label={`Edit ${item.text}`}
@@ -353,7 +353,7 @@ function ChecklistBlock({
   );
 
   return (
-    <li className="space-y-2.5 rounded-xl border border-line p-3 sm:p-4">
+    <li className="space-y-2 rounded-xl border border-line p-3 sm:px-4">
       {mode === 'rename' && !readOnly ? (
         <InlineTextForm
           label="Checklist title"

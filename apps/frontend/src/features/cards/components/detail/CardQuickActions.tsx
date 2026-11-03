@@ -1,5 +1,5 @@
 import { Alert } from '../../../../components/Alert';
-import { CopyIcon, HistoryIcon } from '../../../../components/icons';
+import { BoltIcon, CopyIcon, HistoryIcon } from '../../../../components/icons';
 import { isApiError } from '../../../../lib/api-client';
 import { toFormErrors } from '../../../../lib/form-errors';
 import {
@@ -57,7 +57,7 @@ export function CardQuickActions({
   const copy = duplicate.data;
 
   return (
-    <CardRailGroup title="Actions">
+    <CardRailGroup title="Actions" icon={<BoltIcon />}>
       <div className="space-y-2">
         {canEdit && (
           <>

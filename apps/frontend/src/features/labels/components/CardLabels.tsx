@@ -373,7 +373,7 @@ export function CardLabels({
   const assigned = labels.data?.labels ?? [];
 
   return (
-    <CardRailGroup title="Labels">
+    <CardRailGroup title="Labels" icon={<TagIcon />}>
       {labels.isPending ? (
         <p role="status" className="text-sm text-muted">
           Loading labels…

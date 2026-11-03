@@ -3,7 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { Alert } from '../../../../components/Alert';
 import { Button } from '../../../../components/Button';
 import { TextField } from '../../../../components/TextField';
-import { PencilIcon } from '../../../../components/icons';
+import { CalendarIcon, PencilIcon } from '../../../../components/icons';
 import { toFormErrors } from '../../../../lib/form-errors';
 import { isApiError } from '../../../../lib/api-client';
 import { DEFAULT_PREFERENCES } from '../../../settings/format';
@@ -244,7 +244,7 @@ export function CardDates({
       draft.base.dueDate !== card.dueDate);
 
   return (
-    <CardRailGroup title="Dates">
+    <CardRailGroup title="Dates" icon={<CalendarIcon />}>
       {editing && resolved ? (
         <form
           noValidate
@@ -374,10 +374,10 @@ export function CardDates({
               return (
                 <div
                   key={which}
-                  className="flex flex-wrap items-center gap-x-2"
+                  className="grid grid-cols-[2.5rem_minmax(0,1fr)] items-baseline gap-x-2 gap-y-1"
                 >
                   <dt className="w-10 text-muted">{NAMES[which]}</dt>
-                  <dd className="text-ink">
+                  <dd className="min-w-0 text-ink [overflow-wrap:anywhere]">
                     {value ? (
                       <time dateTime={value}>
                         {formatCardInstant(value, dateFormat, timeZone)}
@@ -387,7 +387,7 @@ export function CardDates({
                     )}
                   </dd>
                   {which === 'due' && (
-                    <dd>
+                    <dd className="col-start-2">
                       <DueStatusBadge dueDate={value} timeZone={timeZone} />
                     </dd>
                   )}

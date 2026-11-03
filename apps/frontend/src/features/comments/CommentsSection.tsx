@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Alert } from '../../components/Alert';
 import { Button } from '../../components/Button';
 import { Pagination } from '../../components/Pagination';
-import { EmptyState, ErrorState, LoadingState } from '../../components/states';
+import { ArrowRightIcon, CommentIcon } from '../../components/icons';
+import { ErrorState } from '../../components/states';
 import { TextAreaField } from '../../components/TextAreaField';
 import { isApiError } from '../../lib/api-client';
 import { toFormErrors } from '../../lib/form-errors';
@@ -145,12 +146,13 @@ export function CommentsSection({
   return (
     <section
       aria-labelledby={`comments-${cardId}`}
-      className="mt-6 border-t border-line pt-5"
+      className="border-t border-line pt-4"
     >
       <h3
         id={`comments-${cardId}`}
-        className="text-base font-semibold text-ink"
+        className="flex items-center gap-3 text-base font-semibold text-ink"
       >
+        <CommentIcon aria-hidden="true" className="size-5 text-muted" />
         Comments{pageData && ` (${pageData.meta.total})`}
       </h3>
       {error && (
@@ -158,7 +160,7 @@ export function CommentsSection({
           <Alert variant="error">{error}</Alert>
         </div>
       )}
-      <div className="mt-4">
+      <div className="mt-3">
         {query.isError && pageData && (
           <div className="mb-3">
             <Alert variant="error">
@@ -174,7 +176,9 @@ export function CommentsSection({
           </div>
         )}
         {query.isPending ? (
-          <LoadingState label="Loading comments…" />
+          <p role="status" className="py-3 text-sm text-muted">
+            Loading comments…
+          </p>
         ) : query.isError && (!pageData || unavailable) ? (
           <ErrorState
             title={
@@ -188,15 +192,11 @@ export function CommentsSection({
             onRetry={() => void query.refetch()}
           />
         ) : pageData?.items.length === 0 ? (
-          <EmptyState
-            title="No comments yet"
-            description="Start the conversation on this card."
-          />
+          <p className="rounded-lg bg-app/70 px-3 py-3 text-sm text-muted">
+            No comments yet
+          </p>
         ) : (
-          <ol
-            aria-label="Comments"
-            className="max-h-64 space-y-4 overflow-y-auto pr-1"
-          >
+          <ol aria-label="Comments" className="space-y-4">
             {pageData?.items.map((comment) => {
               const author =
                 byId.get(comment.authorId) ??
@@ -351,28 +351,38 @@ export function CommentsSection({
       {!readOnly && !unavailable && user && (
         <form
           onSubmit={(event) => void handleCreate(event)}
-          className="mt-5 space-y-2 border-t border-line pt-4"
+          className="mt-3 flex items-start gap-3 border-t border-line pt-3"
         >
-          <TextAreaField
-            label="Write a comment"
-            rows={2}
-            value={content}
-            maxLength={MAX_LENGTH + 1}
-            onChange={(event) => {
-              setContent(event.target.value);
-              setError(undefined);
-            }}
-            error={
-              content && contentError(content)
-                ? contentError(content)
-                : undefined
-            }
-            hint={`Up to ${MAX_LENGTH} characters.`}
-          />
-          <div className="flex justify-end">
-            <Button type="submit" disabled={busy || !!contentError(content)}>
-              {create.isPending ? 'Posting…' : 'Post comment'}
-            </Button>
+          <UserAvatar user={user} className="mt-1 size-8 shrink-0 text-xs" />
+          <div className="min-w-0 flex-1 rounded-xl border border-line bg-surface p-1.5 shadow-card focus-within:ring-2 focus-within:ring-primary/15">
+            <div className="flex items-end gap-2">
+              <TextAreaField
+                label="Write a comment"
+                placeholder="Write a comment…"
+                rows={1}
+                className="min-w-0 flex-1 [&>label]:sr-only [&>textarea]:mt-0 [&>textarea]:min-h-10 [&>textarea]:border-0 [&>textarea]:px-2 [&>textarea]:focus:ring-0"
+                value={content}
+                maxLength={MAX_LENGTH + 1}
+                onChange={(event) => {
+                  setContent(event.target.value);
+                  setError(undefined);
+                }}
+                error={
+                  content && contentError(content)
+                    ? contentError(content)
+                    : undefined
+                }
+              />
+              <button
+                type="submit"
+                aria-label={create.isPending ? 'Posting…' : 'Post comment'}
+                title="Send comment"
+                className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-solid text-white hover:bg-primary-solid-hover focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={busy || !!contentError(content)}
+              >
+                <ArrowRightIcon aria-hidden="true" className="size-5" />
+              </button>
+            </div>
           </div>
         </form>
       )}

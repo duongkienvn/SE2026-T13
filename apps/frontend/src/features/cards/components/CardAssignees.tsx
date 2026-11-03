@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Alert } from '../../../components/Alert';
-import { PlusIcon } from '../../../components/icons';
+import { CloseIcon, PlusIcon, UsersIcon } from '../../../components/icons';
 import { isApiError } from '../../../lib/api-client';
 import { toFormErrors } from '../../../lib/form-errors';
 import { UserAvatar } from '../../auth/components/UserAvatar';
@@ -51,7 +51,11 @@ export function CardAssignees({ card, members, readOnly }: CardAssigneesProps) {
 
   return (
     <section aria-labelledby={`assignees-${card.id}`} className="space-y-2">
-      <h3 id={`assignees-${card.id}`} className="text-sm font-medium text-ink">
+      <h3
+        id={`assignees-${card.id}`}
+        className="flex items-center gap-2 text-sm font-semibold text-ink"
+      >
+        <UsersIcon aria-hidden="true" className="size-4.5 text-muted" />
         Assignees
       </h3>
       {error && <Alert variant="error">{error}</Alert>}
@@ -63,7 +67,10 @@ export function CardAssignees({ card, members, readOnly }: CardAssigneesProps) {
             const user = byId.get(userId);
             const name = user?.displayName ?? 'Former member';
             return (
-              <li key={userId} className="flex items-center gap-2.5">
+              <li
+                key={userId}
+                className="flex items-center gap-2.5 rounded-lg border border-line bg-surface px-2.5 py-1.5"
+              >
                 {user ? (
                   <UserAvatar user={user} className="size-7 text-[11px]" />
                 ) : (
@@ -81,9 +88,9 @@ export function CardAssignees({ card, members, readOnly }: CardAssigneesProps) {
                       reset();
                       unassign.mutate(userId);
                     }}
-                    className="rounded-md px-2 py-1 text-[13px] text-muted hover:bg-app hover:text-danger focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50"
+                    className="grid size-8 shrink-0 place-items-center rounded-md text-muted hover:bg-app hover:text-danger focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50"
                   >
-                    Remove
+                    <CloseIcon aria-hidden="true" className="size-4" />
                   </button>
                 )}
               </li>

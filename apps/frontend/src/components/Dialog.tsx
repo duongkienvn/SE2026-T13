@@ -17,6 +17,8 @@ interface DialogProps {
   fullscreenOnMobile?: boolean;
   /** Controls beside the title, e.g. edit and close buttons. */
   headerActions?: ReactNode;
+  /** Optional Card Detail context below its heading, e.g. assigned labels. */
+  headerContent?: ReactNode;
 }
 
 /**
@@ -35,6 +37,7 @@ export function Dialog({
   size = 'default',
   fullscreenOnMobile = false,
   headerActions,
+  headerContent,
 }: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -50,7 +53,7 @@ export function Dialog({
       <div
         aria-hidden="true"
         data-dialog-backdrop
-        className="absolute inset-0 bg-overlay/40"
+        className={`absolute inset-0 bg-overlay/40 ${size === 'detail' ? 'backdrop-blur-[2px]' : ''}`}
         onClick={() => dismissible && onClose()}
       />
       <div
@@ -85,33 +88,60 @@ export function Dialog({
         tabIndex={-1}
         className={`relative w-full ${fullscreenOnMobile ? 'h-dvh max-h-dvh rounded-none sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl' : 'max-h-[calc(100dvh-2rem)] rounded-2xl'} ${
           size === 'detail'
-            ? 'max-w-5xl'
+            ? 'card-detail-dialog flex max-w-6xl flex-col overflow-hidden'
             : size === 'wide'
               ? 'max-w-4xl'
               : 'max-w-lg'
-        } overflow-y-auto bg-surface p-5 shadow-frame focus:outline-none sm:p-6`}
+        } ${size === 'detail' ? '' : 'overflow-y-auto p-5 sm:p-6'} bg-surface shadow-frame focus:outline-none`}
       >
-        <div className="flex items-start gap-3">
-          <h2
-            id={titleId}
-            className={`min-w-0 flex-1 font-semibold break-words text-ink ${
-              size === 'default' ? 'text-lg' : 'text-xl sm:text-2xl'
-            }`}
-          >
-            {title}
-          </h2>
-          {headerActions && (
-            <div className="-mt-1 -mr-2 flex shrink-0 items-center gap-1">
-              {headerActions}
+        <div
+          className={
+            size === 'detail'
+              ? 'shrink-0 border-b border-line px-4 py-4 sm:px-7'
+              : ''
+          }
+        >
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <h2
+                id={titleId}
+                className={`min-w-0 font-semibold break-words text-ink ${
+                  size === 'default' ? 'text-lg' : 'text-xl sm:text-2xl'
+                }`}
+              >
+                {title}
+              </h2>
+              {size === 'detail' && description && (
+                <p
+                  id={descriptionId}
+                  className="mt-1 text-sm text-muted [overflow-wrap:anywhere]"
+                >
+                  {description}
+                </p>
+              )}
+              {headerContent && <div className="mt-2">{headerContent}</div>}
             </div>
+            {headerActions && (
+              <div className="-mt-1 -mr-2 flex shrink-0 items-center gap-1">
+                {headerActions}
+              </div>
+            )}
+          </div>
+          {size !== 'detail' && description && (
+            <p id={descriptionId} className="mt-1 text-sm text-muted">
+              {description}
+            </p>
           )}
         </div>
-        {description && (
-          <p id={descriptionId} className="mt-1 text-sm text-muted">
-            {description}
-          </p>
-        )}
-        <div className="mt-5">{children}</div>
+        <div
+          className={
+            size === 'detail'
+              ? 'card-detail-body min-h-0 overflow-y-auto px-4 py-3 sm:px-7 sm:pb-5'
+              : 'mt-5'
+          }
+        >
+          {children}
+        </div>
       </div>
     </div>,
     document.body,
