@@ -22,3 +22,4 @@ export * from './board-discovery.js';
 export * from './card-filtering.js';
 export * from './productivity.js';
 export * from './search.js';
+export * from './notifications.js';

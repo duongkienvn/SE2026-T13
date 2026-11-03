@@ -2,6 +2,7 @@ import {
   RealtimeServerEvent,
   RealtimePresenceEvent,
   RealtimeAccessEvent,
+  RealtimeNotificationEvent,
   type RealtimeServerEvents,
   type RealtimeClientEvents,
 } from '../src/index.js';
@@ -15,11 +16,17 @@ const exactKeys: Equal<
   | (typeof RealtimeServerEvent)[keyof typeof RealtimeServerEvent]
   | (typeof RealtimePresenceEvent)[keyof typeof RealtimePresenceEvent]
   | (typeof RealtimeAccessEvent)[keyof typeof RealtimeAccessEvent]
+  | (typeof RealtimeNotificationEvent)[keyof typeof RealtimeNotificationEvent]
 > = true;
 void exactKeys;
 
 declare const server: RealtimeServerEvents;
 declare const client: RealtimeClientEvents;
+server['notifications:changed']({});
+// @ts-expect-error user invalidation never carries IDs or private notification data
+server['notifications:changed']({ userId: 'recipient' });
+// @ts-expect-error notifications have no client socket command
+client['notifications:changed']({});
 const column = { boardId: 'board', columnId: 'column' };
 const card = { ...column, cardId: 'card' };
 const member = { boardId: 'board', userId: 'user' };

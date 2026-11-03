@@ -434,6 +434,18 @@ Backend architecture của project đang trong giai đoạn khởi tạo nhưng 
 
 Đây là basis để các feature sau này được implement theo cùng convention và không làm lệch kiến trúc đã thống nhất.
 
+## Persistent user notifications (CX-01 foundation)
+
+`NotificationsModule` exposes recipient-owned inbox/read-state and independent
+notification preference APIs. The transport-free `NotificationPersistenceModule`
+exports transaction-bound persistence and invitation verifier hooks without
+importing business modules. `RealtimeDeliveryModule` owns post-commit user hints
+through the existing authenticated sockets: `notifications:changed` carries `{}`
+only. Current context resolution uses the canonical Board SQL ACL and returns
+unavailable retained history after access loss. No real domain producer or
+scheduler is connected by this foundation. See the
+[implementation, privacy and downstream contracts](../tasks/backend/p4-notification-foundation.md).
+
 ## Private Card attachment extension (CD-03)
 
 The current Card module extends the historical MVP structure with URL metadata

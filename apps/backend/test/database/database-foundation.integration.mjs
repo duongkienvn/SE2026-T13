@@ -195,6 +195,9 @@ async function inspectSchema() {
           !sql.includes('activity_move_version') &&
           !sql.includes('board_user_states') &&
           !sql.includes('background_preset') &&
+          !sql.includes('background_version') &&
+          !sql.includes('"user_notifications"') &&
+          !sql.includes('"notification_preferences"') &&
           !sql.includes('declined_at') &&
           !sql.includes('CK_workspace_invitations_declined_at') &&
           !sql.includes('"card_checklists"') &&
@@ -408,7 +411,7 @@ try {
   assert.equal(source.options.logging, false);
   assert.equal(source.options.synchronize, false);
   assert.equal(source.options.migrationsRun, false);
-  assert.equal(source.entityMetadatas.length, 25);
+  assert.equal(source.entityMetadatas.length, 27);
   assert.deepEqual(
     source.entityMetadatas.map((entity) => entity.tableName).sort(),
     [
@@ -429,7 +432,9 @@ try {
       'comments',
       'email_verification_tokens',
       'google_identities',
+      'notification_preferences',
       'password_reset_tokens',
+      'user_notifications',
       'user_preferences',
       'users',
       'welcome_email_deliveries',
@@ -439,7 +444,7 @@ try {
       'workspaces',
     ],
   );
-  assert.equal(source.migrations.length, 23);
+  assert.equal(source.migrations.length, 25);
 
   const originalDatabase = process.env.DATABASE_NAME;
   process.env.DATABASE_NAME = testDatabase;
@@ -450,7 +455,7 @@ try {
     });
     try {
       const nestDataSource = app.get(DataSource);
-      assert.equal(nestDataSource.entityMetadatas.length, 25);
+      assert.equal(nestDataSource.entityMetadatas.length, 27);
       assert.equal(nestDataSource.migrations.length, source.migrations.length);
       assert.equal(nestDataSource.options.poolSize, source.options.poolSize);
       assert.equal(
@@ -466,6 +471,11 @@ try {
   }
 
   const allMigrations = source.migrations;
+  // Historical rollback rehearsals stop before the forward-only notification
+  // migration. The full extension and metadata are verified after all rehearsals.
+  const historicalMigrations = allMigrations.filter(
+    (m) => !m.name.startsWith('NotificationFoundation'),
+  );
   source.migrations = allMigrations.filter(
     (m) =>
       !m.name.startsWith('WorkspacePolicies') &&
@@ -477,7 +487,9 @@ try {
       !m.name.startsWith('CardAdvancedDates') &&
       !m.name.startsWith('CardAttachments') &&
       !m.name.startsWith('PrivateCardFiles') &&
-      !m.name.startsWith('BoardDiscovery'),
+      !m.name.startsWith('BoardDiscovery') &&
+      !m.name.startsWith('BoardBackgroundVersion') &&
+      !m.name.startsWith('NotificationFoundation'),
   );
   assert.equal((await source.runMigrations()).length, 13);
   const cliOutput = execFileSync(
@@ -503,7 +515,7 @@ try {
       '-e',
       `const dataSource = require('./src/database/data-source.ts').default;
        dataSource.initialize().then(async () => {
-         if (dataSource.entityMetadatas.length !== 25 || dataSource.migrations.length !== ${allMigrations.length}) {
+         if (dataSource.entityMetadatas.length !== 27 || dataSource.migrations.length !== ${allMigrations.length}) {
            throw new Error('TypeScript DataSource discovery mismatch');
          }
          await dataSource.destroy();
@@ -550,12 +562,21 @@ try {
   await assert.rejects(source.undoLastMigration(), /cannot be safely removed/);
   assert.equal((await source.runMigrations()).length, 10);
   await inspectSchema();
-  source.migrations = allMigrations;
-  assert.equal((await source.runMigrations()).length, 10);
+  source.migrations = historicalMigrations;
+  assert.equal((await source.runMigrations()).length, 11);
+  const allMetadata = source.entityMetadatas;
+  source.entityMetadatas = allMetadata.filter(
+    (entity) =>
+      !['notification_preferences', 'user_notifications'].includes(
+        entity.tableName,
+      ),
+  );
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries,
     [],
   );
+  source.entityMetadatas = allMetadata;
+  await source.undoLastMigration(); // Empty Board background version extension.
   await source.undoLastMigration(); // Empty Board discovery extension.
   await source.undoLastMigration(); // Empty private-file extension.
   await source.undoLastMigration(); // Empty attachment foundation.
@@ -569,9 +590,23 @@ try {
     source.undoLastMigration(),
     /Workspace policies require a forward fix/,
   );
-  assert.equal((await source.runMigrations()).length, 9);
+  assert.equal((await source.runMigrations()).length, 10);
   console.log(
     'Enum rollback retains existing values/history; idempotent reapply: PASS',
+  );
+  source.migrations = allMigrations;
+  assert.equal((await source.runMigrations()).length, 1);
+  await assert.rejects(
+    source.undoLastMigration(),
+    /Notification foundation requires a forward fix/,
+  );
+  assert.deepEqual(await source.runMigrations(), []);
+  assert.deepEqual(
+    (await source.driver.createSchemaBuilder().log()).upQueries,
+    [],
+  );
+  console.log(
+    'Full current schema and forward-only notification boundary: PASS',
   );
 } finally {
   if (source?.isInitialized) await source.destroy();

@@ -45,7 +45,8 @@
     "test:card-dates:database": "pnpm build && node test/cards/dates/dates.integration.mjs",
     "test:card-duplicate:database": "pnpm build && node test/cards/cards-duplicate.integration.mjs",
     "test:productivity:database": "pnpm build && node test/productivity/productivity.integration.mjs",
-    "test:search:database": "pnpm build && node test/search/search.integration.mjs"
+    "test:search:database": "pnpm build && node test/search/search.integration.mjs",
+    "test:notifications:database": "pnpm build && node test/notifications/notifications.integration.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1157.0",

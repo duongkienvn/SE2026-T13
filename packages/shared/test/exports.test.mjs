@@ -9,9 +9,33 @@ import {
   RealtimeEvent,
   TaskGroup,
   GlobalSearchType,
+  NotificationKind,
+  RealtimeNotificationEvent,
 } from '@kanban/shared';
 
 const require = createRequire(import.meta.url);
+
+test('exports notification kinds and separate ID-free invalidation in both formats', () => {
+  assert.deepEqual(Object.values(NotificationKind), [
+    'CARD_ASSIGNED',
+    'COMMENT_MENTIONED',
+    'WORKSPACE_INVITED',
+    'BOARD_INVITED',
+    'MEMBERSHIP_CHANGED',
+    'DUE_REMINDER',
+  ]);
+  assert.deepEqual(RealtimeNotificationEvent, {
+    CHANGED: 'notifications:changed',
+  });
+  assert.deepEqual(
+    require('@kanban/shared').NotificationKind,
+    NotificationKind,
+  );
+  assert.deepEqual(
+    require('@kanban/shared').RealtimeNotificationEvent,
+    RealtimeNotificationEvent,
+  );
+});
 
 test('exports global search types to ESM and CommonJS', () => {
   assert.deepEqual(GlobalSearchType, {

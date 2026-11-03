@@ -503,3 +503,14 @@ per user without discarding stars. Read queries always reapply Board ACL.
 `boards.background_preset` is constrained to the server's finite catalog and
 defaults to `blue` for existing rows. See the
 [API, retention and migration contract](../tasks/backend/board-discovery-customization.md).
+
+## Retained notification history (CX-01)
+
+`user_notifications` stores one recipient, a checked kind, unique recipient/dedupe
+identity, nullable context/actor FKs and UTC creation/first-read timestamps. Context
+deletion uses `SET NULL`; recipient history never cascades from a deleted Board or
+Card. Recipient and `notification_preferences.user_id` FKs require explicit
+account cleanup. Inbox and partial-unread indexes order by recipient/time/UUID.
+Typed channel preference booleans are separate from `user_preferences`. The
+additive notification migration always refuses `down`; preserve data and roll
+forward. See the [schema, indexes, upgrade evidence and retention contract](../tasks/backend/p4-notification-foundation.md).

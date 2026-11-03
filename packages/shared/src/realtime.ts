@@ -1,3 +1,5 @@
+import type { NotificationsChangedPayload } from './notifications.js';
+
 export const RealtimeEvent = {
   BOARD_JOIN: 'board:join',
   BOARD_LEAVE: 'board:leave',
@@ -107,6 +109,7 @@ export interface CommentChangedEvent {
 
 /** Business events are invalidation hints; presence is an ephemeral full snapshot. */
 export interface RealtimeServerEvents {
+  'notifications:changed': (payload: NotificationsChangedPayload) => void;
   'access:changed': () => void;
   'workspace:access-revoked': (payload: { workspaceId: string }) => void;
   'board:access-changed': (payload: BoardRoomRequest) => void;

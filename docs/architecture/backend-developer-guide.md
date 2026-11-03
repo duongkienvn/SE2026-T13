@@ -135,6 +135,16 @@ membership mutations, and publish `card:updated` only after commit. Exact ordere
 positions, bounded detail payloads, derived progress and scoped aggregate access
 are documented in [the checklist contract](../tasks/backend/card-checklists.md).
 
+## Notification integration (CX-01)
+
+Future event producers import `NotificationPersistenceModule`, call
+`NotificationService.record`/`recordMany` with the caller's active EntityManager,
+then invoke `NotificationEventPublisher.afterCommit` only after the transaction
+resolves. In-app preferences, deduplication and recipient locking are persisted;
+transport failures are best effort. Invitation kinds require originating-module
+verifiers and otherwise resolve as unavailable. See the
+[complete REST, producer, lock-order and frontend handoff contract](../tasks/backend/p4-notification-foundation.md).
+
 ## Board-scoped labels (CD-02)
 
 `LabelsModule` owns the Board catalog, Card association routes and exported

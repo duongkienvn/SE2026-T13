@@ -2,11 +2,19 @@ import { Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
 import { AuthService } from '../api/auth/auth.service';
 import type { RealtimeSocket } from './realtime.types';
 import { BoardRoomCoordinator } from './board-room-coordinator.service';
+import type { AuthenticatedUser } from '../api/auth/constants/auth.constants';
 
 @Injectable()
 export class RealtimeAuthService implements OnApplicationShutdown {
   private readonly logger = new Logger(RealtimeAuthService.name);
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** Immutable authenticated owner, independent of rooms, handshake fields or
+   * mutable adapter data. Weak keys do not retain disconnected sockets.
+   */
+  private readonly owners = new WeakMap<
+    RealtimeSocket,
+    Readonly<AuthenticatedUser>
+  >();
 
   constructor(
     private readonly auth: AuthService,
@@ -20,6 +28,7 @@ export class RealtimeAuthService implements OnApplicationShutdown {
       socket.data.identity = await this.auth.authenticateAccessToken(token);
       if (socket.data.identity.expiresAt <= Date.now())
         throw this.unauthorized();
+      this.owners.set(socket, Object.freeze({ ...socket.data.identity }));
     } catch {
       throw this.unauthorized();
     } finally {
@@ -55,6 +64,31 @@ export class RealtimeAuthService implements OnApplicationShutdown {
     }
     this.deactivate(socket);
     return false;
+  }
+
+  currentUserVersion(userId: string): Promise<number | null> {
+    return this.auth.currentSocketAuthVersion(userId);
+  }
+
+  isCurrentRecipient(
+    socket: RealtimeSocket,
+    userId: string,
+    version: number | null,
+  ): boolean {
+    if (!this.isActive(socket)) return false;
+    const owner = this.owners.get(socket);
+    if (!owner || owner.userId !== userId) return false;
+    if (
+      version === null ||
+      owner.authVersion !== version ||
+      owner.expiresAt <= Date.now() ||
+      socket.data.identity?.userId !== owner.userId ||
+      socket.data.identity.authVersion !== owner.authVersion
+    ) {
+      this.deactivate(socket);
+      return false;
+    }
+    return true;
   }
 
   private deactivate(socket: RealtimeSocket): void {

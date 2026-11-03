@@ -133,8 +133,26 @@ try {
       )
     )[0].n;
   assert.equal(await count(), 0);
-  await source.undoLastMigration();
-  assert.equal((await source.runMigrations()).length, 1);
+  // Target this historical migration explicitly: the latest notification
+  // migration is deliberately forward-only, and unrelated later migrations
+  // must not stand in for the outbox's own rollback assertions.
+  const outbox = migrations.find((migration) =>
+    migration.name.startsWith('WelcomeEmailOutbox'),
+  );
+  assert(outbox);
+  await source.transaction(async (manager) => {
+    await outbox.down(manager.queryRunner);
+    assert.equal(
+      (
+        await manager.query(
+          "SELECT to_regclass('welcome_email_deliveries') AS table_name",
+        )
+      )[0].table_name,
+      null,
+    );
+    await outbox.up(manager.queryRunner);
+  });
+  assert.equal((await source.runMigrations()).length, 0);
   const drift = await source.driver.createSchemaBuilder().log();
   assert.deepEqual(
     drift.upQueries.map((q) => q.query),
@@ -497,7 +515,7 @@ try {
   assert.ok((await row('expired@example.test')).stopped_at);
   assert.equal(fake.deliveries.length, 9);
   await assert.rejects(
-    source.undoLastMigration(),
+    source.transaction((manager) => outbox.down(manager.queryRunner)),
     /Cannot revert welcome email outbox/,
   );
   await assert.rejects(

@@ -39,6 +39,12 @@ try {
   await admin.query(`CREATE DATABASE "${name}"`);
   created = true;
   source = await new DataSource({ ...options, database: name }).initialize();
+  // Exercise historical rollback assertions before installing the forward-only
+  // extension, then run every API check against the complete current schema.
+  const allMigrations = source.migrations;
+  source.migrations = allMigrations.filter(
+    (migration) => !migration.name.startsWith('NotificationFoundation'),
+  );
   await source.runMigrations();
   await source.undoLastMigration(); // Empty Board background version extension.
   await source.undoLastMigration(); // Empty Board discovery extension.
@@ -55,6 +61,12 @@ try {
     /Workspace policies require a forward fix/,
   );
   assert.equal((await source.runMigrations()).length, 10);
+  source.migrations = allMigrations;
+  assert.equal((await source.runMigrations()).length, 1);
+  await assert.rejects(
+    source.undoLastMigration(),
+    /Notification foundation requires a forward fix/,
+  );
   assert.deepEqual(await source.runMigrations(), []);
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries,
