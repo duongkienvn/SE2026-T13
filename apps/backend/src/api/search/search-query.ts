@@ -1,6 +1,6 @@
 import type { GlobalSearchItem, SearchGroup } from '@kanban/shared';
 import type { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
-import type { SearchQueryDto } from './dto/search-query.dto';
+import { searchWindow, type SearchQueryDto } from './dto/search-query.dto';
 
 /** Same literal LIKE escaping as Board discovery and Board-local Card filters. */
 export function searchParameters(term: string) {
@@ -25,6 +25,7 @@ export async function searchPage<
   order: { title: string; updatedAt: string; id: string },
   map: (row: Row) => Item,
 ): Promise<SearchGroup<Item>> {
+  const { limit, offset } = searchWindow(input);
   const count = await base
     .clone()
     .select('COUNT(*)', 'total')
@@ -34,13 +35,13 @@ export async function searchPage<
     .orderBy(titleRank(order.title), 'ASC')
     .addOrderBy(order.updatedAt, 'DESC')
     .addOrderBy(order.id, 'ASC')
-    .offset(input.offset)
-    .limit(input.pageSize)
+    .offset(offset)
+    .limit(limit)
     .getRawMany<Row>();
   // Subtraction avoids overflow for valid but very large pagination offsets.
   return {
     items: rows.map(map),
     total,
-    hasMore: total - input.offset > input.pageSize,
+    hasMore: total - offset > limit,
   };
 }

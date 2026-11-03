@@ -54,7 +54,7 @@ export class SearchQueryDto {
           input.type !== 'all' &&
           Number.isSafeInteger(value) &&
           Number(value) >= 1 &&
-          Number.isSafeInteger((Number(value) - 1) * input.pageSize)
+          Number.isSafeInteger((Number(value) - 1) * (input.limit ?? 20))
         );
       },
       defaultMessage: () =>
@@ -91,14 +91,9 @@ export class SearchQueryDto {
       'type=all: default 5, max 10 per group. Specific type: default 20, max 50.',
   })
   limit?: number;
+}
 
-  get pageNumber(): number {
-    return this.page ?? 1;
-  }
-  get pageSize(): number {
-    return this.limit ?? (this.type === 'all' ? 5 : 20);
-  }
-  get offset(): number {
-    return (this.pageNumber - 1) * this.pageSize;
-  }
+export function searchWindow(input: SearchQueryDto) {
+  const limit = input.limit ?? (input.type === 'all' ? 5 : 20);
+  return { limit, offset: ((input.page ?? 1) - 1) * limit };
 }
