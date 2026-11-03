@@ -24,6 +24,7 @@ import { HttpThrottlerGuard } from './guards/http-throttler.guard';
 import { RealtimeModule } from './realtime/realtime.module';
 import { WorkspaceApiModule } from './api/workspaces/workspace-api.module';
 import { ProductivityModule } from './api/productivity/productivity.module';
+import { SearchModule } from './api/search/search.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { ProductivityModule } from './api/productivity/productivity.module';
     ActivitiesModule,
     WorkspaceApiModule,
     ProductivityModule,
+    SearchModule,
     RealtimeModule,
     LoggerModule.forRootAsync({
       inject: [ConfigService],
