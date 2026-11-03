@@ -181,7 +181,11 @@ export function BoardFilter({
     Array.isArray(value) ? value.length : !!value,
   ).length;
   return (
-    <div className="mb-3 flex flex-wrap items-center gap-3">
+    <div
+      role="group"
+      aria-label="Board filters"
+      className="mb-3 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-line/60 bg-surface/85 p-2 shadow-sm [&>span]:max-w-full [&>span]:[overflow-wrap:anywhere]"
+    >
       <button
         type="button"
         className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm font-medium text-ink focus-visible:outline-2 focus-visible:outline-primary"
@@ -202,6 +206,11 @@ export function BoardFilter({
           </span>
         )}
       </button>
+      {count === 0 && (
+        <span className="border-l border-line pl-3 text-sm text-muted">
+          No filters applied
+        </span>
+      )}
       {filters.q && (
         <span className="rounded bg-app px-2 py-1 text-xs">
           Keyword: {filters.q}

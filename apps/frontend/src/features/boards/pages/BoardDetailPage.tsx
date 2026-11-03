@@ -18,6 +18,7 @@ import { Alert } from '../../../components/Alert';
 import { buttonClassName } from '../../../components/Button';
 import { PageContainer } from '../../../components/PageContainer';
 import { TextField } from '../../../components/TextField';
+import { LockIcon, UsersIcon } from '../../../components/icons';
 import { BoardNavigation } from '../components/BoardNavigation';
 import {
   filterSearchParams,
@@ -38,7 +39,6 @@ import { BoardPresence } from '../../presence/components/BoardPresence';
 import { ArchiveBoardDialog } from '../components/ArchiveBoardDialog';
 import { RestoreBoardDialog } from '../components/RestoreBoardDialog';
 import { KanbanBoard } from '../components/KanbanBoard';
-import { BoardIcon } from '../components/BoardIcon';
 import { BoardStar } from '../components/BoardStar';
 import { useRecordBoardView } from '../useRecordBoardView';
 import {
@@ -276,12 +276,8 @@ export function BoardDetailPage() {
             </li>
           </ol>
         </nav>
-        <div className="flex items-start gap-3">
-          <BoardIcon
-            boardId={data.id}
-            className="size-9 shrink-0 rounded-lg text-lg md:size-10 md:text-xl"
-          />
-          <div className="min-w-0 flex-1">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 lg:flex lg:items-center lg:gap-x-5">
+          <div className="min-w-0 lg:max-w-[44%]">
             <h1
               title={data.name}
               className="line-clamp-2 text-xl leading-tight font-bold tracking-tight text-ink [overflow-wrap:anywhere] md:text-2xl"
@@ -291,34 +287,39 @@ export function BoardDetailPage() {
             {data.description && (
               <p
                 title={data.description}
-                className="mt-1 line-clamp-2 text-sm text-muted [overflow-wrap:anywhere]"
+                className="mt-1 line-clamp-2 text-sm text-muted [overflow-wrap:anywhere] lg:line-clamp-1"
               >
                 {data.description}
               </p>
             )}
-            <div
-              className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs"
-              role="group"
-              aria-label="Board metadata"
-            >
-              <BoardStar boardId={data.id} boardName={data.name} compact />
-              <RoleChip role={data.currentUserRole} />
-              {data.visibility && (
-                <span className="text-muted">
-                  {data.visibility === 'PRIVATE'
-                    ? 'Private'
-                    : 'Workspace visible'}
-                </span>
-              )}
-              <BoardPresence
-                boardId={data.id}
-                canReadMembers={data.currentUserRole !== null}
-              />
-              <RealtimeStatus {...realtime} />
-            </div>
+          </div>
+          <div
+            className="col-span-2 row-start-2 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 text-xs lg:flex-1 lg:border-l lg:border-line lg:pl-4"
+            role="group"
+            aria-label="Board metadata"
+          >
+            <BoardStar boardId={data.id} boardName={data.name} compact />
+            <RoleChip role={data.currentUserRole} />
+            {data.visibility && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 font-medium text-muted">
+                {data.visibility === 'PRIVATE' ? (
+                  <LockIcon aria-hidden="true" className="size-3.5 shrink-0" />
+                ) : (
+                  <UsersIcon aria-hidden="true" className="size-3.5 shrink-0" />
+                )}
+                {data.visibility === 'PRIVATE'
+                  ? 'Private'
+                  : 'Workspace visible'}
+              </span>
+            )}
+            <BoardPresence
+              boardId={data.id}
+              canReadMembers={data.currentUserRole !== null}
+            />
+            <RealtimeStatus {...realtime} />
           </div>
           <ActionMenu
-            className="shrink-0 [&>button]:size-11"
+            className="col-start-2 row-start-1 shrink-0 lg:ml-auto [&>button]:size-11"
             label={`Actions for ${data.name}`}
             items={[
               {

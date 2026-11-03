@@ -308,13 +308,19 @@ export function BackgroundPresetChoices({
   );
 }
 
-/** Softer color on a large canvas; photographic presets keep their full scene. */
+/** Canvas-only treatments leave directory covers and preset previews unchanged. */
 export function canvasBackgroundStyle(
   preset: BoardBackgroundPreset | undefined,
 ) {
-  if (preset?.kind !== 'color') return backgroundStyle(preset);
+  const style = backgroundStyle(preset);
+  if (preset?.kind === 'photo' && style)
+    return {
+      ...style,
+      backgroundImage: `linear-gradient(var(--board-photo-tint), var(--board-photo-tint)), url('/board-backgrounds/${preset.id}.jpg')`,
+    };
+  if (preset?.kind !== 'color') return style;
   return {
-    ...backgroundStyle(preset),
+    ...style,
     backgroundColor: `color-mix(in srgb, ${preset.value} 18%, var(--color-app))`,
   };
 }

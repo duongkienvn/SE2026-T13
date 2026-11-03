@@ -26,7 +26,7 @@ export function BoardNavigation({
     <Link
       to={`/boards/${encodeURIComponent(boardId)}${suffix}`}
       aria-current={active === id ? 'page' : undefined}
-      className={`${tabClass} ${active === id ? 'border-primary text-primary' : 'border-transparent text-muted'}`}
+      className={`${tabClass} ${active === id ? 'border-primary-solid text-primary' : 'border-transparent text-muted'}`}
     >
       {label}
     </Link>
@@ -38,7 +38,7 @@ export function BoardNavigation({
         event.target.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
       }
       aria-label="Board navigation"
-      className="mt-2 flex shrink-0 gap-4 overflow-x-auto overscroll-x-contain border-b border-line"
+      className="mt-2 flex shrink-0 gap-4 overflow-x-auto overscroll-x-contain border-b border-line [scrollbar-width:thin]"
     >
       {link('kanban', 'Kanban')}
       {canReadMembers && link('members', 'Members', '/members')}

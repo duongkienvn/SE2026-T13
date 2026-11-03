@@ -219,7 +219,7 @@ export function KanbanBoard({
             <button
               type="button"
               onClick={openCreateColumn}
-              className="flex w-70 shrink-0 items-center gap-2 rounded-xl border border-dashed border-line bg-surface/90 px-4 py-4 text-[15px] font-medium text-muted hover:border-primary hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
+              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-line bg-surface/95 px-4 text-sm font-medium text-primary shadow-card hover:border-primary focus-visible:outline-2 focus-visible:outline-primary"
             >
               <PlusIcon aria-hidden="true" className="size-4.5" />
               Add column

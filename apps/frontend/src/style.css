@@ -804,9 +804,13 @@
 
 /* One continuous Board surface below the compact identity/navigation. */
 .board-canvas {
+  --board-photo-tint: rgb(36 39 55 / 38%);
   min-height: min(18rem, 50dvh);
   overflow: hidden;
   background-attachment: local;
+}
+:root[data-theme='dark'] .board-canvas {
+  --board-photo-tint: rgb(10 15 29 / 48%);
 }
 .board-canvas .kanban-columns {
   scrollbar-color: var(--color-muted) transparent;
