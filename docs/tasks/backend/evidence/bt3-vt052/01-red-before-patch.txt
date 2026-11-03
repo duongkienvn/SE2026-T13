@@ -1,0 +1,365 @@
+# before patch (commit 106cddc) 2026-11-03T16:06:37+07:00
+# cmd: cd apps/backend && npx jest --runInBand test/cards
+FAIL test/cards/cards.e2e-spec.ts (10.488 s)
+  ● Card HTTP API with real JWT, authorization, services and envelopes › POST /boards/:boardId/cards/import (VT-052) › TC10 keeps valid rows when other rows are invalid and appends them after existing cards
+
+    expected 200 "OK", got 404 "Not Found"
+
+    [0m [90m 571 |[39m           ][33m,[39m
+     [90m 572 |[39m         })
+    [31m[1m>[22m[39m[90m 573 |[39m         [33m.[39mexpect([35m200[39m)[33m;[39m
+     [90m     |[39m          [31m[1m^[22m[39m
+     [90m 574 |[39m       expect(response[33m.[39mbody)[33m.[39mtoMatchObject({
+     [90m 575 |[39m         success[33m:[39m [36mtrue[39m[33m,[39m
+     [90m 576 |[39m         statusCode[33m:[39m [35m200[39m[33m,[39m[0m
+
+      at Object.<anonymous> (test/cards/cards.e2e-spec.ts:573:10)
+      ----
+      at Test._assertStatus (../../node_modules/.pnpm/supertest@7.3.1/node_modules/supertest/lib/test.js:404:14)
+      at ../../node_modules/.pnpm/supertest@7.3.1/node_modules/supertest/lib/test.js:460:13
+      at Test._assertFunction (../../node_modules/.pnpm/supertest@7.3.1/node_modules/supertest/lib/test.js:437:13)
+      at Test.assert (../../node_modules/.pnpm/supertest@7.3.1/node_modules/supertest/lib/test.js:302:23)
+      at localAssert (../../node_modules/.pnpm/supertest@7.3.1/node_modules/supertest/lib/test.js:220:38)
+      at finish (../../node_modules/.pnpm/supertest@7.3.1/node_modules/supertest/lib/test.js:233:7)
+      at Test.fn [as callback] (../../node_modules/.pnpm/superagent@10.4.1/node_modules/superagent/src/node/index.js:1196:3)
+      at callback (../../node_modules/.pnpm/superagent@10.4.1/node_modules/superagent/src/node/index.js:1552:18)
+      at IncomingMessage.fn (../../node_modules/.pnpm/superagent@10.4.1/node_modules/superagent/src/node/parsers/json.js:24:7)
+
+  ● Card HTTP API with real JWT, authorization, services and envelopes › POST /boards/:boardId/cards/import (VT-052) › TC11 rejects the whole request only for request-level errors, before any write
+
+    expected 400 "Bad Request", got 404 "Not Found"
+
+    [0m [90m 614 |[39m           items[33m:[39m [33mArray[39m[33m.[39m[36mfrom[39m({ length[33m:[39m [35m101[39m }[33m,[39m () [33m=>[39m ({ title[33m:[39m [32m'A'[39m }))[33m,[39m
+     [90m 615 |[39m         })
+    [31m[1m>[22m[39m[90m 616 |[39m         [33m.[39mexpect([35m400[39m)[33m;[39m
+     [90m     |[39m          [31m[1m^[22m[39m
+     [90m 617 |[39m       [36mawait[39m http()
+     [90m 618 |[39m         [33m.[39mpost(importPath)
+     [90m 619 |[39m         [33m.[39msend({ columnId[33m:[39m [33mID[39m[33m.[39mcolumn[33m,[39m items[33m:[39m [] })[0m
+
+      at Object.<anonymous> (test/cards/cards.e2e-spec.ts:616:10)
+      ----
+      at Test._assertStatus (../../node_modules/.pnpm/supertest@7.3.1/node_modules/supertest/lib/test.js:404:14)
+      at ../../node_modules/.pnpm/supertest@7.3.1/node_modules/supertest/lib/test.js:460:13
+      at Test._assertFunction (../../node_modules/.pnpm/supertest@7.3.1/node_modules/supertest/lib/test.js:437:13)
+      at Test.assert (../../node_modules/.pnpm/supertest@7.3.1/node_modules/supertest/lib/test.js:302:23)
+      at localAssert (../../node_modules/.pnpm/supertest@7.3.1/node_modules/supertest/lib/test.js:220:38)
+      at finish (../../node_modules/.pnpm/supertest@7.3.1/node_modules/supertest/lib/test.js:233:7)
+      at Test.fn [as callback] (../../node_modules/.pnpm/superagent@10.4.1/node_modules/superagent/src/node/index.js:1196:3)
+      at callback (../../node_modules/.pnpm/superagent@10.4.1/node_modules/superagent/src/node/index.js:1552:18)
+      at IncomingMessage.fn (../../node_modules/.pnpm/superagent@10.4.1/node_modules/superagent/src/node/parsers/json.js:24:7)
+
+PASS test/cards/cards-restore.spec.ts
+PASS test/cards/cards.service.spec.ts
+PASS test/cards/cards.dto.spec.ts
+PASS test/cards/cards-ordering.spec.ts
+FAIL test/cards/cards-import.spec.ts
+  ● Card import row transitions RECEIVED -> ACCEPTED | REJECTED › TC01 accepts valid rows, keeps their index and reuses CreateCardDto normalisation
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 5
+    + Received  + 1
+
+    - Array [
+    -   0,
+    -   1,
+    -   2,
+    - ]
+    + Array []
+
+    [0m [90m 35 |[39m     ])[33m;[39m
+     [90m 36 |[39m     expect(result[33m.[39mrejected)[33m.[39mtoEqual([])[33m;[39m
+    [31m[1m>[22m[39m[90m 37 |[39m     expect(result[33m.[39maccepted[33m.[39mmap(({ index }) [33m=>[39m index))[33m.[39mtoEqual([[35m0[39m[33m,[39m [35m1[39m[33m,[39m [35m2[39m])[33m;[39m
+     [90m    |[39m                                                       [31m[1m^[22m[39m
+     [90m 38 |[39m     expect(result[33m.[39maccepted[[35m0[39m][33m.[39mrow)[33m.[39mtoMatchObject({ title[33m:[39m [32m'Alpha'[39m })[33m;[39m
+     [90m 39 |[39m     expect(result[33m.[39maccepted[[35m1[39m][33m.[39mrow)[33m.[39mtoMatchObject({
+     [90m 40 |[39m       title[33m:[39m [32m'Beta'[39m[33m,[39m[0m
+
+      at Object.<anonymous> (test/cards/cards-import.spec.ts:37:55)
+
+  ● Card import row transitions RECEIVED -> ACCEPTED | REJECTED › TC02 a rejected row between valid rows does not displace or drop them
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 10
+    + Received  +  1
+
+    - Array [
+    -   Array [
+    -     0,
+    -     "First",
+    -   ],
+    -   Array [
+    -     2,
+    -     "Third",
+    -   ],
+    - ]
+    + Array []
+
+    [0m [90m 50 |[39m       { title[33m:[39m [32m'Third'[39m }[33m,[39m
+     [90m 51 |[39m     ])[33m;[39m
+    [31m[1m>[22m[39m[90m 52 |[39m     expect(result[33m.[39maccepted[33m.[39mmap(({ index[33m,[39m row }) [33m=>[39m [index[33m,[39m row[33m.[39mtitle]))[33m.[39mtoEqual(
+     [90m    |[39m                                                                         [31m[1m^[22m[39m
+     [90m 53 |[39m       [
+     [90m 54 |[39m         [[35m0[39m[33m,[39m [32m'First'[39m][33m,[39m
+     [90m 55 |[39m         [[35m2[39m[33m,[39m [32m'Third'[39m][33m,[39m[0m
+
+      at Object.<anonymous> (test/cards/cards-import.spec.ts:52:73)
+
+  ● Card import row transitions RECEIVED -> ACCEPTED | REJECTED › TC03 rejects null row with a field-level detail
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 1
+    Received length: 0
+    Received array:  []
+
+    [0m [90m 74 |[39m     [36mconst[39m result [33m=[39m [36mawait[39m classifyImportRows([row])[33m;[39m
+     [90m 75 |[39m     expect(result[33m.[39maccepted)[33m.[39mtoEqual([])[33m;[39m
+    [31m[1m>[22m[39m[90m 76 |[39m     expect(result[33m.[39mrejected)[33m.[39mtoHaveLength([35m1[39m)[33m;[39m
+     [90m    |[39m                             [31m[1m^[22m[39m
+     [90m 77 |[39m     expect(result[33m.[39mrejected[[35m0[39m][33m.[39mindex)[33m.[39mtoBe([35m0[39m)[33m;[39m
+     [90m 78 |[39m     expect(result[33m.[39mrejected[[35m0[39m][33m.[39mdetails[33m.[39mlength)[33m.[39mtoBeGreaterThan([35m0[39m)[33m;[39m
+     [90m 79 |[39m   })[33m;[39m[0m
+
+      at test/cards/cards-import.spec.ts:76:29
+
+  ● Card import row transitions RECEIVED -> ACCEPTED | REJECTED › TC03 rejects string row with a field-level detail
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 1
+    Received length: 0
+    Received array:  []
+
+    [0m [90m 74 |[39m     [36mconst[39m result [33m=[39m [36mawait[39m classifyImportRows([row])[33m;[39m
+     [90m 75 |[39m     expect(result[33m.[39maccepted)[33m.[39mtoEqual([])[33m;[39m
+    [31m[1m>[22m[39m[90m 76 |[39m     expect(result[33m.[39mrejected)[33m.[39mtoHaveLength([35m1[39m)[33m;[39m
+     [90m    |[39m                             [31m[1m^[22m[39m
+     [90m 77 |[39m     expect(result[33m.[39mrejected[[35m0[39m][33m.[39mindex)[33m.[39mtoBe([35m0[39m)[33m;[39m
+     [90m 78 |[39m     expect(result[33m.[39mrejected[[35m0[39m][33m.[39mdetails[33m.[39mlength)[33m.[39mtoBeGreaterThan([35m0[39m)[33m;[39m
+     [90m 79 |[39m   })[33m;[39m[0m
+
+      at test/cards/cards-import.spec.ts:76:29
+
+  ● Card import row transitions RECEIVED -> ACCEPTED | REJECTED › TC03 rejects array row with a field-level detail
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 1
+    Received length: 0
+    Received array:  []
+
+    [0m [90m 74 |[39m     [36mconst[39m result [33m=[39m [36mawait[39m classifyImportRows([row])[33m;[39m
+     [90m 75 |[39m     expect(result[33m.[39maccepted)[33m.[39mtoEqual([])[33m;[39m
+    [31m[1m>[22m[39m[90m 76 |[39m     expect(result[33m.[39mrejected)[33m.[39mtoHaveLength([35m1[39m)[33m;[39m
+     [90m    |[39m                             [31m[1m^[22m[39m
+     [90m 77 |[39m     expect(result[33m.[39mrejected[[35m0[39m][33m.[39mindex)[33m.[39mtoBe([35m0[39m)[33m;[39m
+     [90m 78 |[39m     expect(result[33m.[39mrejected[[35m0[39m][33m.[39mdetails[33m.[39mlength)[33m.[39mtoBeGreaterThan([35m0[39m)[33m;[39m
+     [90m 79 |[39m   })[33m;[39m[0m
+
+      at test/cards/cards-import.spec.ts:76:29
+
+  ● Card import row transitions RECEIVED -> ACCEPTED | REJECTED › TC03 rejects missing title with a field-level detail
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 1
+    Received length: 0
+    Received array:  []
+
+    [0m [90m 74 |[39m     [36mconst[39m result [33m=[39m [36mawait[39m classifyImportRows([row])[33m;[39m
+     [90m 75 |[39m     expect(result[33m.[39maccepted)[33m.[39mtoEqual([])[33m;[39m
+    [31m[1m>[22m[39m[90m 76 |[39m     expect(result[33m.[39mrejected)[33m.[39mtoHaveLength([35m1[39m)[33m;[39m
+     [90m    |[39m                             [31m[1m^[22m[39m
+     [90m 77 |[39m     expect(result[33m.[39mrejected[[35m0[39m][33m.[39mindex)[33m.[39mtoBe([35m0[39m)[33m;[39m
+     [90m 78 |[39m     expect(result[33m.[39mrejected[[35m0[39m][33m.[39mdetails[33m.[39mlength)[33m.[39mtoBeGreaterThan([35m0[39m)[33m;[39m
+     [90m 79 |[39m   })[33m;[39m[0m
+
+      at test/cards/cards-import.spec.ts:76:29
+
+  ● Card import row transitions RECEIVED -> ACCEPTED | REJECTED › TC03 rejects blank title after trim with a field-level detail
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 1
+    Received length: 0
+    Received array:  []
+
+    [0m [90m 74 |[39m     [36mconst[39m result [33m=[39m [36mawait[39m classifyImportRows([row])[33m;[39m
+     [90m 75 |[39m     expect(result[33m.[39maccepted)[33m.[39mtoEqual([])[33m;[39m
+    [31m[1m>[22m[39m[90m 76 |[39m     expect(result[33m.[39mrejected)[33m.[39mtoHaveLength([35m1[39m)[33m;[39m
+     [90m    |[39m                             [31m[1m^[22m[39m
+     [90m 77 |[39m     expect(result[33m.[39mrejected[[35m0[39m][33m.[39mindex)[33m.[39mtoBe([35m0[39m)[33m;[39m
+     [90m 78 |[39m     expect(result[33m.[39mrejected[[35m0[39m][33m.[39mdetails[33m.[39mlength)[33m.[39mtoBeGreaterThan([35m0[39m)[33m;[39m
+     [90m 79 |[39m   })[33m;[39m[0m
+
+      at test/cards/cards-import.spec.ts:76:29
+
+  ● Card import row transitions RECEIVED -> ACCEPTED | REJECTED › TC03 rejects title just above boundary (121) with a field-level detail
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 1
+    Received length: 0
+    Received array:  []
+
+    [0m [90m 74 |[39m     [36mconst[39m result [33m=[39m [36mawait[39m classifyImportRows([row])[33m;[39m
+     [90m 75 |[39m     expect(result[33m.[39maccepted)[33m.[39mtoEqual([])[33m;[39m
+    [31m[1m>[22m[39m[90m 76 |[39m     expect(result[33m.[39mrejected)[33m.[39mtoHaveLength([35m1[39m)[33m;[39m
+     [90m    |[39m                             [31m[1m^[22m[39m
+     [90m 77 |[39m     expect(result[33m.[39mrejected[[35m0[39m][33m.[39mindex)[33m.[39mtoBe([35m0[39m)[33m;[39m
+     [90m 78 |[39m     expect(result[33m.[39mrejected[[35m0[39m][33m.[39mdetails[33m.[39mlength)[33m.[39mtoBeGreaterThan([35m0[39m)[33m;[39m
+     [90m 79 |[39m   })[33m;[39m[0m
+
+      at test/cards/cards-import.spec.ts:76:29
+
+  ● Card import row transitions RECEIVED -> ACCEPTED | REJECTED › TC03 rejects description above boundary with a field-level detail
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 1
+    Received length: 0
+    Received array:  []
+
+    [0m [90m 74 |[39m     [36mconst[39m result [33m=[39m [36mawait[39m classifyImportRows([row])[33m;[39m
+     [90m 75 |[39m     expect(result[33m.[39maccepted)[33m.[39mtoEqual([])[33m;[39m
+    [31m[1m>[22m[39m[90m 76 |[39m     expect(result[33m.[39mrejected)[33m.[39mtoHaveLength([35m1[39m)[33m;[39m
+     [90m    |[39m                             [31m[1m^[22m[39m
+     [90m 77 |[39m     expect(result[33m.[39mrejected[[35m0[39m][33m.[39mindex)[33m.[39mtoBe([35m0[39m)[33m;[39m
+     [90m 78 |[39m     expect(result[33m.[39mrejected[[35m0[39m][33m.[39mdetails[33m.[39mlength)[33m.[39mtoBeGreaterThan([35m0[39m)[33m;[39m
+     [90m 79 |[39m   })[33m;[39m[0m
+
+      at test/cards/cards-import.spec.ts:76:29
+
+  ● Card import row transitions RECEIVED -> ACCEPTED | REJECTED › TC03 rejects deadline without timezone with a field-level detail
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 1
+    Received length: 0
+    Received array:  []
+
+    [0m [90m 74 |[39m     [36mconst[39m result [33m=[39m [36mawait[39m classifyImportRows([row])[33m;[39m
+     [90m 75 |[39m     expect(result[33m.[39maccepted)[33m.[39mtoEqual([])[33m;[39m
+    [31m[1m>[22m[39m[90m 76 |[39m     expect(result[33m.[39mrejected)[33m.[39mtoHaveLength([35m1[39m)[33m;[39m
+     [90m    |[39m                             [31m[1m^[22m[39m
+     [90m 77 |[39m     expect(result[33m.[39mrejected[[35m0[39m][33m.[39mindex)[33m.[39mtoBe([35m0[39m)[33m;[39m
+     [90m 78 |[39m     expect(result[33m.[39mrejected[[35m0[39m][33m.[39mdetails[33m.[39mlength)[33m.[39mtoBeGreaterThan([35m0[39m)[33m;[39m
+     [90m 79 |[39m   })[33m;[39m[0m
+
+      at test/cards/cards-import.spec.ts:76:29
+
+  ● Card import row transitions RECEIVED -> ACCEPTED | REJECTED › TC03 rejects unknown field (whitelist) with a field-level detail
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 1
+    Received length: 0
+    Received array:  []
+
+    [0m [90m 74 |[39m     [36mconst[39m result [33m=[39m [36mawait[39m classifyImportRows([row])[33m;[39m
+     [90m 75 |[39m     expect(result[33m.[39maccepted)[33m.[39mtoEqual([])[33m;[39m
+    [31m[1m>[22m[39m[90m 76 |[39m     expect(result[33m.[39mrejected)[33m.[39mtoHaveLength([35m1[39m)[33m;[39m
+     [90m    |[39m                             [31m[1m^[22m[39m
+     [90m 77 |[39m     expect(result[33m.[39mrejected[[35m0[39m][33m.[39mindex)[33m.[39mtoBe([35m0[39m)[33m;[39m
+     [90m 78 |[39m     expect(result[33m.[39mrejected[[35m0[39m][33m.[39mdetails[33m.[39mlength)[33m.[39mtoBeGreaterThan([35m0[39m)[33m;[39m
+     [90m 79 |[39m   })[33m;[39m[0m
+
+      at test/cards/cards-import.spec.ts:76:29
+
+  ● CardsService.importCards › TC05 persists ACCEPTED rows as ACTIVE cards after the last active card and reports REJECTED rows
+
+    ApplicationException: Card import is not implemented
+
+    [0m [90m 450 |[39m   )[33m:[39m [33mPromise[39m[33m<[39m[33mImportCardsResponseDto[39m[33m>[39m {
+     [90m 451 |[39m     [36mreturn[39m [33mPromise[39m[33m.[39mreject(
+    [31m[1m>[22m[39m[90m 452 |[39m       [36mnew[39m [33mApplicationException[39m(
+     [90m     |[39m       [31m[1m^[22m[39m
+     [90m 453 |[39m         [33mHttpStatus[39m[33m.[39m[33mNOT_IMPLEMENTED[39m[33m,[39m
+     [90m 454 |[39m         [32m'NOT_IMPLEMENTED'[39m[33m,[39m
+     [90m 455 |[39m         [32m'Card import is not implemented'[39m[33m,[39m[0m
+
+      at CardsService.importCards (src/api/cards/cards.service.ts:452:7)
+      at Object.<anonymous> (test/cards/cards-import.spec.ts:117:36)
+
+  ● CardsService.importCards › TC06 all rows REJECTED: still authorises and checks the column, writes and publishes nothing
+
+    ApplicationException: Card import is not implemented
+
+    [0m [90m 450 |[39m   )[33m:[39m [33mPromise[39m[33m<[39m[33mImportCardsResponseDto[39m[33m>[39m {
+     [90m 451 |[39m     [36mreturn[39m [33mPromise[39m[33m.[39mreject(
+    [31m[1m>[22m[39m[90m 452 |[39m       [36mnew[39m [33mApplicationException[39m(
+     [90m     |[39m       [31m[1m^[22m[39m
+     [90m 453 |[39m         [33mHttpStatus[39m[33m.[39m[33mNOT_IMPLEMENTED[39m[33m,[39m
+     [90m 454 |[39m         [32m'NOT_IMPLEMENTED'[39m[33m,[39m
+     [90m 455 |[39m         [32m'Card import is not implemented'[39m[33m,[39m[0m
+
+      at CardsService.importCards (src/api/cards/cards.service.ts:452:7)
+      at Object.<anonymous> (test/cards/cards-import.spec.ts:158:36)
+
+  ● CardsService.importCards › TC07 board ARCHIVED or column outside the board forbids ACCEPTED -> CREATED
+
+    expect(received).rejects.toMatchObject(expected)
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+    -   "status": 409,
+    +   "status": 501,
+      }
+
+    [0m [90m 185 |[39m         items[33m:[39m [{ title[33m:[39m [32m'A'[39m }][33m,[39m
+     [90m 186 |[39m       })[33m,[39m
+    [31m[1m>[22m[39m[90m 187 |[39m     )[33m.[39mrejects[33m.[39mtoMatchObject({ status[33m:[39m [35m409[39m })[33m;[39m
+     [90m     |[39m               [31m[1m^[22m[39m
+     [90m 188 |[39m     h[33m.[39mcolumns[33m.[39mfindOne[33m.[39mmockResolvedValueOnce([36mnull[39m)[33m;[39m
+     [90m 189 |[39m     [36mawait[39m expect(
+     [90m 190 |[39m       h[33m.[39mservice[33m.[39mimportCards([33mID[39m[33m.[39muser[33m,[39m [33mID[39m[33m.[39mboard[33m,[39m {[0m
+
+      at Object.toMatchObject (../../node_modules/.pnpm/expect@29.7.0/node_modules/expect/build/index.js:218:22)
+      at Object.<anonymous> (test/cards/cards-import.spec.ts:187:15)
+
+  ● CardsService.importCards › TC08 failure path: a write error rolls the batch back (ACCEPTED -> ROLLED_BACK) and publishes nothing
+
+    expect(received).rejects.toThrow(expected)
+
+    Expected substring: "database unavailable"
+    Received message:   "Card import is not implemented"
+
+        [0m [90m 450 |[39m   )[33m:[39m [33mPromise[39m[33m<[39m[33mImportCardsResponseDto[39m[33m>[39m {
+         [90m 451 |[39m     [36mreturn[39m [33mPromise[39m[33m.[39mreject(
+        [31m[1m>[22m[39m[90m 452 |[39m       [36mnew[39m [33mApplicationException[39m(
+         [90m     |[39m       [31m[1m^[22m[39m
+         [90m 453 |[39m         [33mHttpStatus[39m[33m.[39m[33mNOT_IMPLEMENTED[39m[33m,[39m
+         [90m 454 |[39m         [32m'NOT_IMPLEMENTED'[39m[33m,[39m
+         [90m 455 |[39m         [32m'Card import is not implemented'[39m[33m,[39m[0m
+
+      at CardsService.importCards (src/api/cards/cards.service.ts:452:7)
+      at Object.<anonymous> (test/cards/cards-import.spec.ts:204:17)
+      at Object.toThrow (../../node_modules/.pnpm/expect@29.7.0/node_modules/expect/build/index.js:218:22)
+      at Object.<anonymous> (test/cards/cards-import.spec.ts:208:15)
+
+  ● CardsService.importCards › TC09 rebalances the column once when appending overflows NUMERIC(20,10)
+
+    ApplicationException: Card import is not implemented
+
+    [0m [90m 450 |[39m   )[33m:[39m [33mPromise[39m[33m<[39m[33mImportCardsResponseDto[39m[33m>[39m {
+     [90m 451 |[39m     [36mreturn[39m [33mPromise[39m[33m.[39mreject(
+    [31m[1m>[22m[39m[90m 452 |[39m       [36mnew[39m [33mApplicationException[39m(
+     [90m     |[39m       [31m[1m^[22m[39m
+     [90m 453 |[39m         [33mHttpStatus[39m[33m.[39m[33mNOT_IMPLEMENTED[39m[33m,[39m
+     [90m 454 |[39m         [32m'NOT_IMPLEMENTED'[39m[33m,[39m
+     [90m 455 |[39m         [32m'Card import is not implemented'[39m[33m,[39m[0m
+
+      at CardsService.importCards (src/api/cards/cards.service.ts:452:7)
+      at Object.<anonymous> (test/cards/cards-import.spec.ts:217:36)
+
+Test Suites: 2 failed, 4 passed, 6 total
+Tests:       18 failed, 51 passed, 69 total
+Snapshots:   0 total
+Time:        13.534 s, estimated 161 s
+Ran all test suites matching /test\\cards/i.
+# exit code: 1
