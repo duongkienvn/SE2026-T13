@@ -227,5 +227,13 @@ describe('productivity authenticated HTTP and Swagger contract', () => {
     expect(doc.components!.schemas!.HomeDashboardDto).toMatchObject({
       properties: expect.objectContaining({ recentBoards: expect.anything() }),
     });
+    expect(doc.components!.schemas!.HomeBoardSummaryDto).toMatchObject({
+      properties: {
+        backgroundPreset: {
+          type: 'string',
+          enum: expect.arrayContaining(['blue', 'forest']),
+        },
+      },
+    });
   });
 });

@@ -7,6 +7,7 @@ import type {
 import { TaskGroup } from '@kanban/shared';
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
+import { BOARD_BACKGROUND_IDS } from '../../boards/board-backgrounds';
 
 export class TaskLabelDto {
   @Expose() @ApiProperty({ format: 'uuid' }) id!: string;
@@ -51,7 +52,7 @@ export class HomeBoardSummaryDto implements HomeBoardSummary {
   @Expose() @ApiProperty({ format: 'uuid' }) workspaceId!: string;
   @Expose() @ApiProperty() name!: string;
   @Expose()
-  @ApiProperty()
+  @ApiProperty({ type: String, enum: BOARD_BACKGROUND_IDS })
   backgroundPreset!: HomeBoardSummary['backgroundPreset'];
   @Expose() @ApiProperty() isStarred!: boolean;
   @Expose()
