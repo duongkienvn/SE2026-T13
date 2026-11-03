@@ -25,6 +25,7 @@ import { RealtimeModule } from './realtime/realtime.module';
 import { WorkspaceApiModule } from './api/workspaces/workspace-api.module';
 import { ProductivityModule } from './api/productivity/productivity.module';
 import { SearchModule } from './api/search/search.module';
+import { NotificationsModule } from './api/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { SearchModule } from './api/search/search.module';
     WorkspaceApiModule,
     ProductivityModule,
     SearchModule,
+    NotificationsModule,
     RealtimeModule,
     LoggerModule.forRootAsync({
       inject: [ConfigService],

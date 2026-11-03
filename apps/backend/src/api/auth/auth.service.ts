@@ -175,6 +175,17 @@ export class AuthService {
     };
   }
 
+  /** Server-owned socket identities must recheck persisted revocation before
+   * private user-targeted delivery; no credentials or profile data are returned.
+   */
+  async currentSocketAuthVersion(userId: string): Promise<number | null> {
+    const user = await this.users.findOne({
+      where: { id: userId },
+      select: { id: true, authVersion: true, emailVerifiedAt: true },
+    });
+    return user?.emailVerifiedAt ? user.authVersion : null;
+  }
+
   private emailAlreadyExists(): ApplicationException {
     return new ApplicationException(
       HttpStatus.CONFLICT,
