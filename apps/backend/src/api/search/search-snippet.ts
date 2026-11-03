@@ -9,7 +9,7 @@ export function plainSearchSnippet(fragment: string): string {
     .replace(/<[^>]*>/g, ' ')
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/[`*_~<>]/g, '')
-    .replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g, ' ')
+    .replace(/[\p{Cc}\u202a-\u202e\u2066-\u2069]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
   return [...plain].slice(0, SEARCH_SNIPPET_LENGTH).join('');

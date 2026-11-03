@@ -24,7 +24,8 @@ export class SearchQueryDto {
     validator: {
       validate: (value: unknown) =>
         typeof value === 'string' &&
-        !/[\u0000\uD800-\uDFFF]/u.test(value) &&
+        !value.includes('\0') &&
+        !/[\uD800-\uDFFF]/u.test(value) &&
         [...value].length <= 120,
       defaultMessage: () =>
         'q must contain 0–120 Unicode characters without null bytes or malformed Unicode',
