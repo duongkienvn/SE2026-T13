@@ -33,7 +33,7 @@
 }
 .landing-hero {
   position: relative;
-  padding: 52px 0 44px;
+  padding: 52px 0 calc(var(--spacing) * 14);
   background: radial-gradient(
     ellipse at 75% 35%,
     var(--landing-soft) 0%,
@@ -140,13 +140,13 @@
   transform: rotate(-1deg);
 }
 .landing-features {
-  padding: 24px 0 34px;
+  padding: calc(var(--spacing) * 10) 0 calc(var(--spacing) * 20);
 }
 .landing-feature-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px 18px;
-  margin-top: 20px;
+  gap: calc(var(--spacing) * 5);
+  margin-top: calc(var(--spacing) * 8);
 }
 .landing-feature-grid li {
   display: flex;
@@ -194,7 +194,7 @@
   line-height: 1.4;
 }
 .landing-steps {
-  padding: 0 0 30px;
+  padding: 0 0 calc(var(--spacing) * 14);
 }
 .landing-steps-panel {
   padding: 23px 30px;
@@ -209,7 +209,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 30px;
-  margin-top: 22px;
+  margin-top: calc(var(--spacing) * 8);
 }
 .landing-steps li {
   display: flex;
@@ -250,7 +250,7 @@
   color: var(--color-primary);
 }
 .landing-split-section {
-  padding: 35px 0;
+  padding: calc(var(--spacing) * 14) 0;
 }
 .landing-split-grid {
   display: grid;
@@ -316,13 +316,13 @@
   color: var(--color-primary);
 }
 .landing-workflows {
-  padding: 28px 0 22px;
+  padding: calc(var(--spacing) * 10) 0 calc(var(--spacing) * 12);
 }
 .landing-workflow-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-  margin-top: 22px;
+  gap: calc(var(--spacing) * 5);
+  margin-top: calc(var(--spacing) * 8);
 }
 .landing-workflow-grid > li {
   display: grid;
@@ -366,13 +366,13 @@
   color: var(--color-muted);
 }
 .landing-faq {
-  padding: 18px 0 28px;
+  padding: calc(var(--spacing) * 12) 0 calc(var(--spacing) * 20);
 }
 .landing-faq-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 9px 32px;
-  margin-top: 18px;
+  margin-top: calc(var(--spacing) * 8);
 }
 .landing-faq details {
   border: 1px solid var(--landing-border);
@@ -415,7 +415,7 @@
   line-height: 1.5;
 }
 .landing-closing {
-  padding: 0 0 22px;
+  padding: 0 0 calc(var(--spacing) * 23);
 }
 .landing-closing-panel {
   position: relative;
@@ -1130,7 +1130,7 @@
     font-size: 7px;
   }
   .landing-feature-grid {
-    gap: 12px;
+    gap: calc(var(--spacing) * 4);
   }
   .landing-feature-grid li {
     padding: 13px;
@@ -1193,7 +1193,7 @@
     grid-template-columns: 1fr;
   }
   .landing-hero {
-    padding: 30px 0 28px;
+    padding: 30px 0 calc(var(--spacing) * 8);
   }
   .landing-hero h1 {
     max-width: 360px;
@@ -1258,6 +1258,7 @@
   }
   .landing-feature-grid {
     grid-template-columns: 1fr;
+    margin-top: calc(var(--spacing) * 6);
   }
   .landing-feature-grid h3 {
     font-size: 16px;
@@ -1273,17 +1274,18 @@
     height: 43px;
   }
   .landing-features {
-    padding: 26px 0;
+    padding: calc(var(--spacing) * 6) 0 calc(var(--spacing) * 16);
   }
   .landing-section-lead {
     font-size: 14px;
   }
   .landing-steps {
-    padding-bottom: 12px;
+    padding-bottom: calc(var(--spacing) * 8);
   }
   .landing-steps ol {
     grid-template-columns: 1fr;
     gap: 18px;
+    margin-top: calc(var(--spacing) * 6);
   }
   .landing-steps-panel {
     padding: 24px 19px;
@@ -1296,7 +1298,7 @@
     height: 43px;
   }
   .landing-split-section {
-    padding: 27px 0;
+    padding: calc(var(--spacing) * 8) 0;
   }
   .landing-split-grid {
     gap: 28px;
@@ -1354,11 +1356,12 @@
     gap: 10px;
   }
   .landing-workflows {
-    padding: 22px 0;
+    padding: calc(var(--spacing) * 7) 0 calc(var(--spacing) * 8);
   }
   .landing-workflow-grid {
     grid-template-columns: 1fr;
-    gap: 12px;
+    gap: calc(var(--spacing) * 4);
+    margin-top: calc(var(--spacing) * 6);
   }
   .landing-workflow-grid > li {
     grid-template-columns: 1fr 1.1fr;
@@ -1370,13 +1373,20 @@
   .landing-workflow-grid p {
     font-size: 12px;
   }
+  .landing-faq {
+    padding: calc(var(--spacing) * 8) 0 calc(var(--spacing) * 16);
+  }
   .landing-faq-grid {
     grid-template-columns: 1fr;
     gap: 9px;
+    margin-top: calc(var(--spacing) * 6);
   }
   .landing-faq summary {
     font-size: 14px;
     padding: 12px;
+  }
+  .landing-closing {
+    padding-bottom: calc(var(--spacing) * 14);
   }
   .landing-closing-panel {
     display: grid;
