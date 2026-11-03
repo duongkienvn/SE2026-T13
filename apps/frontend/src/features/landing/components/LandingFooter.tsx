@@ -5,12 +5,9 @@ import { GitHubIcon } from '../../../components/icons';
 import { LANDING_SECTIONS } from '../sections';
 import type { LandingSession } from '../useLandingSession';
 import { landingContainer } from './layout';
-
-const REPOSITORY_URL = 'https://github.com/duongkienvn/SE2026-T13';
-
+const repo = 'https://github.com/duongkienvn/SE2026-T13';
 const linkClass =
-  'rounded-sm text-sm text-muted transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary';
-
+  'rounded-sm hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary';
 function FooterColumn({
   title,
   children,
@@ -20,27 +17,33 @@ function FooterColumn({
 }) {
   return (
     <div>
-      <h2 className="text-sm font-semibold text-ink">{title}</h2>
-      <ul className="mt-3 space-y-2">{children}</ul>
+      <h2>{title}</h2>
+      <ul>{children}</ul>
     </div>
   );
 }
-
-/** Only links with a working destination: anchors, auth pages and the public repository. */
 export function LandingFooter({ session }: { session: LandingSession }) {
   return (
-    <footer className="border-t border-line bg-surface">
-      <div
-        className={`${landingContainer} grid grid-cols-3 gap-x-4 gap-y-8 sm:gap-x-6 py-12 lg:grid-cols-[2fr_1fr_1fr_1fr]`}
-      >
-        <div className="col-span-3 lg:col-span-1">
-          <Brand size="sm" className="text-ink" />
-          <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted">
-            A Kanban workspace for teams who want to organize work and move
-            together in real time.
+    <footer className="landing-footer">
+      <div className={`${landingContainer} landing-footer-grid`}>
+        <div>
+          <Link to="/" aria-label="Kanvexa home" className={linkClass}>
+            <Brand size="sm" />
+          </Link>
+          <p>
+            A modern Kanban workspace for teams who want to organize work and
+            move together.
           </p>
+          <a
+            href={repo}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Kanvexa on GitHub (opens in a new tab)"
+            className={`${linkClass} mt-2 inline-flex`}
+          >
+            <GitHubIcon className="size-4" />
+          </a>
         </div>
-
         <FooterColumn title="Product">
           {LANDING_SECTIONS.map((section) => (
             <li key={section.id}>
@@ -50,16 +53,42 @@ export function LandingFooter({ session }: { session: LandingSession }) {
             </li>
           ))}
         </FooterColumn>
-
-        <FooterColumn title="Account">
-          {session === 'member' && (
+        <FooterColumn title="Resources">
+          <li>
+            <a
+              href={`${repo}/blob/main/README.md`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={linkClass}
+            >
+              Documentation
+              <span className="sr-only"> (opens in a new tab)</span>
+            </a>
+          </li>
+          <li>
+            <a
+              href={repo}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={linkClass}
+            >
+              GitHub<span className="sr-only"> (opens in a new tab)</span>
+            </a>
+          </li>
+        </FooterColumn>
+        <FooterColumn title="Company">
+          <li>
+            <a href="#why-kanvexa" className={linkClass}>
+              About Kanvexa
+            </a>
+          </li>
+          {session === 'member' ? (
             <li>
               <Link to="/boards" className={linkClass}>
                 Your boards
               </Link>
             </li>
-          )}
-          {session === 'guest' && (
+          ) : session === 'guest' ? (
             <>
               <li>
                 <Link to="/login" className={linkClass}>
@@ -72,33 +101,12 @@ export function LandingFooter({ session }: { session: LandingSession }) {
                 </Link>
               </li>
             </>
-          )}
-        </FooterColumn>
-
-        <FooterColumn title="Project">
-          <li>
-            <a
-              href={REPOSITORY_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`${linkClass} inline-flex items-center gap-1.5`}
-            >
-              <GitHubIcon className="size-4" />
-              GitHub
-              <span className="sr-only"> (opens in a new tab)</span>
-            </a>
-          </li>
+          ) : null}
         </FooterColumn>
       </div>
-      <div className="border-t border-line">
-        <p
-          className={`${landingContainer} flex flex-wrap justify-between gap-2 py-5 text-xs text-muted`}
-        >
-          <span>
-            © {new Date().getFullYear()} Kanvexa. All rights reserved.
-          </span>
-          <span>Built for collaboration.</span>
-        </p>
+      <div className={`${landingContainer} landing-footer-meta`}>
+        <span>© {new Date().getFullYear()} Kanvexa. All rights reserved.</span>
+        <span>Built for collaboration.</span>
       </div>
     </footer>
   );

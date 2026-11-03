@@ -1,189 +1,142 @@
 import { BrandLogo } from '../../../components/Brand';
 import {
-  ActivityIcon,
-  ClockIcon,
-  FolderIcon,
-  MonitorIcon,
-  PlusIcon,
+  ColumnsIcon,
+  HomeIcon,
+  CheckSquareIcon,
+  StarIcon,
+  LayersIcon,
   UsersIcon,
+  SlidersIcon,
+  SearchIcon,
+  LockIcon,
 } from '../../../components/icons';
+import { PreviewPeople } from './ProductShowcases';
 
-interface PreviewCard {
-  title: string;
-  description?: string;
-  due?: string;
-  assignees: string[];
-}
-
-interface PreviewColumn {
-  name: string;
-  cards: PreviewCard[];
-  /** Hidden on phones, where two readable columns beat three tiny ones. */
-  wideOnly?: boolean;
-}
-
-// Only fields a real Kanvexa card has: title, description, due date, assignees.
-const COLUMNS: PreviewColumn[] = [
+const columns = [
   {
     name: 'To Do',
     cards: [
-      {
-        title: 'Design landing page',
-        description: 'Hero, features and a clear call to action.',
-        due: 'Nov 4',
-        assignees: ['AM'],
-      },
-      { title: 'Plan Q1 roadmap', due: 'Nov 12', assignees: ['SL', 'JK'] },
+      { title: 'Design landing page', label: 'Design', due: 'Nov 19' },
+      { title: 'Write release notes', label: 'Docs', due: 'Nov 6' },
     ],
   },
   {
     name: 'In Progress',
     cards: [
-      {
-        title: 'Build board UI',
-        description: 'Columns, cards and drag and drop.',
-        due: 'Oct 30',
-        assignees: ['SL'],
-      },
-      {
-        title: 'Real-time board sync',
-        assignees: ['JK', 'AM'],
-      },
+      { title: 'Polish Kanban UI', label: 'Frontend', due: 'Nov 5' },
+      { title: 'Connect realtime updates', label: 'Feature', due: 'Nov 7' },
     ],
   },
   {
     name: 'Done',
-    wideOnly: true,
     cards: [
-      { title: 'Set up database', due: 'Oct 21', assignees: ['JK'] },
-      {
-        title: 'Write documentation',
-        description: 'Setup guide for the team.',
-        assignees: ['AM', 'SL'],
-      },
+      { title: 'Build card checklists', label: 'Feature', due: 'Nov 1' },
+      { title: 'Add labels & dates', label: 'Design', due: 'Nov 2' },
     ],
   },
 ];
 
-const PRESENCE = [
-  'bg-primary-soft text-primary',
-  'bg-[#e7f6ee] text-success dark:bg-[#123222]',
-  'bg-[#fdeedd] text-[#b45309] dark:bg-[#3a2814] dark:text-[#f0a35e]',
-];
-
-function Initials({ value, className }: { value: string; className: string }) {
-  return (
-    <span
-      className={`grid size-5 place-items-center rounded-full text-[8px] font-semibold ring-2 ring-surface ${className}`}
-    >
-      {value}
-    </span>
-  );
-}
-
-function MiniCard({ card }: { card: PreviewCard }) {
-  return (
-    <div className="rounded-lg bg-surface p-2.5 shadow-card">
-      {card.due && (
-        <p className="flex items-center justify-end gap-1 text-[9px] text-muted">
-          <ClockIcon className="size-2.5" />
-          {card.due}
-        </p>
-      )}
-      <p className="text-[11px] leading-snug font-semibold text-ink">
-        {card.title}
-      </p>
-      {card.description && (
-        <p className="mt-0.5 text-[10px] leading-snug text-muted">
-          {card.description}
-        </p>
-      )}
-      <div className="mt-1.5 flex justify-end -space-x-0.5">
-        {card.assignees.map((initials) => (
-          <Initials
-            key={initials}
-            value={initials}
-            className="bg-primary-soft text-primary"
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/**
- * A coded miniature of the real board screen, so it stays sharp and honest:
- * nothing here is a feature Kanvexa does not have.
- */
+/** Static, representative product artwork. Its controls are not interactive. */
 export function BoardPreview({ className = '' }: { className?: string }) {
   return (
     <div
       role="img"
       aria-label="Preview of a Kanvexa board with To Do, In Progress and Done columns of cards"
-      className={`overflow-hidden rounded-2xl border border-line/80 bg-surface shadow-[0_32px_80px_-24px_rgb(97_92_247/0.45)] ${className}`}
+      data-ui
+      className={`marketing-board ${className}`}
     >
-      <div aria-hidden="true" className="flex">
-        <div className="hidden w-28 shrink-0 border-r border-line/80 p-3 sm:block">
-          <div className="flex items-center gap-1.5 text-[12px] font-semibold text-ink">
-            <BrandLogo decorative className="size-5" />
-            Kanvexa
+      <div aria-hidden="true" className="marketing-board-inner">
+        <div className="marketing-sidebar">
+          <div className="marketing-brand">
+            <BrandLogo decorative /> Kanvexa
           </div>
-          <p className="mt-4 flex items-center gap-1.5 rounded-md bg-primary-soft px-2 py-1.5 text-[10px] font-medium text-primary">
-            <FolderIcon className="size-3" />
-            Boards
-          </p>
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 border-b border-line/80 px-3 py-2.5">
-            <span className="grid size-6 place-items-center rounded-md bg-primary-soft text-primary">
-              <MonitorIcon className="size-3.5" />
+          <div className="marketing-workspace">
+            <LayersIcon />
+            <span>
+              Personal Workspace<small>Personal workspace</small>
             </span>
-            <p className="truncate text-[12px] font-semibold text-ink">
-              Website Launch
-            </p>
-            <div className="ml-auto flex items-center gap-1.5">
-              <span className="mr-1 hidden -space-x-0.5 sm:flex">
-                {['AM', 'SL', 'JK'].map((initials, index) => (
-                  <Initials
-                    key={initials}
-                    value={initials}
-                    className={PRESENCE[index]}
-                  />
-                ))}
-              </span>
-              <span className="flex items-center gap-1 rounded-md border border-line px-1.5 py-1 text-[9px] font-medium text-ink">
-                <UsersIcon className="size-2.5" />
-                Members
-              </span>
-              <span className="flex items-center gap-1 rounded-md border border-line px-1.5 py-1 text-[9px] font-medium text-ink">
-                <ActivityIcon className="size-2.5" />
-                Activity
-              </span>
-            </div>
           </div>
-
-          <div className="grid grid-cols-2 gap-2.5 bg-app p-3 sm:grid-cols-3">
-            {COLUMNS.map((column) => (
-              <div
-                key={column.name}
-                className={`flex-col gap-2 rounded-xl bg-[#eceef6] p-2 dark:bg-[#1c2238] ${column.wideOnly ? 'hidden sm:flex' : 'flex'}`}
-              >
-                <p className="px-0.5 text-[11px] font-semibold text-ink">
-                  {column.name}{' '}
-                  <span className="font-normal text-muted">
-                    {column.cards.length}
-                  </span>
-                </p>
-                {column.cards.map((card) => (
-                  <MiniCard key={card.title} card={card} />
-                ))}
-                <p className="flex items-center gap-1 px-0.5 text-[10px] text-muted">
-                  <PlusIcon className="size-2.5" />
-                  New card
-                </p>
-              </div>
-            ))}
+          <div className="marketing-nav">
+            <span>
+              <HomeIcon />
+              Home
+            </span>
+            <span>
+              <CheckSquareIcon />
+              My Tasks
+            </span>
+            <span className="selected">
+              <ColumnsIcon />
+              Boards
+            </span>
+            <span>
+              <StarIcon />
+              Starred
+            </span>
+          </div>
+          <small>WORKSPACES</small>
+          <span className="marketing-space">
+            <LayersIcon /> Product Team
+          </span>
+          <span className="marketing-space">
+            <UsersIcon /> Design Team
+          </span>
+          <span className="marketing-account">
+            <i>AM</i> Alex Morgan
+          </span>
+        </div>
+        <div className="marketing-board-main">
+          <div className="marketing-breadcrumb">
+            Personal Workspace <span>›</span> Boards <span>›</span> Project
+            Sprint
+          </div>
+          <div className="marketing-board-heading">
+            <strong>
+              Project Sprint <StarIcon />
+            </strong>
+            <span className="marketing-role">Owner</span>
+            <span className="marketing-privacy">
+              <LockIcon />
+              Private
+            </span>
+            <PreviewPeople />
+          </div>
+          <div className="marketing-tabs">
+            <span className="selected">Kanban</span>
+            <span>Members</span>
+            <span>Activity</span>
+            <span>Board settings</span>
+          </div>
+          <div className="marketing-canvas">
+            <div className="marketing-filter">
+              <span>
+                <SlidersIcon />
+                Filter
+              </span>
+              <SearchIcon />
+            </div>
+            <div className="marketing-columns">
+              {columns.map((column, index) => (
+                <div className="marketing-column" key={column.name}>
+                  <div className="marketing-column-heading">
+                    {column.name}
+                    <span>{column.cards.length}</span>
+                  </div>
+                  {column.cards.map((card) => (
+                    <div className="marketing-card" key={card.title}>
+                      <strong>{card.title}</strong>
+                      <span className={`marketing-label tone-${index}`}>
+                        {card.label}
+                      </span>
+                      <div className="marketing-card-meta">
+                        <span>{card.due}</span>
+                        <i>{index === 0 ? 'AM' : index === 1 ? 'SL' : 'JK'}</i>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

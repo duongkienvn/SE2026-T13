@@ -12,7 +12,10 @@ describe('App', () => {
     );
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: /Organize work/ }),
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Turn ideas into real progress with Kanvexa',
+      }),
     ).toBeTruthy();
   });
 });

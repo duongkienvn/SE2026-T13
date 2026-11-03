@@ -6,6 +6,10 @@ import { LandingFooter } from '../components/LandingFooter';
 import { LandingHeader } from '../components/LandingHeader';
 import { LandingHero } from '../components/LandingHero';
 import { WhyKanvexaSection } from '../components/WhyKanvexaSection';
+import { RealtimeSection } from '../components/RealtimeSection';
+import { WorkflowsSection } from '../components/WorkflowsSection';
+import { FaqSection } from '../components/FaqSection';
+import '../landing.css';
 import { LANDING_TITLE } from '../sections';
 import { useLandingSession } from '../useLandingSession';
 
@@ -28,7 +32,7 @@ export function LandingPage() {
   }, []);
 
   return (
-    <div data-landing className="min-h-dvh bg-surface text-ink">
+    <div data-landing className="landing-page min-h-dvh text-ink">
       <a
         href="#main-content"
         className="sr-only z-40 rounded-lg bg-surface px-4 py-2 font-medium text-primary shadow-card focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:px-4 focus:py-2"
@@ -40,7 +44,10 @@ export function LandingPage() {
         <LandingHero session={session} />
         <FeaturesSection />
         <HowItWorksSection />
+        <RealtimeSection />
         <WhyKanvexaSection />
+        <WorkflowsSection />
+        <FaqSection />
         <ClosingCta session={session} />
       </main>
       <LandingFooter session={session} />

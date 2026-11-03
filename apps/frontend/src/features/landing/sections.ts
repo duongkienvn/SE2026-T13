@@ -1,8 +1,9 @@
-/** The three in-page anchors of the landing page; each id appears once in the DOM. */
+/** Public navigation anchors; each target appears once in the DOM. */
 export const LANDING_SECTIONS = [
   { id: 'features', label: 'Features' },
   { id: 'how-it-works', label: 'How it works' },
   { id: 'why-kanvexa', label: 'Why Kanvexa' },
+  { id: 'faq', label: 'FAQ' },
 ] as const;
 
 /** Matches `<title>` in index.html so client navigation back to `/` restores it. */

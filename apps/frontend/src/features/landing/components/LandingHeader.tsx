@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { Brand } from '../../../components/Brand';
 import { CloseIcon, MenuIcon } from '../../../components/icons';
@@ -13,12 +13,16 @@ const sectionLinkClass =
 /** Sticky public header; below `lg` the anchors and actions move into a menu panel. */
 export function LandingHeader({ session }: { session: LandingSession }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const toggle = useRef<HTMLButtonElement>(null);
   const closeMenu = () => setMenuOpen(false);
 
   useEffect(() => {
     if (!menuOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMenuOpen(false);
+      if (event.key === 'Escape') {
+        setMenuOpen(false);
+        toggle.current?.focus();
+      }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
@@ -53,6 +57,7 @@ export function LandingHeader({ session }: { session: LandingSession }) {
         />
 
         <button
+          ref={toggle}
           type="button"
           aria-expanded={menuOpen}
           aria-controls="landing-menu"

@@ -4,7 +4,7 @@ import { renderApp } from '../../../test/render';
 import { mockApi } from '../../../test/mock-api';
 
 describe('scoped auth entry presentation', () => {
-  it.each(['/login', '/register'])(
+  it.each(['/login', '/register', '/forgot-password', '/reset-password'])(
     'opts %s into the entry composition without leaking presentation props to inputs',
     (path) => {
       const { container } = renderApp(path);
@@ -47,18 +47,16 @@ describe('scoped auth entry presentation', () => {
     },
   );
 
-  it.each([
-    '/forgot-password',
-    '/reset-password',
-    '/check-email',
-    '/verify-email',
-  ])('keeps %s on its original layout and control presentation', (path) => {
-    const { container } = renderApp(path);
-    expect(container.querySelector('[data-auth-entry]')).toBeNull();
-    expect(container.querySelector('.auth-entry-input')).toBeNull();
-    expect(screen.getByRole('main')).toBeTruthy();
-    expect(screen.queryByRole('link', { name: 'Kanvexa home' })).toBeNull();
-  });
+  it.each(['/check-email', '/verify-email'])(
+    'keeps %s on its original layout and control presentation',
+    (path) => {
+      const { container } = renderApp(path);
+      expect(container.querySelector('[data-auth-entry]')).toBeNull();
+      expect(container.querySelector('.auth-entry-input')).toBeNull();
+      expect(screen.getByRole('main')).toBeTruthy();
+      expect(screen.queryByRole('link', { name: 'Kanvexa home' })).toBeNull();
+    },
+  );
 
   it('keeps registration guidance immediately after the new password through validation', () => {
     mockApi({});

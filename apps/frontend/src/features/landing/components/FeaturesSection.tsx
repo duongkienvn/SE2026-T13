@@ -1,78 +1,70 @@
-import type { ComponentType } from 'react';
 import {
   BoltIcon,
   ColumnsIcon,
-  HistoryIcon,
   TeamIcon,
-  type IconProps,
+  CheckSquareIcon,
+  TagIcon,
+  PaperclipIcon,
 } from '../../../components/icons';
 import { landingContainer, landingSection } from './layout';
 import { SectionIntro } from './SectionIntro';
-
-// Each claim maps to a shipped feature; see docs/tasks/frontend/public-landing-page.md.
-const FEATURES: {
-  title: string;
-  description: string;
-  Icon: ComponentType<IconProps>;
-}[] = [
+const features = [
   {
     title: 'Visual boards',
-    description:
-      'Organize tasks in columns and cards, then drag them to where they belong.',
+    copy: 'Organize tasks, ideas and projects with a flexible Kanban workflow.',
     Icon: ColumnsIcon,
   },
   {
-    title: 'Real-time collaboration',
-    description:
-      'Changes to columns and cards show up for everyone on the board right away.',
+    title: 'Realtime collaboration',
+    copy: 'See updates instantly and work together in real time.',
     Icon: BoltIcon,
   },
   {
-    title: 'Team management',
-    description:
-      'Add teammates to a board and choose who is an Owner and who is a Member.',
+    title: 'Workspaces & permissions',
+    copy: 'Keep teams and projects organized with role-based access.',
     Icon: TeamIcon,
   },
   {
-    title: 'Activity history',
-    description:
-      'See who changed what on a board, from new cards to moved columns.',
-    Icon: HistoryIcon,
+    title: 'Checklists',
+    copy: 'Break down work into clear, trackable steps.',
+    Icon: CheckSquareIcon,
+  },
+  {
+    title: 'Labels & dates',
+    copy: 'Categorize work and keep the next deadline in sight.',
+    Icon: TagIcon,
+  },
+  {
+    title: 'Attachments',
+    copy: 'Link resources or upload files securely and easily.',
+    Icon: PaperclipIcon,
   },
 ];
-
 export function FeaturesSection() {
   return (
     <section
       id="features"
       aria-labelledby="features-title"
-      className={`${landingSection} py-20 lg:py-24`}
+      className={`${landingSection} landing-features`}
     >
       <div className={landingContainer}>
         <SectionIntro
           titleId="features-title"
           eyebrow="Features"
-          title="Everything your team needs"
+          title="Everything you need to stay on track"
         >
-          Kanvexa combines a clean{' '}
-          <strong className="font-semibold text-ink">Kanban</strong> board with
-          real-time collaboration, so your team can move faster and stay
-          aligned.
+          Powerful features to plan, collaborate and get things done together.
         </SectionIntro>
-
-        <ul className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {FEATURES.map(({ title, description, Icon }) => (
-            <li
-              key={title}
-              className="rounded-2xl border border-line bg-surface p-6 shadow-card transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_-20px_rgb(97_92_247/0.35)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-            >
-              <span className="grid size-12 place-items-center rounded-xl bg-primary-soft text-primary">
-                <Icon className="size-6" />
+        <ul className="landing-feature-grid">
+          {features.map(({ title, copy, Icon }) => (
+            <li key={title}>
+              <span className="landing-feature-icon">
+                <Icon />
               </span>
-              <h3 className="mt-5 text-lg font-semibold text-ink">{title}</h3>
-              <p className="mt-2 text-[15px] leading-relaxed text-muted">
-                {description}
-              </p>
+              <div>
+                <h3>{title}</h3>
+                <p>{copy}</p>
+              </div>
             </li>
           ))}
         </ul>

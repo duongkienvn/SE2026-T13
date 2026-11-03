@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import { Alert } from '../../../components/Alert';
 import { usePageTitle } from '../../../hooks/usePageTitle';
 import { resetPassword } from '../api';
-import { AuthLayout } from '../components/AuthLayout';
+import { AuthEntryLayout } from '../components/AuthEntryLayout';
 import { NewPasswordForm } from '../components/NewPasswordForm';
 import {
   clearIncomingRecoveryToken,
@@ -27,13 +27,14 @@ export function ResetPasswordPage() {
   }, [location.search, location.hash, navigate]);
   const valid = token.current && /^[A-Za-z0-9_-]{43}$/.test(token.current);
   return (
-    <AuthLayout>
-      <h1 className="text-2xl font-bold text-ink">Reset your password</h1>
-      <p className="mt-2 text-sm text-muted">
+    <AuthEntryLayout kind="recovery">
+      <h1>Reset your password</h1>
+      <p className="auth-entry-intro">
         Choose a strong password for your Kanvexa account.
       </p>
       {valid ? (
         <NewPasswordForm
+          appearance="auth"
           submit={(password) => resetPassword(token.current!, password)}
           onSuccess={() => {
             token.current = null;
@@ -60,6 +61,6 @@ export function ResetPasswordPage() {
       <Link to="/login" className="mt-4 block text-sm text-primary underline">
         Back to login
       </Link>
-    </AuthLayout>
+    </AuthEntryLayout>
   );
 }

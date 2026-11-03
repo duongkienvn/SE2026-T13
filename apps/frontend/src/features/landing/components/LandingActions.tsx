@@ -20,7 +20,7 @@ function ActionPlaceholder({
 /** The page's main call to action: sign up as a guest, open Boards once signed in. */
 export function PrimaryAction({
   session,
-  guestLabel = 'Get started',
+  guestLabel = 'Get started free',
 }: {
   session: LandingSession;
   guestLabel?: string;
@@ -76,7 +76,7 @@ export function LandingHeaderActions({
         Log in
       </Link>
       <Link to="/register" onClick={onNavigate} className={buttonClassName()}>
-        Get Started
+        Get started free
       </Link>
     </div>
   );
