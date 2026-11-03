@@ -7,9 +7,20 @@ import {
   APP_NAME,
   BoardRole,
   RealtimeEvent,
+  TaskGroup,
 } from '@kanban/shared';
 
 const require = createRequire(import.meta.url);
+
+test('exports exhaustive productivity groups to both module formats', () => {
+  assert.deepEqual(TaskGroup, {
+    OVERDUE: 'OVERDUE',
+    NEXT_7_DAYS: 'NEXT_7_DAYS',
+    LATER: 'LATER',
+    NO_DUE_DATE: 'NO_DUE_DATE',
+  });
+  assert.deepEqual(require('@kanban/shared').TaskGroup, TaskGroup);
+});
 
 test('exports the same realtime event names for both module formats', () => {
   assert.deepEqual(RealtimeEvent, {

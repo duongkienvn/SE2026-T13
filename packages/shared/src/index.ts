@@ -20,3 +20,4 @@ export * from './card-attachments.js';
 export * from './board-discovery.js';
 
 export * from './card-filtering.js';
+export * from './productivity.js';
