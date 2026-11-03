@@ -72,6 +72,7 @@ export function mapWorkspaceBoard(
     memberCount: item.memberCount,
     backgroundPreset: item.backgroundPreset,
     lastViewedAt: item.lastViewedAt,
+    isStarred: item.isStarred,
   };
 }
 

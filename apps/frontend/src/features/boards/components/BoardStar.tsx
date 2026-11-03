@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo } from 'react';
 import { apiRequest, isApiError } from '../../../lib/api-client';
 import { StarIcon } from '../../../components/icons';
 import { useAuth } from '../../auth/useAuth';
@@ -13,20 +14,30 @@ type UserState = { isStarred: boolean; lastViewedAt: string | null };
 export function BoardStar({
   boardId,
   boardName,
+  isStarred,
+  stateUpdatedAt,
+  compact = false,
 }: {
   boardId: string;
   boardName: string;
+  isStarred?: boolean;
+  stateUpdatedAt?: number;
+  compact?: boolean;
 }) {
   const { user, runAuthorized } = useAuth();
   const scope = useAuthSession();
   const client = useQueryClient();
-  const key = [
-    'board-discovery',
-    user?.id,
-    scope.generation,
-    'state',
-    boardId,
-  ] as const;
+  const key = useMemo(
+    () =>
+      [
+        'board-discovery',
+        user?.id,
+        scope.generation,
+        'state',
+        boardId,
+      ] as const,
+    [user?.id, scope.generation, boardId],
+  );
   const path = `/boards/${encodeURIComponent(boardId)}`;
   const state = useQuery({
     queryKey: key,
@@ -54,8 +65,26 @@ export function BoardStar({
       }
     },
     enabled: !!user,
+    initialData:
+      isStarred === undefined ? undefined : { isStarred, lastViewedAt: null },
+    initialDataUpdatedAt: stateUpdatedAt,
+    staleTime: isStarred === undefined ? 0 : 5 * 60_000,
     retry: false,
   });
+  // A refreshed authorized list also refreshes the shared per-board state.
+  useEffect(() => {
+    if (isStarred === undefined || !scope.isCurrent()) return;
+    // A remounted, older list must not overwrite a newer successful toggle.
+    if (
+      stateUpdatedAt !== undefined &&
+      (client.getQueryState(key)?.dataUpdatedAt ?? 0) > stateUpdatedAt
+    )
+      return;
+    client.setQueryData<UserState>(key, (previous) => ({
+      isStarred,
+      lastViewedAt: previous?.lastViewedAt ?? null,
+    }));
+  }, [client, key, isStarred, stateUpdatedAt, scope.isCurrent]);
   const toggle = useMutation({
     onMutate: async () => {
       const accessVersion = boardAccessVersion(client, boardId);
@@ -104,7 +133,7 @@ export function BoardStar({
         aria-pressed={starred}
         disabled={!state.data || state.isError || toggle.isPending}
         onClick={() => toggle.mutate(!starred)}
-        className="grid size-11 place-items-center rounded-md bg-surface text-primary focus-visible:outline-2 focus-visible:outline-primary disabled:text-muted"
+        className={`grid place-items-center rounded-lg text-primary focus-visible:outline-2 focus-visible:outline-primary disabled:text-muted ${compact ? 'size-8 hover:bg-primary-soft' : 'size-11 border border-line bg-surface shadow-sm sm:size-9'}`}
       >
         <StarIcon className={`size-5 ${starred ? 'fill-current' : ''}`} />
       </button>

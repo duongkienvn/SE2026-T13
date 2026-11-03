@@ -89,9 +89,13 @@ describe('KanbanBoard', () => {
       .getByRole('heading', { name: 'Match' })
       .closest('article')!;
     await within(tile).findByText('Release');
-    expect(within(tile).getByText('Checklist 1/3')).toBeTruthy();
-    expect(within(tile).getByText('Attachments 2')).toBeTruthy();
-    expect(within(tile).getByText('Comments 4')).toBeTruthy();
+    expect(
+      within(tile)
+        .getByRole('progressbar', { name: 'Checklist progress' })
+        .getAttribute('aria-valuenow'),
+    ).toBe('1');
+    expect(within(tile).getByTitle('Attachments 2')).toBeTruthy();
+    expect(within(tile).getByTitle('Comments 4')).toBeTruthy();
     expect(
       screen.queryByRole('button', { name: 'Move card Match' }),
     ).toBeNull();
@@ -145,7 +149,10 @@ describe('KanbanBoard', () => {
       ]),
     });
 
-    const columns = await screen.findAllByRole('region');
+    const workspace = await screen.findByRole('region', {
+      name: 'Kanban workspace',
+    });
+    const columns = await within(workspace).findAllByRole('region');
     expect(columns.map((c) => c.getAttribute('aria-labelledby'))).toHaveLength(
       3,
     );
@@ -330,3 +337,30 @@ describe('KanbanBoard on an archived board', () => {
     ).toBeNull();
   });
 });
+
+it.each(['workspace-reader', 'archived-owner'] as const)(
+  'explains an empty read-only %s Board without offering creation',
+  async (access) => {
+    storeSession();
+    const board = makeBoard({
+      currentUserRole: access === 'workspace-reader' ? null : 'OWNER',
+      visibility: 'WORKSPACE_VISIBLE',
+      isArchived: access === 'archived-owner',
+    });
+    mockApi({
+      'GET /users/me': ok(testUser),
+      [`GET /boards/${board.id}`]: ok(board),
+      [`GET /boards/${board.id}/columns?page=1&limit=100`]: okPage([]),
+      [`GET /boards/${board.id}/cards?page=1&limit=100`]: okPage([]),
+      [`GET /boards/${board.id}/members?page=1&limit=100`]: okPage([]),
+    });
+    renderApp(`/boards/${board.id}`);
+    await screen.findByRole('heading', { name: 'No columns yet' });
+    expect(
+      screen.getByText(
+        'This board is read only. No columns are available yet.',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Add column' })).toBeNull();
+  },
+);

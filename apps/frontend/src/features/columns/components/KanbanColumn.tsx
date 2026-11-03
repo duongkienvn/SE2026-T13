@@ -75,12 +75,12 @@ export function KanbanColumn({
           : undefined,
         transition,
       }}
-      className={`relative flex max-h-full w-70 shrink-0 flex-col rounded-xl bg-line/45 ${
+      className={`relative flex max-h-full w-70 shrink-0 flex-col rounded-xl border border-line/80 bg-app/98 shadow-card ${
         isDragging ? 'opacity-40' : ''
       }`}
     >
       <header
-        className={`group relative flex touch-manipulation items-center gap-2 pt-4 pr-4 pb-3 pl-6 ${
+        className={`group relative flex touch-manipulation items-center gap-2 py-2 pr-3 pl-6 ${
           dragDisabled ? '' : 'cursor-grab'
         }`}
         {...pointerListeners}
@@ -91,18 +91,18 @@ export function KanbanColumn({
             {...attributes}
             onKeyDown={onKeyDown}
             aria-label={`Move column ${column.name}`}
-            className={`absolute top-5 left-0.5 grid size-5 place-items-center rounded text-muted/70 hover:bg-app hover:text-ink focus-visible:outline-2 focus-visible:outline-primary ${GRIP_REVEAL}`}
+            className={`absolute top-4 left-0.5 grid size-5 place-items-center rounded text-muted/70 hover:bg-app hover:text-ink focus-visible:outline-2 focus-visible:outline-primary ${GRIP_REVEAL}`}
           >
             <GripIcon />
           </button>
         )}
         <h2
           id={headingId}
-          className="min-w-0 truncate text-[17px] font-semibold text-ink"
+          className="min-w-0 truncate text-[15px] font-semibold text-ink"
         >
           {column.name}
         </h2>
-        <span className="text-[17px] text-muted">
+        <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-line/70 px-1 text-xs font-medium text-muted">
           <span className="sr-only">, </span>
           {cards.length}
           <span className="sr-only">

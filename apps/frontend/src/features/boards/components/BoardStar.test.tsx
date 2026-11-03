@@ -114,3 +114,49 @@ it('rejects a successful state response from an earlier access grant', async () 
     client.getQueryData(['board-discovery', testUser.id, 1, 'state', 'board']),
   ).toBeUndefined();
 });
+
+it('reuses authorized list snapshots and reconciles a new snapshot even when its boolean is unchanged', async () => {
+  const calls = mockApi({
+    'PUT /boards/board/star': ok({ isStarred: true, lastViewedAt: null }),
+  });
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  const auth: AuthContextValue = {
+    status: 'authenticated',
+    user: testUser,
+    signIn: vi.fn(),
+    signOut: vi.fn(),
+    retry: vi.fn(),
+    runAuthorized: (request) => request('token'),
+  };
+  const scope = { generation: 1, isCurrent: () => true };
+  const timestamp = Date.now();
+  const ui = (updatedAt: number) => (
+    <QueryClientProvider client={client}>
+      <AuthSessionContext.Provider value={scope}>
+        <AuthContext.Provider value={auth}>
+          <BoardStar
+            boardId="board"
+            boardName="Board"
+            isStarred={false}
+            stateUpdatedAt={updatedAt}
+          />
+        </AuthContext.Provider>
+      </AuthSessionContext.Provider>
+    </QueryClientProvider>
+  );
+  const first = render(ui(timestamp));
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Add to starred: Board' }),
+  );
+  await screen.findByRole('button', { name: 'Remove from starred: Board' });
+  first.unmount();
+  const next = render(ui(timestamp));
+  expect(
+    screen.getByRole('button', { name: 'Remove from starred: Board' }),
+  ).toBeTruthy();
+  next.rerender(ui(Date.now() + 1000));
+  await screen.findByRole('button', { name: 'Add to starred: Board' });
+  expect(calls.filter((call) => call.method === 'GET')).toHaveLength(0);
+});

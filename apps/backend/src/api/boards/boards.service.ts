@@ -262,6 +262,9 @@ export class BoardsService {
           createdById: userId,
           workspaceId: workspace.id,
           visibility: BoardVisibility.PRIVATE,
+          ...(input.backgroundPreset !== undefined
+            ? { backgroundPreset: input.backgroundPreset }
+            : {}),
         }),
       );
       const member = await members.save(

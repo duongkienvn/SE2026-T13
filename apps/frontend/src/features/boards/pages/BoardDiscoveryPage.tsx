@@ -98,11 +98,18 @@ export function BoardDiscoveryPage() {
   return (
     <PageContainer>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-ink">Boards</h1>
+        <div>
+          <h1 className="text-2xl font-semibold text-ink">
+            {filters.view === 'starred' ? 'Starred boards' : 'Boards'}
+          </h1>
+          <p className="mt-1 text-sm text-muted">
+            Your boards across all workspaces.
+          </p>
+        </div>
         {filters.status === 'active' &&
           result.isSuccess &&
           result.data.meta.total > 0 && (
-            <Button onClick={() => setCreating(true)}>New Board</Button>
+            <Button onClick={() => setCreating(true)}>Create Board</Button>
           )}
       </div>
       <WorkspaceBoardsToolbar
@@ -130,11 +137,12 @@ export function BoardDiscoveryPage() {
       ) : (
         <>
           {result.data.items.length ? (
-            <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {result.data.items.map((board) => (
                 <li key={board.id} className="min-w-0">
                   <BoardCard
                     board={board}
+                    stateUpdatedAt={result.dataUpdatedAt}
                     onEdit={
                       !board.isArchived &&
                       board.currentUserRole === BoardRole.OWNER &&

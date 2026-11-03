@@ -332,14 +332,14 @@ export function KanbanDndBoard({
     active?.type === 'column' ? columnsById.get(active.id) : undefined;
 
   return (
-    <div className="flex h-full flex-col gap-3">
+    <div className="flex h-full min-h-0 flex-col gap-3">
       {error && <Alert variant="error">{error}</Alert>}
       {saving && (
         <p role="status" className="sr-only">
           Saving the new order…
         </p>
       )}
-      <div className="relative -mx-4 min-h-0 flex-1 overflow-x-auto px-4 md:-mx-6 md:px-6 lg:-mx-10 lg:px-10">
+      <div className="kanban-columns relative min-h-0 flex-1 overflow-x-auto overscroll-x-contain px-4 pb-3 md:px-6">
         <DndContext
           sensors={sensors}
           collisionDetection={collisionDetection}

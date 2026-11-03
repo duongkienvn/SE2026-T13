@@ -6,6 +6,11 @@ import {
   useState,
   type FormEvent,
 } from 'react';
+import type { CreateBoardBackgroundRequest } from '@kanban/shared';
+import {
+  BackgroundPresetChoices,
+  useBackgroundPresets,
+} from './BoardBackground';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
 import { Dialog } from '../../../components/Dialog';
@@ -25,12 +30,13 @@ import {
 const FIELD_LABELS = { name: 'Board name', description: 'Description' };
 type Field = keyof typeof FIELD_LABELS;
 
-export interface BoardValues {
+export interface BoardValues extends CreateBoardBackgroundRequest {
   name: string;
   description: string | null;
 }
 
 interface BoardFormProps {
+  createBackground?: boolean;
   initial: BoardValues;
   submitLabel: string;
   pendingLabel: string;
@@ -46,6 +52,7 @@ interface BoardFormProps {
 
 export function BoardForm({
   initial,
+  createBackground = false,
   submitLabel,
   pendingLabel,
   requireChange = false,
@@ -56,6 +63,13 @@ export function BoardForm({
   onDirtyChange,
 }: BoardFormProps) {
   const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
+  const presets = useBackgroundPresets({ enabled: createBackground });
+  const [backgroundPreset, setBackgroundPreset] = useState(
+    initial.backgroundPreset,
+  );
+  const backgroundUnavailable =
+    !!backgroundPreset &&
+    !presets.data?.some((item) => item.id === backgroundPreset);
   const [name, setName] = useState(initial.name);
   const [description, setDescription] = useState(initial.description ?? '');
   const [fieldErrors, setFieldErrors] = useState<
@@ -66,6 +80,7 @@ export function BoardForm({
   const noticeId = useId();
 
   const values: BoardValues = {
+    ...(createBackground && backgroundPreset ? { backgroundPreset } : {}),
     name: name.trim(),
     description: normalizeDescription(description),
   };
@@ -82,6 +97,7 @@ export function BoardForm({
       pending ||
       submitting.current ||
       disabledReason ||
+      backgroundUnavailable ||
       (requireChange && !changed)
     )
       return;
@@ -145,13 +161,39 @@ export function BoardForm({
         error={fieldErrors.description}
         disabled={pending}
       />
+      {createBackground &&
+        (presets.data ? (
+          <BackgroundPresetChoices
+            presets={presets.data}
+            selected={backgroundPreset ?? 'blue'}
+            onSelect={setBackgroundPreset}
+            disabled={pending || !!disabledReason}
+          />
+        ) : (
+          <p role="status" className="text-sm text-muted">
+            {presets.isError
+              ? 'Background choices unavailable. The default will be used.'
+              : 'Loading background choices…'}
+          </p>
+        ))}
+      {backgroundUnavailable && (
+        <Alert variant="error">
+          The selected background is unavailable. Reopen the form to use the
+          default.
+        </Alert>
+      )}
       <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
         <Button variant="secondary" onClick={onCancel} disabled={pending}>
           Cancel
         </Button>
         <Button
           type="submit"
-          disabled={pending || !!disabledReason || (requireChange && !changed)}
+          disabled={
+            pending ||
+            !!disabledReason ||
+            backgroundUnavailable ||
+            (requireChange && !changed)
+          }
           aria-describedby={disabledReason ? noticeId : undefined}
         >
           {pending
@@ -190,6 +232,7 @@ export function CreateBoardDialog({
     >
       <BoardForm
         initial={{ name: '', description: null }}
+        createBackground
         submitLabel="Create board"
         pendingLabel="Creating…"
         pending={create.isPending}

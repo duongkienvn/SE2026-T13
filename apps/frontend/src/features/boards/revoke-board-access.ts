@@ -37,7 +37,18 @@ export function revokeBoardAccess(client: QueryClient, boardId: string) {
       status: 'error',
       error: new ApiError(404, BOARD_ACCESS_REVOKED, 'Board unavailable'),
     });
-  client.removeQueries({ queryKey: boardKeys.lists() });
+  const lists = { queryKey: boardKeys.lists() };
+  void client.cancelQueries(lists);
+  // Removing a query alone does not notify mounted list observers. Clear
+  // their results first so React drops protected names before a new REST read.
+  for (const query of client.getQueryCache().findAll(lists)) {
+    query.setState({
+      data: undefined,
+      status: 'error',
+      error: new ApiError(404, BOARD_ACCESS_REVOKED, 'Board access changed'),
+    });
+  }
+  client.removeQueries(lists);
   // Workspace pages can retain this Board's name, role and ACL-filtered totals.
   // Hide every cached resource before rechecking REST permissions; directory
   // memberships are independent of Board access and can remain visible.

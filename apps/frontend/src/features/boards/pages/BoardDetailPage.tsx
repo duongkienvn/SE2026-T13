@@ -18,6 +18,7 @@ import { Alert } from '../../../components/Alert';
 import { buttonClassName } from '../../../components/Button';
 import { PageContainer } from '../../../components/PageContainer';
 import { TextField } from '../../../components/TextField';
+import { LockIcon, UsersIcon } from '../../../components/icons';
 import { BoardNavigation } from '../components/BoardNavigation';
 import {
   filterSearchParams,
@@ -38,12 +39,11 @@ import { BoardPresence } from '../../presence/components/BoardPresence';
 import { ArchiveBoardDialog } from '../components/ArchiveBoardDialog';
 import { RestoreBoardDialog } from '../components/RestoreBoardDialog';
 import { KanbanBoard } from '../components/KanbanBoard';
-import { BoardIcon } from '../components/BoardIcon';
 import { BoardStar } from '../components/BoardStar';
 import { useRecordBoardView } from '../useRecordBoardView';
 import {
   BoardBackgroundDialog,
-  backgroundStyle,
+  canvasBackgroundStyle,
   useBackgroundPresets,
 } from '../components/BoardBackground';
 import { EditBoardDialog } from '../components/BoardFormDialog';
@@ -232,57 +232,52 @@ export function BoardDetailPage() {
       data.currentUserRole === BoardRole.OWNER);
 
   return (
-    <PageContainer fill>
+    <div
+      className={`board-page flex min-w-0 flex-col ${settings || membersPage ? 'min-h-full' : 'h-full'}`}
+    >
       {editing && editDirty && (
         <BoardEditNavigationGuard onDiscard={closeEditor} />
       )}
-      <nav
-        aria-label="Board breadcrumb"
-        className="mb-3 text-xs leading-5 text-muted md:hidden"
-      >
-        <ol className="flex flex-wrap items-center gap-x-2">
-          {workspace && (
-            <li className="min-w-0 max-w-full [overflow-wrap:anywhere]">
+      <div className="board-page-header shrink-0 bg-app px-4 pt-3 md:px-6 lg:px-10">
+        <nav
+          aria-label="Board breadcrumb"
+          className="mb-2 text-xs leading-5 text-muted md:hidden"
+        >
+          <ol className="flex flex-wrap items-center gap-x-2">
+            {workspace && (
+              <li className="min-w-0 max-w-full [overflow-wrap:anywhere]">
+                <Link
+                  className="rounded hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
+                  to={workspacePath(workspace.id)}
+                >
+                  {workspace.name}
+                </Link>
+                <span aria-hidden="true"> /</span>
+              </li>
+            )}
+            <li>
               <Link
                 className="rounded hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
-                to={workspacePath(workspace.id)}
+                to={
+                  workspace
+                    ? `${workspacePath(workspace.id)}/boards`
+                    : '/boards'
+                }
               >
-                {workspace.name}
+                Boards
               </Link>
-              <span aria-hidden="true"> /</span>
             </li>
-          )}
-          <li>
-            <Link
-              className="rounded hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
-              to={
-                workspace ? `${workspacePath(workspace.id)}/boards` : '/boards'
-              }
+            <li aria-hidden="true">/</li>
+            <li
+              aria-current="page"
+              className="min-w-0 max-w-full [overflow-wrap:anywhere]"
             >
-              Boards
-            </Link>
-          </li>
-          <li aria-hidden="true">/</li>
-          <li
-            aria-current="page"
-            className="min-w-0 max-w-full [overflow-wrap:anywhere]"
-          >
-            {data.name}
-          </li>
-        </ol>
-      </nav>
-      <div
-        className="rounded-xl p-3"
-        style={backgroundStyle(
-          presets.data?.find((item) => item.id === data.backgroundPreset),
-        )}
-      >
-        <div className="flex items-start gap-3 rounded-lg bg-surface p-3 md:gap-4">
-          <BoardIcon
-            boardId={data.id}
-            className="size-10 shrink-0 rounded-xl text-xl md:size-12 md:text-2xl"
-          />
-          <div className="min-w-0 flex-1">
+              {data.name}
+            </li>
+          </ol>
+        </nav>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 lg:flex lg:items-center lg:gap-x-5">
+          <div className="min-w-0 lg:max-w-[44%]">
             <h1
               title={data.name}
               className="line-clamp-2 text-xl leading-tight font-bold tracking-tight text-ink [overflow-wrap:anywhere] md:text-2xl"
@@ -292,14 +287,39 @@ export function BoardDetailPage() {
             {data.description && (
               <p
                 title={data.description}
-                className="mt-1 line-clamp-2 text-sm text-muted [overflow-wrap:anywhere]"
+                className="mt-1 line-clamp-2 text-sm text-muted [overflow-wrap:anywhere] lg:line-clamp-1"
               >
                 {data.description}
               </p>
             )}
           </div>
+          <div
+            className="col-span-2 row-start-2 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 text-xs lg:flex-1 lg:border-l lg:border-line lg:pl-4"
+            role="group"
+            aria-label="Board metadata"
+          >
+            <BoardStar boardId={data.id} boardName={data.name} compact />
+            <RoleChip role={data.currentUserRole} />
+            {data.visibility && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 font-medium text-muted">
+                {data.visibility === 'PRIVATE' ? (
+                  <LockIcon aria-hidden="true" className="size-3.5 shrink-0" />
+                ) : (
+                  <UsersIcon aria-hidden="true" className="size-3.5 shrink-0" />
+                )}
+                {data.visibility === 'PRIVATE'
+                  ? 'Private'
+                  : 'Workspace visible'}
+              </span>
+            )}
+            <BoardPresence
+              boardId={data.id}
+              canReadMembers={data.currentUserRole !== null}
+            />
+            <RealtimeStatus {...realtime} />
+          </div>
           <ActionMenu
-            className="shrink-0 [&>button]:size-11"
+            className="col-start-2 row-start-1 shrink-0 lg:ml-auto [&>button]:size-11"
             label={`Actions for ${data.name}`}
             items={[
               {
@@ -313,30 +333,16 @@ export function BoardDetailPage() {
             ]}
           />
         </div>
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
-        <BoardStar boardId={data.id} boardName={data.name} />
-        <RoleChip role={data.currentUserRole} />
-        {data.visibility && (
-          <span className="text-muted">
-            {data.visibility === 'PRIVATE' ? 'Private' : 'Workspace visible'}
-          </span>
-        )}
-        <BoardPresence
+        <BoardNavigation
           boardId={data.id}
+          active={settings ? 'settings' : membersPage ? 'members' : 'kanban'}
           canReadMembers={data.currentUserRole !== null}
+          onActivity={() => setShowingActivity(true)}
         />
-        <RealtimeStatus {...realtime} />
       </div>
-      <BoardNavigation
-        boardId={data.id}
-        active={settings ? 'settings' : membersPage ? 'members' : 'kanban'}
-        canReadMembers={data.currentUserRole !== null}
-        onActivity={() => setShowingActivity(true)}
-      />
 
       {(notice || copyStatus !== 'idle' || data.isArchived) && (
-        <div className="mt-4 space-y-3">
+        <div className="shrink-0 space-y-3 px-4 py-3 md:px-6 lg:px-10">
           {notice && <Alert variant="success">{notice}</Alert>}
           {copyStatus === 'copied' && (
             <Alert variant="success">Board link copied.</Alert>
@@ -355,38 +361,40 @@ export function BoardDetailPage() {
       )}
 
       {settings ? (
-        <BoardSettings
-          board={data}
-          workspace={workspace}
-          canManage={canManage}
-          canChangeBackground={
-            canManage &&
-            data.capabilities?.canManageBoard === true &&
-            data.currentUserRole === BoardRole.OWNER
-          }
-          canRestore={canRestore}
-          canMove={ownsActive}
-          canChangeVisibility={
-            ownsActive && policy.data?.canChangeVisibility === true
-          }
-          policyMessage={
-            ownsActive && !policy.data?.canChangeVisibility
-              ? policy.isError
-                ? 'Could not check workspace rules. Try again later.'
-                : policy.isPending
-                  ? 'Checking workspace rules…'
-                  : 'Workspace rules do not allow visibility changes.'
-              : undefined
-          }
-          onEdit={() => setEditing(true)}
-          onChangeBackground={() => setChangingBackground(true)}
-          onVisibility={() => ownerActions.open(ownerBoard!, 'visibility')}
-          onMove={() => ownerActions.open(ownerBoard!, 'move')}
-          onArchive={() => setArchiving(true)}
-          onRestore={() => setRestoring(true)}
-        />
+        <div className="px-4 pb-5 md:px-6 md:pb-6 lg:px-10">
+          <BoardSettings
+            board={data}
+            workspace={workspace}
+            canManage={canManage}
+            canChangeBackground={
+              canManage &&
+              data.capabilities?.canManageBoard === true &&
+              data.currentUserRole === BoardRole.OWNER
+            }
+            canRestore={canRestore}
+            canMove={ownsActive}
+            canChangeVisibility={
+              ownsActive && policy.data?.canChangeVisibility === true
+            }
+            policyMessage={
+              ownsActive && !policy.data?.canChangeVisibility
+                ? policy.isError
+                  ? 'Could not check workspace rules. Try again later.'
+                  : policy.isPending
+                    ? 'Checking workspace rules…'
+                    : 'Workspace rules do not allow visibility changes.'
+                : undefined
+            }
+            onEdit={() => setEditing(true)}
+            onChangeBackground={() => setChangingBackground(true)}
+            onVisibility={() => ownerActions.open(ownerBoard!, 'visibility')}
+            onMove={() => ownerActions.open(ownerBoard!, 'move')}
+            onArchive={() => setArchiving(true)}
+            onRestore={() => setRestoring(true)}
+          />
+        </div>
       ) : membersPage ? (
-        <div className="mt-5 flex min-h-0 flex-1 flex-col">
+        <div className="mt-5 flex min-h-0 flex-1 flex-col px-4 pb-5 md:px-6 lg:px-10">
           {data.currentUserRole === null ? (
             <BoardUnavailable />
           ) : (
@@ -394,14 +402,20 @@ export function BoardDetailPage() {
           )}
         </div>
       ) : (
-        <div className="mt-5 min-h-0 flex-1 short:mt-3">
+        <section
+          aria-label="Kanban workspace"
+          className="board-canvas min-w-0 flex-1"
+          style={canvasBackgroundStyle(
+            presets.data?.find((item) => item.id === data.backgroundPreset),
+          )}
+        >
           <KanbanBoard
             boardId={data.id}
             readOnly={readOnly}
             canReadMembers={data.currentUserRole !== null}
             boardName={data.name}
           />
-        </div>
+        </section>
       )}
 
       {showingArchivedCards && (
@@ -474,6 +488,6 @@ export function BoardDetailPage() {
           }}
         />
       )}
-    </PageContainer>
+    </div>
   );
 }

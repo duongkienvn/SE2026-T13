@@ -801,3 +801,27 @@
     margin-top: 8px;
   }
 }
+
+/* One continuous Board surface below the compact identity/navigation. */
+.board-canvas {
+  --board-photo-tint: rgb(36 39 55 / 38%);
+  min-height: min(18rem, 50dvh);
+  overflow: hidden;
+  background-attachment: local;
+}
+:root[data-theme='dark'] .board-canvas {
+  --board-photo-tint: rgb(10 15 29 / 48%);
+}
+.board-canvas .kanban-columns {
+  scrollbar-color: var(--color-muted) transparent;
+  scrollbar-width: thin;
+}
+.board-canvas [aria-haspopup='dialog'] {
+  background-color: var(--color-surface);
+}
+
+/* Keep an open tile menu above controls on adjacent cards. */
+.board-tile:focus-within,
+.board-tile:has([aria-expanded='true']) {
+  z-index: 20;
+}

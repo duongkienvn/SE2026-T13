@@ -788,3 +788,31 @@ describe('Create team workspace dialog', () => {
     expect(router.state.location.pathname).toBe(`/workspaces/${personal.id}`);
   });
 });
+
+it('bounds the recent Boards preview to five while keeping the server total', async () => {
+  const recentBoards = Array.from({ length: 20 }, (_, index) => ({
+    ...overview.recentBoards[0],
+    id: `recent-${index}`,
+    name: `Recent ${index}`,
+  }));
+  mount(
+    '/workspaces/team-one',
+    makeGateway({
+      overview: async () => ({
+        ...overview,
+        recentBoards,
+        visibleBoardCount: 20,
+      }),
+    }),
+  );
+  await loaded();
+  const preview = within(main().getByRole('region', { name: 'Recent Boards' }));
+  await preview.findByRole('link', { name: /^Recent 0 / });
+  expect(
+    preview
+      .getAllByRole('link')
+      .filter((link) => link.getAttribute('href')?.startsWith('/boards/')),
+  ).toHaveLength(5);
+  expect(preview.queryByText('Recent 5')).toBeNull();
+  expect(main().getByText('20')).toBeTruthy();
+});

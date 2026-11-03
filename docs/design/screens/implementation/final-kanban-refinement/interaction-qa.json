@@ -1,0 +1,55 @@
+[
+  {
+    "check": "filter-cancel",
+    "dialogs": 0,
+    "filterButton": "Filter (3)",
+    "dragHandles": 0
+  },
+  {
+    "check": "filter-reset-apply",
+    "hint": "FilterNo filters applied",
+    "dragHandles": 15,
+    "focus": "Filter"
+  },
+  {
+    "check": "reader-presence-roster",
+    "viewers": "QOQA Owner (You)?Unknown viewer?Unknown viewer?Unknown viewer?Unknown viewer?Unknown viewer",
+    "anonymousViewers": 5,
+    "popoverWidth": 240,
+    "overflow": false
+  },
+  {
+    "check": "presence-escape-focus",
+    "viewerList": false,
+    "focus": "6 people viewing. Show viewers"
+  },
+  {
+    "check": "keyboard-column-cancel",
+    "headings": ["To do", "In progress", "Review", "Done", "Later"],
+    "announcements": ["Moving column To do was cancelled. It stays in place."]
+  },
+  {
+    "check": "shared-header-Members",
+    "headerHeight": 115,
+    "titleCount": 1,
+    "active": "Members",
+    "canvas": false,
+    "mainOverflow": false
+  },
+  {
+    "check": "shared-header-Board settings",
+    "headerHeight": 115,
+    "titleCount": 1,
+    "active": "Board settings",
+    "canvas": false,
+    "mainOverflow": false
+  },
+  {
+    "check": "shared-header-Kanban",
+    "headerHeight": 115,
+    "titleCount": 1,
+    "active": "Kanban",
+    "canvas": true,
+    "mainOverflow": false
+  }
+]

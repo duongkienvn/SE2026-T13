@@ -95,7 +95,19 @@ function matchesPath(path: string, pathname: string): boolean {
 export function findActiveNavItemId(
   groups: NavGroup[],
   pathname: string,
+  search = '',
 ): string | undefined {
+  if (
+    pathname === '/boards' &&
+    new URLSearchParams(search).get('view') === 'starred'
+  )
+    return groups
+      .flatMap((group) => group.items)
+      .find(
+        (item) =>
+          item.availability === 'available' &&
+          item.path === '/boards?view=starred',
+      )?.id;
   return groups
     .flatMap((group) => group.items)
     .filter(

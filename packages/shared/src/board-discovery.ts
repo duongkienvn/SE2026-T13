@@ -39,3 +39,8 @@ export interface UpdateBoardBackgroundRequest {
   preset: BoardBackgroundPresetId;
   expectedVersion?: number;
 }
+
+/** Optional creation field, saved in the Board/membership transaction. */
+export interface CreateBoardBackgroundRequest {
+  backgroundPreset?: BoardBackgroundPresetId;
+}

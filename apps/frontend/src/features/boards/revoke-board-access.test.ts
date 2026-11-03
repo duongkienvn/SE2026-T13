@@ -1,4 +1,4 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryObserver } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
 import { workspaceKeys } from '../workspaces/query-keys';
 import { boardKeys } from './query-keys';
@@ -44,4 +44,37 @@ describe('Board access loss in Workspace caches', () => {
     expect(client.getQueryData(starKey)).toBeUndefined();
     client.clear();
   });
+});
+
+it('notifies an active global list and rejects its late response after access is revoked', async () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const key = [...boardKeys.lists(), 'user', 1, 'discovery'];
+  const protectedPage = {
+    items: [{ id: 'revoked', name: 'Protected Board' }],
+    meta: { total: 1 },
+  };
+  client.setQueryData(key, protectedPage);
+  let finish!: (value: typeof protectedPage) => void;
+  const pending = new Promise<typeof protectedPage>((resolve) => {
+    finish = resolve;
+  });
+  const observer = new QueryObserver(client, {
+    queryKey: key,
+    queryFn: () => pending,
+  });
+  let visible: typeof protectedPage | undefined = protectedPage;
+  const unsubscribe = observer.subscribe((result) => {
+    visible = result.data;
+  });
+  const refresh = observer.refetch();
+  revokeBoardAccess(client, 'revoked');
+  expect(visible).toBeUndefined();
+  finish(protectedPage);
+  await refresh;
+  expect(client.getQueryData(key)).toBeUndefined();
+  expect(visible).toBeUndefined();
+  unsubscribe();
+  client.clear();
 });

@@ -1,0 +1,58 @@
+[
+  {
+    "check": "keyboard-drag-cancel",
+    "headings": ["To do", "In progress", "Review", "Done", "Later"],
+    "announcement": ["Moving column To do was cancelled. It stays in place."]
+  },
+  {
+    "check": "restrictive-filter",
+    "dragHandles": 0
+  },
+  {
+    "check": "cleared-filter",
+    "dragHandles": 15
+  },
+  {
+    "check": "create-column-dialog",
+    "title": "Add a column\n\nNew columns are added at the end of the board.\n\nColumn name\nCancel\nAdd column"
+  },
+  {
+    "check": "horizontal-scroll-after-dialog",
+    "canvasBackground": "linear-gradient(rgba(0, 0, 0, 0.267), rgba(0, 0, 0, 0.267)), url(\"http://127.0.0.1:5175/board-backgrounds/mountains.jpg\")",
+    "clientWidth": 1160,
+    "dialogClosed": true,
+    "mainOverflow": false,
+    "pageOverflow": false,
+    "scrollLeft": 624,
+    "scrollWidth": 1784
+  },
+  {
+    "check": "inline-card-cancel",
+    "textareas": 0,
+    "cards": 10
+  },
+  {
+    "check": "members-route",
+    "active": "Members",
+    "canvases": 0,
+    "headerImage": "none",
+    "headings": 1
+  },
+  {
+    "check": "settings-route",
+    "active": "Board settings",
+    "canvases": 0,
+    "headerImage": "none",
+    "headings": 1
+  },
+  {
+    "check": "background-cancel",
+    "unchanged": true
+  },
+  {
+    "check": "background-save",
+    "canvasImage": "linear-gradient(rgba(0, 0, 0, 0.267), rgba(0, 0, 0, 0.267)), url(\"http://127.0.0.1:5175/board-backgrounds/forest.jpg\")",
+    "headerImage": "none",
+    "headings": 1
+  }
+]

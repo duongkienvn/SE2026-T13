@@ -1,6 +1,11 @@
 import { useContext, type ReactNode } from 'react';
-import { ClockIcon } from '../../../components/icons';
-import { formatCardInstant } from '../card-dates';
+import {
+  CalendarIcon,
+  CheckSquareIcon,
+  PaperclipIcon,
+  CommentIcon,
+} from '../../../components/icons';
+import { formatCardInstant, formatCardPreviewDate } from '../card-dates';
 import { DueStatusBadge } from './detail/CardDates';
 import { PreviewContext } from './preview-context';
 import { UserAvatar } from '../../auth/components/UserAvatar';
@@ -45,125 +50,161 @@ export function KanbanCard({
   const shown = assignees.slice(0, MAX_AVATARS);
   const hidden = assignees.length - shown.length;
 
+  const checklist = summary?.checklist;
+  const total = checklist?.totalItems ?? 0;
+  const checked = checklist?.checkedItems ?? 0;
+  const complete = total > 0 && checked === total;
+  const hasFooter =
+    total > 0 ||
+    !!summary?.attachmentCount ||
+    !!summary?.commentCount ||
+    assignees.length > 0;
+  const clock = boardNow || now;
+  const date = (value: string) => (
+    <time
+      dateTime={value}
+      title={`${formatCardInstant(value, dateFormat, timeZone)} (${timeZone})`}
+    >
+      {formatCardPreviewDate(value, dateFormat, timeZone, clock)}
+    </time>
+  );
   return (
     <article
-      className={`group relative rounded-lg border border-line bg-surface p-4 shadow-card ${
-        onOpen ? 'transition-colors hover:border-primary/40' : ''
-      }`}
+      className={`group relative rounded-lg border border-line bg-surface p-3 shadow-card ${onOpen ? 'transition-colors hover:border-primary/40' : ''}`}
     >
-      {(dragHandle || card.dueDate) && (
-        <div className="mb-2 flex min-h-5 items-center gap-2">
-          {dragHandle}
-          {card.dueDate && (
-            <p
-              className={`ml-auto flex items-center gap-1 text-xs ${'text-muted'}`}
+      <div className="flex items-start gap-2">
+        <h3 className="min-w-0 flex-1 text-sm leading-5 font-semibold break-words text-ink">
+          {onOpen ? (
+            <button
+              type="button"
+              onClick={() => onOpen(card)}
+              className="text-left after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-primary"
             >
-              <ClockIcon aria-hidden="true" className="size-3.5" />
-              <span className="sr-only">Due </span>
-              <time title={timeZone} dateTime={card.dueDate}>
-                {formatCardInstant(card.dueDate, dateFormat, timeZone)}
-              </time>
-            </p>
+              {card.title}
+            </button>
+          ) : (
+            card.title
           )}
-        </div>
-      )}
-      <h3 className="text-[15px] font-semibold break-words text-ink">
-        {onOpen ? (
-          // The ::after overlay makes the whole card the click target.
-          <button
-            type="button"
-            onClick={() => onOpen(card)}
-            className="text-left after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-primary"
-          >
-            {card.title}
-          </button>
-        ) : (
-          card.title
+        </h3>
+        {card.dueDate && (
+          <span className="shrink-0">
+            <DueStatusBadge
+              dueDate={card.dueDate}
+              timeZone={timeZone}
+              now={clock}
+            />
+          </span>
         )}
-      </h3>
+        {dragHandle}
+      </div>
       {card.description && (
-        <p className="mt-1.5 line-clamp-2 text-sm break-words text-muted">
+        <p className="mt-1 line-clamp-2 text-xs leading-4 break-words text-muted">
           {card.description}
         </p>
       )}
-      {card.startDate && (
-        <p className="mt-2 text-xs text-muted">
-          Starts{' '}
-          <time dateTime={card.startDate}>
-            {formatCardInstant(card.startDate, dateFormat, timeZone)}
-          </time>
-        </p>
-      )}
-      {card.dueDate && (
-        <div className="mt-2">
-          <DueStatusBadge
-            dueDate={card.dueDate}
-            timeZone={timeZone}
-            now={boardNow || now}
-          />
+      {(card.startDate || card.dueDate) && (
+        <div
+          role="group"
+          className="mt-2 flex flex-wrap items-center gap-1 text-xs text-muted"
+          aria-label={`${card.startDate ? `Starts ${formatCardInstant(card.startDate, dateFormat, timeZone)}. ` : ''}${card.dueDate ? `Due ${formatCardInstant(card.dueDate, dateFormat, timeZone)}. ` : ''}${timeZone}`}
+        >
+          <CalendarIcon className="size-3.5 shrink-0" />
+          {card.startDate && date(card.startDate)}
+          {card.startDate && card.dueDate && <span aria-hidden="true">→</span>}
+          {card.dueDate && date(card.dueDate)}
         </div>
       )}
       {cardLabels.length > 0 && (
-        <ul className="mt-2 flex flex-wrap gap-1">
+        <ul aria-label="Card labels" className="mt-2 flex flex-wrap gap-1">
           {cardLabels.map((label) => (
             <li
               key={label.id}
               title={label.name}
-              className="max-w-full truncate rounded bg-app px-2 py-0.5 text-xs text-ink"
+              className="max-w-full truncate rounded-md border px-1.5 py-0.5 text-[11px] font-medium text-ink"
+              style={{
+                borderColor: `color-mix(in srgb, ${label.color} 35%, transparent)`,
+                backgroundColor: `color-mix(in srgb, ${label.color} 16%, var(--color-surface))`,
+              }}
             >
               <span
                 aria-hidden="true"
                 style={{ backgroundColor: label.color }}
-                className="mr-1 inline-block size-2 rounded-full"
+                className="mr-1 inline-block size-1.5 rounded-full"
               />
               {label.name}
             </li>
           ))}
         </ul>
       )}
-      {summary &&
-        (summary.checklist.totalItems > 0 ||
-          summary.attachmentCount > 0 ||
-          summary.commentCount > 0) && (
-          <p className="mt-2 flex flex-wrap gap-x-3 text-xs text-muted">
-            {summary.checklist.totalItems > 0 && (
-              <span>
-                Checklist {summary.checklist.checkedItems}/
-                {summary.checklist.totalItems}
-              </span>
-            )}
-            {summary.attachmentCount > 0 && (
-              <span>Attachments {summary.attachmentCount}</span>
-            )}
-            {summary.commentCount > 0 && (
-              <span>Comments {summary.commentCount}</span>
-            )}
-          </p>
-        )}
-      {assignees.length > 0 && (
-        <div className="mt-3 flex justify-end">
-          <ul
-            aria-label={`Assigned to ${assignees.map((u) => u.displayName).join(', ')}`}
-            className="flex -space-x-1"
-          >
-            {shown.map((user) => (
-              <li key={user.id} title={user.displayName}>
-                <UserAvatar
-                  user={user}
-                  className="size-7 text-[11px] ring-2 ring-surface"
-                />
-              </li>
-            ))}
-            {hidden > 0 && (
-              <li
-                aria-hidden="true"
-                className="grid size-7 place-items-center rounded-full bg-app text-[11px] font-semibold text-muted ring-2 ring-surface"
+      {hasFooter && (
+        <footer className="mt-2.5 flex items-center gap-2 text-[11px] text-muted">
+          {total > 0 && (
+            <span
+              className={`inline-flex items-center gap-1 ${complete ? 'text-success' : ''}`}
+              title={`Checklist ${checked}/${total}`}
+            >
+              <CheckSquareIcon className="size-3.5" />
+              <span className="sr-only">Checklist </span>
+              {checked}/{total}
+              <span
+                role="progressbar"
+                aria-label="Checklist progress"
+                aria-valuenow={checked}
+                aria-valuemin={0}
+                aria-valuemax={total}
+                className="ml-0.5 h-1 w-6 overflow-hidden rounded-full bg-primary-soft"
               >
-                +{hidden}
-              </li>
-            )}
-          </ul>
-        </div>
+                <span
+                  className={`block h-full rounded-full ${complete ? 'bg-success' : 'bg-primary'}`}
+                  style={{ width: `${Math.round((checked / total) * 100)}%` }}
+                />
+              </span>
+            </span>
+          )}
+          {!!summary?.attachmentCount && (
+            <span
+              className="inline-flex items-center gap-1"
+              title={`Attachments ${summary.attachmentCount}`}
+            >
+              <PaperclipIcon className="size-3.5" />
+              <span className="sr-only">Attachments </span>
+              {summary.attachmentCount}
+            </span>
+          )}
+          {!!summary?.commentCount && (
+            <span
+              className="inline-flex items-center gap-1"
+              title={`Comments ${summary.commentCount}`}
+            >
+              <CommentIcon className="size-3.5" />
+              <span className="sr-only">Comments </span>
+              {summary.commentCount}
+            </span>
+          )}
+          {assignees.length > 0 && (
+            <ul
+              aria-label={`Assigned to ${assignees.map((u) => u.displayName).join(', ')}`}
+              className="ml-auto flex shrink-0 -space-x-2"
+            >
+              {shown.map((user) => (
+                <li key={user.id} title={user.displayName}>
+                  <UserAvatar
+                    user={user}
+                    className="size-6 text-[10px] ring-2 ring-surface"
+                  />
+                </li>
+              ))}
+              {hidden > 0 && (
+                <li
+                  aria-hidden="true"
+                  className="grid size-6 place-items-center rounded-full bg-app text-[10px] font-semibold text-muted ring-2 ring-surface"
+                >
+                  +{hidden}
+                </li>
+              )}
+            </ul>
+          )}
+        </footer>
       )}
     </article>
   );

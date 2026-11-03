@@ -21,7 +21,10 @@ describe('board background rendering', () => {
         value: '#2563EB',
         foreground: 'light',
       }),
-    ).toEqual({ backgroundColor: '#2563EB' });
+    ).toMatchObject({
+      backgroundColor: '#2563EB',
+      backgroundImage: expect.stringContaining('linear-gradient'),
+    });
     expect(backgroundStyle(undefined)).toBeUndefined();
   });
 });

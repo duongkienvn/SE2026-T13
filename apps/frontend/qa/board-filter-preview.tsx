@@ -10,6 +10,13 @@ import {
 import { AuthSessionContext } from '../src/features/auth/auth-session-context';
 import { BoardMembersPage } from '../src/features/board-members/pages/BoardMembersPage';
 import { BoardDetailPage } from '../src/features/boards/pages/BoardDetailPage';
+import {
+  filterSearchParams,
+  parseBoardFilters,
+} from '../src/features/cards/board-filter';
+import { BoardRealtimeClient } from '../src/features/realtime/board-realtime-client';
+import { livePresence } from '../src/features/realtime/board-presence-state';
+import { RealtimeContext } from '../src/features/realtime/realtime-context';
 import type { Board } from '../src/features/boards/types';
 import { env } from '../src/lib/env';
 import { refreshAccessSnapshots } from '../src/features/realtime/access-revocation';
@@ -17,6 +24,32 @@ import '../src/style.css';
 
 const params = new URLSearchParams(location.search);
 const scenario = params.get('scenario') ?? 'wide';
+// Layout-only snapshot, resolved through the same QA roster as Card assignees.
+// No socket is created; this fixture does not claim a live backend connection.
+const previewPresence = livePresence([
+  'qa-owner',
+  ...Array.from({ length: 5 }, (_, index) => `qa-member-${index}`),
+]);
+class PreviewRealtimeClient extends BoardRealtimeClient {
+  override watch() {
+    return () => undefined;
+  }
+  override status() {
+    return 'live' as const;
+  }
+  override presence() {
+    return previewPresence;
+  }
+}
+const previewRealtime = params.has('viewers')
+  ? new PreviewRealtimeClient({
+      createSocket: () => {
+        throw new Error('No QA socket');
+      },
+      invalidate: () => undefined,
+      verifySession: () => undefined,
+    })
+  : null;
 const client = new QueryClient({
   defaultOptions: { queries: { retry: false } },
 });
@@ -33,11 +66,15 @@ const board: Board = {
   name: params.get('long')
     ? 'Frontend development and cross-functional release planning'
     : 'Frontend development',
-  description: 'Plan, build, and ship the next Kanvexa release together.',
+  description: params.has('long')
+    ? 'Plan, build, and ship the next Kanvexa release together with product, design, engineering, and operations. '.repeat(
+        12,
+      )
+    : 'Plan, build, and ship the next Kanvexa release together.',
   workspaceId:
     scenario === 'workspace-owner' ? 'joined-destination' : 'source-not-joined',
   visibility: scenario === 'reader' ? 'WORKSPACE_VISIBLE' : 'PRIVATE',
-  backgroundPreset: 'blue',
+  backgroundPreset: params.get('background') ?? 'mountains',
   backgroundVersion: 0,
   currentUserRole:
     scenario === 'reader' ? null : scenario === 'member' ? 'MEMBER' : 'OWNER',
@@ -249,9 +286,11 @@ window.fetch = async (input, init) => {
         })),
     });
   }
+  if (params.has('empty') && /\/boards\/qa-board\/(columns|cards)\?/.test(path))
+    return response([], true);
   if (/^\/boards\/qa-board\/(columns|cards|members)\?/.test(path)) {
     if (
-      ['wide', 'large', 'reader', 'archived'].includes(scenario) &&
+      ['wide', 'large', 'tall', 'reader', 'archived'].includes(scenario) &&
       path.includes('/columns?')
     )
       return response(
@@ -268,13 +307,13 @@ window.fetch = async (input, init) => {
         true,
       );
     if (
-      ['wide', 'large', 'reader', 'archived'].includes(scenario) &&
+      ['wide', 'large', 'tall', 'reader', 'archived'].includes(scenario) &&
       path.includes('/cards?')
     ) {
       document.documentElement.dataset.cardPageRequests = String(
         Number(document.documentElement.dataset.cardPageRequests ?? 0) + 1,
       );
-      const total = scenario === 'large' ? 1000 : 10;
+      const total = scenario === 'large' ? 1000 : scenario === 'tall' ? 40 : 10;
       const page = Number(
         new URLSearchParams(path.split('?')[1]).get('page') ?? 1,
       );
@@ -286,18 +325,33 @@ window.fetch = async (input, init) => {
             id: `card-${index}`,
             boardId: board.id,
             columnId: `column-${index % 5}`,
-            title: `Example card ${index + 1}`,
+            title: [
+              'Design landing page',
+              'Implement board filter',
+              'Review release notes',
+              'Update dependencies',
+              'Write documentation',
+            ][index % 5],
             description:
               'A longer description to check the compact preview layout.',
             position: `${index + 1}.0000000000`,
             createdById: board.createdById,
-            startDate: null,
-            dueDate: '2027-04-15T12:00:00Z',
+            startDate: index % 3 === 1 ? '2027-04-12T08:00:00Z' : null,
+            dueDate: index % 3 === 2 ? null : '2027-04-15T12:00:00Z',
             isArchived: false,
             archivedAt: null,
             createdAt: board.createdAt,
             updatedAt: board.updatedAt,
-            assignees: [],
+            assignees:
+              index % 3 === 0
+                ? []
+                : [
+                    {
+                      userId: `qa-member-${index % 5}`,
+                      assignedById: board.createdById,
+                      createdAt: board.createdAt,
+                    },
+                  ],
           };
         },
       );
@@ -351,7 +405,7 @@ const router = createMemoryRouter(
   ],
   {
     initialEntries: [
-      `/boards/${board.id}${params.get('route') === 'members' ? '/members' : params.get('settings') === 'true' ? '/settings' : ''}`,
+      `/boards/${board.id}${params.get('route') === 'members' ? '/members' : params.get('settings') === 'true' ? '/settings' : ''}?${filterSearchParams(parseBoardFilters(params))}`,
     ],
   },
 );
@@ -365,7 +419,9 @@ if (import.meta.env.DEV)
           <div className="fixed right-1 bottom-1 z-30 rounded border border-line bg-surface px-2 py-1 text-[10px] text-muted">
             ISOLATED QA · {scenario} · No saved data
           </div>
-          <RouterProvider router={router} />
+          <RealtimeContext.Provider value={previewRealtime}>
+            <RouterProvider router={router} />
+          </RealtimeContext.Provider>
         </AuthContext.Provider>
       </AuthSessionContext.Provider>
     </QueryClientProvider>,

@@ -76,9 +76,14 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Frontend tasks
 
+- [Final Kanban Board UI refinement](frontend/final-kanban-ui-refinement.md)
+
+- [Final Board layout and full Kanban canvas](frontend/full-kanban-canvas.md)
+
 - [Board filtering and Card preview V2](frontend/board-filtering-card-preview-v2.md)
 
 - [Board discovery and customization UI](frontend/board-discovery-customization-ui.md)
+- [Board and Card visual polish](frontend/board-card-visual-polish.md)
 
 - [Workspace Overview visual redesign](frontend/workspace-overview-redesign.md)
 

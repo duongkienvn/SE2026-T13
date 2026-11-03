@@ -25,7 +25,7 @@ export function AuthenticatedLayout() {
 
 function SessionLayout() {
   const { user } = useAuth();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   // The deepest match carries every route param, e.g. `boardId` on board pages.
   const boardId = useMatches().at(-1)?.params.boardId;
   // Shares the board page's cached query; nothing is shown until it loads.
@@ -63,7 +63,9 @@ function SessionLayout() {
       }}
       navGroups={navGroups}
       activeNavItemId={
-        boardWorkspace ? undefined : findActiveNavItemId(navGroups, pathname)
+        boardWorkspace
+          ? undefined
+          : findActiveNavItemId(navGroups, pathname, search)
       }
       headerContext={
         boardId &&

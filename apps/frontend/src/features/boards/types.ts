@@ -2,6 +2,7 @@ import type {
   BoardRole,
   BoardCapabilities,
   BoardVisibility,
+  CreateBoardBackgroundRequest,
 } from '@kanban/shared';
 
 /*
@@ -25,10 +26,11 @@ export interface Board {
   backgroundPreset?: string;
   backgroundVersion?: number;
   lastViewedAt?: string | null;
+  isStarred?: boolean;
   capabilities?: BoardCapabilities;
 }
 
-export interface CreateBoardRequest {
+export interface CreateBoardRequest extends CreateBoardBackgroundRequest {
   workspaceId?: string;
   name: string;
   description?: string | null;

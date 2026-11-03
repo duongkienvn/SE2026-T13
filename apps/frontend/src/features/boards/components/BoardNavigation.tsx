@@ -21,12 +21,12 @@ export function BoardNavigation({
     });
   }, [active]);
   const tabClass =
-    'inline-flex min-h-11 shrink-0 items-center border-b-2 px-1 text-sm font-medium whitespace-nowrap hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary';
+    'inline-flex min-h-10 shrink-0 items-center border-b-2 px-1 text-sm font-medium whitespace-nowrap hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary';
   const link = (id: typeof active, label: string, suffix = '') => (
     <Link
       to={`/boards/${encodeURIComponent(boardId)}${suffix}`}
       aria-current={active === id ? 'page' : undefined}
-      className={`${tabClass} ${active === id ? 'border-primary text-primary' : 'border-transparent text-muted'}`}
+      className={`${tabClass} ${active === id ? 'border-primary-solid text-primary' : 'border-transparent text-muted'}`}
     >
       {label}
     </Link>
@@ -38,7 +38,7 @@ export function BoardNavigation({
         event.target.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
       }
       aria-label="Board navigation"
-      className="mt-3 flex shrink-0 gap-5 overflow-x-auto overscroll-x-contain border-b border-line"
+      className="mt-2 flex shrink-0 gap-4 overflow-x-auto overscroll-x-contain border-b border-line [scrollbar-width:thin]"
     >
       {link('kanban', 'Kanban')}
       {canReadMembers && link('members', 'Members', '/members')}

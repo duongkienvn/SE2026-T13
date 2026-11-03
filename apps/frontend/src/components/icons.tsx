@@ -594,3 +594,11 @@ export function ArrowUpIcon(props: IconProps) {
     </StrokeSvg>
   );
 }
+
+export function CommentIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-1 1V11.5a9 9 0 0 1 18 0Z" />
+    </StrokeSvg>
+  );
+}

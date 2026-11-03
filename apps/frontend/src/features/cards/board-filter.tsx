@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router';
 import {
@@ -6,6 +6,7 @@ import {
   type BoardCardFilters,
   type CardPreviewSummary,
 } from '@kanban/shared';
+import { SlidersIcon } from '../../components/icons';
 import { Dialog } from '../../components/Dialog';
 import { retryUnlessClientError } from '../../lib/query-client';
 import { useAuth } from '../auth/useAuth';
@@ -162,16 +163,7 @@ export function BoardFilter({
   retryMembers: () => void;
 }) {
   const dialogId = useId();
-  const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
-  const [anchor, setAnchor] = useState<DOMRect>();
-  useEffect(() => {
-    if (!open) return;
-    const reposition = () =>
-      setAnchor(triggerRef.current?.getBoundingClientRect());
-    window.addEventListener('resize', reposition);
-    return () => window.removeEventListener('resize', reposition);
-  }, [open]);
   const [draft, setDraft] = useState<BoardCardFilters>(filters);
   const [labelSearch, setLabelSearch] = useState('');
   const [memberSearch, setMemberSearch] = useState('');
@@ -189,22 +181,36 @@ export function BoardFilter({
     Array.isArray(value) ? value.length : !!value,
   ).length;
   return (
-    <div className="mb-3 flex flex-wrap items-center gap-3">
+    <div
+      role="group"
+      aria-label="Board filters"
+      className="mb-3 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-line/60 bg-surface/85 p-2 shadow-sm [&>span]:max-w-full [&>span]:[overflow-wrap:anywhere]"
+    >
       <button
         type="button"
-        ref={triggerRef}
-        className="min-h-11 rounded-lg border border-line px-3 py-2 text-sm font-medium text-ink focus-visible:outline-2 focus-visible:outline-primary"
+        className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm font-medium text-ink focus-visible:outline-2 focus-visible:outline-primary"
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-controls={open ? dialogId : undefined}
-        onClick={(event) => {
-          setAnchor(event.currentTarget.getBoundingClientRect());
+        onClick={() => {
           setDraft(filters);
           setOpen(true);
         }}
       >
-        Filter{count ? ` (${count})` : ''}
+        <SlidersIcon className="size-4" />
+        Filter
+        {count > 0 && (
+          <span className="rounded-md bg-primary-soft px-1.5 text-xs text-primary">
+            {' '}
+            ({count})
+          </span>
+        )}
       </button>
+      {count === 0 && (
+        <span className="border-l border-line pl-3 text-sm text-muted">
+          No filters applied
+        </span>
+      )}
       {filters.q && (
         <span className="rounded bg-app px-2 py-1 text-xs">
           Keyword: {filters.q}
@@ -243,13 +249,12 @@ export function BoardFilter({
       )}
       <Dialog
         id={dialogId}
-        anchor={anchor}
         open={open}
         onClose={() => setOpen(false)}
         title="Filter cards"
       >
         <form
-          className="space-y-4"
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2"
           onSubmit={(event) => {
             event.preventDefault();
             apply(
@@ -270,7 +275,7 @@ export function BoardFilter({
             setOpen(false);
           }}
         >
-          <label className="block text-sm font-medium">
+          <label className="block text-sm font-medium sm:col-span-2">
             Keyword
             <input
               maxLength={200}
@@ -281,111 +286,131 @@ export function BoardFilter({
               }
             />
           </label>
-          <fieldset>
-            <legend className="text-sm font-medium">Labels</legend>
-            <input
-              aria-label="Search labels"
-              value={labelSearch}
-              onChange={(event) => setLabelSearch(event.target.value)}
-              className="my-1 w-full rounded border border-line bg-surface p-2 text-sm"
-            />
-            <div className="max-h-32 overflow-y-auto">
-              {labelsPending ? (
-                <p role="status">Loading labels...</p>
-              ) : labelsError ? (
-                <p role="alert">
-                  Could not load labels.{' '}
-                  <button
-                    type="button"
-                    className="text-primary underline"
-                    onClick={retryLabels}
-                  >
-                    Retry
-                  </button>
-                </p>
-              ) : labels.length ? (
-                labels
-                  .filter((label) =>
-                    label.name
-                      .toLowerCase()
-                      .includes(labelSearch.toLowerCase()),
-                  )
-                  .map((label) => (
-                    <label
-                      className="flex min-h-11 items-center gap-2 py-1 text-sm"
-                      key={label.id}
+          <details className="rounded-lg border border-line sm:col-span-2">
+            <summary className="cursor-pointer rounded-lg px-3 py-2.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-primary">
+              <span>Labels</span>
+              <span className="ml-2 text-xs font-normal text-muted">
+                {draft.labelIds?.length
+                  ? `${draft.labelIds.length} selected`
+                  : 'Any'}
+              </span>
+            </summary>
+            <div className="border-t border-line p-3">
+              <input
+                placeholder="Search labels…"
+                aria-label="Search labels"
+                value={labelSearch}
+                onChange={(event) => setLabelSearch(event.target.value)}
+                className="my-1 w-full rounded border border-line bg-surface p-2 text-sm"
+              />
+              <div className="grid grid-cols-1 gap-x-3 sm:grid-cols-2">
+                {labelsPending ? (
+                  <p role="status">Loading labels...</p>
+                ) : labelsError ? (
+                  <p role="alert">
+                    Could not load labels.{' '}
+                    <button
+                      type="button"
+                      className="text-primary underline"
+                      onClick={retryLabels}
                     >
-                      <input
-                        type="checkbox"
-                        disabled={
-                          (draft.labelIds?.length ?? 0) >= 50 &&
-                          !draft.labelIds?.includes(label.id)
-                        }
-                        checked={draft.labelIds?.includes(label.id) ?? false}
-                        onChange={() => toggle('labelIds', label.id)}
-                      />
-                      {label.name}
-                    </label>
-                  ))
-              ) : (
-                <p className="text-sm text-muted">No labels available.</p>
-              )}
+                      Retry
+                    </button>
+                  </p>
+                ) : labels.length ? (
+                  labels
+                    .filter((label) =>
+                      label.name
+                        .toLowerCase()
+                        .includes(labelSearch.toLowerCase()),
+                    )
+                    .map((label) => (
+                      <label
+                        className="flex min-h-11 items-center gap-2 py-1 text-sm sm:min-h-9"
+                        key={label.id}
+                      >
+                        <input
+                          type="checkbox"
+                          disabled={
+                            (draft.labelIds?.length ?? 0) >= 50 &&
+                            !draft.labelIds?.includes(label.id)
+                          }
+                          checked={draft.labelIds?.includes(label.id) ?? false}
+                          onChange={() => toggle('labelIds', label.id)}
+                        />
+                        {label.name}
+                      </label>
+                    ))
+                ) : (
+                  <p className="text-sm text-muted">No labels available.</p>
+                )}
+              </div>
             </div>
-          </fieldset>
-          <fieldset>
-            <legend className="text-sm font-medium">Assignees</legend>
-            <input
-              aria-label="Search assignees"
-              value={memberSearch}
-              onChange={(event) => setMemberSearch(event.target.value)}
-              className="my-1 w-full rounded border border-line bg-surface p-2 text-sm"
-            />
-            <div className="max-h-32 overflow-y-auto">
-              {membersPending ? (
-                <p role="status">Loading assignees...</p>
-              ) : membersError ? (
-                <p role="alert">
-                  Could not load assignees.{' '}
-                  <button
-                    type="button"
-                    className="text-primary underline"
-                    onClick={retryMembers}
-                  >
-                    Retry
-                  </button>
-                </p>
-              ) : members.length ? (
-                members
-                  .filter((member) =>
-                    member.user.displayName
-                      .toLowerCase()
-                      .includes(memberSearch.toLowerCase()),
-                  )
-                  .map((member) => (
-                    <label
-                      className="flex min-h-11 items-center gap-2 py-1 text-sm"
-                      key={member.user.id}
+          </details>
+          <details className="rounded-lg border border-line sm:col-span-2">
+            <summary className="cursor-pointer rounded-lg px-3 py-2.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-primary">
+              <span>Assignees</span>
+              <span className="ml-2 text-xs font-normal text-muted">
+                {draft.assigneeIds?.length
+                  ? `${draft.assigneeIds.length} selected`
+                  : 'Any'}
+              </span>
+            </summary>
+            <div className="border-t border-line p-3">
+              <input
+                placeholder="Search assignees…"
+                aria-label="Search assignees"
+                value={memberSearch}
+                onChange={(event) => setMemberSearch(event.target.value)}
+                className="my-1 w-full rounded border border-line bg-surface p-2 text-sm"
+              />
+              <div className="grid grid-cols-1 gap-x-3 sm:grid-cols-2">
+                {membersPending ? (
+                  <p role="status">Loading assignees...</p>
+                ) : membersError ? (
+                  <p role="alert">
+                    Could not load assignees.{' '}
+                    <button
+                      type="button"
+                      className="text-primary underline"
+                      onClick={retryMembers}
                     >
-                      <input
-                        type="checkbox"
-                        disabled={
-                          (draft.assigneeIds?.length ?? 0) >= 50 &&
-                          !draft.assigneeIds?.includes(member.user.id)
-                        }
-                        checked={
-                          draft.assigneeIds?.includes(member.user.id) ?? false
-                        }
-                        onChange={() => toggle('assigneeIds', member.user.id)}
-                      />
-                      {member.user.displayName}
-                    </label>
-                  ))
-              ) : (
-                <p className="text-sm text-muted">No assignees available.</p>
-              )}
+                      Retry
+                    </button>
+                  </p>
+                ) : members.length ? (
+                  members
+                    .filter((member) =>
+                      member.user.displayName
+                        .toLowerCase()
+                        .includes(memberSearch.toLowerCase()),
+                    )
+                    .map((member) => (
+                      <label
+                        className="flex min-h-11 items-center gap-2 py-1 text-sm sm:min-h-9"
+                        key={member.user.id}
+                      >
+                        <input
+                          type="checkbox"
+                          disabled={
+                            (draft.assigneeIds?.length ?? 0) >= 50 &&
+                            !draft.assigneeIds?.includes(member.user.id)
+                          }
+                          checked={
+                            draft.assigneeIds?.includes(member.user.id) ?? false
+                          }
+                          onChange={() => toggle('assigneeIds', member.user.id)}
+                        />
+                        {member.user.displayName}
+                      </label>
+                    ))
+                ) : (
+                  <p className="text-sm text-muted">No assignees available.</p>
+                )}
+              </div>
             </div>
-          </fieldset>
-          <label className="block text-sm font-medium">
+          </details>
+          <label className="block text-sm font-medium sm:col-span-2">
             Due status
             <select
               className="mt-1 w-full rounded-lg border border-line bg-surface p-2"
@@ -431,7 +456,7 @@ export function BoardFilter({
               The end must be after the start.
             </p>
           )}
-          <div className="flex flex-wrap gap-2">
+          <div className="sticky -bottom-5 z-10 -mx-1 flex flex-wrap justify-end gap-2 border-t border-line bg-surface px-1 py-3 sm:-bottom-6 sm:col-span-2">
             <button
               type="submit"
               disabled={

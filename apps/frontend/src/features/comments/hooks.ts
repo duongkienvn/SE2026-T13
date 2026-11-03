@@ -32,15 +32,14 @@ function useCommentMutation(boardId: string, cardId: string) {
   const queryClient = useQueryClient();
   const refreshIfArchived = useRefreshIfArchived(boardId);
   return {
-    invalidate: () =>
-      Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: commentKeys.card(boardId, cardId),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: [...boardKeys.cards(boardId), 'preview-summaries'],
-        }),
-      ]),
+    invalidate: () => {
+      void queryClient.invalidateQueries({
+        queryKey: [...boardKeys.cards(boardId), 'preview-summaries'],
+      });
+      return queryClient.invalidateQueries({
+        queryKey: commentKeys.card(boardId, cardId),
+      });
+    },
     onError: (error: unknown) => {
       refreshIfArchived(error);
       if (isApiError(error) && error.code === 'CARD_ARCHIVED') {

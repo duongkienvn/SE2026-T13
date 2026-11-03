@@ -4,8 +4,16 @@ import {
   UUIDFieldOptional,
 } from '../../../decorators/field.decorators';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsIn, ValidateIf } from 'class-validator';
+import type { BoardBackgroundPresetId } from '@kanban/shared';
+import { BOARD_BACKGROUND_IDS } from '../board-backgrounds';
 
 export class CreateBoardDto {
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsIn(BOARD_BACKGROUND_IDS)
+  @ApiPropertyOptional({ enum: BOARD_BACKGROUND_IDS })
+  backgroundPreset?: BoardBackgroundPresetId;
+
   @UUIDFieldOptional()
   workspaceId?: string;
 
