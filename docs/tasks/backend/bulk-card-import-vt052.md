@@ -28,6 +28,51 @@ without a team scope decision.
   One `CARD_CREATED` activity per card; `card:created` is published per card
   after commit (existing clients refresh without a contract change).
 
+## State transition model (test design technique)
+
+Each import row moves through one lifecycle; the Board and the Card states
+are guards on it. Test cases are derived from this model: every valid
+transition, every guard, and the forbidden transitions.
+
+```mermaid
+stateDiagram-v2
+  [*] --> RECEIVED: row in items[]
+  RECEIVED --> REJECTED: row invalid (DTO rules)
+  RECEIVED --> ACCEPTED: row valid
+  ACCEPTED --> CREATED: commit [Board ACTIVE, member, column on Board]
+  ACCEPTED --> BLOCKED: guard fails (409 archived / 404 column, member)
+  ACCEPTED --> ROLLED_BACK: write error in the batch
+  CREATED --> ARCHIVED: archive card
+  ARCHIVED --> CREATED: restore card
+  REJECTED --> [*]
+  BLOCKED --> [*]
+  ROLLED_BACK --> [*]
+```
+
+| #   | From → To                         | Trigger / guard                                                                                                                | Test cases             |
+| --- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------- |
+| T1  | RECEIVED → ACCEPTED               | valid row, normalised like `CreateCardDto`                                                                                     | TC01, TC04             |
+| T2  | RECEIVED → REJECTED               | null/string/array row, missing or blank title, 121-char title, 2001-char description, deadline without timezone, unknown field | TC03, TC06             |
+| T3  | REJECTED does not affect ACCEPTED | invalid row between valid rows keeps their index and order                                                                     | TC02, TC10, TC14       |
+| T4  | ACCEPTED → CREATED                | Board ACTIVE, appended after last **active** card                                                                              | TC05, TC10, TC13, TC14 |
+| T5  | ACCEPTED → BLOCKED (409)          | Board ARCHIVED                                                                                                                 | TC07, TC11, TC17       |
+| T6  | ACCEPTED → BLOCKED (404)          | non-member or foreign/unknown column, also when all rows invalid                                                               | TC07, TC11, TC12       |
+| T7  | ACCEPTED → ROLLED_BACK            | database error mid-batch; no event published                                                                                   | TC08, TC15             |
+| T8  | CREATED → ARCHIVED → CREATED      | imported card archive/restore (old behaviour unchanged)                                                                        | TC17                   |
+| T9  | Board ARCHIVED → ACTIVE           | import allowed again after Board restore                                                                                       | TC17                   |
+| T10 | CREATED under contention          | concurrent imports + single creates on one Board lock                                                                          | TC09 (overflow), TC16  |
+
+Forbidden transitions checked as negative tests: REJECTED → CREATED (TC03,
+TC06: nothing saved), BLOCKED → CREATED (TC07, TC11: row count unchanged),
+ROLLED_BACK → CREATED (TC08, TC15: no row, no `card:created`).
+
+Test data: boundary values on each row rule (title 120/121 after trim,
+description 2000/2001, items 1/100 accepted vs 0/101 rejected), one value per
+invalid row kind for T2, and an archived card placed **after** the last
+active card (TC13) so the "last active card" guard is distinguishable from
+"last card". Mutants M1–M6 each flip one condition of a transition (M1 T1/T2,
+M2/M3/M3b T4, M4 T5, M5 T10, M6 T7).
+
 ## Run the tests (from repository root)
 
 ```bash
