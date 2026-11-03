@@ -10,8 +10,12 @@ import {
   type TaskCardSummary,
   type TaskGroupCounts,
   type PaginationMeta,
+  type HomeBoardSummary,
 } from '@kanban/shared';
 import { Card } from '../cards/entities/card.entity';
+import { Board } from '../boards/entities/board.entity';
+import { BoardUserState } from '../boards/entities/board-user-state.entity';
+import { WorkspaceMember } from '../workspaces/entities/workspace-member.entity';
 import {
   readableBoardParameters,
   readableBoardPredicate,
@@ -20,7 +24,11 @@ import { ApplicationException } from '../../exceptions/application.exception';
 import { paginate, pageOffset } from '../../common/dto/paginated-response';
 import { toResponseDto } from '../../common/dto/to-response-dto';
 import { MAX_BOARD_LABELS } from '../labels/labels.service';
-import { TaskCardSummaryDto } from './dto/productivity-response.dto';
+import {
+  HomeBoardSummaryDto,
+  HomeDashboardDto,
+  TaskCardSummaryDto,
+} from './dto/productivity-response.dto';
 import { ListTasksDto } from './dto/list-tasks.dto';
 
 interface Boundaries {
@@ -49,6 +57,84 @@ export class ProductivityService {
   constructor(
     @InjectRepository(Card) private readonly cards: Repository<Card>,
   ) {}
+
+  async home(userId: string, now = new Date()): Promise<HomeDashboardDto> {
+    return this.cards.manager.transaction(
+      'REPEATABLE READ',
+      async (manager) => {
+        const boundaries = await this.boundaries(manager, userId, now);
+        const base = this.eligible(manager, userId, boundaries);
+        const counts = await this.counts(base);
+        const workspaceCount = await manager
+          .getRepository(WorkspaceMember)
+          .countBy({ userId });
+        const upNextQuery = base.clone().andWhere('card.dueDate IS NOT NULL');
+        this.order(upNextQuery, 'dueDate');
+        const upNext = await this.summaries(manager, upNextQuery.limit(6));
+        return toResponseDto(HomeDashboardDto, {
+          summary: {
+            assignedActiveCount: Object.values(counts).reduce(
+              (sum, count) => sum + count,
+              0,
+            ),
+            overdueCount: counts.OVERDUE,
+            dueNext7DaysCount: counts.NEXT_7_DAYS,
+            workspaceCount,
+          },
+          upNext,
+          starredBoards: await this.homeBoards(manager, userId, 'starred'),
+          recentBoards: await this.homeBoards(manager, userId, 'recent'),
+        });
+      },
+    );
+  }
+
+  private async homeBoards(
+    manager: EntityManager,
+    userId: string,
+    kind: 'starred' | 'recent',
+  ): Promise<HomeBoardSummaryDto[]> {
+    const query = manager
+      .getRepository(Board)
+      .createQueryBuilder('board')
+      .innerJoin(
+        BoardUserState,
+        'state',
+        'state.boardId = board.id AND state.userId = :userId',
+        { userId },
+      )
+      .where(readableBoardPredicate, readableBoardParameters(userId))
+      .andWhere('board.isArchived = false')
+      .andWhere(
+        kind === 'starred'
+          ? 'state.isStarred = true'
+          : 'state.lastViewedAt IS NOT NULL',
+      )
+      .select('board.id', 'id')
+      .addSelect('board.workspaceId', 'workspaceId')
+      .addSelect('board.name', 'name')
+      .addSelect('board.backgroundPreset', 'backgroundPreset')
+      .addSelect('state.isStarred', 'isStarred')
+      .addSelect('state.lastViewedAt', 'lastViewedAt');
+    // There is no starred-at field. Match discovery's recent timestamp/ID ordering,
+    // with never-viewed stars last; no invented activity or view writes on fetch.
+    const rows = await query
+      .orderBy('state.lastViewedAt', 'DESC', 'NULLS LAST')
+      .addOrderBy('board.id', 'DESC')
+      .limit(6)
+      .getRawMany<
+        Omit<HomeBoardSummary, 'lastViewedAt' | 'path'> & {
+          lastViewedAt: Date | null;
+        }
+      >();
+    return rows.map((row) =>
+      toResponseDto(HomeBoardSummaryDto, {
+        ...row,
+        lastViewedAt: row.lastViewedAt?.toISOString() ?? null,
+        path: `/boards/${row.id}`,
+      }),
+    );
+  }
 
   async tasks(
     userId: string,
