@@ -265,7 +265,7 @@ function AttachmentRow({
     );
 
   return (
-    <li className="space-y-2">
+    <li className="min-w-0 space-y-2 rounded-lg border border-line bg-surface p-2.5">
       <div className="flex items-center gap-3">
         <span
           aria-hidden="true"
@@ -668,7 +668,10 @@ export function CardAttachments({
             {readOnly ? 'No attachments.' : 'No attachments yet.'}
           </p>
         ) : (
-          <ul aria-label="Attachments" className="space-y-3">
+          <ul
+            aria-label="Attachments"
+            className="grid grid-cols-1 gap-3 xl:grid-cols-2"
+          >
             {items.map((attachment) => (
               <AttachmentRow
                 key={attachment.id}

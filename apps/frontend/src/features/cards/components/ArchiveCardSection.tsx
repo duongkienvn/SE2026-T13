@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
 import { ArchiveIcon } from '../../../components/icons';
-import { railActionClass } from './detail/CardDetailSection';
+import { railDestructiveActionClass } from './detail/CardDetailSection';
 
 interface ArchiveCardSectionProps {
   pending: boolean;
@@ -26,10 +26,10 @@ export function ArchiveCardSection({
     return (
       <button
         type="button"
-        className={railActionClass}
+        className={railDestructiveActionClass}
         onClick={() => setConfirming(true)}
       >
-        <ArchiveIcon aria-hidden="true" className="size-4 text-muted" />
+        <ArchiveIcon aria-hidden="true" className="size-4" />
         Archive card
       </button>
     );

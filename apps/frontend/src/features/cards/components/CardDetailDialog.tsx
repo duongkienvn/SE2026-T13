@@ -159,7 +159,9 @@ export function CardDetailDialog({
     // "In Progress in Frontend Development", as in the approved reference.
     columnName && boardName
       ? `${columnName} in ${boardName}`
-      : columnName && `In ${columnName}`,
+      : columnName
+        ? `In ${columnName}`
+        : boardName && `In ${boardName}`,
     `Created ${formatRelativeTime(card.createdAt)}`,
     `Updated ${formatRelativeTime(card.updatedAt)}`,
   ]
@@ -174,18 +176,20 @@ export function CardDetailDialog({
       description={meta}
       size="detail"
       fullscreenOnMobile
+      headerContent={<CardLabelBadges boardId={boardId} cardId={cardId} />}
       headerActions={
         <>
           {!readOnly && !draft.title && (
             <button
               type="button"
               aria-label="Edit title"
-              className={headerButton}
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary/25 bg-primary-soft/50 px-3 text-sm font-medium text-primary hover:bg-primary-soft focus-visible:outline-2 focus-visible:outline-primary"
               onClick={() =>
                 update('title', { base: card.title, value: card.title })
               }
             >
               <PencilIcon aria-hidden="true" className="size-5" />
+              <span className="hidden sm:inline">Edit</span>
             </button>
           )}
           <button
@@ -249,11 +253,10 @@ export function CardDetailDialog({
               View only: you can read this card but not change it.
             </p>
           )}
-          <CardLabelBadges boardId={boardId} cardId={cardId} />
         </div>
 
-        <div className="mt-6 grid gap-x-8 gap-y-8 md:grid-cols-[minmax(0,1fr)_15rem] lg:grid-cols-[minmax(0,1fr)_16.5rem]">
-          <div className="min-w-0 space-y-8">
+        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_16rem] lg:grid-cols-[minmax(0,1fr)_18rem]">
+          <div className="min-w-0 space-y-4">
             <TitleEditor
               card={card}
               draft={draft.title}
@@ -281,7 +284,7 @@ export function CardDetailDialog({
           </div>
           <aside
             aria-label="Card details"
-            className="min-w-0 space-y-6 md:col-start-2 md:row-span-2 md:row-start-1 md:border-l md:border-line md:pl-6"
+            className="min-w-0 space-y-4 rounded-xl border border-line/70 bg-app/70 p-4 md:col-start-2 md:row-span-2 md:row-start-1 [&>section+section]:border-t [&>section+section]:border-line [&>section+section]:pt-4"
           >
             <CardAssignees card={card} members={members} readOnly={readOnly} />
             <CardLabels

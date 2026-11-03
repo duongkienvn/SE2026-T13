@@ -6,11 +6,22 @@ import {
   within,
 } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { makeCard } from '../../../test/board-fixtures';
+import { makeCard, okPage } from '../../../test/board-fixtures';
 import { openCardDetail, writes } from '../../../test/card-detail-fixtures';
 import { fail, ok, type MockResponse } from '../../../test/mock-api';
 
 describe('Card Detail V2 quick actions', () => {
+  it('keeps Board context when the card is outside the loaded Card page', async () => {
+    const { dialog } = openCardDetail({
+      extra: (card) => ({
+        [`GET /boards/${card.boardId}/cards?page=1&limit=100`]: okPage([]),
+      }),
+    });
+    expect(
+      within(await dialog()).getByText(/^In Launch · Created/),
+    ).toBeTruthy();
+  });
+
   it('duplicates once per click, reports what was not copied and opens the copy', async () => {
     let answer: (response: MockResponse) => void = () => {};
     const { calls, path, boardPath, card, dialog, router } = openCardDetail({

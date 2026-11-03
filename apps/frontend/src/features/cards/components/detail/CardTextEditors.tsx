@@ -207,20 +207,7 @@ export function DescriptionSection({
   };
 
   return (
-    <CardDetailSection
-      icon={<TextIcon />}
-      title="Description"
-      action={
-        !readOnly &&
-        !editing && (
-          <button type="button" className={sectionActionClass} onClick={start}>
-            <PencilIcon aria-hidden="true" className="size-4" />
-            Edit
-            <span className="sr-only"> description</span>
-          </button>
-        )
-      }
-    >
+    <CardDetailSection icon={<TextIcon />} title="Description">
       {editing ? (
         <form
           noValidate
@@ -274,15 +261,27 @@ export function DescriptionSection({
               onDiscard={() => onDraft(undefined)}
             />
           )}
-          {card.description ? (
-            <p className="text-sm leading-6 break-words whitespace-pre-wrap text-ink">
-              {card.description}
-            </p>
-          ) : (
-            <p className="text-sm text-muted">
-              {readOnly ? 'No description.' : 'No description yet.'}
-            </p>
-          )}
+          <div className="flex items-start gap-3 rounded-lg bg-app/75 p-3">
+            {card.description ? (
+              <p className="min-w-0 flex-1 text-sm leading-6 break-words whitespace-pre-wrap text-ink">
+                {card.description}
+              </p>
+            ) : (
+              <p className="min-w-0 flex-1 py-1 text-sm text-muted">
+                {readOnly ? 'No description.' : 'No description yet.'}
+              </p>
+            )}
+            {!readOnly && (
+              <button
+                type="button"
+                className={`${sectionActionClass} shrink-0 bg-primary-soft/70`}
+                onClick={start}
+              >
+                <PencilIcon aria-hidden="true" className="size-4" />
+                Edit<span className="sr-only"> description</span>
+              </button>
+            )}
+          </div>
           {notice && <Alert variant="success">{notice}</Alert>}
         </div>
       )}

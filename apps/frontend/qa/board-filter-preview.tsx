@@ -18,6 +18,8 @@ import { BoardRealtimeClient } from '../src/features/realtime/board-realtime-cli
 import { livePresence } from '../src/features/realtime/board-presence-state';
 import { RealtimeContext } from '../src/features/realtime/realtime-context';
 import type { Board } from '../src/features/boards/types';
+import type { Card } from '../src/features/cards/types';
+import { DEFAULT_PREFERENCES } from '../src/features/settings/format';
 import { env } from '../src/lib/env';
 import { refreshAccessSnapshots } from '../src/features/realtime/access-revocation';
 import '../src/style.css';
@@ -91,6 +93,38 @@ const board: Board = {
     canRestoreBoard: scenario === 'archived',
   },
 };
+const detailCard: Card = {
+  id: 'qa-detail',
+  boardId: board.id,
+  columnId: 'qa-column-0',
+  createdById: 'qa-owner',
+  title: 'Prepare the release',
+  description: params.has('emptyDescription')
+    ? null
+    : 'Keep the release notes clear and confirm the final review before sharing the update.',
+  position: '1024',
+  startDate: '2026-11-04T09:00:00Z',
+  dueDate: '2026-11-19T17:00:00Z',
+  isArchived: scenario === 'archived',
+  archivedAt: null,
+  createdAt: board.createdAt,
+  updatedAt: board.updatedAt,
+  assignees: [
+    {
+      userId: 'qa-member-1',
+      assignedById: 'qa-owner',
+      createdAt: board.createdAt,
+    },
+  ],
+};
+const detailLabel = {
+  id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  boardId: board.id,
+  name: 'Design review',
+  color: '#615CF7',
+  createdAt: board.createdAt,
+  updatedAt: board.updatedAt,
+};
 const destination = {
   id: 'joined-destination',
   name: scenario === 'workspace-owner' ? 'Engineering' : 'Joined destination',
@@ -128,6 +162,97 @@ function response(data: unknown, page = false) {
 // Every API request is intercepted locally; this fixture never contacts a backend.
 window.fetch = async (input, init) => {
   const path = String(input).replace(env.apiBaseUrl, '');
+  if (params.has('detail')) {
+    const base = `/boards/${board.id}/cards/${detailCard.id}`;
+    if (path === '/users/me/preferences') return response(DEFAULT_PREFERENCES);
+    if (path === base) return response(detailCard);
+    if (path === `${base}/labels`)
+      return response({ cardId: detailCard.id, labels: [detailLabel] });
+    if (path === `${base}/checklists`)
+      return response({
+        cardId: detailCard.id,
+        checkedItems: 2,
+        totalItems: 2,
+        completionPercentage: 100,
+        checklists: [
+          {
+            id: 'qa-checklist',
+            cardId: detailCard.id,
+            title: 'Release readiness',
+            position: '1024',
+            createdAt: board.createdAt,
+            updatedAt: board.updatedAt,
+            checkedItems: 2,
+            totalItems: 2,
+            completionPercentage: 100,
+            items: ['Review the release notes', 'Confirm the final design'].map(
+              (text, index) => ({
+                id: `qa-item-${index}`,
+                checklistId: 'qa-checklist',
+                text,
+                isChecked: true,
+                position: String((index + 1) * 1024),
+                createdAt: board.createdAt,
+                updatedAt: board.updatedAt,
+              }),
+            ),
+          },
+        ],
+      });
+    if (path.startsWith(`${base}/attachments?`))
+      return response(
+        [
+          {
+            id: 'qa-file',
+            boardId: board.id,
+            cardId: detailCard.id,
+            uploaderId: 'qa-owner',
+            kind: 'FILE',
+            state: 'ACTIVE',
+            displayName: 'Release specification.pdf',
+            url: null,
+            originalFilename: 'specification.pdf',
+            mimeType: 'application/pdf',
+            byteSize: 438272,
+            revision: 1,
+            createdAt: board.createdAt,
+            updatedAt: board.updatedAt,
+          },
+          {
+            id: 'qa-link',
+            boardId: board.id,
+            cardId: detailCard.id,
+            uploaderId: 'qa-owner',
+            kind: 'URL',
+            state: 'ACTIVE',
+            displayName: 'Design reference',
+            url: 'https://example.invalid/design',
+            originalFilename: null,
+            mimeType: null,
+            byteSize: null,
+            revision: 1,
+            createdAt: board.createdAt,
+            updatedAt: board.updatedAt,
+          },
+        ],
+        true,
+      );
+    if (path.startsWith(`${base}/comments?`))
+      return response(
+        [
+          {
+            id: 'qa-comment',
+            cardId: detailCard.id,
+            authorId: 'qa-owner',
+            content:
+              'The final review is ready. Thanks for the thoughtful updates.',
+            createdAt: board.createdAt,
+            updatedAt: board.updatedAt,
+          },
+        ],
+        true,
+      );
+  }
   if (path === '/boards/background-presets')
     return response([
       ...[
@@ -375,7 +500,7 @@ const auth: AuthContextValue = {
   user: {
     id: 'qa-owner',
     email: 'qa@example.invalid',
-    displayName: 'QA Owner',
+    displayName: params.has('detail') ? 'Linh Nguyen' : 'QA Owner',
     avatarUrl: null,
     createdAt: '',
     updatedAt: '',
@@ -396,6 +521,7 @@ const router = createMemoryRouter(
           path: '/boards/:boardId',
           element: <BoardDetailPage />,
           children: [
+            { path: 'cards/:cardId', element: null },
             { path: 'settings', element: null },
             { path: 'members', element: <BoardMembersPage /> },
           ],
@@ -405,7 +531,7 @@ const router = createMemoryRouter(
   ],
   {
     initialEntries: [
-      `/boards/${board.id}${params.get('route') === 'members' ? '/members' : params.get('settings') === 'true' ? '/settings' : ''}?${filterSearchParams(parseBoardFilters(params))}`,
+      `/boards/${board.id}${params.has('detail') ? `/cards/${detailCard.id}` : params.get('route') === 'members' ? '/members' : params.get('settings') === 'true' ? '/settings' : ''}?${filterSearchParams(parseBoardFilters(params))}`,
     ],
   },
 );
