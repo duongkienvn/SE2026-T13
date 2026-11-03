@@ -75,7 +75,7 @@ export function KanbanColumn({
           : undefined,
         transition,
       }}
-      className={`relative flex max-h-full w-70 shrink-0 flex-col rounded-xl bg-line/45 ${
+      className={`relative flex max-h-full w-70 shrink-0 flex-col rounded-xl bg-app/90 ${
         isDragging ? 'opacity-40' : ''
       }`}
     >

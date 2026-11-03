@@ -16,11 +16,13 @@ export function BoardStar({
   boardName,
   isStarred,
   stateUpdatedAt,
+  compact = false,
 }: {
   boardId: string;
   boardName: string;
   isStarred?: boolean;
   stateUpdatedAt?: number;
+  compact?: boolean;
 }) {
   const { user, runAuthorized } = useAuth();
   const scope = useAuthSession();
@@ -131,7 +133,7 @@ export function BoardStar({
         aria-pressed={starred}
         disabled={!state.data || state.isError || toggle.isPending}
         onClick={() => toggle.mutate(!starred)}
-        className="grid size-11 sm:size-9 place-items-center rounded-lg border border-line bg-surface text-primary shadow-sm focus-visible:outline-2 focus-visible:outline-primary disabled:text-muted"
+        className={`grid place-items-center rounded-lg text-primary focus-visible:outline-2 focus-visible:outline-primary disabled:text-muted ${compact ? 'size-8 hover:bg-primary-soft' : 'size-11 border border-line bg-surface shadow-sm sm:size-9'}`}
       >
         <StarIcon className={`size-5 ${starred ? 'fill-current' : ''}`} />
       </button>

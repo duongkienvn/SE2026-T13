@@ -802,14 +802,15 @@
   }
 }
 
-/* Background belongs to the workspace; controls retain readable surfaces. */
+/* One continuous Board surface below the compact identity/navigation. */
 .board-canvas {
+  min-height: min(18rem, 50dvh);
+  overflow: hidden;
   background-attachment: local;
 }
-.board-canvas > div {
-  border-radius: 0.5rem;
-  background: color-mix(in srgb, var(--color-app) 38%, transparent);
-  padding: 0.5rem;
+.board-canvas .kanban-columns {
+  scrollbar-color: var(--color-muted) transparent;
+  scrollbar-width: thin;
 }
 .board-canvas [aria-haspopup='dialog'] {
   background-color: var(--color-surface);

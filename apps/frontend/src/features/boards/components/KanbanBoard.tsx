@@ -1,12 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '../../../components/Button';
-import { PlusIcon } from '../../../components/icons';
-import {
-  EmptyState,
-  ErrorState,
-  LoadingState,
-} from '../../../components/states';
+import { ColumnsIcon, PlusIcon } from '../../../components/icons';
+import { ErrorState, LoadingState } from '../../../components/states';
 import { isApiError } from '../../../lib/api-client';
 import { useBoardMembers } from '../../board-members/hooks';
 import type { MemberUser } from '../../board-members/types';
@@ -162,6 +158,7 @@ export function KanbanBoard({
   const openedCard = cards.data?.find((card) => card.id === cardId);
 
   let content;
+  let columnLayout = false;
   if (filterDenied) {
     content = (
       <ErrorState
@@ -188,20 +185,27 @@ export function KanbanBoard({
     );
   } else if (groups.length === 0) {
     content = (
-      <EmptyState
-        title="No columns yet"
-        description="Columns hold this board's cards, such as To Do, In Progress and Done."
-        action={
-          !readOnly && (
-            <Button onClick={openCreateColumn}>
-              <PlusIcon aria-hidden="true" className="size-4.5" />
-              Add column
-            </Button>
-          )
-        }
-      />
+      <div className="w-full max-w-sm rounded-xl border border-line bg-surface/95 p-5 text-center shadow-card">
+        <ColumnsIcon
+          aria-hidden="true"
+          className="mx-auto mb-3 size-7 text-primary"
+        />
+        <h2 className="text-lg font-semibold text-ink">No columns yet</h2>
+        <p className="mt-1 text-sm leading-relaxed text-muted">
+          {readOnly
+            ? 'This board is read only. No columns are available yet.'
+            : 'Add a column to start organizing this board.'}
+        </p>
+        {!readOnly && (
+          <Button className="mt-4" onClick={openCreateColumn}>
+            <PlusIcon aria-hidden="true" className="size-4" />
+            Add column
+          </Button>
+        )}
+      </div>
     );
   } else {
+    columnLayout = true;
     content = (
       <KanbanDndBoard
         boardId={boardId}
@@ -215,7 +219,7 @@ export function KanbanBoard({
             <button
               type="button"
               onClick={openCreateColumn}
-              className="flex w-70 shrink-0 items-center gap-2 rounded-xl border border-dashed border-line px-4 py-4 text-[15px] font-medium text-muted hover:border-primary hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
+              className="flex w-70 shrink-0 items-center gap-2 rounded-xl border border-dashed border-line bg-surface/90 px-4 py-4 text-[15px] font-medium text-muted hover:border-primary hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
             >
               <PlusIcon aria-hidden="true" className="size-4.5" />
               Add column
@@ -228,89 +232,97 @@ export function KanbanBoard({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {!lostAccess && !filterDenied && (
-        <BoardFilter
-          filters={filters}
-          apply={apply}
-          labels={labels.data ?? []}
-          labelsPending={labels.isPending}
-          labelsError={labels.isError}
-          membersPending={canReadMembers && members.isPending}
-          membersError={canReadMembers && members.isError}
-          retryLabels={() => void labels.refetch()}
-          retryMembers={() => void members.refetch()}
-          members={canReadMembers ? (members.data ?? []) : []}
-        />
-      )}
-      {filterDenied && (
-        <button
-          type="button"
-          className="mb-3 self-start text-sm text-primary underline"
-          onClick={() => apply({})}
-        >
-          Clear filters
-        </button>
-      )}
-      {active && !lostAccess && !filterDenied && (
-        <p className="mb-3 text-sm text-muted" role="status">
-          {cards.isPending
-            ? 'Loading matches...'
-            : cards.isError
-              ? 'Could not load matches'
-              : `${filteredCards.data?.meta.total ?? 0} matching cards`}
-          . Column counts show cards on this page. Reordering is disabled while
-          filters are active.{' '}
+      <div className="shrink-0 px-4 pt-3 md:px-6">
+        {!lostAccess && !filterDenied && (
+          <BoardFilter
+            filters={filters}
+            apply={apply}
+            labels={labels.data ?? []}
+            labelsPending={labels.isPending}
+            labelsError={labels.isError}
+            membersPending={canReadMembers && members.isPending}
+            membersError={canReadMembers && members.isError}
+            retryLabels={() => void labels.refetch()}
+            retryMembers={() => void members.refetch()}
+            members={canReadMembers ? (members.data ?? []) : []}
+          />
+        )}
+        {filterDenied && (
           <button
             type="button"
-            className="text-primary underline"
+            className="mb-3 self-start text-sm text-primary underline"
             onClick={() => apply({})}
           >
             Clear filters
           </button>
-        </p>
-      )}
-      {active &&
-        !lostAccess &&
-        !filterDenied &&
-        filteredCards.data &&
-        filteredCards.data.meta.totalPages > 1 && (
-          <nav
-            className="mb-3 flex items-center gap-3 text-sm"
-            aria-label="Card results pages"
-          >
-            <button
-              type="button"
-              disabled={page <= 1}
-              onClick={() => setPage(page - 1)}
-              className="rounded border border-line px-2 py-1 disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <span>
-              Page {page} of {filteredCards.data.meta.totalPages}
-            </span>
-            <button
-              type="button"
-              disabled={page >= filteredCards.data.meta.totalPages}
-              onClick={() => setPage(page + 1)}
-              className="rounded border border-line px-2 py-1 disabled:opacity-50"
-            >
-              Next
-            </button>
-          </nav>
         )}
-      {summaries.isError && !lostAccess && !filterDenied && (
-        <p role="alert" className="mb-2 text-sm text-danger">
-          Card preview details could not be loaded.{' '}
-          <button
-            type="button"
-            className="underline"
-            onClick={() => void summaries.refetch()}
+        {active && !lostAccess && !filterDenied && (
+          <p
+            className="mb-3 rounded-lg bg-surface/95 p-2 text-sm text-muted"
+            role="status"
           >
-            Retry
-          </button>
-        </p>
-      )}
+            {cards.isPending
+              ? 'Loading matches...'
+              : cards.isError
+                ? 'Could not load matches'
+                : `${filteredCards.data?.meta.total ?? 0} matching cards`}
+            . Column counts show cards on this page. Reordering is disabled
+            while filters are active.{' '}
+            <button
+              type="button"
+              className="text-primary underline"
+              onClick={() => apply({})}
+            >
+              Clear filters
+            </button>
+          </p>
+        )}
+        {active &&
+          !lostAccess &&
+          !filterDenied &&
+          filteredCards.data &&
+          filteredCards.data.meta.totalPages > 1 && (
+            <nav
+              className="mb-3 flex items-center gap-3 rounded-lg bg-surface/95 p-2 text-sm"
+              aria-label="Card results pages"
+            >
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage(page - 1)}
+                className="rounded border border-line px-2 py-1 disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span>
+                Page {page} of {filteredCards.data.meta.totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={page >= filteredCards.data.meta.totalPages}
+                onClick={() => setPage(page + 1)}
+                className="rounded border border-line px-2 py-1 disabled:opacity-50"
+              >
+                Next
+              </button>
+            </nav>
+          )}
+        {summaries.isError && !lostAccess && !filterDenied && (
+          <p
+            role="alert"
+            className="mb-2 rounded-lg bg-surface/95 p-2 text-sm text-danger"
+          >
+            Card preview details could not be loaded.{' '}
+            <button
+              type="button"
+              className="underline"
+              onClick={() => void summaries.refetch()}
+            >
+              Retry
+            </button>
+          </p>
+        )}
+      </div>
       <PreviewContext.Provider
         value={{
           summaries: new Map(
@@ -322,7 +334,15 @@ export function KanbanBoard({
           now,
         }}
       >
-        <div className="min-h-0 flex-1">{content}</div>
+        <div
+          className={
+            columnLayout
+              ? 'min-h-0 flex-1'
+              : 'grid min-h-0 flex-1 place-items-center px-4 pb-4 [&>div]:w-full [&>div]:max-w-sm [&_[role=status]]:rounded-xl [&_[role=status]]:bg-surface/95'
+          }
+        >
+          {content}
+        </div>
       </PreviewContext.Provider>
       {!lostAccess &&
         !filterDenied &&

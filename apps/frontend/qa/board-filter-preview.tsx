@@ -33,7 +33,11 @@ const board: Board = {
   name: params.get('long')
     ? 'Frontend development and cross-functional release planning'
     : 'Frontend development',
-  description: 'Plan, build, and ship the next Kanvexa release together.',
+  description: params.has('long')
+    ? 'Plan, build, and ship the next Kanvexa release together with product, design, engineering, and operations. '.repeat(
+        12,
+      )
+    : 'Plan, build, and ship the next Kanvexa release together.',
   workspaceId:
     scenario === 'workspace-owner' ? 'joined-destination' : 'source-not-joined',
   visibility: scenario === 'reader' ? 'WORKSPACE_VISIBLE' : 'PRIVATE',
@@ -249,9 +253,11 @@ window.fetch = async (input, init) => {
         })),
     });
   }
+  if (params.has('empty') && /\/boards\/qa-board\/(columns|cards)\?/.test(path))
+    return response([], true);
   if (/^\/boards\/qa-board\/(columns|cards|members)\?/.test(path)) {
     if (
-      ['wide', 'large', 'reader', 'archived'].includes(scenario) &&
+      ['wide', 'large', 'tall', 'reader', 'archived'].includes(scenario) &&
       path.includes('/columns?')
     )
       return response(
@@ -268,13 +274,13 @@ window.fetch = async (input, init) => {
         true,
       );
     if (
-      ['wide', 'large', 'reader', 'archived'].includes(scenario) &&
+      ['wide', 'large', 'tall', 'reader', 'archived'].includes(scenario) &&
       path.includes('/cards?')
     ) {
       document.documentElement.dataset.cardPageRequests = String(
         Number(document.documentElement.dataset.cardPageRequests ?? 0) + 1,
       );
-      const total = scenario === 'large' ? 1000 : 10;
+      const total = scenario === 'large' ? 1000 : scenario === 'tall' ? 40 : 10;
       const page = Number(
         new URLSearchParams(path.split('?')[1]).get('page') ?? 1,
       );
