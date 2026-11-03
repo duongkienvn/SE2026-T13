@@ -30,48 +30,48 @@ without a team scope decision.
 
 ## State transition model (test design technique)
 
-Each import row moves through one lifecycle; the Board and the Card states
-are guards on it. Test cases are derived from this model: every valid
-transition, every guard, and the forbidden transitions.
+Same model and numbering as section 2.1 of the report `BT3_23001885_VT-052.pdf`.
+One import row moves S0 → S1 | S2; an accepted row then becomes a Card (S3)
+or is rolled back (S4). Guard G: the Board is ACTIVE.
 
 ```mermaid
 stateDiagram-v2
-  [*] --> RECEIVED: row in items[]
-  RECEIVED --> REJECTED: row invalid (DTO rules)
-  RECEIVED --> ACCEPTED: row valid
-  ACCEPTED --> CREATED: commit [Board ACTIVE, member, column on Board]
-  ACCEPTED --> BLOCKED: guard fails (409 archived / 404 column, member)
-  ACCEPTED --> ROLLED_BACK: write error in the batch
-  CREATED --> ARCHIVED: archive card
-  ARCHIVED --> CREATED: restore card
-  REJECTED --> [*]
-  BLOCKED --> [*]
-  ROLLED_BACK --> [*]
+  S0: S0 RECEIVED
+  S1: S1 ACCEPTED
+  S2: S2 REJECTED
+  S3: S3 CREATED (ACTIVE)
+  S4: S4 ROLLED_BACK
+  AR: ARCHIVED card
+  [*] --> S0
+  S0 --> S1: T1 valid
+  S0 --> S2: T2 invalid
+  S1 --> S3: T3 commit [G]
+  S1 --> S4: T4 DB error
+  S3 --> AR: T6 archive
+  AR --> S3: T7 restore
 ```
 
-| #   | From → To                         | Trigger / guard                                                                                                                | Test cases             |
-| --- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------- |
-| T1  | RECEIVED → ACCEPTED               | valid row, normalised like `CreateCardDto`                                                                                     | TC01, TC04             |
-| T2  | RECEIVED → REJECTED               | null/string/array row, missing or blank title, 121-char title, 2001-char description, deadline without timezone, unknown field | TC03, TC06             |
-| T3  | REJECTED does not affect ACCEPTED | invalid row between valid rows keeps their index and order                                                                     | TC02, TC10, TC14       |
-| T4  | ACCEPTED → CREATED                | Board ACTIVE, appended after last **active** card                                                                              | TC05, TC10, TC13, TC14 |
-| T5  | ACCEPTED → BLOCKED (409)          | Board ARCHIVED                                                                                                                 | TC07, TC11, TC17       |
-| T6  | ACCEPTED → BLOCKED (404)          | non-member or foreign/unknown column, also when all rows invalid                                                               | TC07, TC11, TC12       |
-| T7  | ACCEPTED → ROLLED_BACK            | database error mid-batch; no event published                                                                                   | TC08, TC15             |
-| T8  | CREATED → ARCHIVED → CREATED      | imported card archive/restore (old behaviour unchanged)                                                                        | TC17                   |
-| T9  | Board ARCHIVED → ACTIVE           | import allowed again after Board restore                                                                                       | TC17                   |
-| T10 | CREATED under contention          | concurrent imports + single creates on one Board lock                                                                          | TC09 (overflow), TC16  |
+| T     | From → To                          | Kind      | Tests                       |
+| ----- | ---------------------------------- | --------- | --------------------------- |
+| T1    | S0 → S1 (valid row)                | valid     | TC01, TC02                  |
+| T2    | S0 → S2 (9 kinds of invalid row)   | valid     | TC03, TC06                  |
+| T3    | S1 → S3 when G holds               | valid     | TC05, TC10, TC14            |
+| T4    | S1 → S4 (error mid-batch)          | failure   | TC08, TC15                  |
+| T5    | S1 → S3 when the Board is ARCHIVED | rejected  | TC07, TC11, TC17            |
+| T6/T7 | S3 → ARCHIVED → ACTIVE             | valid     | TC13, TC17                  |
+| T8    | S2 → S3                            | forbidden | TC02, TC05, TC14 (DB count) |
+| T9    | "S3" created as ARCHIVED           | forbidden | TC05, TC10 (mutant M2)      |
 
-Forbidden transitions checked as negative tests: REJECTED → CREATED (TC03,
-TC06: nothing saved), BLOCKED → CREATED (TC07, TC11: row count unchanged),
-ROLLED_BACK → CREATED (TC08, TC15: no row, no `card:created`).
-
-Test data: boundary values on each row rule (title 120/121 after trim,
-description 2000/2001, items 1/100 accepted vs 0/101 rejected), one value per
-invalid row kind for T2, and an archived card placed **after** the last
-active card (TC13) so the "last active card" guard is distinguishable from
-"last card". Mutants M1–M6 each flip one condition of a transition (M1 T1/T2,
-M2/M3/M3b T4, M4 T5, M5 T10, M6 T7).
+Test data: every transition has at least one representative. T2 covers each
+class of invalid row: not an object (`null`, string, array), missing field,
+blank after trim, over the boundary (title 121, description 2001), deadline
+without timezone, unknown field (whitelist). Boundaries sit exactly on the
+edge: title 120/121, rows 0/1/100/101. Invalid rows are placed **between**
+valid rows (index 1, 3) to catch index shifts. A `+07:00` deadline checks the
+UTC conversion. An archived Card with a **higher** position than the active
+one separates "last ACTIVE" from "last any". Position `9999999999.9999999999`
+forces the rebalance branch. The failure path uses a real error on the second
+Activity write, after the Card INSERT ran. All data is fixed (no random).
 
 ## Run the tests (from repository root)
 
