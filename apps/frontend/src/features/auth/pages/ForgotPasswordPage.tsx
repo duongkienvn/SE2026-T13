@@ -3,12 +3,13 @@ import { Link } from 'react-router';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
 import { TextField } from '../../../components/TextField';
+import { MailIcon } from '../../../components/icons';
 import { useFocusFirstInvalid } from '../../../hooks/useFocusFirstInvalid';
 import { usePageTitle } from '../../../hooks/usePageTitle';
 import { toFormErrors } from '../../../lib/form-errors';
 import { forgotPassword } from '../api';
 import { useAuthSession } from '../auth-session-context';
-import { AuthLayout } from '../components/AuthLayout';
+import { AuthEntryLayout } from '../components/AuthEntryLayout';
 import { normalizeEmail, validateEmail } from '../validation';
 
 export function ForgotPasswordPage() {
@@ -65,16 +66,17 @@ export function ForgotPasswordPage() {
     }
   }
   return (
-    <AuthLayout>
-      <h1 className="text-2xl font-bold text-ink">Forgot your password?</h1>
-      <p className="mt-2 text-sm text-muted">
-        Enter your email to request a password recovery link.
+    <AuthEntryLayout kind="recovery">
+      <h1>Forgot your password?</h1>
+      <p className="auth-entry-intro">
+        Enter your email address and we'll send you a link to reset your
+        password.
       </p>
       <form
         ref={formRef}
         onSubmit={submit}
         noValidate
-        className="mt-6 space-y-5"
+        className="auth-entry-form"
         aria-busy={pending}
       >
         {acknowledged && (
@@ -86,6 +88,9 @@ export function ForgotPasswordPage() {
         )}
         {error && <Alert variant="error">{error}</Alert>}
         <TextField
+          appearance="auth"
+          icon={<MailIcon />}
+          placeholder="you@company.com"
           label="Email address"
           name="email"
           type="email"
@@ -95,7 +100,12 @@ export function ForgotPasswordPage() {
           error={fieldError}
           disabled={pending}
         />
-        <Button type="submit" className="w-full" disabled={pending || cooldown}>
+        <Button
+          type="submit"
+          size="lg"
+          className="auth-entry-submit"
+          disabled={pending || cooldown}
+        >
           {pending
             ? 'Requesting link…'
             : cooldown
@@ -105,10 +115,10 @@ export function ForgotPasswordPage() {
       </form>
       <Link
         to="/login"
-        className="mt-5 block font-semibold text-primary underline"
+        className="mt-5 block text-center text-sm font-semibold text-primary underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         Back to login
       </Link>
-    </AuthLayout>
+    </AuthEntryLayout>
   );
 }

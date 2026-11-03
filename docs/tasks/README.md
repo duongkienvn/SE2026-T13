@@ -76,6 +76,8 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Frontend tasks
 
+- [Final landing page and password recovery polish](frontend/landing-auth-final-polish.md)
+
 - [Card Detail V2 visual and UX polish](frontend/card-detail-v2-polish.md)
 
 - [Final Kanban Board UI refinement](frontend/final-kanban-ui-refinement.md)

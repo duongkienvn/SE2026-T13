@@ -17,20 +17,11 @@ export function SectionIntro({
   const centered = align === 'center';
   return (
     <div className={centered ? 'mx-auto max-w-2xl text-center' : ''}>
-      <p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">
-        {eyebrow}
-      </p>
-      <h2
-        id={titleId}
-        className="mt-3 text-3xl leading-tight font-bold tracking-tight text-ink sm:text-[40px]"
-      >
+      <p className="landing-eyebrow">{eyebrow}</p>
+      <h2 id={titleId} className="landing-section-title">
         {title}
       </h2>
-      {children && (
-        <p className="mt-4 text-base leading-relaxed text-muted sm:text-lg">
-          {children}
-        </p>
-      )}
+      {children && <p className="landing-section-lead">{children}</p>}
     </div>
   );
 }

@@ -19,10 +19,12 @@ type Field = keyof typeof labels;
 /** Shared by public recovery and the authenticated Security section. */
 export function NewPasswordForm({
   requireCurrent = false,
+  appearance = 'default',
   submit,
   onSuccess,
 }: {
   requireCurrent?: boolean;
+  appearance?: 'default' | 'auth';
   submit: (newPassword: string, currentPassword: string) => Promise<void>;
   onSuccess: () => void;
 }) {
@@ -118,12 +120,13 @@ export function NewPasswordForm({
       ref={formRef}
       onSubmit={handleSubmit}
       noValidate
-      className="mt-6 space-y-4"
+      className={appearance === 'auth' ? 'auth-entry-form' : 'mt-6 space-y-4'}
       aria-busy={pending}
     >
       {error && <Alert variant="error">{error}</Alert>}
       {requireCurrent && (
         <PasswordField
+          appearance={appearance}
           label="Current password"
           name="currentPassword"
           autoComplete="current-password"
@@ -135,6 +138,7 @@ export function NewPasswordForm({
       )}
       <div className="space-y-4">
         <PasswordField
+          appearance={appearance}
           label="New password"
           name="newPassword"
           autoComplete="new-password"
@@ -152,6 +156,7 @@ export function NewPasswordForm({
         </div>
         <div>
           <PasswordField
+            appearance={appearance}
             label="Confirm password"
             name="confirmPassword"
             autoComplete="new-password"
@@ -163,9 +168,10 @@ export function NewPasswordForm({
         </div>
       </div>
       <Button
+        size={appearance === 'auth' ? 'lg' : 'md'}
         type="submit"
         disabled={pending || invalidToken}
-        className="w-full"
+        className={appearance === 'auth' ? 'auth-entry-submit' : 'w-full'}
       >
         {pending
           ? 'Saving password…'

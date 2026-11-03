@@ -4,13 +4,13 @@ import { Brand } from '../../../components/Brand';
 import { BoltIcon, LayersIcon, TeamIcon } from '../../../components/icons';
 import { ForwardTogetherIllustration } from './ForwardTogetherIllustration';
 
-/** Login and registration only; recovery and verification keep AuthLayout. */
+/** Shared modern auth composition; verification retains its existing shell. */
 export function AuthEntryLayout({
   children,
   kind = 'login',
 }: {
   children: ReactNode;
-  kind?: 'login' | 'register';
+  kind?: 'login' | 'register' | 'recovery';
 }) {
   const waveId = useId();
   return (
