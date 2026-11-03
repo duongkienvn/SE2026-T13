@@ -184,9 +184,12 @@ try {
     ...options,
     database: 'k2_fresh',
   }).initialize();
-  // Exercise this historical rollback boundary before the irreversible P2-05 migration.
+  // Exercise this historical rollback before irreversible policy/notification
+  // boundaries. The main source above already runs the complete current chain.
   fresh.migrations = fresh.migrations.filter(
-    (migration) => !migration.name.startsWith('WorkspacePolicies'),
+    (migration) =>
+      !migration.name.startsWith('WorkspacePolicies') &&
+      !migration.name.startsWith('NotificationFoundation'),
   );
   assert.equal((await fresh.runMigrations()).length, fresh.migrations.length);
   await fresh.query(

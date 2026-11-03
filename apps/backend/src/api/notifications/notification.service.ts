@@ -167,12 +167,10 @@ export class NotificationService {
       return { cardId: card.id, boardId: card.boardId, workspaceId: null };
     }
     if (input.boardId) {
-      const board = await manager
-        .getRepository(Board)
-        .findOne({
-          where: { id: input.boardId },
-          select: { id: true, workspaceId: true },
-        });
+      const board = await manager.getRepository(Board).findOne({
+        where: { id: input.boardId },
+        select: { id: true, workspaceId: true },
+      });
       if (
         !board ||
         (input.workspaceId &&

@@ -10,6 +10,7 @@ import { NotificationResolver } from './notification-resolver.service';
 import { NotificationInboxService } from './notification-inbox.service';
 import { NotificationsController } from './notifications.controller';
 import { NotificationInvalidation } from './notification-invalidation';
+import { NotificationReadBodyGuard } from './notification-read-body.guard';
 
 @Module({
   imports: [AuthModule, NotificationPersistenceModule, RealtimeDeliveryModule],
@@ -19,6 +20,7 @@ import { NotificationInvalidation } from './notification-invalidation';
     NotificationPreferencesBodyGuard,
     NotificationResolver,
     NotificationInboxService,
+    NotificationReadBodyGuard,
     {
       provide: NotificationInvalidation,
       useExisting: NotificationEventPublisher,

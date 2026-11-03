@@ -59,7 +59,11 @@ try {
       database: upgradeDatabase,
     });
     await upgradeSource.initialize();
-    const migrations = [...upgradeSource.migrations];
+    // Rehearse the historical discovery rollback before the forward-only
+    // notification boundary. The main database below exercises the full chain.
+    const migrations = upgradeSource.migrations.filter(
+      (migration) => !migration.name.startsWith('NotificationFoundation'),
+    );
     upgradeSource.migrations = migrations.filter(
       (migration) =>
         !migration.name.startsWith('BoardDiscovery') &&

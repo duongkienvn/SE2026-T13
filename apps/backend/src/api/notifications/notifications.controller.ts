@@ -28,6 +28,7 @@ import {
   NotificationUnreadCountDto,
 } from './dto/notification-response.dto';
 import { NotificationInboxService } from './notification-inbox.service';
+import { NotificationReadBodyGuard } from './notification-read-body.guard';
 
 @ApiTags('notifications')
 @Controller('notifications')
@@ -62,6 +63,7 @@ export class NotificationsController {
     return this.inbox.unreadCount(user.userId);
   }
   @Patch(':notificationId/read')
+  @UseGuards(NotificationReadBodyGuard)
   @Header('Cache-Control', 'no-store')
   @SerializeResponse(NotificationResponseDto)
   @ApiBearerToken()
@@ -79,6 +81,7 @@ export class NotificationsController {
     return this.inbox.read(user.userId, id);
   }
   @Post('read-all')
+  @UseGuards(NotificationReadBodyGuard)
   @HttpCode(200)
   @Header('Cache-Control', 'no-store')
   @SerializeResponse(NotificationReadAllResultDto)
@@ -88,7 +91,7 @@ export class NotificationsController {
     summary:
       'Atomically mark current own unread history as read, returning the updated row count',
   })
-  @ApiCommonErrors([401, 404, 429, 500])
+  @ApiCommonErrors([400, 401, 404, 429, 500])
   all(@CurrentUser() user: AuthenticatedUser) {
     return this.inbox.readAll(user.userId);
   }
