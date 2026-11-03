@@ -23,6 +23,7 @@ import { loggerOptions } from './logging/logger-options';
 import { HttpThrottlerGuard } from './guards/http-throttler.guard';
 import { RealtimeModule } from './realtime/realtime.module';
 import { WorkspaceApiModule } from './api/workspaces/workspace-api.module';
+import { ProductivityModule } from './api/productivity/productivity.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { WorkspaceApiModule } from './api/workspaces/workspace-api.module';
     CommentsModule,
     ActivitiesModule,
     WorkspaceApiModule,
+    ProductivityModule,
     RealtimeModule,
     LoggerModule.forRootAsync({
       inject: [ConfigService],
