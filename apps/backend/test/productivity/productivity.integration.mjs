@@ -3,6 +3,10 @@ import console from 'node:console';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import process from 'node:process';
+import {
+  verifyBoundaries,
+  verifyConcurrencyAndScale,
+} from './productivity-boundaries.mjs';
 
 // No dotenv or implicit migration target: opt in to an explicitly local test server.
 assert.equal(process.env.PRODUCTIVITY_DATABASE_TESTS, 'local-only');
@@ -223,6 +227,10 @@ try {
       ).expect(200);
   }
   const all = await tasks('owner');
+  assert.deepEqual(
+    (await tasks('viewer')).data.map((row) => row.id),
+    [viewerCard],
+  );
   assert.deepEqual(all.groupCounts, {
     OVERDUE: 1,
     NEXT_7_DAYS: 3,
@@ -496,6 +504,20 @@ try {
   const swagger = (await http.get('/api-docs-json').expect(200)).body;
   assert.ok(swagger.paths['/api/users/me/tasks'].get);
   assert.ok(swagger.paths['/api/users/me/home'].get);
+  const context = {
+    source,
+    service,
+    tasks,
+    home,
+    workspace,
+    board,
+    card,
+    actors,
+    pass,
+    send,
+  };
+  await verifyBoundaries(context);
+  await verifyConcurrencyAndScale(context);
   await source.query(
     'UPDATE users SET auth_version=auth_version+1 WHERE id=$1',
     [actors.owner],

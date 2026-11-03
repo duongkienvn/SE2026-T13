@@ -193,11 +193,25 @@ export class ProductivityService {
         SELECT COALESCE((SELECT time_zone FROM user_preferences WHERE user_id = $1), 'UTC') AS zone
       ), local_day AS (
         SELECT ($2::timestamptz AT TIME ZONE zone)::date AS day, zone FROM preference
+      ), days AS (
+        SELECT day + delta AS day, zone, delta
+        FROM local_day CROSS JOIN (VALUES (0), (7)) AS offsets(delta)
+      ), candidates AS (
+        SELECT delta, day, zone, day::timestamp AT TIME ZONE zone AS midnight,
+          ((day - 1)::timestamp AT TIME ZONE zone) + interval '24 hours' AS previous
+        FROM days
+      ), starts AS (
+        -- AT TIME ZONE chooses the later offset for a repeated midnight.
+        -- The prior day's offset also gives a valid candidate in that case;
+        -- choose the first occurrence, without assuming the week is 168 hours.
+        SELECT delta, LEAST(midnight, CASE
+          WHEN (previous AT TIME ZONE zone)::date = day THEN previous ELSE midnight
+        END) AS boundary FROM candidates
       )
-      SELECT day::timestamp AT TIME ZONE zone AS today,
-        (day + 7)::timestamp AT TIME ZONE zone AS "nextWeek",
+      SELECT max(boundary) FILTER (WHERE delta = 0) AS today,
+        max(boundary) FILTER (WHERE delta = 7) AS "nextWeek",
         ($3::timestamptz IS NULL OR $4::timestamptz IS NULL OR $3::timestamptz < $4::timestamptz) AS "rangeValid"
-      FROM local_day`,
+      FROM starts`,
       [userId, now, input?.dueFrom ?? null, input?.dueTo ?? null],
     );
     if (!row.rangeValid)
