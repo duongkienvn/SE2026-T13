@@ -8,9 +8,23 @@ import {
   BoardRole,
   RealtimeEvent,
   TaskGroup,
+  GlobalSearchType,
 } from '@kanban/shared';
 
 const require = createRequire(import.meta.url);
+
+test('exports global search types to ESM and CommonJS', () => {
+  assert.deepEqual(GlobalSearchType, {
+    ALL: 'all',
+    WORKSPACES: 'workspaces',
+    BOARDS: 'boards',
+    CARDS: 'cards',
+  });
+  assert.deepEqual(
+    require('@kanban/shared').GlobalSearchType,
+    GlobalSearchType,
+  );
+});
 
 test('exports exhaustive productivity groups to both module formats', () => {
   assert.deepEqual(TaskGroup, {
