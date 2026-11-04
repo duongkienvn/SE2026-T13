@@ -84,6 +84,14 @@ storage. Invalidation:
   is kept (history and count do not change on revocation).
 - Realtime connection loss does **not** clear the inbox; it stays readable while offline.
 
+## Global Search (P4-08) coexistence
+
+This branch was rebased onto `main` after P4-08 (#204) merged. The header now holds
+`SearchTrigger`, then the bell, then the avatar; the conflicts in the realtime and
+revocation files were resolved by keeping both `refreshSearch` and
+`clearNotificationDetails`. Opening the search palette (Ctrl/⌘ K) moves focus into its
+modal, which closes the bell popover (tested).
+
 ## Files touched outside the feature folder
 
 | File                                                                                                               | Why                                                     |
@@ -131,8 +139,8 @@ Local, November 4–5, 2026:
 
 | Check                                                 | Result                                  |
 | ----------------------------------------------------- | --------------------------------------- |
-| `vitest run src/features/notifications`               | PASS: 5 files, 38 tests                 |
-| Full frontend `vitest run --maxWorkers=2`             | PASS: 132 files, 1,364 tests            |
+| `vitest run src/features/notifications`               | PASS: 5 files, 39 tests                 |
+| Full frontend `vitest run --maxWorkers=2`             | PASS: 135 files, 1,387 tests            |
 | Mutation: no `clearNotificationDetails` on revocation | Caught (inbox revocation test)          |
 | Mutation: no hint coalescing                          | Caught (burst test expects one refetch) |
 | Mutation: link unavailable/null-target rows           | Caught (3 inbox tests)                  |

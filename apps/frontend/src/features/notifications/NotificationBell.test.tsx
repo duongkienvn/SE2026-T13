@@ -216,4 +216,34 @@ describe('Notification bell', () => {
     ).toBe(1);
     expect(screen.queryByText('forged')).toBeNull();
   });
+
+  it('gives way to the global search palette (P4-08) and keeps its header slot', async () => {
+    storeSession();
+    mockApi({
+      ...base,
+      'GET /notifications/unread-count': ok({ count: 1 }),
+      [unreadList]: notificationPage([notificationItem()]),
+    });
+    renderApp('/settings/preferences');
+    const button = await bell('Notifications, 1 unread');
+    // Search trigger, then bell, then the avatar: the header order is unchanged.
+    const header = button.closest('header')!;
+    const controls = within(header).getAllByRole('button');
+    expect(
+      controls.indexOf(screen.getByRole('button', { name: 'Search' })),
+    ).toBeLessThan(controls.indexOf(button));
+    fireEvent.click(button);
+    await screen.findByRole('dialog', { name: 'Notifications' });
+    fireEvent.keyDown(document, { key: 'k', ctrlKey: true });
+    expect(
+      await screen.findByRole('combobox', {
+        name: 'Search workspaces, boards and cards',
+      }),
+    ).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Notifications' }),
+      ).toBeNull(),
+    );
+  });
 });
