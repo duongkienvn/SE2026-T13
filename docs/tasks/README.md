@@ -87,6 +87,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 ## Frontend tasks
 
 - [P4-08 Global Search UI](frontend/p4-global-search-ui.md)
+- [P4-09 Notification Center, Bell and Preferences UI](frontend/p4-notifications-ui.md)
 
 - [P4-06 My Tasks UI](frontend/p4-my-tasks-ui.md)
 
