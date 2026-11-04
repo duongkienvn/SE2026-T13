@@ -26,7 +26,7 @@ export function WorkspaceSummaryCards({
   ];
   return (
     <section aria-label="Workspace summary">
-      <dl className="grid gap-3 sm:grid-cols-2">
+      <dl className="grid gap-4 sm:grid-cols-2">
         {metrics.map(({ label, value, icon: Icon, hint, tone }) => (
           <div
             key={label}
