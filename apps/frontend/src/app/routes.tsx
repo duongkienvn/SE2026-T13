@@ -34,6 +34,7 @@ import { DangerZone } from '../features/workspaces/settings/DangerZone';
 import { WorkspaceMembersPage } from '../features/workspaces/pages/WorkspaceMembersPage';
 import { PublicOnly, RequireAuth } from './guards';
 import { AuthenticatedLayout } from './layout/AuthenticatedLayout';
+import { MyTasksPage } from '../features/productivity/MyTasksPage';
 
 export const routes: RouteObject[] = [
   {
@@ -61,6 +62,7 @@ export const routes: RouteObject[] = [
           {
             element: <AuthenticatedLayout />,
             children: [
+              { path: 'my-tasks', element: <MyTasksPage /> },
               { path: 'workspaces', element: <WorkspacesPage /> },
               {
                 path: 'workspaces/:workspaceId',

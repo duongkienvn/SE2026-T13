@@ -12,7 +12,7 @@ describe('productivity access changes', () => {
       .fetchQuery({
         queryKey: key,
         queryFn: ({ signal }) =>
-          new Promise((resolve, reject) => {
+          new Promise((_resolve, reject) => {
             signal.addEventListener('abort', () => {
               aborted = true;
               reject(new Error('aborted'));

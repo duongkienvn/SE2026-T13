@@ -53,7 +53,8 @@ export const navGroups: NavGroup[] = [
         id: 'my-tasks',
         label: 'My Tasks',
         icon: CheckSquareIcon,
-        availability: 'soon',
+        availability: 'available',
+        path: '/my-tasks',
       },
       {
         id: 'boards',
