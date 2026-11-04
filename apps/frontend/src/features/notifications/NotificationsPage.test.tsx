@@ -66,17 +66,17 @@ describe('Notifications page', () => {
     storeSession();
     const calls = mockApi({
       ...base,
-      'GET /notifications?filter=all&page=1&limit=6': notificationPage(
+      'GET /notifications?filter=all&page=1&limit=5': notificationPage(
         [item(1), item(2, { readAt: '2026-11-03T11:00:00.000Z' })],
-        { limit: 6, total: 8 },
+        { limit: 5, total: 8 },
       ),
-      'GET /notifications?filter=all&page=2&limit=6': notificationPage(
+      'GET /notifications?filter=all&page=2&limit=5': notificationPage(
         [item(7)],
-        { page: 2, limit: 6, total: 8 },
+        { page: 2, limit: 5, total: 8 },
       ),
-      'GET /notifications?filter=unread&page=1&limit=6': notificationPage(
+      'GET /notifications?filter=unread&page=1&limit=5': notificationPage(
         [item(1)],
-        { limit: 6, total: 1 },
+        { limit: 5, total: 1 },
       ),
     });
     const { router } = renderApp('/notifications');
@@ -95,7 +95,7 @@ describe('Notifications page', () => {
     expect(await screen.findByText('Summary 1')).toBeTruthy();
     await act(() => router.navigate(-1));
     expect(await screen.findByText('Summary 7')).toBeTruthy();
-    expect(calls.some((call) => call.path.includes('limit=6'))).toBe(true);
+    expect(calls.some((call) => call.path.includes('limit=5'))).toBe(true);
   });
 
   it('keeps unavailable history unlinked and lets it be marked read', async () => {
@@ -103,8 +103,8 @@ describe('Notifications page', () => {
     let stub = unavailableItem();
     const calls = mockApi({
       ...base,
-      'GET /notifications?filter=all&page=1&limit=6': () =>
-        notificationPage([stub], { limit: 6 }),
+      'GET /notifications?filter=all&page=1&limit=5': () =>
+        notificationPage([stub], { limit: 5 }),
       [`PATCH /notifications/${stub.id}/read`]: () => {
         stub = { ...stub, readAt: '2026-11-03T12:00:00.000Z' };
         return ok(stub);
@@ -129,9 +129,9 @@ describe('Notifications page', () => {
     storeSession();
     mockApi({
       ...base,
-      'GET /notifications?filter=all&page=1&limit=6': notificationPage(
+      'GET /notifications?filter=all&page=1&limit=5': notificationPage(
         [item(1, { kind: 'WORKSPACE_INVITED', target: null })],
-        { limit: 6 },
+        { limit: 5 },
       ),
     });
     renderApp('/notifications');
@@ -144,9 +144,9 @@ describe('Notifications page', () => {
     storeSession();
     mockApi({
       ...base,
-      'GET /notifications?filter=all&page=1&limit=6': notificationPage(
+      'GET /notifications?filter=all&page=1&limit=5': notificationPage(
         [item(1, { summary: '<img src=x onerror=alert(1)>Hi' })],
-        { limit: 6 },
+        { limit: 5 },
       ),
     });
     renderApp('/notifications');
@@ -161,8 +161,8 @@ describe('Notifications page', () => {
     mockApi({
       ...base,
       'GET /notifications/unread-count': ok({ count: 0 }),
-      'GET /notifications?filter=unread&page=1&limit=6': notificationPage([], {
-        limit: 6,
+      'GET /notifications?filter=unread&page=1&limit=5': notificationPage([], {
+        limit: 5,
       }),
     });
     renderApp('/notifications?filter=unread');
@@ -176,14 +176,14 @@ describe('Notifications page', () => {
     storeSession();
     mockApi({
       ...base,
-      'GET /notifications?filter=all&page=4&limit=6': notificationPage([], {
+      'GET /notifications?filter=all&page=4&limit=5': notificationPage([], {
         page: 4,
-        limit: 6,
+        limit: 5,
         total: 7,
       }),
-      'GET /notifications?filter=all&page=2&limit=6': notificationPage(
+      'GET /notifications?filter=all&page=2&limit=5': notificationPage(
         [item(7)],
-        { page: 2, limit: 6, total: 7 },
+        { page: 2, limit: 5, total: 7 },
       ),
     });
     const { router } = renderApp('/notifications?page=4');
@@ -196,9 +196,9 @@ describe('Notifications page', () => {
     let revoked = false;
     mockApi({
       ...base,
-      'GET /notifications?filter=all&page=1&limit=6': () =>
+      'GET /notifications?filter=all&page=1&limit=5': () =>
         notificationPage([revoked ? unavailableItem() : item(1)], {
-          limit: 6,
+          limit: 5,
         }),
     });
     renderApp('/notifications');

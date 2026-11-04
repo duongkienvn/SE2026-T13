@@ -18,7 +18,7 @@ import { NotificationRow, type RowFormat } from './NotificationRow';
 import './notifications.css';
 
 /** Rows per server page; keeps the inbox on one screen on laptops. */
-export const INBOX_PAGE_SIZE = 6;
+export const INBOX_PAGE_SIZE = 5;
 
 export function parseInboxSearch(params: URLSearchParams) {
   const filter = params.get('filter') === 'unread' ? 'unread' : 'all';
@@ -213,7 +213,7 @@ export function NotificationsPage() {
             page={data.meta.page}
             pageCount={data.meta.totalPages}
             onChange={(next) => go({ page: next })}
-            className="mt-3"
+            className="mt-2"
           />
         )}
       </div>

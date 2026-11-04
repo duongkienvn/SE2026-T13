@@ -156,7 +156,7 @@
   align-items: flex-start;
   gap: 12px;
   min-width: 0;
-  padding: 11px 10px;
+  padding: 10px;
   border-radius: 10px;
 }
 a.notification-main:hover {
@@ -245,19 +245,20 @@ a.notification-main:hover .notification-title {
   background: var(--color-primary);
 }
 .notification-mark {
-  min-height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--color-line);
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
-  background: var(--color-surface);
-  color: var(--color-ink);
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
+  color: var(--color-muted);
+}
+.notification-mark svg {
+  width: 18px;
+  height: 18px;
 }
 .notification-mark:hover:not(:disabled) {
-  border-color: var(--color-primary);
   color: var(--color-primary);
+  background: var(--color-surface);
 }
 .notification-mark:disabled {
   opacity: 0.6;
@@ -423,8 +424,8 @@ a.notification-main:hover .notification-title {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 52px;
-  padding: 6px 4px;
+  min-height: 46px;
+  padding: 4px;
   border-radius: 10px;
   cursor: pointer;
 }
@@ -459,7 +460,8 @@ fieldset:disabled .notification-setting:not([data-static]) {
 }
 .notification-setting-description {
   color: var(--color-muted);
-  font-size: 12.5px;
+  font-size: 12px;
+  line-height: 1.35;
 }
 .notification-setting-always {
   flex-shrink: 0;
@@ -500,5 +502,72 @@ fieldset:disabled .notification-setting:not([data-static]) {
   .notification-switch,
   .notification-switch::after {
     transition: none;
+  }
+}
+
+/* Short laptops (e.g. 1366x657): keep inbox and preferences on one screen. */
+@media (min-width: 1024px) and (max-height: 760px) {
+  .notifications-header-icon {
+    width: 34px;
+    height: 34px;
+  }
+  .notifications-header h1 {
+    font-size: 21px;
+  }
+  .notifications-page nav[aria-label='Notification pages'] button {
+    height: 30px;
+    min-width: 30px;
+  }
+  .notifications-header p {
+    display: none;
+  }
+  .notifications-toolbar {
+    margin-top: 2px;
+  }
+  .notifications-tab {
+    min-height: 36px;
+  }
+  .notifications-list {
+    margin-top: 6px;
+    padding: 3px;
+  }
+  .notifications-day h2 {
+    padding-block: 3px 1px;
+  }
+  .notifications-page .notification-main {
+    padding-block: 5px;
+  }
+  .notifications-page .notification-text {
+    gap: 0;
+  }
+  .notification-settings-card {
+    padding: 8px 14px;
+  }
+  .notification-settings-grid {
+    row-gap: 0;
+  }
+  .notification-settings-grid {
+    margin-top: 4px;
+  }
+  .notification-setting {
+    min-height: 38px;
+    padding-block: 1px;
+  }
+  .notification-settings-head p {
+    font-size: 12px;
+  }
+  .notifications-page .notification-summary {
+    -webkit-line-clamp: 1;
+  }
+  .notification-settings form {
+    margin-top: 12px;
+  }
+  .notification-settings form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .notification-settings form > * {
+    margin-block: 0;
   }
 }

@@ -1,5 +1,6 @@
 import type { NotificationResponse } from '@kanban/shared';
 import { Link } from 'react-router';
+import { CheckCircleIcon } from '../../components/icons';
 import { formatRelativeTime } from '../../lib/format';
 import { formatInstantDate, formatTimeIn } from '../settings/format';
 import type { DateFormat } from '../settings/types';
@@ -108,8 +109,9 @@ export function NotificationRow({
             disabled={markPending}
             onClick={() => onMarkRead(item)}
             aria-label={`Mark as read: ${meta.label}`}
+            title="Mark as read"
           >
-            {markPending ? 'Saving…' : 'Mark read'}
+            <CheckCircleIcon aria-hidden="true" />
           </button>
         )}
       </span>
