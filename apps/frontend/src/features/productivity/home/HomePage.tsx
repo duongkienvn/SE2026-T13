@@ -3,7 +3,9 @@ import { usePageTitle } from '../../../hooks/usePageTitle';
 import { isApiError } from '../../../lib/api-client';
 import { useAuth } from '../../auth/useAuth';
 import { usePreferences } from '../../settings/hooks';
+import { useWorkspaceDirectory } from '../../workspaces/hooks';
 import { useHomeDashboard } from './hooks';
+import { BoardCollection } from './BoardCollection';
 import { HomeGreeting } from './HomeGreeting';
 import { SummaryTiles } from './SummaryTiles';
 import { UpNext } from './UpNext';
@@ -15,6 +17,10 @@ export function HomePage() {
   const preferences = usePreferences();
   const timeZone = preferences.data?.timeZone;
   const dashboard = useHomeDashboard(timeZone);
+  const directory = useWorkspaceDirectory();
+  const workspaceNames = new Map(
+    directory.workspaces.map((workspace) => [workspace.id, workspace.name]),
+  );
   const home = dashboard.home;
   const error = isApiError(dashboard.error) ? dashboard.error : undefined;
   const offline =
@@ -63,6 +69,33 @@ export function HomePage() {
                 dateFormat={preferences.data.dateFormat}
                 timeZone={preferences.data.timeZone}
               />
+              <div className="home-side">
+                <BoardCollection
+                  id="starred"
+                  title="Starred Boards"
+                  boards={home.starredBoards}
+                  viewAll="/boards?view=starred"
+                  workspaceNames={workspaceNames}
+                  updatedAt={dashboard.dataUpdatedAt}
+                  empty={{
+                    title: 'No starred boards',
+                    text: 'Star a board to keep it close.',
+                  }}
+                />
+                <BoardCollection
+                  id="recent"
+                  title="Recently Viewed"
+                  boards={home.recentBoards}
+                  viewAll="/boards?view=recent"
+                  workspaceNames={workspaceNames}
+                  updatedAt={dashboard.dataUpdatedAt}
+                  showViewed
+                  empty={{
+                    title: 'No recently viewed boards',
+                    text: 'Boards you open will appear here.',
+                  }}
+                />
+              </div>
             </div>
             {dashboard.isRefetchError && (
               <p role="status" className="home-refresh-error">

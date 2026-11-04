@@ -8,6 +8,7 @@ import { boardKeys } from '../query-keys';
 import { workspaceKeys } from '../../workspaces/query-keys';
 import { revokeBoardAccess } from '../revoke-board-access';
 import { boardAccessVersion } from '../access-version';
+import { productivityKey } from '../../productivity/cache';
 
 type UserState = { isStarred: boolean; lastViewedAt: string | null };
 
@@ -108,6 +109,10 @@ export function BoardStar({
         return;
       client.setQueryData(key, result);
       void client.invalidateQueries({ queryKey: boardKeys.lists() });
+      // Home's Starred/Recent lists come from one aggregate; refetch it.
+      void client.invalidateQueries({
+        queryKey: [...productivityKey, 'home'],
+      });
       void client.invalidateQueries({
         queryKey: workspaceKeys.session(user?.id ?? '', scope.generation),
       });
