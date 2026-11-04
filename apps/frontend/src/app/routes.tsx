@@ -36,6 +36,7 @@ import { PublicOnly, RequireAuth } from './guards';
 import { AuthenticatedLayout } from './layout/AuthenticatedLayout';
 import { MyTasksPage } from '../features/productivity/MyTasksPage';
 import { NotificationsPage } from '../features/notifications/NotificationsPage';
+import { NotificationSettingsPage } from '../features/notifications/NotificationSettingsPage';
 
 export const routes: RouteObject[] = [
   {
@@ -103,6 +104,10 @@ export const routes: RouteObject[] = [
                   { index: true, element: <SettingsIndex /> },
                   { path: 'profile', element: <ProfilePage /> },
                   { path: 'appearance', element: <AppearancePage /> },
+                  {
+                    path: 'notifications',
+                    element: <NotificationSettingsPage />,
+                  },
                   { path: 'preferences', element: <PreferencesPage /> },
                   { path: 'security', element: <SecuritySettingsPage /> },
                   {

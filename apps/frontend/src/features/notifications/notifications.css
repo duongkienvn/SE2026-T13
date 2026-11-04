@@ -389,3 +389,116 @@ a.notification-main:hover .notification-title {
     align-items: flex-end;
   }
 }
+
+/* Settings → Notifications */
+.notification-settings-card {
+  min-width: 0;
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  background: var(--color-surface);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-card, 0 1px 2px rgb(16 24 40 / 0.05));
+}
+.notification-settings-head h2 {
+  color: var(--color-ink);
+  font-size: 15px;
+  font-weight: 700;
+}
+.notification-settings-head p {
+  margin-top: 2px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+.notification-settings-grid {
+  display: grid;
+  gap: 2px 20px;
+  margin-top: 8px;
+}
+@media (min-width: 1100px) {
+  .notification-settings-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.notification-setting {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 6px 4px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.notification-setting[data-static] {
+  cursor: default;
+}
+fieldset:disabled .notification-setting {
+  cursor: not-allowed;
+}
+fieldset:disabled .notification-setting:not([data-static]) {
+  opacity: 0.6;
+}
+.notification-setting .notification-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+.notification-setting .notification-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.notification-setting-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.notification-setting-label {
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 500;
+}
+.notification-setting-description {
+  color: var(--color-muted);
+  font-size: 12.5px;
+}
+.notification-setting-always {
+  flex-shrink: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.notification-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--color-line);
+  appearance: none;
+  cursor: inherit;
+  transition: background-color 150ms;
+}
+.notification-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+  transition: transform 150ms;
+}
+.notification-switch:checked {
+  background: var(--color-primary-solid);
+}
+.notification-switch:checked::after {
+  transform: translateX(18px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .notification-switch,
+  .notification-switch::after {
+    transition: none;
+  }
+}

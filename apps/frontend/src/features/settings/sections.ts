@@ -62,7 +62,8 @@ export const settingsSections: SettingsSection[] = [
     label: 'Notifications',
     summary: 'In-app and email notifications',
     icon: BellIcon,
-    availability: 'soon',
+    availability: 'available',
+    path: 'notifications',
   },
   {
     id: 'preferences',

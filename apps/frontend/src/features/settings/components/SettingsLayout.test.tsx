@@ -60,7 +60,7 @@ describe('Settings on desktop', () => {
     renderApp('/settings/profile');
     await screen.findByRole('heading', { name: 'Profile', level: 1 });
     const nav = within(settingsNav());
-    for (const label of ['Notifications', 'Data & Privacy']) {
+    for (const label of ['Data & Privacy']) {
       expect(nav.queryByRole('link', { name: new RegExp(label) })).toBeNull();
       const item = nav.getByText(label).closest('li');
       expect(item?.textContent).toContain('coming soon');
@@ -72,9 +72,21 @@ describe('Settings on desktop', () => {
   it('has no fake page for a future section', async () => {
     stubViewport(true);
     signedIn();
-    renderApp('/settings/notifications');
+    renderApp('/settings/data-privacy');
     expect(await screen.findByText(/page not found/i)).toBeTruthy();
     expect(screen.queryByRole('navigation', { name: 'Settings' })).toBeNull();
+  });
+
+  it('links Notifications to its real section (#198)', async () => {
+    stubViewport(true);
+    signedIn();
+    renderApp('/settings/profile');
+    await screen.findByRole('heading', { name: 'Profile', level: 1 });
+    expect(
+      within(settingsNav())
+        .getByRole('link', { name: 'Notifications' })
+        .getAttribute('href'),
+    ).toBe('/settings/notifications');
   });
 
   it('moves Security and Connected Accounts to their own sections', async () => {
@@ -136,7 +148,8 @@ describe('Settings on phones', () => {
     const list = within(settingsNav());
     expect(list.getAllByRole('listitem')).toHaveLength(7);
     expect(list.getByText('Password and account recovery')).toBeTruthy();
-    expect(list.queryByRole('link', { name: /Notifications/ })).toBeNull();
+    expect(list.getByRole('link', { name: /Notifications/ })).toBeTruthy();
+    expect(list.queryByRole('link', { name: /Data & Privacy/ })).toBeNull();
 
     fireEvent.click(list.getByRole('link', { name: /Security/ }));
     await screen.findByRole('heading', { name: 'Account security' });
