@@ -60,6 +60,7 @@ export function cardsHarness() {
     findOne: jest.fn().mockResolvedValue(null),
     create: jest.fn((input) => ({
       ...input,
+      id: '3c5e2d5b-1e13-4b31-9cc4-8e4f849d75e5',
       createdAt: new Date('2026-10-16T00:00:00Z'),
     })),
     save: jest.fn(async (value) => value),
@@ -116,6 +117,15 @@ export function cardsHarness() {
   cards.createQueryBuilder.mockReturnValue(builder);
   const events = { publish: jest.fn().mockResolvedValue(undefined) };
   const activities = { record: jest.fn() };
+  const notifications = {
+    record: jest.fn().mockResolvedValue({
+      status: 'created',
+      recipientUserId: CARD_IDS.target,
+    }),
+  };
+  const notificationEvents = {
+    afterCommit: jest.fn().mockResolvedValue(undefined),
+  };
   const service = new CardsService(
     cards as unknown as Repository<Card>,
     boards as unknown as Repository<Board>,
@@ -123,10 +133,14 @@ export function cardsHarness() {
     authorization as unknown as BoardAuthorizationService,
     events as unknown as BoardEventPublisher,
     activities as unknown as import('../../src/api/activities/activity-writer.service').ActivityWriterService,
+    notifications as unknown as import('../../src/api/notifications/notification.service').NotificationService,
+    notificationEvents as unknown as import('../../src/realtime/notification-event-publisher.service').NotificationEventPublisher,
   );
   return {
     service,
     activities,
+    notifications,
+    notificationEvents,
     events,
     boards,
     cards,

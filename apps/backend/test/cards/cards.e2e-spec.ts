@@ -30,6 +30,8 @@ import { CardAssignee } from '../../src/api/cards/entities/card-assignee.entity'
 import { CardsController } from '../../src/api/cards/cards.controller';
 import { CardsService } from '../../src/api/cards/cards.service';
 import { BoardEventPublisher } from '../../src/realtime/board-event-publisher.service';
+import { NotificationService } from '../../src/api/notifications/notification.service';
+import { NotificationEventPublisher } from '../../src/realtime/notification-event-publisher.service';
 import { createValidationPipe } from '../../src/config/validation';
 import { GlobalExceptionFilter } from '../../src/filters/global-exception.filter';
 import { ApiResponseInterceptor } from '../../src/interceptors/api-response.interceptor';
@@ -244,6 +246,8 @@ describe('Card HTTP API with real JWT, authorization, services and envelopes', (
       controllers: [CardsController],
       providers: [
         { provide: BoardEventPublisher, useValue: h.events },
+        { provide: NotificationService, useValue: h.notifications },
+        { provide: NotificationEventPublisher, useValue: h.notificationEvents },
         CardsService,
         { provide: ActivityWriterService, useValue: { record: jest.fn() } },
         AuthService,

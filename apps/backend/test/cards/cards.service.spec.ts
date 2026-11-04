@@ -313,6 +313,26 @@ describe('CardsService', () => {
     ).rejects.toMatchObject({ status: 409 });
     expect(h.assignees.save).not.toHaveBeenCalled();
     expect(h.assignees.delete).not.toHaveBeenCalled();
+    expect(h.notifications.record).not.toHaveBeenCalled();
+  });
+
+  it('records a new assignment in the transaction and hints only after commit', async () => {
+    await h.service.assign(ID.user, ID.board, ID.card, { userId: ID.target });
+    expect(h.notifications.record).toHaveBeenCalledWith(h.manager, {
+      kind: 'CARD_ASSIGNED',
+      recipientUserId: ID.target,
+      actorUserId: ID.user,
+      cardId: ID.card,
+      boardId: ID.board,
+      occurrenceKey: '3c5e2d5b-1e13-4b31-9cc4-8e4f849d75e5',
+    });
+    expect(h.notificationEvents.afterCommit).toHaveBeenCalledWith([ID.target]);
+    h.notifications.record.mockResolvedValueOnce({ status: 'disabled' });
+    await h.service.assign(ID.user, ID.board, ID.card, { userId: ID.target });
+    expect(h.notificationEvents.afterCommit).toHaveBeenLastCalledWith([]);
+    h.members.findOne.mockResolvedValueOnce({ userId: ID.user });
+    await h.service.assign(ID.user, ID.board, ID.card, { userId: ID.user });
+    expect(h.notifications.record).toHaveBeenCalledTimes(2);
   });
 
   it('unassigns exactly one card/user pair and reports a missing assignment', async () => {

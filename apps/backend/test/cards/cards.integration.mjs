@@ -106,6 +106,10 @@ try {
       publish: async () => undefined,
     },
     activityWriter,
+    new (require('../../dist/api/notifications/notification.service.js').NotificationService)(
+      source.getRepository('UserNotification'),
+    ),
+    { afterCommit: async () => undefined },
   );
   const columnService = new ColumnsService(
     columns,
@@ -123,6 +127,10 @@ try {
     { publish: async () => undefined },
     activityWriter,
     { notify: async () => undefined },
+    new (require('../../dist/api/notifications/notification.service.js').NotificationService)(
+      source.getRepository('UserNotification'),
+    ),
+    { afterCommit: async () => undefined },
   );
   const passwordHash = await argon2.hash('cards-integration-password');
   const user = async (name) =>
@@ -345,6 +353,26 @@ try {
   );
 
   const assignmentCard = await create(column.id, 'Assignments');
+  const rollbackCard = await create(column.id, 'Assignment rollback');
+  await source.query(
+    "CREATE FUNCTION reject_assignment_notice() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'notification rejected'; END $$",
+  );
+  await source.query(
+    'CREATE TRIGGER reject_assignment_notice BEFORE INSERT ON user_notifications FOR EACH ROW EXECUTE FUNCTION reject_assignment_notice()',
+  );
+  await assert.rejects(
+    service.assign(owner.id, board.id, rollbackCard.id, { userId: member.id }),
+    /notification rejected/,
+  );
+  assert.equal(
+    await assignees.countBy({ cardId: rollbackCard.id, userId: member.id }),
+    0,
+  );
+  await source.query(
+    'DROP TRIGGER reject_assignment_notice ON user_notifications',
+  );
+  await source.query('DROP FUNCTION reject_assignment_notice()');
+  await cards.delete(rollbackCard.id);
   await service.assign(owner.id, board.id, assignmentCard.id, {
     userId: owner.id,
   });
@@ -356,6 +384,11 @@ try {
       userId: member.id,
     }),
   ]);
+  const assignedNotifications = await source.query(
+    "SELECT recipient_user_id FROM user_notifications WHERE kind='CARD_ASSIGNED' AND card_id=$1",
+    [assignmentCard.id],
+  );
+  assert.deepEqual(assignedNotifications, [{ recipient_user_id: member.id }]);
   assert.equal(
     assignmentResults.filter((r) => r.status === 'fulfilled').length,
     1,

@@ -19,6 +19,7 @@ import { CardPreviewSummariesController } from './card-preview-summaries.control
 import { CardsController } from './cards.controller';
 import { CardsService } from './cards.service';
 import { ActivityWriterModule } from '../activities/activity-writer.module';
+import { NotificationPersistenceModule } from '../notifications/notification-persistence.module';
 
 import { CardChecklistsController } from './card-checklists.controller';
 import { CardChecklistsService } from './card-checklists.service';
@@ -35,6 +36,7 @@ import { attachmentStorageProvider } from './attachments/attachment-storage.prov
     AuthModule,
     BoardMembersModule,
     ActivityWriterModule,
+    NotificationPersistenceModule,
     TypeOrmModule.forFeature([
       Card,
       CardAssignee,
