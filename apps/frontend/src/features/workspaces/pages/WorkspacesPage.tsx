@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from 'react-router';
 import { Button } from '../../../components/Button';
 import {
+  ArrowRightIcon,
   ChevronRightIcon,
   LayersIcon,
   PlusIcon,
@@ -88,9 +89,9 @@ export function WorkspacesPage() {
         <p className="mb-4 text-sm text-muted">
           Your own space, automatically created for you.
         </p>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4">
           {personal.map((item) => (
-            <WorkspaceCard key={item.id} workspace={item} />
+            <PersonalWorkspaceBanner key={item.id} workspace={item} />
           ))}
           {!personal.length && (
             <WorkspacePlaceholder
@@ -142,6 +143,46 @@ export function WorkspacesPage() {
         onClose={close}
       />
     </div>
+  );
+}
+
+function PersonalWorkspaceBanner({
+  workspace,
+}: {
+  workspace: WorkspaceSummary;
+}) {
+  const description =
+    workspace.description || 'A space for your boards and ideas.';
+  return (
+    <Link
+      to={workspacePath(workspace.id)}
+      className="group grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3 rounded-2xl border border-primary/20 bg-primary-soft/60 p-5 transition-colors hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:min-h-[108px] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:gap-x-6 sm:px-7"
+    >
+      <WorkspaceAvatar
+        workspace={workspace}
+        className="size-12 text-xl sm:size-16 sm:text-2xl"
+      />
+      <div className="col-start-2 row-start-1 min-w-0 sm:border-l sm:border-primary/15 sm:pl-6">
+        <h3
+          title={workspace.name}
+          className="truncate text-lg font-semibold tracking-tight text-ink sm:text-xl"
+        >
+          {workspace.name}
+        </h3>
+        <p
+          title={description}
+          className="mt-1.5 line-clamp-2 text-sm break-words text-muted sm:line-clamp-1 [overflow-wrap:anywhere]"
+        >
+          {description}
+        </p>
+      </div>
+      <span className="col-start-2 row-start-2 w-fit max-w-full rounded-xl border border-primary/10 bg-surface/70 px-2 py-2 text-xs font-medium text-primary-hover sm:col-start-3 sm:row-start-1 sm:px-4">
+        {workspace.role === 'ADMIN' ? 'Workspace admin' : 'Workspace member'}
+      </span>
+      <span className="col-start-3 row-span-2 row-start-1 grid size-10 place-items-center rounded-xl bg-primary-solid text-white group-hover:bg-primary-solid-hover sm:col-start-4 sm:row-span-1">
+        <ArrowRightIcon className="size-5" />
+      </span>
+    </Link>
   );
 }
 
