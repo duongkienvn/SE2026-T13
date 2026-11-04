@@ -4,7 +4,6 @@ import { Button } from '../../components/Button';
 import { Pagination } from '../../components/Pagination';
 import { ArrowRightIcon, CommentIcon } from '../../components/icons';
 import { ErrorState } from '../../components/states';
-import { TextAreaField } from '../../components/TextAreaField';
 import { isApiError } from '../../lib/api-client';
 import { toFormErrors } from '../../lib/form-errors';
 import { formatRelativeTime } from '../../lib/format';
@@ -18,6 +17,19 @@ import {
   useDeleteComment,
   useUpdateComment,
 } from './hooks';
+import {
+  MentionComposer,
+  emptyDraft,
+  type MentionDraft,
+} from './MentionComposer';
+import { MentionText } from './MentionText';
+import {
+  capError,
+  finalizeMentions,
+  keepValidSpans,
+  sameSpans,
+  validRenderSpans,
+} from './mentions';
 import type { Comment } from './types';
 
 const MAX_LENGTH = 2000;
@@ -59,9 +71,9 @@ export function CommentsSection({
   const previousPageCount = useRef<
     { cardId: string; totalPages: number } | undefined
   >(undefined);
-  const [content, setContent] = useState('');
+  const [draft, setDraft] = useState<MentionDraft>(emptyDraft);
   const [editingId, setEditingId] = useState<string>();
-  const [editContent, setEditContent] = useState('');
+  const [editDraft, setEditDraft] = useState<MentionDraft>(emptyDraft);
   const [confirmId, setConfirmId] = useState<string>();
   const [error, setError] = useState<string>();
   const query = useComments(boardId, cardId, page);
@@ -73,6 +85,32 @@ export function CommentsSection({
     isApiError(query.error) && [403, 404].includes(query.error.status);
   const pageData = unavailable ? undefined : query.data;
   const byId = new Map(members.map((member) => [member.user.id, member.user]));
+  // Suggestions come only from the authorized Board roster already loaded.
+  const roster = canReadMembers ? members.map((member) => member.user) : [];
+  const names = new Map(
+    roster.map((member) => [member.id, member.displayName]),
+  );
+  const content = draft.text;
+  const editContent = editDraft.text;
+  /** Mentions whose member left the Board or was renamed since selection. */
+  const stale = (value: MentionDraft) =>
+    value.spans.filter(
+      (span) => !keepValidSpans([span], value.text, names).length,
+    );
+  const dropStale = (value: MentionDraft): MentionDraft => ({
+    ...value,
+    spans: keepValidSpans(value.spans, value.text, names),
+  });
+  const existingSpans = (comment: Comment) =>
+    (canReadMembers && validRenderSpans(comment.content, comment.mentions)) ||
+    [];
+  const unchanged = (comment: Comment) => {
+    const final = finalizeMentions(editDraft.text, editDraft.spans);
+    return (
+      final.content === comment.content &&
+      sameSpans(final.mentions, existingSpans(comment))
+    );
+  };
 
   useEffect(() => {
     if (!pageData) return;
@@ -93,12 +131,13 @@ export function CommentsSection({
     event.preventDefault();
     if (readOnly || busy || contentError(content)) return;
     setError(undefined);
+    if (stale(draft).length || capError(draft.spans)) return;
     try {
       const lastPage = Math.ceil(
         ((pageData?.meta.total ?? 0) + 1) / COMMENTS_PAGE_LIMIT,
       );
-      await create.mutateAsync({ content: content.trim(), mentions: [] });
-      setContent('');
+      await create.mutateAsync({ content: draft.text, mentions: draft.spans });
+      setDraft(emptyDraft);
       setPage(Math.max(1, lastPage));
     } catch (cause) {
       const result = toFormErrors(cause, LABELS);
@@ -115,15 +154,18 @@ export function CommentsSection({
       readOnly ||
       busy ||
       contentError(editContent) ||
-      editContent.trim() === comment.content
+      unchanged(comment) ||
+      stale(editDraft).length ||
+      capError(editDraft.spans)
     )
       return;
     setError(undefined);
     try {
+      // The complete current span list, `[]` included, every time.
       await update.mutateAsync({
         commentId: comment.id,
-        content: editContent.trim(),
-        mentions: [],
+        content: editDraft.text,
+        mentions: editDraft.spans,
       });
       setEditingId(undefined);
     } catch (cause) {
@@ -234,16 +276,24 @@ export function CommentsSection({
                         onSubmit={(event) => void handleEdit(event, comment)}
                         className="mt-2 space-y-2"
                       >
-                        <TextAreaField
+                        <MentionComposer
                           label="Edit comment"
                           rows={3}
-                          value={editContent}
+                          value={editDraft}
+                          members={roster}
+                          enabled={canReadMembers}
+                          currentUserId={user?.id}
                           maxLength={MAX_LENGTH + 1}
-                          onChange={(event) => {
-                            setEditContent(event.target.value);
+                          onChange={(next) => {
+                            setEditDraft(next);
                             setError(undefined);
                           }}
                           error={contentError(editContent)}
+                        />
+                        <StaleMentions
+                          spans={stale(editDraft)}
+                          text={editDraft.text}
+                          onRemove={() => setEditDraft(dropStale(editDraft))}
                         />
                         <div className="flex gap-2">
                           <Button
@@ -251,7 +301,9 @@ export function CommentsSection({
                             disabled={
                               busy ||
                               !!contentError(editContent) ||
-                              editContent.trim() === comment.content
+                              unchanged(comment) ||
+                              stale(editDraft).length > 0 ||
+                              !!capError(editDraft.spans)
                             }
                           >
                             Save comment
@@ -267,7 +319,11 @@ export function CommentsSection({
                       </form>
                     ) : (
                       <p className="mt-1 whitespace-pre-wrap break-words rounded-lg bg-app px-3 py-2 text-ink">
-                        {comment.content}
+                        <MentionText
+                          content={comment.content}
+                          mentions={comment.mentions}
+                          enabled={canReadMembers}
+                        />
                       </p>
                     )}
                     {own &&
@@ -308,7 +364,10 @@ export function CommentsSection({
                             disabled={busy}
                             onClick={() => {
                               setError(undefined);
-                              setEditContent(comment.content);
+                              setEditDraft({
+                                text: comment.content,
+                                spans: existingSpans(comment),
+                              });
                               setEditingId(comment.id);
                             }}
                             className="rounded text-xs text-primary hover:underline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50"
@@ -357,15 +416,20 @@ export function CommentsSection({
           <UserAvatar user={user} className="mt-1 size-8 shrink-0 text-xs" />
           <div className="min-w-0 flex-1 rounded-xl border border-line bg-surface p-1.5 shadow-card focus-within:ring-2 focus-within:ring-primary/15">
             <div className="flex items-end gap-2">
-              <TextAreaField
+              <MentionComposer
                 label="Write a comment"
+                hideLabel
                 placeholder="Write a comment…"
                 rows={1}
-                className="min-w-0 flex-1 [&>label]:sr-only [&>textarea]:mt-0 [&>textarea]:min-h-10 [&>textarea]:border-0 [&>textarea]:px-2 [&>textarea]:focus:ring-0"
-                value={content}
+                className="min-w-0 flex-1"
+                textareaClassName="min-h-10 border-0 px-2 focus:ring-0"
+                value={draft}
+                members={roster}
+                enabled={canReadMembers}
+                currentUserId={user?.id}
                 maxLength={MAX_LENGTH + 1}
-                onChange={(event) => {
-                  setContent(event.target.value);
+                onChange={(next) => {
+                  setDraft(next);
                   setError(undefined);
                 }}
                 error={
@@ -379,14 +443,53 @@ export function CommentsSection({
                 aria-label={create.isPending ? 'Posting…' : 'Post comment'}
                 title="Send comment"
                 className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-solid text-white hover:bg-primary-solid-hover focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={busy || !!contentError(content)}
+                disabled={
+                  busy ||
+                  !!contentError(content) ||
+                  stale(draft).length > 0 ||
+                  !!capError(draft.spans)
+                }
               >
                 <ArrowRightIcon aria-hidden="true" className="size-5" />
               </button>
             </div>
+            <StaleMentions
+              spans={stale(draft)}
+              text={draft.text}
+              onRemove={() => setDraft(dropStale(draft))}
+            />
           </div>
         </form>
       )}
     </section>
+  );
+}
+
+/** A selected member left the Board: say so and offer to unlink, keeping the text. */
+function StaleMentions({
+  spans,
+  text,
+  onRemove,
+}: {
+  spans: { start: number; end: number }[];
+  text: string;
+  onRemove: () => void;
+}) {
+  if (!spans.length) return null;
+  const labels = [
+    ...new Set(spans.map((span) => text.slice(span.start, span.end))),
+  ];
+  return (
+    <div role="alert" className="mt-1 px-2 text-[13px] text-danger">
+      {labels.join(', ')} {labels.length === 1 ? 'is' : 'are'} no longer a board
+      member you can mention.{' '}
+      <button
+        type="button"
+        onClick={onRemove}
+        className="rounded font-medium underline focus-visible:outline-2 focus-visible:outline-primary"
+      >
+        {spans.length === 1 ? 'Remove mention' : 'Remove mentions'}
+      </button>
+    </div>
   );
 }
