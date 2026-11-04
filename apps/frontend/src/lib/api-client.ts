@@ -82,7 +82,7 @@ function invalidResponse(status: number): ApiError {
  * Sends a request and returns the validated success envelope, or `undefined`
  * for `204 No Content` / an empty 2xx body. Rejects with `ApiError` otherwise.
  */
-async function requestEnvelope(
+export async function requestEnvelope(
   path: string,
   {
     method = 'GET',
