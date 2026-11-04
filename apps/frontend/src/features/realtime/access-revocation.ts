@@ -7,6 +7,11 @@ import type { Board } from '../boards/types';
 import { boardKeys } from '../boards/query-keys';
 import { avatarKeys } from '../auth/avatar-query-keys';
 import {
+  clearProductivity,
+  productivityKey,
+  refreshProductivity,
+} from '../productivity/cache';
+import {
   changeAllBoardAccessVersions,
   changeBoardAccessVersion,
 } from '../boards/access-version';
@@ -19,6 +24,7 @@ const privateDiscoveryState = {
 
 /** Drop potentially stale protected data before asking REST to authorize it again. */
 export function clearAccessSnapshots(client: QueryClient): void {
+  clearProductivity(client);
   changeAllBoardAccessVersions(client);
   void client.cancelQueries(privateDiscoveryState);
   for (const query of client.getQueryCache().findAll(privateDiscoveryState))
@@ -33,6 +39,7 @@ export function clearAccessSnapshots(client: QueryClient): void {
 
 export function refreshAccessSnapshots(client: QueryClient): void {
   clearAccessSnapshots(client);
+  void client.invalidateQueries({ queryKey: productivityKey });
   void client.invalidateQueries(privateDiscoveryState);
   for (const key of [boardKeys.all, workspaceKeys.all, avatarKeys.all])
     void client.invalidateQueries({ queryKey: key });
@@ -115,6 +122,7 @@ export function receiveWorkspaceRevocation(
   )
     return;
   const workspaceId = payload.workspaceId.toLowerCase();
+  refreshProductivity(client);
   const resources = {
     queryKey: workspaceKeys.all,
     predicate: (query: { queryKey: readonly unknown[] }) =>
