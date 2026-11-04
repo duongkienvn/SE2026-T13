@@ -62,7 +62,9 @@ try {
     // Rehearse the historical discovery rollback before the forward-only
     // notification boundary. The main database below exercises the full chain.
     const migrations = upgradeSource.migrations.filter(
-      (migration) => !migration.name.startsWith('NotificationFoundation'),
+      (migration) =>
+        !migration.name.startsWith('NotificationFoundation') &&
+        !migration.name.startsWith('CommentMentions'),
     );
     upgradeSource.migrations = migrations.filter(
       (migration) =>

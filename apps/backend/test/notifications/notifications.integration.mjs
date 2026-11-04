@@ -40,7 +40,9 @@ try {
   source = await new DataSource({ ...options, database: name }).initialize();
   const migrations = source.migrations;
   source.migrations = migrations.filter(
-    (migration) => !migration.name.startsWith('NotificationFoundation'),
+    (migration) =>
+      !migration.name.startsWith('NotificationFoundation') &&
+      !migration.name.startsWith('CommentMentions'),
   );
   await source.runMigrations();
   const [legacyUser] = await source.query(
@@ -67,6 +69,10 @@ try {
     [legacyCard.id, legacyUser.id],
   );
   await source.query(
+    'INSERT INTO comments(card_id,author_id,content) VALUES ($1,$2,$3)',
+    [legacyCard.id, legacyUser.id, 'Legacy @text'],
+  );
+  await source.query(
     `INSERT INTO user_preferences(user_id,time_zone) VALUES ($1,'America/New_York')`,
     [legacyUser.id],
   );
@@ -83,6 +89,7 @@ try {
       'board_columns',
       'cards',
       'card_assignees',
+      'comments',
       'workspaces',
       'workspace_members',
       'user_preferences',
@@ -95,14 +102,20 @@ try {
   };
   const before = await snapshot();
   source.migrations = migrations;
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 2);
+  assert.equal(
+    (
+      await source.query('SELECT count(*)::int AS count FROM comment_mentions')
+    )[0].count,
+    0,
+  );
   assert.deepEqual(await snapshot(), before);
   assert.deepEqual(await source.runMigrations(), []);
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries,
     [],
   );
-  await assert.rejects(source.undoLastMigration(), /requires a forward fix/);
+  await assert.rejects(source.undoLastMigration(), /forward/);
   assert.deepEqual(await snapshot(), before);
   assert.equal(source.options.synchronize, false);
   assert.equal(source.options.migrationsRun, false);

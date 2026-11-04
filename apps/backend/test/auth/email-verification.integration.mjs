@@ -189,7 +189,8 @@ try {
   fresh.migrations = fresh.migrations.filter(
     (migration) =>
       !migration.name.startsWith('WorkspacePolicies') &&
-      !migration.name.startsWith('NotificationFoundation'),
+      !migration.name.startsWith('NotificationFoundation') &&
+      !migration.name.startsWith('CommentMentions'),
   );
   assert.equal((await fresh.runMigrations()).length, fresh.migrations.length);
   await fresh.query(
