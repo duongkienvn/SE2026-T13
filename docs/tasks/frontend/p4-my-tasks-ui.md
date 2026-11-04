@@ -43,3 +43,72 @@ Local verification on November 4, 2026:
 | `git diff --check` and task links                          | PASS for the complete change and referenced task/design paths.                                                                                                                                                                                                                         |
 
 No migrations, deployment, production connections, push, PR or merge were run.
+
+## My Tasks V2 UI polish
+
+The frontend-only polish uses the user-supplied November 4, 2026 reference as
+composition guidance. The existing Sidebar, Topbar, navigation, branding, shared
+components, tokens and unrelated routes are unchanged.
+
+- `MyTasksPage.tsx` now provides a compact icon/title header, scrollable icon tabs
+  with an underline, the existing result states and pagination.
+- `TaskFilters.tsx` presents Workspace and Board selectors in a horizontal toolbar,
+  a Labels disclosure, sorting and an active-filter count. Filters expands the
+  existing board-scoped multi-label and date controls. Tablet/mobile tuck the
+  less important selectors behind this disclosure, preserving keyboard order.
+- `TaskSections.tsx` and `task-groups.tsx` render tinted group headers, whole-row
+  Card links, Board/Workspace metadata, compact colored labels and due badges.
+  Long content wraps, overdue dates also have an accessible text cue, and focus
+  indicators remain visible within clipped group/tab boundaries.
+- `my-tasks.css` scopes every rule to this surface. Red/indigo/neutral treatments
+  derive from existing tokens; the local amber pair covers the existing upcoming
+  status. Text contrast is maintained on tinted surfaces in both themes.
+- `MyTasksPage.test.tsx` updates the disclosure interactions and adds coverage for
+  opening/closing filters, active-filter indication, label disclosure and reset
+  without losing URL state.
+
+### Reference inventory and deliberate differences
+
+| Reference element                                | State and implementation                                                           |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| Header, group tabs/counts                        | Available; compact header and horizontally scrollable tabs above the toolbar.      |
+| Workspace, Board, Labels, Sort                   | Available; toolbar with an inline advanced panel for multi-label and date filters. |
+| Group headers, task metadata, labels, due badges | Available; red, amber, indigo and neutral groups with whole-row permalink links.   |
+| Completion checkboxes and action menus           | Excluded by the user's explicit scope; no unsupported controls rendered.           |
+| Assignee selector and alternate-layout toggle    | Excluded; assignment remains current-user scoped and no new view is introduced.    |
+| Sidebar, Topbar and app decoration               | Frozen; preserved incumbent shell rather than copying the reference shell.         |
+
+The existing query hooks, REST clients, URL parsing/normalization, session/cache
+boundaries and revocation effects remain in place. Sorting, pagination/reset,
+match-any labels, timezone/DST handling and error/offline recovery retain their
+existing behavior. Disclosure and date-validation presentation state moved
+into the page-specific filter component; task rows wait for preferences before
+formatting dates, avoiding a non-null assertion during preference reloading. The cross-Board realtime limitation
+recorded above remains unchanged.
+
+### Verification of this polish
+
+Local checks on November 4, 2026:
+
+| Command/check                                                                  | Result                                                                                                                                                                                                                                                                                                            |
+| ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm --filter @kanban/frontend test src/features/productivity --maxWorkers=1` | PASS: 5 files, 27 tests.                                                                                                                                                                                                                                                                                          |
+| `pnpm --filter @kanban/frontend test --maxWorkers=1`                           | PASS: all 127 files and 1,325 tests before the final preference-loading guard. The focused suite was repeated after that guard.                                                                                                                                                                                   |
+| `pnpm lint`                                                                    | PASS.                                                                                                                                                                                                                                                                                                             |
+| `pnpm --filter @kanban/frontend exec tsc -b`                                   | PASS.                                                                                                                                                                                                                                                                                                             |
+| `pnpm build`                                                                   | PASS for the workspace.                                                                                                                                                                                                                                                                                           |
+| `pnpm --filter @kanban/frontend build` after the final CSS/loading adjustment  | PASS. Existing Vite environment/chunk-size warnings remain.                                                                                                                                                                                                                                                       |
+| `pnpm test`                                                                    | FAIL in the default parallel run: 7 frontend files / 10 tests failed, 120 files / 1,315 tests passed. Failures were in unchanged Workspace/Card tests; the full serial frontend rerun above passed. Shared tests passed 20/20; the root failure interrupted the backend run, so no backend suite pass is claimed. |
+| `pnpm format:check`                                                            | FAIL across unchanged checkout files; no repository-wide formatting cleanup is included. The seven changed source/task files pass Prettier separately.                                                                                                                                                            |
+| `git diff --check` and affected documentation links                            | PASS.                                                                                                                                                                                                                                                                                                             |
+| Browser visual and interaction checks                                          | PASS with isolated HTTP fixtures at 1440×1000, 1280×800, 768×1024 and 375×812. Both themes were inspected; System followed an emulated OS theme change.                                                                                                                                                           |
+| PostgreSQL/infrastructure/deployment checks                                    | Not run: no backend, database, infrastructure or deployment changes.                                                                                                                                                                                                                                              |
+
+Browser checks covered collapsed and expanded responsive filters, keyboard
+Tab/Enter and focus, group selection, long unbroken task/Board/Workspace/label
+text, loading, empty and error/retry presentation. Layout inspection found no
+horizontal overflow outside the intentionally scrolling tabs. Screenshots were
+inspected inline; the browser tool refused file saves because its configured
+workspace roots did not recognize this checkout, so no stored captures are
+included. Temporary fixture entry points were removed before delivery. These
+checks use local fixtures, not production data or deployment evidence.

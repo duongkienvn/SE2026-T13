@@ -155,7 +155,7 @@ describe('My Tasks route', () => {
     ).toBeTruthy();
     await act(() => router.navigate(1));
     expect(await screen.findByText('No matching tasks')).toBeTruthy();
-    fireEvent.click(screen.getByText('Filters and sorting'));
+    fireEvent.click(screen.getByRole('button', { name: /^Filters/ }));
     fireEvent.click(
       screen.getAllByRole('button', { name: 'Reset filters' })[0],
     );
@@ -172,6 +172,44 @@ describe('My Tasks route', () => {
     await waitFor(() =>
       expect(router.state.location.search).toBe('?sort=updatedAt'),
     );
+  });
+
+  it('discloses advanced filters without changing URL state and resets from the toolbar', async () => {
+    storeSession();
+    mockApi({
+      'GET /users/me': ok(testUser),
+      'GET /workspaces?page=1&limit=100': page([]),
+      'GET /boards?page=1&limit=100': page([]),
+      'GET /users/me/tasks?group=ALL&page=1&sort=dueDate': tasks(),
+      'GET /users/me/tasks?group=ALL&page=1&sort=dueDate&dueFrom=2026-03-01T00%3A00%3A00.000Z':
+        tasks(),
+    });
+    const { router } = renderApp('/my-tasks?dueFrom=2026-03-01');
+    await screen.findByRole('link', { name: /Review API contract/ });
+    const toggle = screen.getByRole('button', { name: /^Filters/ });
+    const panel = document.getElementById(
+      toggle.getAttribute('aria-controls')!,
+    )!;
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(panel.hidden).toBe(true);
+    expect(screen.getByLabelText('1 active filter')).toBeTruthy();
+    fireEvent.click(toggle);
+    expect(panel.hidden).toBe(false);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByLabelText('Due from').getAttribute('value')).toBe(
+      '2026-03-01',
+    );
+    fireEvent.click(toggle);
+    expect(panel.hidden).toBe(true);
+    expect(router.state.location.search).toBe('?dueFrom=2026-03-01');
+    fireEvent.click(screen.getByRole('button', { name: 'Labels: All' }));
+    expect(panel.hidden).toBe(false);
+    expect(
+      screen.getByText('Select a Board to filter by labels.'),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }));
+    await waitFor(() => expect(router.state.location.search).toBe(''));
+    expect(screen.queryByLabelText('1 active filter')).toBeNull();
   });
 
   it('uses authorized workspace, board and board-scoped labels and clears them on workspace change', async () => {
@@ -219,7 +257,7 @@ describe('My Tasks route', () => {
     });
     const { router } = renderApp('/my-tasks');
     await screen.findByRole('link', { name: /Review API contract/ });
-    fireEvent.click(screen.getByText('Filters and sorting'));
+    fireEvent.click(screen.getByRole('button', { name: /^Filters/ }));
     await screen.findByRole('option', { name: 'Engineering' });
     fireEvent.change(screen.getByLabelText('Workspace'), {
       target: { value: workspace },
@@ -278,7 +316,7 @@ describe('My Tasks route', () => {
       true,
     );
     expect(screen.getByText('03/09/2026')).toBeTruthy();
-    fireEvent.click(screen.getByText('Filters and sorting'));
+    fireEvent.click(screen.getByRole('button', { name: /^Filters/ }));
     expect(
       screen.getByText(
         /Applied dates: 03\/08\/2026 – 03\/08\/2026 \(America\/New_York\)/,
