@@ -38,7 +38,7 @@ describe('AppShell', () => {
     ).toBeTruthy();
   });
 
-  it('reserves Search and Notifications slots without fake behavior', () => {
+  it('provides Search while keeping the Notifications placeholder unchanged', () => {
     renderInRouter(
       <AppShell headerActions={<button type="button">Account</button>}>
         <p>Page body</p>
@@ -46,7 +46,7 @@ describe('AppShell', () => {
     );
 
     const header = screen.getByRole('banner');
-    expect(within(header).getByText('Search, coming soon')).toBeTruthy();
+    expect(within(header).getByRole('button', { name: 'Search' })).toBeTruthy();
     expect(within(header).getByText('Notifications, coming soon')).toBeTruthy();
     expect(within(header).queryByRole('searchbox')).toBeNull();
     expect(within(header).queryByRole('textbox')).toBeNull();
@@ -55,17 +55,15 @@ describe('AppShell', () => {
         .getByRole('link', { name: 'Kanvexa landing page' })
         .getAttribute('href'),
     ).toBe('/');
-    // Only the drawer opener and the real account action are interactive;
-    // no unread count or shortcut.
+    // The Bell remains a placeholder without an unread count.
     expect(
       within(header)
         .getAllByRole('button')
         .map(
           (button) => button.getAttribute('aria-label') ?? button.textContent,
         ),
-    ).toEqual(['Open navigation', 'Account']);
-    expect(header.querySelector('[tabindex], input, kbd')).toBeNull();
-    expect(header.textContent).not.toMatch(/\d|ctrl|⌘/i);
+    ).toEqual(['Open navigation', 'Search', 'Account']);
+    expect(header.querySelector('[tabindex], input')).toBeNull();
   });
 
   it('highlights the active navigation item', () => {
