@@ -32,6 +32,9 @@ import { User } from '../../users/entities/user.entity';
 @Index('IDX_cards_board_due_date', ['boardId', 'dueDate'], {
   where: '"due_date" IS NOT NULL',
 })
+@Index('IDX_cards_due_scan', ['dueDate', 'id'], {
+  where: '"due_date" IS NOT NULL AND NOT "is_archived"',
+})
 @Unique('UQ_cards_id_board_id', ['id', 'boardId'])
 @Index('IDX_cards_board_id_column_id', ['boardId', 'columnId'])
 @Index('IDX_cards_column_id', ['columnId'])
