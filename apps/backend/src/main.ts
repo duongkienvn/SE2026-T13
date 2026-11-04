@@ -16,6 +16,7 @@ export async function createApplication(): Promise<INestApplication> {
 
 async function bootstrap(): Promise<void> {
   const app = await createApplication();
+  app.enableShutdownHooks();
   const config = app.get<ConfigService<EnvironmentConfig, true>>(ConfigService);
   await app.listen(config.get('API_PORT', { infer: true }));
 }
