@@ -6,6 +6,7 @@ import { usePreferences } from '../../settings/hooks';
 import { useHomeDashboard } from './hooks';
 import { HomeGreeting } from './HomeGreeting';
 import { SummaryTiles } from './SummaryTiles';
+import { UpNext } from './UpNext';
 import './home.css';
 
 export function HomePage() {
@@ -55,6 +56,14 @@ export function HomePage() {
         ) : (
           <>
             <SummaryTiles summary={home.summary} />
+            <div className="home-columns">
+              <UpNext
+                tasks={home.upNext}
+                assignedCount={home.summary.assignedActiveCount}
+                dateFormat={preferences.data.dateFormat}
+                timeZone={preferences.data.timeZone}
+              />
+            </div>
             {dashboard.isRefetchError && (
               <p role="status" className="home-refresh-error">
                 Could not refresh Home.{' '}
