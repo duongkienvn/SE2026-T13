@@ -198,6 +198,7 @@ async function inspectSchema() {
           !sql.includes('background_version') &&
           !sql.includes('"user_notifications"') &&
           !sql.includes('"notification_preferences"') &&
+          !sql.includes('"comment_mentions"') &&
           !sql.includes('declined_at') &&
           !sql.includes('CK_workspace_invitations_declined_at') &&
           !sql.includes('"card_checklists"') &&
@@ -411,7 +412,7 @@ try {
   assert.equal(source.options.logging, false);
   assert.equal(source.options.synchronize, false);
   assert.equal(source.options.migrationsRun, false);
-  assert.equal(source.entityMetadatas.length, 27);
+  assert.equal(source.entityMetadatas.length, 28);
   assert.deepEqual(
     source.entityMetadatas.map((entity) => entity.tableName).sort(),
     [
@@ -429,6 +430,7 @@ try {
       'card_checklists',
       'card_labels',
       'cards',
+      'comment_mentions',
       'comments',
       'email_verification_tokens',
       'google_identities',
@@ -444,7 +446,7 @@ try {
       'workspaces',
     ],
   );
-  assert.equal(source.migrations.length, 25);
+  assert.equal(source.migrations.length, 26);
 
   const originalDatabase = process.env.DATABASE_NAME;
   process.env.DATABASE_NAME = testDatabase;
@@ -455,7 +457,7 @@ try {
     });
     try {
       const nestDataSource = app.get(DataSource);
-      assert.equal(nestDataSource.entityMetadatas.length, 27);
+      assert.equal(nestDataSource.entityMetadatas.length, 28);
       assert.equal(nestDataSource.migrations.length, source.migrations.length);
       assert.equal(nestDataSource.options.poolSize, source.options.poolSize);
       assert.equal(
@@ -474,7 +476,9 @@ try {
   // Historical rollback rehearsals stop before the forward-only notification
   // migration. The full extension and metadata are verified after all rehearsals.
   const historicalMigrations = allMigrations.filter(
-    (m) => !m.name.startsWith('NotificationFoundation'),
+    (m) =>
+      !m.name.startsWith('NotificationFoundation') &&
+      !m.name.startsWith('CommentMentions'),
   );
   source.migrations = allMigrations.filter(
     (m) =>
@@ -489,7 +493,8 @@ try {
       !m.name.startsWith('PrivateCardFiles') &&
       !m.name.startsWith('BoardDiscovery') &&
       !m.name.startsWith('BoardBackgroundVersion') &&
-      !m.name.startsWith('NotificationFoundation'),
+      !m.name.startsWith('NotificationFoundation') &&
+      !m.name.startsWith('CommentMentions'),
   );
   assert.equal((await source.runMigrations()).length, 13);
   const cliOutput = execFileSync(
@@ -515,7 +520,7 @@ try {
       '-e',
       `const dataSource = require('./src/database/data-source.ts').default;
        dataSource.initialize().then(async () => {
-         if (dataSource.entityMetadatas.length !== 27 || dataSource.migrations.length !== ${allMigrations.length}) {
+         if (dataSource.entityMetadatas.length !== 28 || dataSource.migrations.length !== ${allMigrations.length}) {
            throw new Error('TypeScript DataSource discovery mismatch');
          }
          await dataSource.destroy();
@@ -567,9 +572,11 @@ try {
   const allMetadata = source.entityMetadatas;
   source.entityMetadatas = allMetadata.filter(
     (entity) =>
-      !['notification_preferences', 'user_notifications'].includes(
-        entity.tableName,
-      ),
+      ![
+        'notification_preferences',
+        'user_notifications',
+        'comment_mentions',
+      ].includes(entity.tableName),
   );
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries,
@@ -595,10 +602,10 @@ try {
     'Enum rollback retains existing values/history; idempotent reapply: PASS',
   );
   source.migrations = allMigrations;
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 2);
   await assert.rejects(
     source.undoLastMigration(),
-    /Notification foundation requires a forward fix/,
+    /Comment mentions migration is forward-only/,
   );
   assert.deepEqual(await source.runMigrations(), []);
   assert.deepEqual(

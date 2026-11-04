@@ -1,5 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { RealtimeServerEvent } from '@kanban/shared';
+import { NotificationKind, RealtimeServerEvent } from '@kanban/shared';
+import { NotificationService } from '../notifications/notification.service';
+import { NotificationEventPublisher } from '../../realtime/notification-event-publisher.service';
 import { BoardEventPublisher } from '../../realtime/board-event-publisher.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, In, Repository } from 'typeorm';
@@ -51,6 +53,8 @@ export class CardsService {
     private readonly authorization: BoardAuthorizationService,
     private readonly events: BoardEventPublisher,
     private readonly activities: ActivityWriterService,
+    private readonly notifications: NotificationService,
+    private readonly notificationEvents: NotificationEventPublisher,
   ) {}
 
   async create(
@@ -488,7 +492,22 @@ export class CardsService {
           assignedById: userId,
         }),
       );
+      const notification =
+        member.userId === userId
+          ? null
+          : await this.notifications.record(manager, {
+              kind: NotificationKind.CARD_ASSIGNED,
+              recipientUserId: member.userId,
+              actorUserId: userId,
+              cardId: card.id,
+              boardId,
+              occurrenceKey: assignment.id,
+            });
       return {
+        notified:
+          notification?.status === 'created'
+            ? [notification.recipientUserId]
+            : [],
         assignment: toCardAssigneeResponseDto(assignment),
         payload: {
           boardId: card.boardId,
@@ -497,6 +516,7 @@ export class CardsService {
         },
       };
     });
+    await this.notificationEvents.afterCommit(result.notified);
     await this.events.publish(
       RealtimeServerEvent.CARD_ASSIGNEES_CHANGED,
       result.payload,

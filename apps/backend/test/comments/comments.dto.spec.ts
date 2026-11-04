@@ -68,6 +68,7 @@ describe('Comment DTO contracts', () => {
       cardId: ID,
       authorId: ID,
       content: 'Visible',
+      mentions: [],
       createdAt: '2026-10-16T03:00:00.000Z',
       updatedAt: '2026-10-16T03:00:00.000Z',
     });

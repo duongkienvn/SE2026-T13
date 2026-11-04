@@ -53,6 +53,12 @@ const {
 const {
   WorkspaceInvitationIssuanceService: Issuance,
 } = require('../../dist/api/workspaces/workspace-invitation-issuance.service.js');
+const {
+  NotificationService,
+} = require('../../dist/api/notifications/notification.service.js');
+const {
+  NotificationEventPublisher,
+} = require('../../dist/realtime/notification-event-publisher.service.js');
 const container = `kanvexa-invitations-test-${randomBytes(6).toString('hex')}`;
 const password = randomBytes(32).toString('hex');
 const docker = (...args) =>
@@ -134,9 +140,14 @@ try {
   const module = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(Issuance)
     .useFactory({
-      factory: (repository, foundation) =>
-        new Issuance(repository, foundation, fake),
-      inject: [getRepositoryToken(Workspace), WorkspacesService],
+      factory: (repository, foundation, notifications, events) =>
+        new Issuance(repository, foundation, notifications, events, fake),
+      inject: [
+        getRepositoryToken(Workspace),
+        WorkspacesService,
+        NotificationService,
+        NotificationEventPublisher,
+      ],
     })
     .compile();
   app = module.createNestApplication({ logger: false });

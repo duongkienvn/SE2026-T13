@@ -62,6 +62,9 @@ export async function verifyMembers(ctx) {
   await send('admin', 'patch', `${root}/members/${actors.admin}`)
     .send({ role: 'MEMBER' })
     .expect(409);
+  await send('admin', 'patch', `${root}/members/${actors.admin.toUpperCase()}`)
+    .send({ role: 'MEMBER' })
+    .expect(409);
   await send('admin', 'delete', `${root}/members/${actors.admin}`).expect(409);
   await send('admin', 'patch', `${root}/members/${randomUUID()}`)
     .send({ role: 'ADMIN' })
@@ -72,6 +75,16 @@ export async function verifyMembers(ctx) {
   await send('admin', 'patch', `${root}/members/${actors.member}`)
     .send({ role: 'MEMBER' })
     .expect(200);
+  const countNotices = async () =>
+    Number(
+      (
+        await source.query(
+          "SELECT count(*) AS count FROM user_notifications WHERE kind='MEMBERSHIP_CHANGED' AND workspace_id=$1 AND recipient_user_id=$2",
+          [team.id, actors.member],
+        )
+      )[0].count,
+    );
+  assert.equal(await countNotices(), 2);
   const privateBoard = (
     await send('member', 'post', '/api/boards')
       .send({ name: 'Member private Board', workspaceId: team.id })
@@ -102,6 +115,7 @@ export async function verifyMembers(ctx) {
   await send('guest', 'get', `${root}/members`).expect(404);
   await send('admin', 'delete', `${root}/members/${actors.member}`).expect(204);
   await send('admin', 'delete', `${root}/members/${actors.member}`).expect(204);
+  assert.equal(await countNotices(), 3);
   await send('member', 'post', `${root}/leave`).expect(204);
   await send('member', 'get', `${root}/members`).expect(404);
   await send('member', 'get', `/api/boards/${boardId}`).expect(200);

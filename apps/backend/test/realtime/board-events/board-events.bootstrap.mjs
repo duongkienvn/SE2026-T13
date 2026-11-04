@@ -24,6 +24,9 @@ const { Test } = require('@nestjs/testing');
 const { DataSource } = require('typeorm');
 const { AppModule } = require('../../../src/app.module.ts');
 const {
+  NotificationService,
+} = require('../../../src/api/notifications/notification.service.ts');
+const {
   configureHttpApplication,
 } = require('../../../src/http-application.ts');
 const source = boardEventsMemorySource();
@@ -31,6 +34,11 @@ await seedBoardEvents(source);
 const module = await Test.createTestingModule({ imports: [AppModule] })
   .overrideProvider(DataSource)
   .useValue(source)
+  .overrideProvider(NotificationService)
+  .useValue({
+    record: async () => ({ status: 'disabled' }),
+    recordMany: async () => [],
+  })
   .compile();
 const app = module.createNestApplication();
 try {

@@ -94,6 +94,57 @@ export async function verifyNotificationSockets(ctx) {
     assert.equal(room.success, false);
     const parent = await board(await workspace('Sockets'), 'Socket Board'),
       resource = await card(parent, 'Private Socket Card');
+    await source.query(
+      "INSERT INTO board_members(board_id,user_id,role) VALUES ($1,$2,'MEMBER')",
+      [parent.id, actors.other],
+    );
+    const hint = once(other, 'notifications:changed');
+    await send(
+      'owner',
+      'post',
+      `/api/boards/${parent.id}/cards/${resource}/assignees`,
+    )
+      .send({ userId: actors.other })
+      .expect(201);
+    assert.deepEqual(await hint, {});
+    assert.equal(
+      (
+        await source.query(
+          "SELECT count(*)::int AS count FROM user_notifications WHERE kind='CARD_ASSIGNED' AND card_id=$1 AND recipient_user_id=$2",
+          [resource, actors.other],
+        )
+      )[0].count,
+      1,
+    );
+    other.notifications.length = 0;
+    const broadcast = app.get(
+      load('realtime/realtime-broadcast.service').RealtimeBroadcastService,
+    );
+    const originalEmit = broadcast.emitToUser;
+    broadcast.emitToUser = async () => {
+      throw new Error('synthetic outage');
+    };
+    try {
+      const another = await card(parent, 'Outage Card');
+      await send(
+        'owner',
+        'post',
+        `/api/boards/${parent.id}/cards/${another}/assignees`,
+      )
+        .send({ userId: actors.other })
+        .expect(201);
+      assert.equal(
+        (
+          await source.query(
+            "SELECT count(*)::int AS count FROM user_notifications WHERE kind='CARD_ASSIGNED' AND card_id=$1 AND recipient_user_id=$2",
+            [another, actors.other],
+          )
+        )[0].count,
+        1,
+      );
+    } finally {
+      broadcast.emitToUser = originalEmit;
+    }
     const key = randomUUID(),
       input = {
         recipientUserId: actors.owner,

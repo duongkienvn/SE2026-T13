@@ -120,11 +120,106 @@ try {
     authorization,
     new ActivityWriterService(),
     { publish: async (event, payload) => published.push([event, payload]) },
+    new (require('../../dist/api/notifications/notification.service.js').NotificationService)(
+      source.getRepository('UserNotification'),
+    ),
+    { afterCommit: async () => undefined },
   );
 
   const createdComment = await service.create(member.id, board.id, card.id, {
     content: 'Created',
   });
+  const mention = await service.create(owner.id, board.id, card.id, {
+    content: '😀 @member',
+    mentions: [{ userId: member.id, start: 3, end: 10 }],
+  });
+  assert.deepEqual(mention.mentions, [
+    { userId: member.id, start: 3, end: 10 },
+  ]);
+  const notificationCount = async () =>
+    Number(
+      (
+        await source.query(
+          "SELECT count(*) AS count FROM user_notifications WHERE recipient_user_id=$1 AND kind='COMMENT_MENTIONED'",
+          [member.id],
+        )
+      )[0].count,
+    );
+  assert.equal(await notificationCount(), 1);
+  await assert.rejects(
+    source.query(
+      'INSERT INTO comment_mentions(comment_id,user_id,start_offset,end_offset) VALUES ($1,$2,3,10)',
+      [mention.id, member.id],
+    ),
+    (error) => error.code === '23505',
+  );
+  await assert.rejects(
+    source.query(
+      'INSERT INTO comment_mentions(comment_id,user_id,start_offset,end_offset) VALUES ($1,$2,-1,2)',
+      [mention.id, member.id],
+    ),
+    (error) => error.code === '23514',
+  );
+  await assert.rejects(
+    source.query(
+      'INSERT INTO comment_mentions(comment_id,user_id,start_offset,end_offset) VALUES (gen_random_uuid(),$1,0,1)',
+      [member.id],
+    ),
+    (error) => error.code === '23503',
+  );
+  await service.update(owner.id, board.id, card.id, mention.id, {
+    content: 'plain',
+  });
+  await service.update(owner.id, board.id, card.id, mention.id, {
+    content: '😀 @member',
+    mentions: [{ userId: member.id, start: 3, end: 10 }],
+  });
+  assert.equal(await notificationCount(), 1);
+  await assert.rejects(
+    service.create(owner.id, board.id, card.id, {
+      content: '😀 @member',
+      mentions: [{ userId: member.id, start: 1, end: 10 }],
+    }),
+    (error) => error.getStatus?.() === 400,
+  );
+  await service.remove(owner.id, board.id, card.id, mention.id);
+  const concurrent = await service.create(owner.id, board.id, card.id, {
+    content: 'plain',
+  });
+  await Promise.all(
+    [1, 2].map(() =>
+      service.update(owner.id, board.id, card.id, concurrent.id, {
+        content: '@member',
+        mentions: [{ userId: member.id, start: 0, end: 7 }],
+      }),
+    ),
+  );
+  assert.equal(await notificationCount(), 2);
+  await service.remove(owner.id, board.id, card.id, concurrent.id);
+  await source.query(
+    'INSERT INTO notification_preferences(user_id,in_app_comment_mentioned) VALUES ($1,false)',
+    [owner.id],
+  );
+  const optedOut = await service.create(member.id, board.id, card.id, {
+    content: '@owner',
+    mentions: [{ userId: owner.id, start: 0, end: 6 }],
+  });
+  assert.equal(
+    Number(
+      (
+        await source.query(
+          "SELECT count(*) AS count FROM user_notifications WHERE recipient_user_id=$1 AND kind='COMMENT_MENTIONED'",
+          [owner.id],
+        )
+      )[0].count,
+    ),
+    0,
+  );
+  await service.remove(member.id, board.id, card.id, optedOut.id);
+  await source.query('DELETE FROM notification_preferences WHERE user_id=$1', [
+    owner.id,
+  ]);
+  published.splice(1);
   assert.equal(createdComment.authorId, member.id);
   assert.equal(
     (await service.list(member.id, board.id, card.id, { page: 1, limit: 20 }))
@@ -140,9 +235,21 @@ try {
   const eventsBeforeFailure = published.length;
   await assert.rejects(
     service.create(member.id, board.id, card.id, {
-      content: 'Rollback create',
+      content: '@owner',
+      mentions: [{ userId: owner.id, start: 0, end: 6 }],
     }),
     /audit rejected/,
+  );
+  assert.equal(
+    Number(
+      (
+        await source.query(
+          "SELECT count(*) AS count FROM user_notifications WHERE recipient_user_id=$1 AND kind='COMMENT_MENTIONED'",
+          [owner.id],
+        )
+      )[0].count,
+    ),
+    0,
   );
   assert.equal(await comments.count(), 1);
   await assert.rejects(

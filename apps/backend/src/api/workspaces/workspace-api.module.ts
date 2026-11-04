@@ -23,6 +23,9 @@ import { WorkspaceDeletionController } from './workspace-deletion.controller';
 import { WorkspaceDeletionService } from './workspace-deletion.service';
 import { BoardMembersModule } from '../board-members/board-members.module';
 import { RealtimeAccessModule } from '../../realtime/realtime-access.module';
+import { RealtimeDeliveryModule } from '../../realtime/realtime-delivery.module';
+import { NotificationPersistenceModule } from '../notifications/notification-persistence.module';
+import { WorkspaceInvitationNotificationResolver } from './workspace-invitation-notification-resolver';
 import {
   WorkspaceInvitationsController,
   WorkspaceInvitationAcceptanceController,
@@ -32,6 +35,8 @@ import {
   imports: [
     BoardMembersModule,
     RealtimeAccessModule,
+    RealtimeDeliveryModule,
+    NotificationPersistenceModule,
     AuthModule,
     MailModule,
     WorkspacesModule,
@@ -56,6 +61,7 @@ import {
     WorkspaceDeletionService,
     WorkspaceInvitationsService,
     WorkspaceInvitationIssuanceService,
+    WorkspaceInvitationNotificationResolver,
     WorkspaceInvitationDeclineGuard,
   ],
 })

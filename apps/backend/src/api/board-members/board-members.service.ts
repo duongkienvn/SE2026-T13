@@ -1,5 +1,8 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { RealtimeServerEvent } from '@kanban/shared';
+import { NotificationKind, RealtimeServerEvent } from '@kanban/shared';
+import { randomUUID } from 'node:crypto';
+import { NotificationService } from '../notifications/notification.service';
+import { NotificationEventPublisher } from '../../realtime/notification-event-publisher.service';
 import { BoardEventPublisher } from '../../realtime/board-event-publisher.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
@@ -45,6 +48,8 @@ export class BoardMembersService {
     private readonly events: BoardEventPublisher,
     private readonly activities: ActivityWriterService,
     private readonly notifications: BoardMemberAddedNotificationService,
+    private readonly inbox: NotificationService,
+    private readonly notificationEvents: NotificationEventPublisher,
   ) {}
 
   async list(
@@ -122,7 +127,15 @@ export class BoardMembersService {
         metadata: null,
       });
       const actor = await users.findOne({ where: { id: userId } });
+      const notified = await this.recordChange(
+        manager,
+        boardId,
+        userId,
+        member.userId,
+        `add:${member.id}`,
+      );
       return {
+        notified,
         member: toBoardMemberResponseDto(member),
         notification: {
           membershipId: member.id,
@@ -134,6 +147,7 @@ export class BoardMembersService {
         },
       };
     });
+    await this.notificationEvents.afterCommit(result.notified);
     await this.events.publish(RealtimeServerEvent.MEMBER_ADDED, {
       boardId: boardId.toLowerCase(),
       userId: result.member.user.id,
@@ -149,6 +163,7 @@ export class BoardMembersService {
     input: UpdateBoardMemberRoleDto,
   ): Promise<BoardMemberResponseDto> {
     let changed = false;
+    let notified: string[] = [];
     const result = await this.boards.manager.transaction(async (manager) => {
       const { board } = await this.authorization.requireMutableOwner(
         actorId,
@@ -193,6 +208,13 @@ export class BoardMembersService {
       changed = true;
       member.role = input.role;
       const saved = await members.save(member);
+      notified = await this.recordChange(
+        manager,
+        boardId,
+        actorId,
+        saved.userId,
+        `role:${randomUUID()}`,
+      );
       await this.activities.record(manager, {
         boardId: saved.boardId,
         actorId,
@@ -203,6 +225,7 @@ export class BoardMembersService {
       });
       return toBoardMemberResponseDto(saved);
     });
+    await this.notificationEvents.afterCommit(notified);
     if (changed)
       await this.events.publish(RealtimeServerEvent.MEMBER_ROLE_CHANGED, {
         boardId: boardId.toLowerCase(),
@@ -243,6 +266,13 @@ export class BoardMembersService {
         }
         await this.deleteAssignments(manager, boardId, member.userId);
         await members.delete({ id: member.id });
+        const notified = await this.recordChange(
+          manager,
+          boardId,
+          actorId,
+          member.userId,
+          `remove:${member.id}`,
+        );
         await this.activities.record(manager, {
           boardId: board.id,
           actorId,
@@ -262,6 +292,7 @@ export class BoardMembersService {
           userId: member.userId,
           visibility: board.visibility,
           retainsReadAccess,
+          notified,
         };
       });
       if (removed.visibility === 'WORKSPACE_VISIBLE') {
@@ -274,11 +305,35 @@ export class BoardMembersService {
       return {
         boardId: removed.boardId,
         userId: removed.userId,
+        notified: removed.notified,
         ...(removed.retainsReadAccess ? { retainsReadAccess: true } : {}),
       };
     });
+    await this.notificationEvents.afterCommit(payload.notified);
     // emitToBoard takes the same queue: publish only after run has released it.
-    await this.events.publish(RealtimeServerEvent.MEMBER_REMOVED, payload);
+    await this.events.publish(RealtimeServerEvent.MEMBER_REMOVED, {
+      boardId: payload.boardId,
+      userId: payload.userId,
+      ...(payload.retainsReadAccess ? { retainsReadAccess: true } : {}),
+    });
+  }
+
+  private async recordChange(
+    manager: EntityManager,
+    boardId: string,
+    actorUserId: string,
+    recipientUserId: string,
+    occurrenceKey: string,
+  ): Promise<string[]> {
+    if (actorUserId === recipientUserId) return [];
+    const result = await this.inbox.record(manager, {
+      kind: NotificationKind.MEMBERSHIP_CHANGED,
+      boardId,
+      actorUserId,
+      recipientUserId,
+      occurrenceKey,
+    });
+    return result.status === 'created' ? [result.recipientUserId] : [];
   }
 
   private async deleteAssignments(

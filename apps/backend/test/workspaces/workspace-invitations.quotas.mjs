@@ -67,6 +67,10 @@ export async function verifyQuotaContention({ source }) {
         return new WorkspaceInvitationIssuanceService(
           repository,
           new WorkspacesService(repository),
+          new (require('../../dist/api/notifications/notification.service.js').NotificationService)(
+            instance.getRepository('UserNotification'),
+          ),
+          { afterCommit: async () => undefined },
           { send: async () => 'SENT' },
         );
       });

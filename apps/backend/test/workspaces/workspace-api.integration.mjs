@@ -43,7 +43,9 @@ try {
   // extension, then run every API check against the complete current schema.
   const allMigrations = source.migrations;
   source.migrations = allMigrations.filter(
-    (migration) => !migration.name.startsWith('NotificationFoundation'),
+    (migration) =>
+      !migration.name.startsWith('NotificationFoundation') &&
+      !migration.name.startsWith('CommentMentions'),
   );
   await source.runMigrations();
   await source.undoLastMigration(); // Empty Board background version extension.
@@ -62,10 +64,10 @@ try {
   );
   assert.equal((await source.runMigrations()).length, 10);
   source.migrations = allMigrations;
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 2);
   await assert.rejects(
     source.undoLastMigration(),
-    /Notification foundation requires a forward fix/,
+    /Comment mentions migration is forward-only/,
   );
   assert.deepEqual(await source.runMigrations(), []);
   assert.deepEqual(

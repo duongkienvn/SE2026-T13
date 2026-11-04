@@ -9,6 +9,8 @@ import { CommentsService } from './comments.service';
 import { Comment } from './entities/comment.entity';
 import { ActivityWriterModule } from '../activities/activity-writer.module';
 import { RealtimeDeliveryModule } from '../../realtime/realtime-delivery.module';
+import { NotificationPersistenceModule } from '../notifications/notification-persistence.module';
+import { CommentMention } from './entities/comment-mention.entity';
 
 @Module({
   imports: [
@@ -16,7 +18,8 @@ import { RealtimeDeliveryModule } from '../../realtime/realtime-delivery.module'
     BoardMembersModule,
     ActivityWriterModule,
     RealtimeDeliveryModule,
-    TypeOrmModule.forFeature([Comment, Card, Board]),
+    NotificationPersistenceModule,
+    TypeOrmModule.forFeature([Comment, CommentMention, Card, Board]),
   ],
   controllers: [CommentsController],
   providers: [CommentsService],

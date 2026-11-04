@@ -31,6 +31,8 @@ const service = (mailer: WorkspaceInvitationMailer) =>
   new WorkspaceInvitationIssuanceService(
     repository,
     new WorkspacesService(repository),
+    {} as never,
+    {} as never,
     mailer,
   );
 

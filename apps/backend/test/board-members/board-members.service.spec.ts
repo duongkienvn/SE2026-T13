@@ -15,6 +15,8 @@ import { ActivityWriterService } from '../../src/api/activities/activity-writer.
 import { Workspace } from '../../src/api/workspaces/entities/workspace.entity';
 import { BoardMemberAddedNotificationService } from '../../src/api/board-members/board-member-added-notification.service';
 import { BoardMemberAddedMailer } from '../../src/mail/board-member-added-mailer';
+import { NotificationService } from '../../src/api/notifications/notification.service';
+import { NotificationEventPublisher } from '../../src/realtime/notification-event-publisher.service';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: (entity: { name: string }) =>
@@ -101,6 +103,16 @@ describe('BoardMembersService', () => {
       providers: [
         { provide: BoardEventPublisher, useValue: events },
         BoardMembersService,
+        {
+          provide: NotificationService,
+          useValue: {
+            record: jest.fn().mockResolvedValue({ status: 'disabled' }),
+          },
+        },
+        {
+          provide: NotificationEventPublisher,
+          useValue: { afterCommit: jest.fn() },
+        },
         BoardMemberAddedNotificationService,
         { provide: BoardMemberAddedMailer, useValue: mailer },
         { provide: ActivityWriterService, useValue: { record: jest.fn() } },
