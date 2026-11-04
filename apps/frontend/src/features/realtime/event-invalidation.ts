@@ -4,6 +4,7 @@ import { boardKeys } from '../boards/query-keys';
 import { commentKeys } from '../comments/query-keys';
 import { avatarKeys } from '../auth/avatar-query-keys';
 import { workspaceKeys } from '../workspaces/query-keys';
+import { productivityKey } from '../productivity/cache';
 
 export type BoardEventName = Exclude<
   keyof RealtimeServerEvents,
@@ -57,6 +58,18 @@ const boardList = (): InvalidationTarget => ({ queryKey: boardKeys.lists() });
  * column to another refreshes both.
  */
 export function invalidationTargets<E extends BoardEventName>(
+  event: E,
+  payload: BoardEventPayload<E>,
+): InvalidationTarget[] {
+  const targets = boardInvalidationTargets(event, payload);
+  if (/^(board:|member:)/.test(event))
+    targets.push({ queryKey: productivityKey });
+  else if (/^(card:|labels:)/.test(event))
+    targets.push({ queryKey: [...productivityKey, 'tasks'] });
+  return targets;
+}
+
+function boardInvalidationTargets<E extends BoardEventName>(
   event: E,
   payload: BoardEventPayload<E>,
 ): InvalidationTarget[] {

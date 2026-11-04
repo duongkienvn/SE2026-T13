@@ -66,11 +66,14 @@ describe('Navigation drawer', () => {
     expect(
       nav.getByRole('link', { name: 'Boards' }).getAttribute('aria-current'),
     ).toBe('page');
-    for (const label of ['Home', 'My Tasks', 'Create Workspace']) {
+    for (const label of ['Home', 'Create Workspace']) {
       const item = drawer.querySelector(`li[title="${label} — coming soon"]`);
       expect(item?.querySelector('a, button')).toBeNull();
     }
     expect(nav.queryByRole('link', { name: 'Home' })).toBeNull();
+    expect(
+      nav.getByRole('link', { name: 'My Tasks' }).getAttribute('href'),
+    ).toBe('/my-tasks');
     expect(
       nav.getByRole('link', { name: 'Starred' }).getAttribute('href'),
     ).toBe('/boards?view=starred');

@@ -86,6 +86,8 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Frontend tasks
 
+- [P4-06 My Tasks UI](frontend/p4-my-tasks-ui.md)
+
 - [Final landing page and password recovery polish](frontend/landing-auth-final-polish.md)
 
 - [Card Detail V2 visual and UX polish](frontend/card-detail-v2-polish.md)

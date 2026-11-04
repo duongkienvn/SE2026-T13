@@ -5,11 +5,13 @@ import { avatarKeys } from '../auth/avatar-query-keys';
 import { workspaceKeys } from '../workspaces/query-keys';
 import { changeBoardAccessVersion } from './access-version';
 import { clearBoardDrafts } from '../cards/card-draft';
+import { refreshProductivity } from '../productivity/cache';
 
 export const BOARD_ACCESS_REVOKED = 'BOARD_ACCESS_REVOKED';
 
 /** Keep a denial tombstone so mounted observers cannot revive protected data. */
 export function revokeBoardAccess(client: QueryClient, boardId: string) {
+  refreshProductivity(client);
   const discoveryState = {
     queryKey: ['board-discovery'],
     predicate: (query: { queryKey: readonly unknown[] }) =>
