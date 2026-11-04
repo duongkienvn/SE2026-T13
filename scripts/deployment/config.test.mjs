@@ -108,6 +108,50 @@ test('production forwards private attachment configuration only to backend with 
   }
 });
 
+test('task notifications use safe defaults and forward overrides only to backend', () => {
+  const defaults = {
+    TASK_NOTIFICATION_JOBS_ENABLED: 'false',
+    TASK_NOTIFICATION_EMAIL_ENABLED: 'false',
+    TASK_NOTIFICATION_POLL_SECONDS: '60',
+    TASK_NOTIFICATION_BATCH_SIZE: '50',
+  };
+  const names = Object.keys(defaults);
+  const example = readFileSync('.env.production.example', 'utf8');
+  for (const [name, value] of Object.entries(defaults))
+    assert.equal(
+      new RegExp(`^${name}=(.*)$`, 'm').exec(example)?.[1].trim(),
+      value,
+    );
+
+  // Verify the documented defaults and Compose fallbacks for empty inputs.
+  for (const value of [undefined, '']) {
+    const result = config(
+      false,
+      Object.fromEntries(names.map((name) => [name, value])),
+    );
+    for (const [name, expected] of Object.entries(defaults))
+      assert.equal(result.services.backend.environment[name], expected);
+  }
+  // Only render configuration; no containers, jobs or mail delivery are started.
+  const explicit = {
+    TASK_NOTIFICATION_JOBS_ENABLED: 'true',
+    TASK_NOTIFICATION_EMAIL_ENABLED: 'true',
+    TASK_NOTIFICATION_POLL_SECONDS: '17',
+    TASK_NOTIFICATION_BATCH_SIZE: '23',
+  };
+  const configured = config(false, explicit);
+  for (const [name, value] of Object.entries(explicit)) {
+    assert.equal(configured.services.backend.environment[name], value);
+    for (const service of ['frontend', 'postgres', 'migrate'])
+      assert.equal(configured.services[service].environment?.[name], undefined);
+    assert.equal(configured.services.frontend.build.args[name], undefined);
+    assert.equal(
+      configured.services.frontend.build.args[`VITE_${name}`],
+      undefined,
+    );
+  }
+});
+
 test('production publishes only Caddy and isolates the database network', () => {
   const result = config();
   assert.deepEqual(Object.keys(result.services).sort(), [
