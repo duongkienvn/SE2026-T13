@@ -373,6 +373,60 @@ try {
   );
   await source.query('DROP FUNCTION reject_assignment_notice()');
   await cards.delete(rollbackCard.id);
+  const emailCard = await create(column.id, 'Independent email');
+  await source.query('UPDATE users SET email_verified_at=now() WHERE id=$1', [
+    member.id,
+  ]);
+  await source.query(
+    `INSERT INTO notification_preferences(user_id,in_app_card_assigned,email_card_assigned)
+    VALUES ($1,false,true) ON CONFLICT (user_id) DO UPDATE SET in_app_card_assigned=false,email_card_assigned=true`,
+    [member.id],
+  );
+  await source.query(
+    "CREATE FUNCTION reject_task_mail_test() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'outbox rejected'; END $$",
+  );
+  await source.query(
+    'CREATE TRIGGER reject_task_mail_test BEFORE INSERT ON task_notification_email_outbox FOR EACH ROW EXECUTE FUNCTION reject_task_mail_test()',
+  );
+  await assert.rejects(
+    service.assign(owner.id, board.id, emailCard.id, { userId: member.id }),
+    /outbox rejected/,
+  );
+  assert.equal(
+    await assignees.countBy({ cardId: emailCard.id, userId: member.id }),
+    0,
+  );
+  await source.query(
+    'DROP TRIGGER reject_task_mail_test ON task_notification_email_outbox',
+  );
+  await source.query('DROP FUNCTION reject_task_mail_test()');
+  await service.assign(owner.id, board.id, emailCard.id, { userId: member.id });
+  const [emailAssignment] = await source.query(
+    `SELECT a.id::text AS assignment_id, o.occurrence_key
+    FROM card_assignees a JOIN task_notification_email_outbox o ON o.card_id=a.card_id AND o.recipient_user_id=a.user_id
+    WHERE a.card_id=$1`,
+    [emailCard.id],
+  );
+  assert.equal(emailAssignment.occurrence_key, emailAssignment.assignment_id);
+  assert.equal(
+    (
+      await source.query(
+        'SELECT count(*)::int AS n FROM user_notifications WHERE card_id=$1',
+        [emailCard.id],
+      )
+    )[0].n,
+    0,
+  );
+  await source.query(
+    'DELETE FROM task_notification_email_outbox WHERE card_id=$1',
+    [emailCard.id],
+  );
+  await cards.delete(emailCard.id);
+  await source.query(
+    'UPDATE notification_preferences SET in_app_card_assigned=true,email_card_assigned=false WHERE user_id=$1',
+    [member.id],
+  );
+  pass('assignment email opt-in is independent and rolls back atomically');
   await service.assign(owner.id, board.id, assignmentCard.id, {
     userId: owner.id,
   });

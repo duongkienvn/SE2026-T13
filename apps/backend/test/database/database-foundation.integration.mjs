@@ -209,7 +209,8 @@ async function inspectSchema() {
           !sql.includes('"card_attachment_cleanup_jobs"') &&
           !sql.includes('"UQ_cards_id_board_id"') &&
           !sql.includes('"start_date"') &&
-          !sql.includes('"IDX_cards_board_due_date"'),
+          !sql.includes('"IDX_cards_board_due_date"') &&
+          !sql.includes('"IDX_cards_due_scan"'),
       ),
     [
       'ALTER TABLE "workspaces" ADD "board_creation_admin_only" boolean NOT NULL DEFAULT false',
@@ -412,7 +413,7 @@ try {
   assert.equal(source.options.logging, false);
   assert.equal(source.options.synchronize, false);
   assert.equal(source.options.migrationsRun, false);
-  assert.equal(source.entityMetadatas.length, 28);
+  assert.equal(source.entityMetadatas.length, 29);
   assert.deepEqual(
     source.entityMetadatas.map((entity) => entity.tableName).sort(),
     [
@@ -436,6 +437,7 @@ try {
       'google_identities',
       'notification_preferences',
       'password_reset_tokens',
+      'task_notification_email_outbox',
       'user_notifications',
       'user_preferences',
       'users',
@@ -446,7 +448,7 @@ try {
       'workspaces',
     ],
   );
-  assert.equal(source.migrations.length, 26);
+  assert.equal(source.migrations.length, 27);
 
   const originalDatabase = process.env.DATABASE_NAME;
   process.env.DATABASE_NAME = testDatabase;
@@ -457,7 +459,7 @@ try {
     });
     try {
       const nestDataSource = app.get(DataSource);
-      assert.equal(nestDataSource.entityMetadatas.length, 28);
+      assert.equal(nestDataSource.entityMetadatas.length, 29);
       assert.equal(nestDataSource.migrations.length, source.migrations.length);
       assert.equal(nestDataSource.options.poolSize, source.options.poolSize);
       assert.equal(
@@ -478,7 +480,8 @@ try {
   const historicalMigrations = allMigrations.filter(
     (m) =>
       !m.name.startsWith('NotificationFoundation') &&
-      !m.name.startsWith('CommentMentions'),
+      !m.name.startsWith('CommentMentions') &&
+      !m.name.startsWith('TaskNotificationEmailOutbox'),
   );
   source.migrations = allMigrations.filter(
     (m) =>
@@ -494,7 +497,8 @@ try {
       !m.name.startsWith('BoardDiscovery') &&
       !m.name.startsWith('BoardBackgroundVersion') &&
       !m.name.startsWith('NotificationFoundation') &&
-      !m.name.startsWith('CommentMentions'),
+      !m.name.startsWith('CommentMentions') &&
+      !m.name.startsWith('TaskNotificationEmailOutbox'),
   );
   assert.equal((await source.runMigrations()).length, 13);
   const cliOutput = execFileSync(
@@ -520,7 +524,7 @@ try {
       '-e',
       `const dataSource = require('./src/database/data-source.ts').default;
        dataSource.initialize().then(async () => {
-         if (dataSource.entityMetadatas.length !== 28 || dataSource.migrations.length !== ${allMigrations.length}) {
+         if (dataSource.entityMetadatas.length !== 29 || dataSource.migrations.length !== ${allMigrations.length}) {
            throw new Error('TypeScript DataSource discovery mismatch');
          }
          await dataSource.destroy();
@@ -570,6 +574,13 @@ try {
   source.migrations = historicalMigrations;
   assert.equal((await source.runMigrations()).length, 11);
   const allMetadata = source.entityMetadatas;
+  const cardMetadata = allMetadata.find(
+    (entity) => entity.tableName === 'cards',
+  );
+  const allCardIndices = cardMetadata.indices;
+  cardMetadata.indices = allCardIndices.filter(
+    (index) => index.name !== 'IDX_cards_due_scan',
+  );
   source.entityMetadatas = allMetadata.filter(
     (entity) =>
       ![
@@ -583,6 +594,7 @@ try {
     [],
   );
   source.entityMetadatas = allMetadata;
+  cardMetadata.indices = allCardIndices;
   await source.undoLastMigration(); // Empty Board background version extension.
   await source.undoLastMigration(); // Empty Board discovery extension.
   await source.undoLastMigration(); // Empty private-file extension.
@@ -602,10 +614,10 @@ try {
     'Enum rollback retains existing values/history; idempotent reapply: PASS',
   );
   source.migrations = allMigrations;
-  assert.equal((await source.runMigrations()).length, 2);
+  assert.equal((await source.runMigrations()).length, 3);
   await assert.rejects(
     source.undoLastMigration(),
-    /Comment mentions migration is forward-only/,
+    /Task notification email outbox requires a forward fix/,
   );
   assert.deepEqual(await source.runMigrations(), []);
   assert.deepEqual(

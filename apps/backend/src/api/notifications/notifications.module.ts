@@ -11,11 +11,23 @@ import { NotificationInboxService } from './notification-inbox.service';
 import { NotificationsController } from './notifications.controller';
 import { NotificationInvalidation } from './notification-invalidation';
 import { NotificationReadBodyGuard } from './notification-read-body.guard';
+import { MailModule } from '../../mail/mail.module';
+import { DueReminderScanner } from './due-reminder-scanner.service';
+import { TaskEmailDispatcher } from './task-email-dispatcher.service';
+import { TaskNotificationWorker } from './task-notification-worker.service';
 
 @Module({
-  imports: [AuthModule, NotificationPersistenceModule, RealtimeDeliveryModule],
+  imports: [
+    AuthModule,
+    NotificationPersistenceModule,
+    RealtimeDeliveryModule,
+    MailModule,
+  ],
   controllers: [NotificationPreferencesController, NotificationsController],
   providers: [
+    DueReminderScanner,
+    TaskEmailDispatcher,
+    TaskNotificationWorker,
     NotificationPreferencesService,
     NotificationPreferencesBodyGuard,
     NotificationResolver,

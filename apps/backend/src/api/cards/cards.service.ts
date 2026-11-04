@@ -1,6 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { NotificationKind, RealtimeServerEvent } from '@kanban/shared';
 import { NotificationService } from '../notifications/notification.service';
+import { enqueueTaskEmail } from '../notifications/task-email-outbox';
 import { NotificationEventPublisher } from '../../realtime/notification-event-publisher.service';
 import { BoardEventPublisher } from '../../realtime/board-event-publisher.service';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -503,6 +504,15 @@ export class CardsService {
               boardId,
               occurrenceKey: assignment.id,
             });
+      if (member.userId !== userId) {
+        await enqueueTaskEmail(manager, {
+          recipientUserId: member.userId,
+          kind: NotificationKind.CARD_ASSIGNED,
+          occurrenceKey: assignment.id,
+          boardId,
+          cardId: card.id,
+        });
+      }
       return {
         notified:
           notification?.status === 'created'

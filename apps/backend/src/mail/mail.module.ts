@@ -22,10 +22,29 @@ import {
   FakeBoardMemberAddedMailer,
 } from './board-member-added-mailer';
 import { ResendBoardMemberAddedMailer } from './resend-board-member-added-mailer';
+import {
+  FakeTaskNotificationMailer,
+  ResendTaskNotificationMailer,
+  TaskNotificationMailer,
+} from './task-notification-mailer';
 
 @Module({
   imports: [ConfigModule],
   providers: [
+    {
+      provide: TaskNotificationMailer,
+      inject: [ConfigService],
+      useFactory: (
+        config: ConfigService<EnvironmentConfig, true>,
+      ): TaskNotificationMailer =>
+        config.get('MAIL_TRANSPORT', { infer: true }) === 'fake'
+          ? new FakeTaskNotificationMailer()
+          : new ResendTaskNotificationMailer(
+              new Resend(config.get('RESEND_API_KEY', { infer: true })),
+              config.get('MAIL_FROM', { infer: true }),
+              config.get('PUBLIC_APP_URL', { infer: true }),
+            ),
+    },
     {
       provide: BoardMemberAddedMailer,
       inject: [ConfigService],
@@ -110,6 +129,7 @@ import { ResendBoardMemberAddedMailer } from './resend-board-member-added-mailer
     },
   ],
   exports: [
+    TaskNotificationMailer,
     BoardMemberAddedMailer,
     VerificationMailer,
     PasswordRecoveryMailer,

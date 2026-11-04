@@ -92,6 +92,7 @@ export function cardsHarness() {
     [CardChecklistItem, checklistItems],
   ]);
   const manager = {
+    queryRunner: { isTransactionActive: true },
     getRepository: jest.fn((entity) => repositories.get(entity) ?? {}),
     query: jest.fn().mockResolvedValue([]),
   };

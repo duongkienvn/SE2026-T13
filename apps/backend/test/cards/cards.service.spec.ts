@@ -327,9 +327,20 @@ describe('CardsService', () => {
       occurrenceKey: '3c5e2d5b-1e13-4b31-9cc4-8e4f849d75e5',
     });
     expect(h.notificationEvents.afterCommit).toHaveBeenCalledWith([ID.target]);
+    expect(h.manager.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO task_notification_email_outbox'),
+      [
+        ID.target,
+        'CARD_ASSIGNED',
+        '3c5e2d5b-1e13-4b31-9cc4-8e4f849d75e5',
+        ID.board,
+        ID.card,
+      ],
+    );
     h.notifications.record.mockResolvedValueOnce({ status: 'disabled' });
     await h.service.assign(ID.user, ID.board, ID.card, { userId: ID.target });
     expect(h.notificationEvents.afterCommit).toHaveBeenLastCalledWith([]);
+    expect(h.manager.query).toHaveBeenCalledTimes(2);
     h.members.findOne.mockResolvedValueOnce({ userId: ID.user });
     await h.service.assign(ID.user, ID.board, ID.card, { userId: ID.user });
     expect(h.notifications.record).toHaveBeenCalledTimes(2);

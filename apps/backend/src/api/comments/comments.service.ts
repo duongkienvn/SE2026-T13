@@ -29,6 +29,7 @@ import { BoardMember } from '../board-members/entities/board-member.entity';
 import { CommentMention } from './entities/comment-mention.entity';
 import { CommentMentionDto } from './dto/comment-mention.dto';
 import { NotificationService } from '../notifications/notification.service';
+import { enqueueTaskEmail } from '../notifications/task-email-outbox';
 import { NotificationEventPublisher } from '../../realtime/notification-event-publisher.service';
 
 @Injectable()
@@ -315,6 +316,15 @@ export class CommentsService {
         occurrenceKey: `${comment.id}:${recipientUserId}`,
       })),
     );
+    for (const recipientUserId of recipients) {
+      await enqueueTaskEmail(manager, {
+        recipientUserId,
+        kind: NotificationKind.COMMENT_MENTIONED,
+        occurrenceKey: `${comment.id}:${recipientUserId}`,
+        boardId,
+        cardId: comment.cardId,
+      });
+    }
     return results
       .filter((result) => result.status === 'created')
       .map((result) => result.recipientUserId);
