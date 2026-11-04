@@ -16,6 +16,7 @@ import {
 import { findActiveNavItemId, navGroups } from './navigation';
 import { useWorkspaceDirectory } from '../../features/workspaces/hooks';
 import { workspacePath } from '../../features/workspaces/navigation';
+import { NotificationBell } from '../../features/notifications/NotificationBell';
 
 /** Application shell for signed-in routes, with App Shell V2 navigation, board context and the user menu. */
 export function AuthenticatedLayout() {
@@ -115,6 +116,7 @@ function SessionLayout() {
           </nav>
         )
       }
+      headerNotifications={user && <NotificationBell />}
       headerActions={
         user && (
           <span role="img" aria-label={`Signed in as ${user.displayName}`}>

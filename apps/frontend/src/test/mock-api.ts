@@ -26,6 +26,8 @@ const defaultHandlers: Record<string, Handler> = {
     dateFormat: 'YYYY-MM-DD',
     weekStartsOn: 'monday',
   }),
+  // The header bell (#198) reads the unread count on every signed-in screen.
+  'GET /notifications/unread-count': ok({ count: 0 }),
 };
 
 const page = (items: unknown[], limit: number): MockResponse => ({
