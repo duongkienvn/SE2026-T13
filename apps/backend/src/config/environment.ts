@@ -28,6 +28,10 @@ export interface EnvironmentConfig
   RESEND_API_KEY: string;
   MAIL_FROM: string;
   PUBLIC_APP_URL: string;
+  TASK_NOTIFICATION_JOBS_ENABLED: boolean;
+  TASK_NOTIFICATION_EMAIL_ENABLED: boolean;
+  TASK_NOTIFICATION_POLL_SECONDS: number;
+  TASK_NOTIFICATION_BATCH_SIZE: number;
   WORKSPACE_INVITATION_ACCEPT_PATH: string;
   DATABASE_HOST: string;
   DATABASE_PORT: number;
@@ -164,6 +168,16 @@ export function validateEnvironment(
   }
 
   const production = nodeEnv === 'production';
+  const taskNotificationPollSeconds = positiveInteger(
+    input.TASK_NOTIFICATION_POLL_SECONDS,
+    'TASK_NOTIFICATION_POLL_SECONDS',
+    60,
+    300,
+  );
+  if (taskNotificationPollSeconds < 15)
+    throw new Error(
+      'TASK_NOTIFICATION_POLL_SECONDS must be between 15 and 300',
+    );
   const requestedTransport =
     input.MAIL_TRANSPORT === undefined
       ? production
@@ -208,6 +222,23 @@ export function validateEnvironment(
     ...validateAvatarEnvironment({ ...input, NODE_ENV: nodeEnv }),
     ...validateAttachmentEnvironment({ ...input, NODE_ENV: nodeEnv }),
     MAIL_TRANSPORT: mailTransport,
+    TASK_NOTIFICATION_JOBS_ENABLED: boolean(
+      input.TASK_NOTIFICATION_JOBS_ENABLED,
+      'TASK_NOTIFICATION_JOBS_ENABLED',
+      false,
+    ),
+    TASK_NOTIFICATION_EMAIL_ENABLED: boolean(
+      input.TASK_NOTIFICATION_EMAIL_ENABLED,
+      'TASK_NOTIFICATION_EMAIL_ENABLED',
+      false,
+    ),
+    TASK_NOTIFICATION_POLL_SECONDS: taskNotificationPollSeconds,
+    TASK_NOTIFICATION_BATCH_SIZE: positiveInteger(
+      input.TASK_NOTIFICATION_BATCH_SIZE,
+      'TASK_NOTIFICATION_BATCH_SIZE',
+      50,
+      500,
+    ),
     RESEND_API_KEY: resendKey,
     MAIL_FROM: mailFrom,
     PUBLIC_APP_URL: appUrl,
