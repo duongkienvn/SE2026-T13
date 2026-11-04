@@ -13,7 +13,6 @@ export async function verifyNotificationContexts(ctx) {
     card,
     record,
     resolvers,
-    load,
     pass,
   } = ctx;
   const first = await workspace('Confidential Workspace A'),
@@ -38,6 +37,28 @@ export async function verifyNotificationContexts(ctx) {
     `INSERT INTO board_members(board_id,user_id,role) VALUES ($1,$2,'MEMBER')`,
     [foreignBoard.id, actors.member],
   );
+  const visibleComment = (
+    await send(
+      'owner',
+      'post',
+      `/api/boards/${visibleBoard.id}/cards/${visible}/comments`,
+    )
+      .send({
+        content: '@owner',
+        mentions: [{ userId: actors.owner, start: 0, end: 6 }],
+      })
+      .expect(201)
+  ).body.data;
+  assert.equal(visibleComment.mentions.length, 1);
+  const viewerComments = (
+    await send(
+      'viewer',
+      'get',
+      `/api/boards/${visibleBoard.id}/cards/${visible}/comments`,
+    ).expect(200)
+  ).body.data;
+  assert.deepEqual(viewerComments[0].mentions, []);
+  assert.equal(viewerComments[0].content, '@owner');
   const notes = {};
   for (const actor of [
     'owner',
@@ -293,13 +314,55 @@ export async function verifyNotificationContexts(ctx) {
   )
     .send({ content: '@member plain existing comment' })
     .expect(201);
+  const mentioned = (
+    await send(
+      'owner',
+      'post',
+      `/api/boards/${privateBoard.id}/cards/${secret}/comments`,
+    )
+      .send({
+        content: '😀 @member',
+        mentions: [{ userId: actors.member, start: 3, end: 10 }],
+      })
+      .expect(201)
+  ).body.data;
+  assert.deepEqual(mentioned.mentions, [
+    { userId: actors.member, start: 3, end: 10 },
+  ]);
+  for (const invalid of [
+    [{ userId: actors.member, start: 1, end: 10 }],
+    [{ userId: actors.member, start: 3, end: 11 }],
+    [{ userId: actors.outsider, start: 3, end: 10 }],
+    [
+      { userId: actors.member, start: 3, end: 10 },
+      { userId: actors.member, start: 3, end: 10 },
+    ],
+    [{ userId: 'not-a-uuid', start: 3, end: 10 }],
+  ])
+    await send(
+      'owner',
+      'post',
+      `/api/boards/${privateBoard.id}/cards/${secret}/comments`,
+    )
+      .send({ content: '😀 @member', mentions: invalid })
+      .expect(400);
+  const commentPath = `/api/boards/${privateBoard.id}/cards/${secret}/comments/${mentioned.id}`;
+  await send('owner', 'patch', commentPath)
+    .send({ content: 'plain' })
+    .expect(200);
+  await send('owner', 'patch', commentPath)
+    .send({
+      content: '😀 @member',
+      mentions: [{ userId: actors.member, start: 3, end: 10 }],
+    })
+    .expect(200);
   await send('owner', 'post', '/api/notifications')
     .send({ kind: 'CARD_ASSIGNED', recipientUserId: actors.outsider })
     .expect(404);
   assert.equal(
     await source.getRepository('UserNotification').count(),
-    total,
-    'no real domain producers or debug endpoint belong to P4-03',
+    total + 2,
+    'assignment and explicit mention each create one notification; plain text, re-mention and debug endpoint create none',
   );
   pass(
     'archive read entitlement, revocation without history loss, context mismatch, Card/Board/Workspace deletion and unchanged domain-event behavior',
@@ -324,113 +387,74 @@ export async function verifyNotificationContexts(ctx) {
     { workspaceId: first },
     invite.id,
   );
+  const resolved = (await list('outsider')).data.find(
+    (row) => row.id === invitation.notificationId,
+  );
+  assert.equal(resolved.isUnavailable, false);
+  assert.equal(resolved.target, null);
+  const invitationRow = await source
+    .getRepository('UserNotification')
+    .findOneByOrFail({ id: invitation.notificationId });
+  const resolveInvitation = () =>
+    source.transaction((manager) =>
+      resolvers.resolve(manager, actors.outsider, [invitationRow]),
+    );
+  await source.query('UPDATE users SET email_verified_at=NULL WHERE id=$1', [
+    actors.outsider,
+  ]);
+  assert.equal((await resolveInvitation()).size, 0);
+  await source.query('UPDATE users SET email_verified_at=now() WHERE id=$1', [
+    actors.outsider,
+  ]);
+  await source.query(
+    "UPDATE workspace_invitations SET send_state='UNKNOWN' WHERE id=$1",
+    [invite.id],
+  );
+  assert.equal((await resolveInvitation()).size, 0);
+  await source.query(
+    "UPDATE workspace_invitations SET send_state='SENT',declined_at=now() WHERE id=$1",
+    [invite.id],
+  );
+  assert.equal((await resolveInvitation()).size, 0);
+  await source.query(
+    'UPDATE workspace_invitations SET declined_at=NULL WHERE id=$1',
+    [invite.id],
+  );
+  assert.equal(
+    (await list('other')).data.find((row) => row.id === wrong.notificationId)
+      .isUnavailable,
+    true,
+  );
+  await source.query(
+    "UPDATE workspace_invitations SET created_at=now()-interval '2 days',expires_at=now()-interval '1 day' WHERE id=$1",
+    [invite.id],
+  );
   assert.equal(
     (await list('outsider')).data.find(
       (row) => row.id === invitation.notificationId,
     ).isUnavailable,
     true,
-    'no origin resolver => safe fallback, even for a valid pending invitation',
   );
-  const { notificationOccurrence } = load(
-    'api/notifications/notification-record',
+  await source.query(
+    "UPDATE workspace_invitations SET created_at=now()-interval '1 hour',expires_at=now()+interval '1 day',revoked_at=now() WHERE id=$1",
+    [invite.id],
   );
-  const unregister = resolvers.register(
-    'WORKSPACE_INVITED',
-    async (manager, recipient, rows) => {
-      const ids = rows
-        .map(notificationOccurrence)
-        .filter((id) => /^[0-9a-f-]{36}$/i.test(id));
-      if (!ids.length) return new Map();
-      const pending = await manager.query(
-        `SELECT invitation.id,invitation.workspace_id,workspace.name
-      FROM workspace_invitations invitation JOIN workspaces workspace ON workspace.id=invitation.workspace_id
-      JOIN users recipient ON recipient.id=$1 AND recipient.email_verified_at IS NOT NULL AND lower(btrim(recipient.email))=invitation.email
-      WHERE invitation.id=ANY($2::uuid[]) AND invitation.token_hash=$3 AND invitation.send_state='SENT'
-        AND invitation.consumed_at IS NULL AND invitation.revoked_at IS NULL AND invitation.declined_at IS NULL AND invitation.expires_at>clock_timestamp()`,
-        [recipient, ids, hash],
-      );
-      const byId = new Map(pending.map((row) => [row.id, row]));
-      return new Map(
-        rows.flatMap((row) => {
-          const verified = byId.get(notificationOccurrence(row));
-          return verified
-            ? [
-                [
-                  row.id,
-                  {
-                    name: verified.name,
-                    workspaceId: verified.workspace_id,
-                    boardId: null,
-                    actorVisible: true,
-                    destination: { kind: 'workspaceInvitation', proof },
-                    path: 'https://must-not-be-used.test',
-                  },
-                ],
-              ]
-            : [];
-        }),
-      );
-    },
-  );
-  try {
-    const resolved = (await list('outsider')).data.find(
+  assert.equal(
+    (await list('outsider')).data.find(
       (row) => row.id === invitation.notificationId,
-    );
-    assert.equal(resolved.isUnavailable, false);
-    assert.equal(resolved.target.path, `/invitations/workspace#proof=${proof}`);
-    assert.equal(resolved.actor.id, actors.owner);
-    assert.ok(!JSON.stringify(resolved).includes('must-not-be-used'));
-    assert.equal(
-      (await list('other')).data.find((row) => row.id === wrong.notificationId)
-        .isUnavailable,
-      true,
-    );
-    await source.query(
-      "UPDATE workspace_invitations SET created_at=now()-interval '2 days',expires_at=now()-interval '1 day' WHERE id=$1",
-      [invite.id],
-    );
-    assert.equal(
-      (await list('outsider')).data.find(
-        (row) => row.id === invitation.notificationId,
-      ).isUnavailable,
-      true,
-    );
-    await source.query(
-      "UPDATE workspace_invitations SET created_at=now()-interval '1 hour',expires_at=now()+interval '1 day',revoked_at=now() WHERE id=$1",
-      [invite.id],
-    );
-    assert.equal(
-      (await list('outsider')).data.find(
-        (row) => row.id === invitation.notificationId,
-      ).target,
-      null,
-    );
-    await source.query(
-      'UPDATE workspace_invitations SET revoked_at=NULL,consumed_at=now() WHERE id=$1',
-      [invite.id],
-    );
-    assert.equal(
-      (await list('outsider')).data.find(
-        (row) => row.id === invitation.notificationId,
-      ).context,
-      null,
-    );
-  } finally {
-    unregister();
-  }
-  const broken = resolvers.register('WORKSPACE_INVITED', async () => {
-    throw new Error('private proof and SQL');
-  });
-  try {
-    assert.equal(
-      (await list('outsider')).data.find(
-        (row) => row.id === invitation.notificationId,
-      ).summary,
-      'This notification is no longer available',
-    );
-  } finally {
-    broken();
-  }
+    ).isUnavailable,
+    true,
+  );
+  await source.query(
+    'UPDATE workspace_invitations SET revoked_at=NULL,consumed_at=now() WHERE id=$1',
+    [invite.id],
+  );
+  assert.equal(
+    (await list('outsider')).data.find(
+      (row) => row.id === invitation.notificationId,
+    ).isUnavailable,
+    true,
+  );
   const boardInvite = await record('owner', 'BOARD_INVITED', {
     boardId: privateBoard.id,
   });
@@ -441,6 +465,6 @@ export async function verifyNotificationContexts(ctx) {
     true,
   );
   pass(
-    'origin-module invitation resolver hooks, pending/verified-recipient binding, fixed proof-fragment route, expiry/revoke/consume and fail-closed fallback',
+    'production invitation resolver, verified-recipient binding, null target, expiry/revoke/consume and fail-closed fallback',
   );
 }

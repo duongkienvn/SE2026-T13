@@ -60,10 +60,18 @@ try {
   configureTestEnvironment();
   if (databaseMode) process.env.DATABASE_NAME = database;
   const { AppModule } = require('../../../src/app.module.ts');
-  const module = await Test.createTestingModule({ imports: [AppModule] })
+  const {
+    NotificationService,
+  } = require('../../../src/api/notifications/notification.service.ts');
+  let builder = Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(DataSource)
-    .useValue(source)
-    .compile();
+    .useValue(source);
+  if (!databaseMode)
+    builder = builder.overrideProvider(NotificationService).useValue({
+      record: async () => ({ status: 'disabled' }),
+      recordMany: async () => [],
+    });
+  const module = await builder.compile();
   app = module.createNestApplication();
   configureHttpApplication(app);
   await app.listen(0, '127.0.0.1');

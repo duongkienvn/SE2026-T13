@@ -283,6 +283,10 @@ try {
     authorization,
     events,
     writer,
+    new (require('../../dist/api/notifications/notification.service.js').NotificationService)(
+      source.getRepository('UserNotification'),
+    ),
+    { afterCommit: async () => undefined },
   );
   const commentService = new CommentsService(
     source.getRepository(Comment),
@@ -291,6 +295,10 @@ try {
     authorization,
     writer,
     events,
+    new (require('../../dist/api/notifications/notification.service.js').NotificationService)(
+      source.getRepository('UserNotification'),
+    ),
+    { afterCommit: async () => undefined },
   );
   const memberService = new BoardMembersService(
     members,
@@ -300,6 +308,10 @@ try {
     events,
     writer,
     { notify: async () => undefined },
+    new (require('../../dist/api/notifications/notification.service.js').NotificationService)(
+      source.getRepository('UserNotification'),
+    ),
+    { afterCommit: async () => undefined },
   );
   const auditBoard = await boardService.create(owner.id, {
     name: 'Integration board',

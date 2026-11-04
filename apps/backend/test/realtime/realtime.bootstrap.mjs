@@ -184,6 +184,14 @@ const module = await Test.createTestingModule({ imports: [AppModule] })
   // by the isolated PostgreSQL integration suite instead.
   .overrideProvider(ActivityWriterService)
   .useValue({ record: async () => undefined })
+  .overrideProvider(
+    require('../../src/api/notifications/notification.service.ts')
+      .NotificationService,
+  )
+  .useValue({
+    record: async () => ({ status: 'disabled' }),
+    recordMany: async () => [],
+  })
   .compile();
 const app = module.createNestApplication();
 const socketAuth = app.get(RealtimeAuthService);

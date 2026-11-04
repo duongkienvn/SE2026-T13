@@ -6,6 +6,10 @@ import { Comment } from '../../src/api/comments/entities/comment.entity';
 import { CommentsService } from '../../src/api/comments/comments.service';
 import { BoardEventPublisher } from '../../src/realtime/board-event-publisher.service';
 import { ActivityWriterService } from '../../src/api/activities/activity-writer.service';
+import { CommentMention } from '../../src/api/comments/entities/comment-mention.entity';
+import { BoardMember } from '../../src/api/board-members/entities/board-member.entity';
+import { NotificationService } from '../../src/api/notifications/notification.service';
+import { NotificationEventPublisher } from '../../src/realtime/notification-event-publisher.service';
 
 jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: () => () => undefined,
@@ -42,6 +46,17 @@ function cardFixture(overrides: Partial<Card> = {}): Card {
 }
 
 function harness() {
+  const mentions = {
+    find: jest.fn().mockResolvedValue([]),
+    delete: jest.fn(),
+    create: jest.fn((input) => input),
+    save: jest.fn(),
+  };
+  const members = {
+    find: jest
+      .fn()
+      .mockResolvedValue([{ userId: ID.other, user: { displayName: 'Linh' } }]),
+  };
   const comments = {
     findOne: jest.fn().mockResolvedValue(commentFixture()),
     create: jest.fn((input) => commentFixture(input)),
@@ -58,7 +73,15 @@ function harness() {
   };
   const manager = {
     getRepository: jest.fn((entity) =>
-      entity === Comment ? comments : entity === Card ? cards : txBoards,
+      entity === Comment
+        ? comments
+        : entity === Card
+          ? cards
+          : entity === CommentMention
+            ? mentions
+            : entity === BoardMember
+              ? members
+              : txBoards,
     ),
   };
   const transaction = jest.fn(async (callback) => callback(manager));
@@ -81,6 +104,8 @@ function harness() {
   comments.createQueryBuilder.mockReturnValue(builder);
   const activities = { record: jest.fn() };
   const events = { publish: jest.fn() };
+  const notifications = { recordMany: jest.fn().mockResolvedValue([]) };
+  const notificationEvents = { afterCommit: jest.fn() };
   const service = new CommentsService(
     comments as unknown as Repository<Comment>,
     cards as unknown as Repository<Card>,
@@ -88,6 +113,8 @@ function harness() {
     authorization as unknown as BoardAuthorizationService,
     activities as unknown as ActivityWriterService,
     events as unknown as BoardEventPublisher,
+    notifications as unknown as NotificationService,
+    notificationEvents as unknown as NotificationEventPublisher,
   );
   return {
     service,
@@ -100,10 +127,57 @@ function harness() {
     builder,
     activities,
     events,
+    mentions,
+    members,
+    notifications,
+    notificationEvents,
   };
 }
 
 describe('CommentsService', () => {
+  it('validates UTF-16 spans and emits one mention per target', async () => {
+    const h = harness();
+    h.notifications.recordMany.mockResolvedValue([
+      { status: 'created', recipientUserId: ID.other },
+    ]);
+    const result = await h.service.create(ID.user, ID.board, ID.card, {
+      content: '😀 @Linh @Linh',
+      mentions: [
+        { userId: ID.other, start: 3, end: 8 },
+        { userId: ID.other, start: 9, end: 14 },
+      ],
+    });
+    expect(result.mentions).toHaveLength(2);
+    expect(h.notifications.recordMany).toHaveBeenCalledWith(h.manager, [
+      expect.objectContaining({
+        recipientUserId: ID.other,
+        occurrenceKey: `${ID.comment}:${ID.other}`,
+      }),
+    ]);
+    expect(h.notificationEvents.afterCommit).toHaveBeenCalledWith([ID.other]);
+    await expect(
+      h.service.create(ID.user, ID.board, ID.card, {
+        content: '😀 @Linh',
+        mentions: [{ userId: ID.other, start: 1, end: 8 }],
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(
+      h.service.create(ID.user, ID.board, ID.card, {
+        content: '@Linh',
+        mentions: [
+          { userId: ID.other, start: 0, end: 5 },
+          { userId: ID.other, start: 0, end: 5 },
+        ],
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+    h.members.find.mockResolvedValueOnce([]);
+    await expect(
+      h.service.create(ID.user, ID.board, ID.card, {
+        content: '@Linh',
+        mentions: [{ userId: ID.other, start: 0, end: 5 }],
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+  });
   it('creates a comment after the board lock and scopes it to the card', async () => {
     const h = harness();
 

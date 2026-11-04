@@ -1,7 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { RealtimeServerEvent } from '@kanban/shared';
+import { NotificationKind, RealtimeServerEvent } from '@kanban/shared';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
 import { ApplicationException } from '../../exceptions/application.exception';
 import {
   ActivityActionType,
@@ -25,6 +25,11 @@ import {
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { BoardEventPublisher } from '../../realtime/board-event-publisher.service';
+import { BoardMember } from '../board-members/entities/board-member.entity';
+import { CommentMention } from './entities/comment-mention.entity';
+import { CommentMentionDto } from './dto/comment-mention.dto';
+import { NotificationService } from '../notifications/notification.service';
+import { NotificationEventPublisher } from '../../realtime/notification-event-publisher.service';
 
 @Injectable()
 export class CommentsService {
@@ -36,6 +41,8 @@ export class CommentsService {
     private readonly authorization: BoardAuthorizationService,
     private readonly activities: ActivityWriterService,
     private readonly events: BoardEventPublisher,
+    private readonly notifications: NotificationService,
+    private readonly notificationEvents: NotificationEventPublisher,
   ) {}
 
   async list(
@@ -66,7 +73,29 @@ export class CommentsService {
       .skip(offset)
       .take(query.limit)
       .getManyAndCount();
-    return paginate(comments.map(toCommentResponseDto), total, query);
+    const access = await this.authorization.requireRead(userId, boardId);
+    const mentions =
+      access.member && comments.length
+        ? await this.comments.manager.getRepository(CommentMention).find({
+            where: { commentId: In(comments.map((comment) => comment.id)) },
+            order: { start: 'ASC' },
+          })
+        : [];
+    const currentAccess = await this.authorization.requireRead(userId, boardId);
+    return paginate(
+      comments.map((comment) =>
+        toCommentResponseDto(
+          comment,
+          currentAccess.member
+            ? mentions
+                .filter((mention) => mention.commentId === comment.id)
+                .map(({ userId, start, end }) => ({ userId, start, end }))
+            : [],
+        ),
+      ),
+      total,
+      query,
+    );
   }
 
   async create(
@@ -89,6 +118,19 @@ export class CommentsService {
         content: input.content,
       });
       const saved = await comments.save(comment);
+      const mentions = await this.replaceMentions(
+        manager,
+        boardId,
+        saved,
+        input.mentions ?? [],
+      );
+      const notified = await this.notifyMentions(
+        manager,
+        boardId,
+        saved,
+        [],
+        mentions,
+      );
       await this.activities.record(manager, {
         boardId,
         actorId: userId,
@@ -97,14 +139,15 @@ export class CommentsService {
         entityId: saved.id,
         metadata: { cardId: card.id },
       });
-      return toCommentResponseDto(saved);
+      return { comment: toCommentResponseDto(saved, mentions), notified };
     });
+    await this.notificationEvents.afterCommit(result.notified);
     await this.events.publish(RealtimeServerEvent.COMMENT_CREATED, {
       boardId,
-      cardId: result.cardId,
-      commentId: result.id,
+      cardId: result.comment.cardId,
+      commentId: result.comment.id,
     });
-    return result;
+    return result.comment;
   }
 
   async update(
@@ -114,7 +157,7 @@ export class CommentsService {
     commentId: string,
     input: UpdateCommentDto,
   ): Promise<CommentResponseDto> {
-    const { result, changed } = await this.mutate(
+    const { result, changed, notified } = await this.mutate(
       userId,
       boardId,
       async (manager) => {
@@ -127,10 +170,31 @@ export class CommentsService {
         const comments = manager.getRepository(Comment);
         const comment = await this.requireComment(comments, cardId, commentId);
         this.requireAuthor(comment, userId);
-        if (comment.content === input.content)
-          return { result: toCommentResponseDto(comment), changed: false };
+        const existing = await manager
+          .getRepository(CommentMention)
+          .find({ where: { commentId }, order: { start: 'ASC' } });
+        if (comment.content === input.content && input.mentions === undefined)
+          return {
+            result: toCommentResponseDto(comment, existing),
+            changed: false,
+            notified: [],
+          };
+        const contentChanged = comment.content !== input.content;
         comment.content = input.content;
         const saved = await comments.save(comment);
+        const mentions = await this.replaceMentions(
+          manager,
+          boardId,
+          saved,
+          input.mentions ?? [],
+        );
+        const notified = await this.notifyMentions(
+          manager,
+          boardId,
+          saved,
+          existing,
+          mentions,
+        );
         await this.activities.record(manager, {
           boardId,
           actorId: userId,
@@ -139,9 +203,14 @@ export class CommentsService {
           entityId: saved.id,
           metadata: null,
         });
-        return { result: toCommentResponseDto(saved), changed: true };
+        return {
+          result: toCommentResponseDto(saved, mentions),
+          changed: contentChanged || input.mentions !== undefined,
+          notified,
+        };
       },
     );
+    await this.notificationEvents.afterCommit(notified);
     if (changed)
       await this.events.publish(RealtimeServerEvent.COMMENT_UPDATED, {
         boardId,
@@ -149,6 +218,106 @@ export class CommentsService {
         commentId: result.id,
       });
     return result;
+  }
+
+  private async replaceMentions(
+    manager: EntityManager,
+    boardId: string,
+    comment: Comment,
+    spans: CommentMentionDto[],
+  ): Promise<CommentMentionDto[]> {
+    const invalid = () =>
+      new ApplicationException(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_FAILED',
+        'Invalid comment mentions',
+      );
+    const ordered = [...spans].sort((a, b) => a.start - b.start);
+    if (
+      ordered.length > 20 ||
+      new Set(ordered.map((span) => span.userId.toLowerCase())).size > 10
+    )
+      throw invalid();
+    const members = ordered.length
+      ? await manager.getRepository(BoardMember).find({
+          where: {
+            boardId,
+            userId: In(ordered.map((span) => span.userId.toLowerCase())),
+          },
+          relations: { user: true },
+        })
+      : [];
+    const names = new Map(
+      members.map((member) => [member.userId, member.user.displayName]),
+    );
+    let end = 0;
+    for (const span of ordered) {
+      const id = span.userId.toLowerCase();
+      const split = (offset: number) =>
+        offset > 0 &&
+        offset < comment.content.length &&
+        /[\uD800-\uDBFF]/.test(comment.content[offset - 1]) &&
+        /[\uDC00-\uDFFF]/.test(comment.content[offset]);
+      if (
+        !Number.isInteger(span.start) ||
+        !Number.isInteger(span.end) ||
+        span.start < end ||
+        span.start < 0 ||
+        span.end > comment.content.length ||
+        span.end <= span.start ||
+        split(span.start) ||
+        split(span.end) ||
+        !names.has(id) ||
+        comment.content.slice(span.start, span.end) !== `@${names.get(id)}`
+      )
+        throw invalid();
+      end = span.end;
+    }
+    const repository = manager.getRepository(CommentMention);
+    await repository.delete({ commentId: comment.id });
+    if (ordered.length)
+      await repository.save(
+        ordered.map((span) =>
+          repository.create({
+            commentId: comment.id,
+            userId: span.userId.toLowerCase(),
+            start: span.start,
+            end: span.end,
+          }),
+        ),
+      );
+    return ordered.map(({ userId, start, end }) => ({
+      userId: userId.toLowerCase(),
+      start,
+      end,
+    }));
+  }
+
+  private async notifyMentions(
+    manager: EntityManager,
+    boardId: string,
+    comment: Comment,
+    previous: CommentMentionDto[],
+    current: CommentMentionDto[],
+  ): Promise<string[]> {
+    const old = new Set(previous.map((span) => span.userId));
+    const recipients = [...new Set(current.map((span) => span.userId))].filter(
+      (id) => id !== comment.authorId && !old.has(id),
+    );
+    const results = await this.notifications.recordMany(
+      manager,
+      recipients.map((recipientUserId) => ({
+        kind: NotificationKind.COMMENT_MENTIONED,
+        recipientUserId,
+        actorUserId: comment.authorId,
+        boardId,
+        cardId: comment.cardId,
+        occurrenceKey: `${comment.id}:${recipientUserId}`,
+      })),
+    );
+    return results
+      .filter((result) => result.status === 'created')
+      .map((result) => result.recipientUserId);
   }
 
   async remove(
