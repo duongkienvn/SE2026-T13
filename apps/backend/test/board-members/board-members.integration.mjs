@@ -111,6 +111,10 @@ try {
     { publish: async () => undefined },
     new ActivityWriterService(),
     { notify: async () => undefined },
+    new (require('../../dist/api/notifications/notification.service.js').NotificationService)(
+      source.getRepository('UserNotification'),
+    ),
+    { afterCommit: async () => undefined },
   );
   const user = (name) =>
     users.save(
@@ -140,6 +144,17 @@ try {
   );
   await service.updateRole(owner.id, board.id, target.id, { role: 'OWNER' });
   await service.updateRole(owner.id, board.id, target.id, { role: 'MEMBER' });
+  await service.updateRole(owner.id, board.id, target.id, { role: 'MEMBER' });
+  const noticeCount = async () =>
+    Number(
+      (
+        await source.query(
+          "SELECT count(*) AS count FROM user_notifications WHERE kind='MEMBERSHIP_CHANGED' AND recipient_user_id=$1 AND board_id=$2",
+          [target.id, board.id],
+        )
+      )[0].count,
+    );
+  assert.equal(await noticeCount(), 3);
 
   const [column] = await source.query(
     `INSERT INTO board_columns (board_id, name, position) VALUES ($1, 'Todo', 100) RETURNING id`,
@@ -158,6 +173,7 @@ try {
     [activeCard.id, target.id, owner.id, archivedCard.id],
   );
   await service.remove(owner.id, board.id, target.id);
+  assert.equal(await noticeCount(), 4);
   assert.equal(
     await members.countBy({ boardId: board.id, userId: target.id }),
     0,

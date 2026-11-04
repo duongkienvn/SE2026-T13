@@ -12,6 +12,8 @@ import request from 'supertest';
 import { BoardAuthorizationService } from '../../src/api/board-members/board-authorization.service';
 import { BoardMembersController } from '../../src/api/board-members/board-members.controller';
 import { BoardMembersService } from '../../src/api/board-members/board-members.service';
+import { NotificationService } from '../../src/api/notifications/notification.service';
+import { NotificationEventPublisher } from '../../src/realtime/notification-event-publisher.service';
 import { ActivityWriterService } from '../../src/api/activities/activity-writer.service';
 import { BoardMember } from '../../src/api/board-members/entities/board-member.entity';
 import { Board } from '../../src/api/boards/entities/board.entity';
@@ -112,6 +114,16 @@ describe('board-members HTTP contract', () => {
       providers: [
         { provide: BoardEventPublisher, useValue: { publish: jest.fn() } },
         BoardMembersService,
+        {
+          provide: NotificationService,
+          useValue: {
+            record: jest.fn().mockResolvedValue({ status: 'disabled' }),
+          },
+        },
+        {
+          provide: NotificationEventPublisher,
+          useValue: { afterCommit: jest.fn() },
+        },
         BoardMemberAddedNotificationService,
         { provide: BoardMemberAddedMailer, useValue: mailer },
         { provide: ActivityWriterService, useValue: { record: jest.fn() } },

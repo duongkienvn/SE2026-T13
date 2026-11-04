@@ -11,6 +11,7 @@ import { RealtimeDeliveryModule } from '../../realtime/realtime-delivery.module'
 import { ActivityWriterModule } from '../activities/activity-writer.module';
 import { MailModule } from '../../mail/mail.module';
 import { BoardMemberAddedNotificationService } from './board-member-added-notification.service';
+import { NotificationPersistenceModule } from '../notifications/notification-persistence.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { BoardMemberAddedNotificationService } from './board-member-added-notifi
     RealtimeDeliveryModule,
     ActivityWriterModule,
     MailModule,
+    NotificationPersistenceModule,
     TypeOrmModule.forFeature([Board, BoardMember]),
   ],
   controllers: [BoardMembersController],
