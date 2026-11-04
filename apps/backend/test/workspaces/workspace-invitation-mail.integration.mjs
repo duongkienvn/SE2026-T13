@@ -61,6 +61,9 @@ export async function verifyInvitationMailDelivery({
     }
     const send = (actor, method, path) =>
       http[method](path).set('Authorization', `Bearer ${tokens[actor]}`);
+    await source.query(
+      "UPDATE users SET email='MAIL-Recipient@Example.Test' WHERE email='mail-recipient@example.test'",
+    );
     const team = (
       await send('admin', 'post', '/api/workspaces')
         .send({ name: 'Dự án 東京 & <Team>' })
@@ -77,6 +80,12 @@ export async function verifyInvitationMailDelivery({
     assert.equal(first.sendState, 'SENT');
     assert.equal(first.status, 'PENDING');
     assert.equal(fake.deliveries.length, 1);
+    const notice = (
+      await send('recipient', 'get', '/api/notifications').expect(200)
+    ).body.data.find((row) => row.kind === 'WORKSPACE_INVITED');
+    assert.ok(notice);
+    assert.equal(notice.isUnavailable, false);
+    assert.equal(notice.target, null);
     const { message, idempotencyKey } = fake.deliveries[0];
     assert.equal(message.to, 'mail-recipient@example.test');
     assert.equal(idempotencyKey, `workspace-invitation/${first.id}`);
@@ -105,6 +114,12 @@ export async function verifyInvitationMailDelivery({
     await send('recipient', 'post', '/api/workspace-invitations/accept')
       .send({ proof })
       .expect(200);
+    assert.equal(
+      (
+        await send('recipient', 'get', '/api/notifications').expect(200)
+      ).body.data.find((row) => row.id === notice.id).isUnavailable,
+      true,
+    );
     await send('recipient', 'post', '/api/workspace-invitations/accept')
       .send({ proof })
       .expect(410);

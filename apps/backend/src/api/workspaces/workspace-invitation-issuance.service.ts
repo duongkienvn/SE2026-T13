@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { Injectable, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { WorkspaceRole } from '@kanban/shared';
+import { NotificationKind, WorkspaceRole } from '@kanban/shared';
 import { Repository, type EntityManager } from 'typeorm';
 import { Workspace } from './entities/workspace.entity';
 import { WorkspaceInvitation } from './entities/workspace-invitation.entity';
@@ -22,6 +22,9 @@ import {
 import { ErrorCode } from '../../common/dto/api-error';
 import { ApplicationException } from '../../exceptions/application.exception';
 import { recordWorkspaceActivity } from './workspace-activity-writer';
+import { User } from '../users/entities/user.entity';
+import { NotificationService } from '../notifications/notification.service';
+import { NotificationEventPublisher } from '../../realtime/notification-event-publisher.service';
 
 export function invitationHash(proof: string): string {
   return createHash('sha256').update(proof).digest('hex');
@@ -40,6 +43,8 @@ export class WorkspaceInvitationIssuanceService {
     @InjectRepository(Workspace)
     private readonly workspaces: Repository<Workspace>,
     private readonly foundation: WorkspacesService,
+    private readonly notifications: NotificationService,
+    private readonly notificationEvents: NotificationEventPublisher,
     @Optional() private readonly mailer?: WorkspaceInvitationMailer,
   ) {}
 
@@ -142,28 +147,51 @@ export class WorkspaceInvitationIssuanceService {
     if (this.mailer) {
       const sendState = await this.dispatch(reserved.payload);
       // Never hold a transaction across transport I/O. Revoke/rotation wins over completion.
-      await this.workspaces.manager.transaction(async (manager) => {
-        const workspace = await lockWorkspace(manager, workspaceId);
-        if (!workspace)
-          throw new ApplicationException(
-            409,
-            ErrorCode.CONFLICT,
-            'Workspace invitation is no longer available',
-          );
-        const repository = manager.getRepository(WorkspaceInvitation);
-        await repository
-          .createQueryBuilder()
-          .update()
-          .set({ sendState })
-          .where(
-            'id = :id AND send_state = :state AND consumed_at IS NULL AND revoked_at IS NULL AND declined_at IS NULL AND expires_at > clock_timestamp()',
-            { id: reserved.invitation.id, state: 'DISPATCHING' },
-          )
-          .execute();
-        reserved.invitation = await repository.findOneByOrFail({
-          id: reserved.invitation.id,
-        });
-      });
+      const recipients = await this.workspaces.manager.transaction(
+        async (manager) => {
+          const workspace = await lockWorkspace(manager, workspaceId);
+          if (!workspace)
+            throw new ApplicationException(
+              409,
+              ErrorCode.CONFLICT,
+              'Workspace invitation is no longer available',
+            );
+          const repository = manager.getRepository(WorkspaceInvitation);
+          const updated = await repository
+            .createQueryBuilder()
+            .update()
+            .set({ sendState })
+            .where(
+              'id = :id AND send_state = :state AND consumed_at IS NULL AND revoked_at IS NULL AND declined_at IS NULL AND expires_at > clock_timestamp()',
+              { id: reserved.invitation.id, state: 'DISPATCHING' },
+            )
+            .execute();
+          reserved.invitation = await repository.findOneByOrFail({
+            id: reserved.invitation.id,
+          });
+          if (updated.affected !== 1 || sendState !== 'SENT') return [];
+          const candidates = await manager
+            .getRepository(User)
+            .createQueryBuilder('recipient')
+            .where('lower(btrim(recipient.email)) = :email', {
+              email: reserved.invitation.email,
+            })
+            .orderBy('recipient.id', 'ASC')
+            .setLock('for_no_key_update')
+            .getMany();
+          const recipient = candidates.length === 1 ? candidates[0] : undefined;
+          if (!recipient?.emailVerifiedAt || recipient.id === actor) return [];
+          const result = await this.notifications.record(manager, {
+            kind: NotificationKind.WORKSPACE_INVITED,
+            workspaceId,
+            recipientUserId: recipient.id,
+            actorUserId: actor,
+            occurrenceKey: reserved.invitation.id,
+          });
+          return result.status === 'created' ? [result.recipientUserId] : [];
+        },
+      );
+      await this.notificationEvents.afterCommit(recipients);
     }
     return toWorkspaceInvitationDto(reserved.invitation, new Date());
   }
