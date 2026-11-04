@@ -72,6 +72,8 @@ function harness() {
     findOne: jest.fn().mockResolvedValue({ isArchived: false }),
   };
   const manager = {
+    queryRunner: { isTransactionActive: true },
+    query: jest.fn().mockResolvedValue([]),
     getRepository: jest.fn((entity) =>
       entity === Comment
         ? comments
