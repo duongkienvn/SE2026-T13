@@ -50,6 +50,11 @@ export function phase2Services(source) {
   const coordinator = new BoardRoomCoordinator(new BoardPresenceService());
   const events = { publish: async () => undefined };
   const activities = new ActivityWriterService();
+  const notifications =
+    new (require('../../dist/api/notifications/notification.service.js').NotificationService)(
+      source.getRepository('UserNotification'),
+    );
+  const notificationEvents = { afterCommit: async () => undefined };
   return {
     foundation,
     authorization,
@@ -60,10 +65,17 @@ export function phase2Services(source) {
       foundation,
       authorization,
       coordinator,
+      notifications,
+      notificationEvents,
     ),
     invitations: new WorkspaceInvitationsService(repository, foundation),
     // UNAVAILABLE is the existing no-provider state: no real messages or proof capture.
-    issuance: new WorkspaceInvitationIssuanceService(repository, foundation),
+    issuance: new WorkspaceInvitationIssuanceService(
+      repository,
+      foundation,
+      notifications,
+      notificationEvents,
+    ),
     move: new BoardMoveService(
       source.getRepository('Board'),
       authorization,

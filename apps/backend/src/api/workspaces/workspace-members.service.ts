@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { WorkspaceRole } from '@kanban/shared';
+import { NotificationKind, WorkspaceRole } from '@kanban/shared';
+import { randomUUID } from 'node:crypto';
+import { NotificationService } from '../notifications/notification.service';
+import { NotificationEventPublisher } from '../../realtime/notification-event-publisher.service';
 import { Repository, type EntityManager } from 'typeorm';
 import { Workspace } from './entities/workspace.entity';
 import { WorkspaceMember } from './entities/workspace-member.entity';
@@ -29,6 +32,8 @@ export class WorkspaceMembersService {
     private readonly foundation: WorkspacesService,
     private readonly authorization: BoardAuthorizationService,
     private readonly coordinator: BoardRoomCoordinator,
+    private readonly notifications: NotificationService,
+    private readonly notificationEvents: NotificationEventPublisher,
   ) {}
 
   list(actor: string, workspaceId: string, query: WorkspaceMembersQueryDto) {
@@ -59,59 +64,76 @@ export class WorkspaceMembersService {
     });
   }
 
-  changeRole(
+  async changeRole(
     actor: string,
     workspaceId: string,
     userId: string,
     role: WorkspaceRole,
   ) {
-    return this.workspaces.manager.transaction(async (manager) => {
-      await lockWorkspace(manager, workspaceId);
-      const admin = await this.foundation.requireAdmin(
-        actor,
-        workspaceId,
-        manager,
-      );
-      requireTeam(admin.workspace);
-      if (!Object.values(WorkspaceRole).includes(role))
-        throw new ApplicationException(
-          400,
-          ErrorCode.VALIDATION_FAILED,
-          'Invalid Workspace role',
-        );
-      const repository = manager.getRepository(WorkspaceMember);
-      const target = await repository.findOne({
-        where: { workspaceId, userId },
-        relations: { user: true },
-      });
-      if (!target)
-        throw new ApplicationException(
-          404,
-          ErrorCode.NOT_FOUND,
-          'Member not found',
-        );
-      if (role !== target.role) {
-        if (actor === userId)
-          throw new ApplicationException(
-            409,
-            ErrorCode.CONFLICT,
-            'Ask another ADMIN to change your role',
-          );
-        await this.protectLastAdmin(manager, target);
-        await repository.update(target.id, { role });
-        await recordWorkspaceActivity(manager, {
+    userId = userId.toLowerCase();
+    let notified: string[] = [];
+    const result = await this.workspaces.manager.transaction(
+      async (manager) => {
+        await lockWorkspace(manager, workspaceId);
+        const admin = await this.foundation.requireAdmin(
+          actor,
           workspaceId,
-          actorId: actor,
-          eventType: 'MEMBER_ROLE_CHANGED',
+          manager,
+        );
+        requireTeam(admin.workspace);
+        if (!Object.values(WorkspaceRole).includes(role))
+          throw new ApplicationException(
+            400,
+            ErrorCode.VALIDATION_FAILED,
+            'Invalid Workspace role',
+          );
+        const repository = manager.getRepository(WorkspaceMember);
+        const target = await repository.findOne({
+          where: { workspaceId, userId },
+          relations: { user: true },
         });
-        target.role = role;
-      }
-      return toWorkspaceMemberDto(target);
-    });
+        if (!target)
+          throw new ApplicationException(
+            404,
+            ErrorCode.NOT_FOUND,
+            'Member not found',
+          );
+        if (role !== target.role) {
+          if (actor === userId)
+            throw new ApplicationException(
+              409,
+              ErrorCode.CONFLICT,
+              'Ask another ADMIN to change your role',
+            );
+          await this.protectLastAdmin(manager, target);
+          await repository.update(target.id, { role });
+          const notification = await this.notifications.record(manager, {
+            kind: NotificationKind.MEMBERSHIP_CHANGED,
+            workspaceId,
+            actorUserId: actor,
+            recipientUserId: userId,
+            occurrenceKey: `role:${randomUUID()}`,
+          });
+          if (notification.status === 'created')
+            notified = [notification.recipientUserId];
+          await recordWorkspaceActivity(manager, {
+            workspaceId,
+            actorId: actor,
+            eventType: 'MEMBER_ROLE_CHANGED',
+          });
+          target.role = role;
+        }
+        return toWorkspaceMemberDto(target);
+      },
+    );
+    await this.notificationEvents.afterCommit(notified);
+    return result;
   }
 
-  remove(actor: string, workspaceId: string, userId: string) {
-    return this.reconcileRemoval(workspaceId, userId, () =>
+  async remove(actor: string, workspaceId: string, userId: string) {
+    userId = userId.toLowerCase();
+    let notified: string[] = [];
+    await this.reconcileRemoval(workspaceId, userId, () =>
       this.workspaces.manager.transaction(async (manager) => {
         await lockWorkspace(manager, workspaceId);
         const admin = await this.foundation.requireAdmin(
@@ -126,14 +148,30 @@ export class WorkspaceMembersService {
             ErrorCode.CONFLICT,
             'Use Leave Workspace to remove yourself',
           );
-        if (await this.deleteMember(manager, workspaceId, userId))
+        const membershipId = await this.deleteMember(
+          manager,
+          workspaceId,
+          userId,
+        );
+        if (membershipId) {
+          const notification = await this.notifications.record(manager, {
+            kind: NotificationKind.MEMBERSHIP_CHANGED,
+            workspaceId,
+            actorUserId: actor,
+            recipientUserId: userId,
+            occurrenceKey: `remove:${membershipId}`,
+          });
+          if (notification.status === 'created')
+            notified = [notification.recipientUserId];
           await recordWorkspaceActivity(manager, {
             workspaceId,
             actorId: actor,
             eventType: 'MEMBER_REMOVED',
           });
+        }
       }),
     );
+    await this.notificationEvents.afterCommit(notified);
   }
 
   leave(actor: string, workspaceId: string) {
@@ -188,7 +226,7 @@ export class WorkspaceMembersService {
   ) {
     const repository = manager.getRepository(WorkspaceMember);
     const member = await repository.findOneBy({ workspaceId, userId });
-    if (!member) return false;
+    if (!member) return null;
     await this.protectLastAdmin(manager, member);
     const user = await manager
       .getRepository(User)
@@ -200,7 +238,7 @@ export class WorkspaceMembersService {
       [workspaceId, user.email, userId],
     );
     await repository.delete(member.id);
-    return true;
+    return member.id;
   }
 
   private async protectLastAdmin(
