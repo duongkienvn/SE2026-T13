@@ -5,6 +5,7 @@ import { Link, useSearchParams } from 'react-router';
 import { PageContainer } from '../../components/PageContainer';
 import { Pagination } from '../../components/Pagination';
 import { usePageTitle } from '../../hooks/usePageTitle';
+import { isApiError } from '../../lib/api-client';
 import { useAuthSession } from '../auth/auth-session-context';
 import { useAuth } from '../auth/useAuth';
 import { listAllBoards } from '../boards/api';
@@ -14,7 +15,7 @@ import { usePreferences } from '../settings/hooks';
 import { useWorkspaceDirectory } from '../workspaces/hooks';
 import { nextCalendarDay, startOfDay } from './calendar';
 import { useMyTasks } from './hooks';
-import { parseTaskSearch } from './search';
+import { normalizeTaskSearch, parseTaskSearch } from './search';
 
 const groups: { id: TaskGroup; label: string; tone: string }[] = [
   {
@@ -85,7 +86,22 @@ export function MyTasksPage() {
     }),
     [search, timeZone],
   );
-  const tasks = useMyTasks(filters, timeZone, preferences.isSuccess);
+  const invalidRange = !!(
+    filters.dueFrom &&
+    filters.dueTo &&
+    filters.dueFrom >= filters.dueTo
+  );
+  const tasks = useMyTasks(
+    filters,
+    timeZone,
+    preferences.isSuccess && !invalidRange,
+  );
+
+  useEffect(() => {
+    const normalized = normalizeTaskSearch(params);
+    if (normalized.toString() !== params.toString())
+      setParams(normalized, { replace: true });
+  }, [params, setParams]);
 
   function change(
     changes: Record<string, string | undefined>,
@@ -108,6 +124,48 @@ export function MyTasksPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks.tasks, search.page]);
 
+  useEffect(() => {
+    if (
+      !search.boardId ||
+      !boards.isSuccess ||
+      boards.isFetching ||
+      !scope.isCurrent()
+    )
+      return;
+    if (!selectedBoard) change({ boardId: undefined, labelIds: undefined });
+    // Only a completed authorized Board list can invalidate the selection.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    boards.isSuccess,
+    boards.isFetching,
+    boards.data,
+    search.boardId,
+    selectedBoard,
+    scope,
+  ]);
+
+  useEffect(() => {
+    if (
+      !selectedBoard ||
+      !labels.isSuccess ||
+      labels.isFetching ||
+      !search.labelIds
+    )
+      return;
+    const allowed = new Set(labels.data.map((label) => label.id.toLowerCase()));
+    const kept = search.labelIds.split(',').filter((id) => allowed.has(id));
+    if (kept.length !== search.labelIds.split(',').length)
+      change({ labelIds: kept.join(',') });
+    // A catalog response, not the current task page, decides which labels exist.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    labels.isSuccess,
+    labels.isFetching,
+    labels.data,
+    selectedBoard,
+    search.labelIds,
+  ]);
+
   const reset = () =>
     change({
       group: undefined,
@@ -128,6 +186,13 @@ export function MyTasksPage() {
       search.dueTo
     );
   const data = tasks.tasks;
+  const taskError = isApiError(tasks.error) ? tasks.error : undefined;
+  const errorMessage =
+    taskError?.status === 0
+      ? 'You appear to be offline. Reconnect and try again.'
+      : taskError && [403, 404].includes(taskError.status)
+        ? 'Your access may have changed. Reload your tasks.'
+        : 'Tasks are unavailable.';
   const total = data
     ? Object.values(data.groupCounts).reduce((sum, count) => sum + count, 0)
     : undefined;
@@ -280,6 +345,30 @@ export function MyTasksPage() {
               )}
             </div>
           </div>
+          {boards.isError && (
+            <p role="alert" className="mt-3 text-sm text-danger">
+              Boards are unavailable.{' '}
+              <button
+                type="button"
+                className="underline"
+                onClick={() => void boards.refetch()}
+              >
+                Retry
+              </button>
+            </p>
+          )}
+          {directory.state === 'error' && (
+            <p role="alert" className="mt-3 text-sm text-danger">
+              Workspaces are unavailable.{' '}
+              <button
+                type="button"
+                className="underline"
+                onClick={() => void directory.refetch()}
+              >
+                Retry
+              </button>
+            </p>
+          )}
           <button
             type="button"
             className="mt-4 text-sm font-medium text-primary"
@@ -288,9 +377,14 @@ export function MyTasksPage() {
             Reset filters
           </button>
         </details>
-        {preferences.isError || tasks.isError ? (
+        {invalidRange ? (
+          <p role="alert" className="mt-6 text-danger">
+            This date range has no valid local time in {timeZone}. Choose
+            another date.
+          </p>
+        ) : preferences.isError || tasks.isError ? (
           <div role="alert" className="mt-6 text-ink">
-            Tasks are unavailable.{' '}
+            {errorMessage}{' '}
             <button
               type="button"
               className="text-primary underline"
@@ -305,6 +399,10 @@ export function MyTasksPage() {
         ) : !data ? (
           <p role="status" className="mt-6 text-muted">
             Loading tasks…
+          </p>
+        ) : search.page > Math.max(1, data.meta.totalPages) ? (
+          <p role="status" className="mt-6 text-muted">
+            Updating page…
           </p>
         ) : data.data.length === 0 ? (
           <div className="mt-8 text-center">
@@ -374,7 +472,8 @@ export function MyTasksPage() {
                                   {task.labels.slice(0, 5).map((label) => (
                                     <span
                                       key={label.id}
-                                      className="rounded border border-line px-2 py-0.5 text-xs text-ink"
+                                      className="rounded border border-line border-l-4 px-2 py-0.5 text-xs text-ink"
+                                      style={{ borderLeftColor: label.color }}
                                     >
                                       {label.name}
                                     </span>

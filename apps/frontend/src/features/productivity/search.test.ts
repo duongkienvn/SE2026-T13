@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseTaskSearch } from './search';
+import { normalizeTaskSearch, parseTaskSearch } from './search';
 
 describe('task URL filters', () => {
   it('restores group, page, sort and board-scoped labels', () => {
@@ -38,5 +38,12 @@ describe('task URL filters', () => {
         }),
       ),
     ).toMatchObject({ page: 1, dueFrom: undefined, labelIds: undefined });
+  });
+
+  it('normalizes duplicate or invalid fields while preserving unrelated context', () => {
+    const params = new URLSearchParams(
+      'group=LATER&group=OVERDUE&page=0&dueFrom=2026-02-30&view=compact',
+    );
+    expect(normalizeTaskSearch(params).toString()).toBe('view=compact');
   });
 });
