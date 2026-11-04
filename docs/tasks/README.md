@@ -86,6 +86,8 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Frontend tasks
 
+- [P4-10 Comment @Mentions UI and Safe Rendering](frontend/p4-comment-mentions-ui.md)
+
 - [P4-08 Global Search UI](frontend/p4-global-search-ui.md)
 
 - [P4-06 My Tasks UI](frontend/p4-my-tasks-ui.md)
