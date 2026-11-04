@@ -2,6 +2,7 @@ import type { QueryClient, QueryKey } from '@tanstack/react-query';
 import { workspaceKeys } from './query-keys';
 import type { WorkspaceSummary } from './types';
 import { refreshProductivity } from '../productivity/cache';
+import { refreshSearch } from '../search/cache';
 
 /** Cancel sibling reads even if their transport ignores AbortSignal. */
 export async function denyWorkspaceQueries(
@@ -33,6 +34,7 @@ export async function revokeWorkspaceAccess(
   sourceKey?: QueryKey,
 ) {
   refreshProductivity(client);
+  refreshSearch(client);
   const queryKey = workspaceKeys.resource(userId, generation, workspaceId);
   const resources = denyWorkspaceQueries(client, queryKey, error, sourceKey);
   const listKey = workspaceKeys.list(userId, generation);

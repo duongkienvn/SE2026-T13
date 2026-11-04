@@ -18,6 +18,7 @@ import { changeBoardAccessVersion } from '../boards/access-version';
 import { refreshWorkspaceGuests } from '../workspaces/members/refresh-guests';
 import { refreshWorkspaceBoardSummaries } from '../workspaces/refresh-board-summaries';
 import { refreshProductivity } from '../productivity/cache';
+import { refreshSearch } from '../search/cache';
 
 /**
  * Owns the realtime client of the signed-in session. A new session (sign-in,
@@ -63,6 +64,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
               typeof payload.boardId === 'string'
             ) {
               refreshWorkspaceGuests(queryClient);
+              if (event === 'board:access-changed') refreshSearch(queryClient);
               if (event.startsWith('member:'))
                 refreshWorkspaceBoardSummaries(queryClient, payload.boardId);
             }
