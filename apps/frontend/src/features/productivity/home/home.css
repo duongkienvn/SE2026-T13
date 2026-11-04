@@ -57,8 +57,8 @@
   align-items: center;
   gap: 14px;
   min-width: 0;
-  min-height: 80px;
-  padding: 14px 18px;
+  min-height: 76px;
+  padding: 12px 18px;
   border: 1px solid var(--color-line);
   border-radius: 14px;
   background: var(--color-surface);
@@ -112,12 +112,12 @@
   display: grid;
   grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
   gap: 28px;
-  margin-top: 26px;
+  margin-top: 22px;
 }
 .home-side {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 14px;
   min-width: 0;
 }
 .home-section {
@@ -265,15 +265,15 @@
 .home-board-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 .home-board {
   position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 56px;
-  padding: 8px 10px 8px 12px;
+  min-height: 50px;
+  padding: 6px 10px 6px 12px;
   border: 1px solid var(--color-line);
   border-radius: 12px;
   background: var(--color-surface);
@@ -341,6 +341,16 @@
 
 .home-pager {
   margin-top: 8px;
+}
+.home-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.home-pager-inline :is(button) {
+  height: 28px;
+  min-width: 28px;
 }
 
 .home-empty {
@@ -436,33 +446,39 @@
   .home-tiles {
     margin-top: 14px;
   }
+  .home-header p {
+    margin-top: 2px;
+  }
   .home-tile {
-    min-height: 64px;
-    padding-block: 9px;
+    min-height: 56px;
+    padding-block: 6px;
   }
   .home-tile-icon {
     width: 40px;
     height: 40px;
   }
   .home-columns {
-    margin-top: 16px;
+    margin-top: 12px;
   }
   .home-side {
-    gap: 12px;
+    gap: 8px;
   }
   .home-section-head {
     margin-bottom: 6px;
   }
   .home-task {
-    min-height: 56px;
-    padding-block: 7px;
+    min-height: 54px;
+    padding-block: 6px;
   }
   .home-board {
-    min-height: 48px;
-    padding-block: 5px;
+    min-height: 42px;
+    padding-block: 3px;
+  }
+  .home-board-list {
+    gap: 4px;
   }
   .home-board-thumb {
-    height: 32px;
+    height: 30px;
   }
   .home-pager {
     margin-top: 4px;
@@ -513,5 +529,12 @@
   .home-task {
     gap: 10px;
     padding: 10px 12px;
+  }
+  .home-task-context {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .home-task-context > span[aria-hidden='true'] {
+    display: none;
   }
 }

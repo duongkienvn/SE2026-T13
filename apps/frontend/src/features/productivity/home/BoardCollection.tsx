@@ -39,10 +39,20 @@ export function BoardCollection({
     <section aria-labelledby={headingId} className="home-section">
       <div className="home-section-head">
         <h2 id={headingId}>{title}</h2>
-        <Link to={viewAll} className="home-view-all">
-          View all <span className="sr-only">{title.toLowerCase()}</span>
-          <ArrowRightIcon aria-hidden="true" />
-        </Link>
+        <div className="home-section-actions">
+          {/* Pages sit in the heading row so both lists fit short screens. */}
+          <Pagination
+            label={`${title} pages`}
+            page={paged.page}
+            pageCount={paged.pageCount}
+            onChange={paged.setPage}
+            className="home-pager-inline"
+          />
+          <Link to={viewAll} className="home-view-all">
+            View all <span className="sr-only">{title.toLowerCase()}</span>
+            <ArrowRightIcon aria-hidden="true" />
+          </Link>
+        </div>
       </div>
       {boards.length === 0 ? (
         <div className="home-panel home-empty home-empty-compact">
@@ -53,64 +63,55 @@ export function BoardCollection({
           </Link>
         </div>
       ) : (
-        <>
-          <ul className="home-board-list">
-            {paged.visible.map((board) => {
-              const workspace = workspaceNames.get(board.workspaceId);
-              const preset = presets.data?.find(
-                (item) => item.id === board.backgroundPreset,
-              );
-              return (
-                <li key={board.id} className="home-board">
-                  <span
-                    className="home-board-thumb"
-                    aria-hidden="true"
-                    style={backgroundStyle(preset)}
+        <ul className="home-board-list">
+          {paged.visible.map((board) => {
+            const workspace = workspaceNames.get(board.workspaceId);
+            const preset = presets.data?.find(
+              (item) => item.id === board.backgroundPreset,
+            );
+            return (
+              <li key={board.id} className="home-board">
+                <span
+                  className="home-board-thumb"
+                  aria-hidden="true"
+                  style={backgroundStyle(preset)}
+                >
+                  {!preset && <ColumnsIcon />}
+                </span>
+                <span className="home-board-body">
+                  <Link
+                    to={board.path}
+                    className="home-board-name"
+                    title={board.name}
                   >
-                    {!preset && <ColumnsIcon />}
+                    {board.name}
+                  </Link>
+                  <span className="home-board-meta">
+                    {showViewed && board.lastViewedAt ? (
+                      <>
+                        Viewed{' '}
+                        <time dateTime={board.lastViewedAt}>
+                          {formatRelativeTime(board.lastViewedAt)}
+                        </time>
+                      </>
+                    ) : (
+                      (workspace ?? '')
+                    )}
                   </span>
-                  <span className="home-board-body">
-                    <Link
-                      to={board.path}
-                      className="home-board-name"
-                      title={board.name}
-                    >
-                      {board.name}
-                    </Link>
-                    <span className="home-board-meta">
-                      {showViewed && board.lastViewedAt ? (
-                        <>
-                          Viewed{' '}
-                          <time dateTime={board.lastViewedAt}>
-                            {formatRelativeTime(board.lastViewedAt)}
-                          </time>
-                        </>
-                      ) : (
-                        (workspace ?? '')
-                      )}
-                    </span>
-                  </span>
-                  <span className="home-board-star">
-                    <BoardStar
-                      boardId={board.id}
-                      boardName={board.name}
-                      isStarred={board.isStarred}
-                      stateUpdatedAt={updatedAt}
-                      compact
-                    />
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-          <Pagination
-            label={`${title} pages`}
-            page={paged.page}
-            pageCount={paged.pageCount}
-            onChange={paged.setPage}
-            className="home-pager"
-          />
-        </>
+                </span>
+                <span className="home-board-star">
+                  <BoardStar
+                    boardId={board.id}
+                    boardName={board.name}
+                    isStarred={board.isStarred}
+                    stateUpdatedAt={updatedAt}
+                    compact
+                  />
+                </span>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </section>
   );

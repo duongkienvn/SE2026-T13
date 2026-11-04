@@ -69,7 +69,11 @@ export function UpNext({
             {paged.visible.map((task) => {
               const badge = badges[task.group];
               const due = task.dueDate
-                ? formatInstantDate(new Date(task.dueDate), dateFormat, timeZone)
+                ? formatInstantDate(
+                    new Date(task.dueDate),
+                    dateFormat,
+                    timeZone,
+                  )
                 : undefined;
               return (
                 <li key={task.id}>
