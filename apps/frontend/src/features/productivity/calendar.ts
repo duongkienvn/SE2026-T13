@@ -11,11 +11,13 @@ export function startOfDay(date: string, timeZone: string): string {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
+    era: 'short',
   });
   const localDate = (instant: number) => {
     const parts = formatter.formatToParts(instant);
     const part = (type: string) =>
       parts.find((item) => item.type === type)?.value;
+    if (part('era') === 'BC') return '0000-00-00';
     return `${part('year')?.padStart(4, '0')}-${part('month')}-${part('day')}`;
   };
   // Search chronologically, including repeated or skipped local midnight.

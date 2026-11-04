@@ -1,7 +1,9 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { mockApi, ok, storeSession, testUser } from '../../test/mock-api';
+import { fail, mockApi, ok, storeSession, testUser } from '../../test/mock-api';
 import { renderApp } from '../../test/render';
+import { makeBoard } from '../../test/board-fixtures';
+import { workspaceResponse } from '../../test/workspace-fixtures';
 
 const boardId = '22222222-2222-4222-8222-222222222222';
 const cardId = '11111111-1111-4111-8111-111111111111';
@@ -82,5 +84,112 @@ describe('My Tasks route', () => {
     expect(
       calls.some((call) => call.path.includes('/users/me/tasks?group=OVERDUE')),
     ).toBe(true);
+  });
+
+  it('uses authorized workspace, board and board-scoped labels and clears them on workspace change', async () => {
+    storeSession();
+    const workspace = workspaceResponse.id;
+    const labelId = '55555555-5555-4555-8555-555555555555';
+    const prefix = '/users/me/tasks?group=ALL&page=1&sort=dueDate';
+    mockApi({
+      'GET /users/me': ok(testUser),
+      'GET /workspaces?page=1&limit=100': page([workspaceResponse]),
+      'GET /boards?page=1&limit=100': page([
+        makeBoard({ id: boardId, name: 'Delivery', workspaceId: workspace }),
+      ]),
+      [`GET ${prefix}`]: tasks(),
+      [`GET ${prefix}&workspaceId=${workspace}`]: tasks(),
+      [`GET ${prefix}&workspaceId=${workspace}&boardId=${boardId}`]: tasks(),
+      [`GET ${prefix}&workspaceId=${workspace}&boardId=${boardId}&labelIds=${labelId}`]:
+        tasks(),
+      [`GET /boards/${boardId}/labels?page=1&limit=100`]: page([
+        {
+          id: labelId,
+          boardId,
+          name: 'Backend',
+          color: '#615CF7',
+          createdAt: task.updatedAt,
+          updatedAt: task.updatedAt,
+        },
+      ]),
+    });
+    const { router } = renderApp('/my-tasks');
+    await screen.findByRole('link', { name: /Review API contract/ });
+    fireEvent.click(screen.getByText('Filters and sorting'));
+    await screen.findByRole('option', { name: 'Engineering' });
+    fireEvent.change(screen.getByLabelText('Workspace'), {
+      target: { value: workspace },
+    });
+    await screen.findByRole('option', { name: 'Delivery' });
+    fireEvent.change(screen.getByLabelText('Board'), {
+      target: { value: boardId },
+    });
+    const label = (await screen.findByRole('option', {
+      name: 'Backend',
+    })) as HTMLOptionElement;
+    label.selected = true;
+    fireEvent.change(screen.getByLabelText('Labels (match any)'));
+    await waitFor(() =>
+      expect(
+        new URLSearchParams(router.state.location.search).get('labelIds'),
+      ).toBe(labelId),
+    );
+    fireEvent.change(screen.getByLabelText('Workspace'), {
+      target: { value: '' },
+    });
+    await waitFor(() => expect(router.state.location.search).toBe(''));
+    expect(
+      screen.getByText('Select a Board to filter by labels.'),
+    ).toBeTruthy();
+  });
+
+  it('sends inclusive and exclusive local-day boundaries across DST', async () => {
+    storeSession();
+    const query = new URLSearchParams({
+      group: 'ALL',
+      page: '1',
+      sort: 'dueDate',
+      dueFrom: '2026-03-08T05:00:00.000Z',
+      dueTo: '2026-03-09T04:00:00.000Z',
+    });
+    const calls = mockApi({
+      'GET /users/me': ok(testUser),
+      'GET /users/me/preferences': ok({
+        theme: 'light',
+        timeZone: 'America/New_York',
+        dateFormat: 'MM/DD/YYYY',
+        weekStartsOn: 'monday',
+      }),
+      'GET /workspaces?page=1&limit=100': page([]),
+      'GET /boards?page=1&limit=100': page([]),
+      [`GET /users/me/tasks?${query}`]: tasks(),
+    });
+    renderApp('/my-tasks?dueFrom=2026-03-08&dueTo=2026-03-08');
+    await screen.findByRole('link', { name: /Review API contract/ });
+    expect(calls.some((call) => call.path === `/users/me/tasks?${query}`)).toBe(
+      true,
+    );
+    expect(screen.getByText('03/09/2026')).toBeTruthy();
+  });
+
+  it('shows a safe access error and retries without retaining task text', async () => {
+    storeSession();
+    let attempt = 0;
+    mockApi({
+      'GET /users/me': ok(testUser),
+      'GET /workspaces?page=1&limit=100': page([]),
+      'GET /boards?page=1&limit=100': page([]),
+      'GET /users/me/tasks?group=ALL&page=1&sort=dueDate': () =>
+        ++attempt === 1 ? fail(403, 'FORBIDDEN') : tasks(),
+    });
+    renderApp('/my-tasks');
+    expect(
+      await screen.findByText(/Your access may have changed/),
+    ).toBeTruthy();
+    expect(screen.queryByText('Review API contract')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(
+      await screen.findByRole('link', { name: /Review API contract/ }),
+    ).toBeTruthy();
   });
 });

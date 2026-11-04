@@ -120,8 +120,6 @@ export function MyTasksPage() {
     if (!tasks.tasks) return;
     const last = Math.max(1, tasks.tasks.meta.totalPages);
     if (search.page > last) change({ page: String(last) }, false);
-    // URL changes intentionally use the snapshot from this render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks.tasks, search.page]);
 
   useEffect(() => {
@@ -133,8 +131,6 @@ export function MyTasksPage() {
     )
       return;
     if (!selectedBoard) change({ boardId: undefined, labelIds: undefined });
-    // Only a completed authorized Board list can invalidate the selection.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     boards.isSuccess,
     boards.isFetching,
@@ -156,8 +152,6 @@ export function MyTasksPage() {
     const kept = search.labelIds.split(',').filter((id) => allowed.has(id));
     if (kept.length !== search.labelIds.split(',').length)
       change({ labelIds: kept.join(',') });
-    // A catalog response, not the current task page, decides which labels exist.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     labels.isSuccess,
     labels.isFetching,
@@ -223,10 +217,7 @@ export function MyTasksPage() {
             </button>
           ))}
         </nav>
-        <details
-          className="mt-4 rounded-lg border border-line bg-surface p-4"
-          open
-        >
+        <details className="mt-4 rounded-lg border border-line bg-surface p-4">
           <summary className="cursor-pointer font-medium text-ink">
             Filters and sorting
           </summary>
@@ -382,6 +373,11 @@ export function MyTasksPage() {
             This date range has no valid local time in {timeZone}. Choose
             another date.
           </p>
+        ) : preferences.fetchStatus === 'paused' ||
+          tasks.fetchStatus === 'paused' ? (
+          <p role="status" className="mt-6 text-muted">
+            You appear to be offline. Tasks will reload when you reconnect.
+          </p>
         ) : preferences.isError || tasks.isError ? (
           <div role="alert" className="mt-6 text-ink">
             {errorMessage}{' '}
@@ -472,8 +468,8 @@ export function MyTasksPage() {
                                   {task.labels.slice(0, 5).map((label) => (
                                     <span
                                       key={label.id}
-                                      className="rounded border border-line border-l-4 px-2 py-0.5 text-xs text-ink"
-                                      style={{ borderLeftColor: label.color }}
+                                      className="rounded border px-2 py-0.5 text-xs text-ink"
+                                      style={{ borderColor: label.color }}
                                     >
                                       {label.name}
                                     </span>
