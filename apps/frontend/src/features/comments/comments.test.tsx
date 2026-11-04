@@ -420,6 +420,7 @@ describe('card comments', () => {
         ?.body,
     ).toEqual({
       content: 'Xin chào',
+      mentions: [],
     });
     expect(calls.some((c) => c.method === 'PATCH' && c.path === path)).toBe(
       false,
@@ -439,6 +440,7 @@ describe('card comments', () => {
     );
     expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({
       content: 'Changed\n✅',
+      mentions: [],
     });
     fireEvent.click(
       within(dialog).getByRole('button', { name: 'Delete comment' }),

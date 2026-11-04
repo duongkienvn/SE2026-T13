@@ -97,7 +97,7 @@ export function CommentsSection({
       const lastPage = Math.ceil(
         ((pageData?.meta.total ?? 0) + 1) / COMMENTS_PAGE_LIMIT,
       );
-      await create.mutateAsync({ content: content.trim() });
+      await create.mutateAsync({ content: content.trim(), mentions: [] });
       setContent('');
       setPage(Math.max(1, lastPage));
     } catch (cause) {
@@ -123,6 +123,7 @@ export function CommentsSection({
       await update.mutateAsync({
         commentId: comment.id,
         content: editContent.trim(),
+        mentions: [],
       });
       setEditingId(undefined);
     } catch (cause) {

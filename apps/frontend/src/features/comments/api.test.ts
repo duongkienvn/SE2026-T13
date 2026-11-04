@@ -48,17 +48,19 @@ describe('comments REST adapter', () => {
     expect(
       await createComment('secret', board, card, {
         content: '  Xin chào\n✅  ',
+        mentions: [],
       }),
     ).toEqual(item);
     expect(
       await updateComment('secret', board, card, item.id, {
         content: '  Xin chào\n✅ ',
+        mentions: [],
       }),
     ).toEqual(item);
     expect(await deleteComment('secret', board, card, item.id)).toBeUndefined();
     expect(calls.map((call) => [call.method, call.body])).toEqual([
-      ['POST', { content: 'Xin chào\n✅' }],
-      ['PATCH', { content: 'Xin chào\n✅' }],
+      ['POST', { content: 'Xin chào\n✅', mentions: [] }],
+      ['PATCH', { content: 'Xin chào\n✅', mentions: [] }],
       ['DELETE', undefined],
     ]);
     expect(
@@ -66,12 +68,26 @@ describe('comments REST adapter', () => {
     ).toBe(true);
   });
 
+  it('rebases mention spans onto the trimmed content it sends', async () => {
+    const calls = mockApi({ [`POST ${path}`]: ok(item, 201) });
+    const userId = '10000000-0000-4000-8000-000000000001';
+    // "  😀 @Linh " → "😀 @Linh": the span moves left by the two spaces.
+    await createComment('secret', board, card, {
+      content: '  😀 @Linh ',
+      mentions: [{ userId, start: 5, end: 10 }],
+    });
+    expect(calls[0].body).toEqual({
+      content: '😀 @Linh',
+      mentions: [{ userId, start: 3, end: 8 }],
+    });
+  });
+
   it.each([400, 401, 403, 404, 409])(
     'preserves API error %i',
     async (status) => {
       mockApi({ [`POST ${path}`]: fail(status, 'ERROR') });
       await expect(
-        createComment('secret', board, card, { content: 'x' }),
+        createComment('secret', board, card, { content: 'x', mentions: [] }),
       ).rejects.toMatchObject({ status, code: 'ERROR' });
     },
   );
