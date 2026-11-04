@@ -13,7 +13,8 @@ export function clearProductivity(client: QueryClient) {
 }
 
 export function refreshProductivity(client: QueryClient) {
-  if (!client.getQueryCache().find({ queryKey: productivityKey })) return;
+  if (!client.getQueryCache().findAll({ queryKey: productivityKey }).length)
+    return;
   clearProductivity(client);
   void client.invalidateQueries({ queryKey: productivityKey });
 }

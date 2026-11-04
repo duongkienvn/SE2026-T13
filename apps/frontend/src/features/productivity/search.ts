@@ -59,8 +59,10 @@ export function parseTaskSearch(params: URLSearchParams): TaskSearch {
         ? page
         : 1,
     workspaceId:
-      workspaceId && uuid.test(workspaceId) ? workspaceId : undefined,
-    boardId: boardId && uuid.test(boardId) ? boardId : undefined,
+      workspaceId && uuid.test(workspaceId)
+        ? workspaceId.toLowerCase()
+        : undefined,
+    boardId: boardId && uuid.test(boardId) ? boardId.toLowerCase() : undefined,
     labelIds:
       boardId && uuid.test(boardId) && validLabels
         ? labels?.join(',')

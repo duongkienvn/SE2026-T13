@@ -1,6 +1,6 @@
-import { QueryClient } from '@tanstack/react-query';
-import { describe, expect, it } from 'vitest';
-import { clearProductivity } from './cache';
+import { QueryClient, QueryObserver } from '@tanstack/react-query';
+import { describe, expect, it, vi } from 'vitest';
+import { clearProductivity, refreshProductivity } from './cache';
 import { invalidationTargets } from '../realtime/event-invalidation';
 
 describe('productivity access changes', () => {
@@ -53,12 +53,31 @@ describe('productivity access changes', () => {
         cardId: 'card',
         columnId: 'column',
       }),
-    ).toContainEqual({ queryKey: ['productivity'] });
+    ).toContainEqual({ queryKey: ['productivity', 'tasks'] });
     expect(
       invalidationTargets('labels:changed', {
         boardId: 'board',
         labelId: 'label',
       }),
-    ).toContainEqual({ queryKey: ['productivity'] });
+    ).toContainEqual({ queryKey: ['productivity', 'tasks'] });
+  });
+
+  it('rechecks active task data after a connection loss', async () => {
+    const client = new QueryClient();
+    const key = ['productivity', 'user', 1, 'tasks'];
+    client.setQueryData(key, { data: [{ title: 'Old' }] });
+    const observer = new QueryObserver(client, {
+      queryKey: key,
+      queryFn: async () => ({ data: [{ title: 'Fresh' }] }),
+      staleTime: Infinity,
+    });
+    const unsubscribe = observer.subscribe(() => undefined);
+    refreshProductivity(client);
+    expect(client.getQueryData(key)).toBeUndefined();
+    await vi.waitFor(() =>
+      expect(client.getQueryData(key)).toEqual({ data: [{ title: 'Fresh' }] }),
+    );
+    unsubscribe();
+    client.clear();
   });
 });

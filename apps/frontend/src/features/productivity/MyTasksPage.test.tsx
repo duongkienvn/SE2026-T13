@@ -1,9 +1,11 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { fail, mockApi, ok, storeSession, testUser } from '../../test/mock-api';
 import { renderApp } from '../../test/render';
 import { makeBoard } from '../../test/board-fixtures';
 import { workspaceResponse } from '../../test/workspace-fixtures';
+import { createdSockets } from '../../test/fake-socket';
+import type { TaskCardSummary, TaskGroupCounts } from '@kanban/shared';
 
 const boardId = '22222222-2222-4222-8222-222222222222';
 const cardId = '11111111-1111-4111-8111-111111111111';
@@ -18,7 +20,7 @@ const page = (data: unknown[], total = data.length) => ({
     meta: { page: 1, limit: 100, total, totalPages: total ? 1 : 0 },
   },
 });
-const task = {
+const task: TaskCardSummary = {
   id: cardId,
   boardId,
   workspaceId,
@@ -33,7 +35,7 @@ const task = {
   permalink: `/boards/${boardId}/cards/${cardId}`,
   labels: [],
 };
-const tasks = (data = [task]) => ({
+const tasks = (data: TaskCardSummary[] = [task], counts?: TaskGroupCounts) => ({
   status: 200,
   body: {
     success: true,
@@ -46,7 +48,12 @@ const tasks = (data = [task]) => ({
       total: data.length,
       totalPages: data.length ? 1 : 0,
     },
-    groupCounts: { OVERDUE: 0, NEXT_7_DAYS: 1, LATER: 0, NO_DUE_DATE: 0 },
+    groupCounts: counts ?? {
+      OVERDUE: 0,
+      NEXT_7_DAYS: data.length,
+      LATER: 0,
+      NO_DUE_DATE: 0,
+    },
   },
 });
 
@@ -58,6 +65,57 @@ describe('My Tasks route', () => {
     expect(router.state.location.pathname).toBe('/login');
   });
 
+  it('renders all four server groups, including no due date', async () => {
+    storeSession();
+    const grouped = tasks(
+      [
+        {
+          ...task,
+          id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          permalink: `/boards/${boardId}/cards/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa`,
+          title: 'Past',
+          group: 'OVERDUE',
+          dueDate: '2026-03-01T12:00:00.000Z',
+        },
+        task,
+        {
+          ...task,
+          id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+          permalink: `/boards/${boardId}/cards/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb`,
+          title: 'Future',
+          group: 'LATER',
+          dueDate: '2026-04-01T12:00:00.000Z',
+        },
+        {
+          ...task,
+          id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+          permalink: `/boards/${boardId}/cards/cccccccc-cccc-4ccc-8ccc-cccccccccccc`,
+          title: 'Undated',
+          group: 'NO_DUE_DATE',
+          dueDate: null,
+        },
+      ],
+      { OVERDUE: 1, NEXT_7_DAYS: 1, LATER: 1, NO_DUE_DATE: 1 },
+    );
+    mockApi({
+      'GET /users/me': ok(testUser),
+      'GET /workspaces?page=1&limit=100': page([]),
+      'GET /boards?page=1&limit=100': page([]),
+      'GET /users/me/tasks?group=ALL&page=1&sort=dueDate': grouped,
+    });
+    renderApp('/my-tasks');
+    for (const heading of [
+      'Overdue (1)',
+      'Next 7 days (1)',
+      'Later (1)',
+      'No due date (1)',
+    ])
+      expect(
+        await screen.findByRole('heading', { name: heading }),
+      ).toBeTruthy();
+    expect(screen.getByText('No due date')).toBeTruthy();
+  });
+
   it('renders real group counts and the returned Card permalink, then filters through the URL', async () => {
     storeSession();
     const calls = mockApi({
@@ -65,7 +123,14 @@ describe('My Tasks route', () => {
       'GET /workspaces?page=1&limit=100': page([]),
       'GET /boards?page=1&limit=100': page([]),
       'GET /users/me/tasks?group=ALL&page=1&sort=dueDate': tasks(),
-      'GET /users/me/tasks?group=OVERDUE&page=1&sort=dueDate': tasks([]),
+      'GET /users/me/tasks?group=ALL&page=1&sort=board': tasks(),
+      'GET /users/me/tasks?group=ALL&page=1&sort=updatedAt': tasks(),
+      'GET /users/me/tasks?group=OVERDUE&page=1&sort=dueDate': tasks([], {
+        OVERDUE: 0,
+        NEXT_7_DAYS: 1,
+        LATER: 0,
+        NO_DUE_DATE: 0,
+      }),
     });
     const { router } = renderApp('/my-tasks');
     const link = await screen.findByRole('link', {
@@ -84,12 +149,41 @@ describe('My Tasks route', () => {
     expect(
       calls.some((call) => call.path.includes('/users/me/tasks?group=OVERDUE')),
     ).toBe(true);
+    await act(() => router.navigate(-1));
+    expect(
+      await screen.findByRole('link', { name: /Review API contract/ }),
+    ).toBeTruthy();
+    await act(() => router.navigate(1));
+    expect(await screen.findByText('No matching tasks')).toBeTruthy();
+    fireEvent.click(screen.getByText('Filters and sorting'));
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Reset filters' })[0],
+    );
+    await waitFor(() => expect(router.state.location.search).toBe(''));
+    fireEvent.change(screen.getByLabelText('Sort by'), {
+      target: { value: 'board' },
+    });
+    await waitFor(() =>
+      expect(router.state.location.search).toBe('?sort=board'),
+    );
+    fireEvent.change(screen.getByLabelText('Sort by'), {
+      target: { value: 'updatedAt' },
+    });
+    await waitFor(() =>
+      expect(router.state.location.search).toBe('?sort=updatedAt'),
+    );
   });
 
   it('uses authorized workspace, board and board-scoped labels and clears them on workspace change', async () => {
     storeSession();
     const workspace = workspaceResponse.id;
     const labelId = '55555555-5555-4555-8555-555555555555';
+    const otherLabelId = '66666666-6666-4666-8666-666666666666';
+    const teamTask = {
+      ...task,
+      workspaceId: workspace,
+      labels: [{ id: labelId, name: 'Backend', color: '#615CF7' }],
+    };
     const prefix = '/users/me/tasks?group=ALL&page=1&sort=dueDate';
     mockApi({
       'GET /users/me': ok(testUser),
@@ -97,16 +191,26 @@ describe('My Tasks route', () => {
       'GET /boards?page=1&limit=100': page([
         makeBoard({ id: boardId, name: 'Delivery', workspaceId: workspace }),
       ]),
-      [`GET ${prefix}`]: tasks(),
-      [`GET ${prefix}&workspaceId=${workspace}`]: tasks(),
-      [`GET ${prefix}&workspaceId=${workspace}&boardId=${boardId}`]: tasks(),
-      [`GET ${prefix}&workspaceId=${workspace}&boardId=${boardId}&labelIds=${labelId}`]:
-        tasks(),
+      [`GET ${prefix}`]: tasks([teamTask]),
+      [`GET ${prefix}&workspaceId=${workspace}`]: tasks([teamTask]),
+      [`GET ${prefix}&workspaceId=${workspace}&boardId=${boardId}`]: tasks([
+        teamTask,
+      ]),
+      [`GET ${prefix}&workspaceId=${workspace}&boardId=${boardId}&labelIds=${labelId}%2C${otherLabelId}`]:
+        tasks([teamTask]),
       [`GET /boards/${boardId}/labels?page=1&limit=100`]: page([
         {
           id: labelId,
           boardId,
           name: 'Backend',
+          color: '#615CF7',
+          createdAt: task.updatedAt,
+          updatedAt: task.updatedAt,
+        },
+        {
+          id: otherLabelId,
+          boardId,
+          name: 'Design',
           color: '#615CF7',
           createdAt: task.updatedAt,
           updatedAt: task.updatedAt,
@@ -127,12 +231,16 @@ describe('My Tasks route', () => {
     const label = (await screen.findByRole('option', {
       name: 'Backend',
     })) as HTMLOptionElement;
+    const otherLabel = screen.getByRole('option', {
+      name: 'Design',
+    }) as HTMLOptionElement;
     label.selected = true;
+    otherLabel.selected = true;
     fireEvent.change(screen.getByLabelText('Labels (match any)'));
     await waitFor(() =>
       expect(
         new URLSearchParams(router.state.location.search).get('labelIds'),
-      ).toBe(labelId),
+      ).toBe(`${labelId},${otherLabelId}`),
     );
     fireEvent.change(screen.getByLabelText('Workspace'), {
       target: { value: '' },
@@ -170,26 +278,221 @@ describe('My Tasks route', () => {
       true,
     );
     expect(screen.getByText('03/09/2026')).toBeTruthy();
+    fireEvent.click(screen.getByText('Filters and sorting'));
+    expect(
+      screen.getByText(
+        /Applied dates: 03\/08\/2026 – 03\/08\/2026 \(America\/New_York\)/,
+      ),
+    ).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Due through'), {
+      target: { value: '2026-03-07' },
+    });
+    expect(screen.getByRole('alert').textContent).toContain(
+      'end date must be on or after',
+    );
   });
 
-  it('shows a safe access error and retries without retaining task text', async () => {
+  it.each([403, 404])(
+    'shows a safe %s access error and retries without retaining task text',
+    async (status) => {
+      storeSession();
+      let attempt = 0;
+      mockApi({
+        'GET /users/me': ok(testUser),
+        'GET /workspaces?page=1&limit=100': page([]),
+        'GET /boards?page=1&limit=100': page([]),
+        'GET /users/me/tasks?group=ALL&page=1&sort=dueDate': () =>
+          ++attempt === 1
+            ? fail(status, status === 403 ? 'FORBIDDEN' : 'NOT_FOUND')
+            : tasks(),
+      });
+      renderApp('/my-tasks');
+      expect(
+        await screen.findByText(/Your access may have changed/),
+      ).toBeTruthy();
+      expect(screen.queryByText('Review API contract')).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+      expect(
+        await screen.findByRole('link', { name: /Review API contract/ }),
+      ).toBeTruthy();
+    },
+  );
+
+  it('ends the session after an unauthorized task response', async () => {
+    storeSession();
+    mockApi({
+      'GET /users/me': ok(testUser),
+      'GET /workspaces?page=1&limit=100': page([]),
+      'GET /boards?page=1&limit=100': page([]),
+      'GET /users/me/tasks?group=ALL&page=1&sort=dueDate': fail(
+        401,
+        'UNAUTHORIZED',
+      ),
+    });
+    const { router } = renderApp('/my-tasks');
+    await screen.findByRole('heading', { name: 'Welcome back' });
+    expect(router.state.location.pathname).toBe('/login');
+    expect(screen.queryByText('Review API contract')).toBeNull();
+  });
+
+  it('reports an unreachable task service and can retry', async () => {
     storeSession();
     let attempt = 0;
     mockApi({
       'GET /users/me': ok(testUser),
       'GET /workspaces?page=1&limit=100': page([]),
       'GET /boards?page=1&limit=100': page([]),
-      'GET /users/me/tasks?group=ALL&page=1&sort=dueDate': () =>
-        ++attempt === 1 ? fail(403, 'FORBIDDEN') : tasks(),
+      'GET /users/me/tasks?group=ALL&page=1&sort=dueDate': () => {
+        if (++attempt === 1) throw new TypeError('offline');
+        return tasks();
+      },
     });
     renderApp('/my-tasks');
-    expect(
-      await screen.findByText(/Your access may have changed/),
-    ).toBeTruthy();
-    expect(screen.queryByText('Review API contract')).toBeNull();
+    expect(await screen.findByText(/appear to be offline/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(
       await screen.findByRole('link', { name: /Review API contract/ }),
     ).toBeTruthy();
+  });
+
+  it('clears cached task text when the selected Board label catalog refuses access', async () => {
+    storeSession();
+    let deny!: () => void;
+    mockApi({
+      'GET /users/me': ok(testUser),
+      'GET /workspaces?page=1&limit=100': page([]),
+      'GET /boards?page=1&limit=100': page([
+        makeBoard({ id: boardId, name: 'Delivery', workspaceId }),
+      ]),
+      [`GET /boards/${boardId}/labels?page=1&limit=100`]: () =>
+        new Promise((resolve) => {
+          deny = () => resolve(fail(403, 'FORBIDDEN'));
+        }),
+      [`GET /users/me/tasks?group=ALL&page=1&sort=dueDate&boardId=${boardId}`]:
+        tasks(),
+      'GET /users/me/tasks?group=ALL&page=1&sort=dueDate': tasks([]),
+    });
+    const { router } = renderApp(`/my-tasks?boardId=${boardId}`);
+    await screen.findByRole('link', { name: /Review API contract/ });
+    await waitFor(() => expect(deny).toBeTypeOf('function'));
+    deny();
+    await waitFor(() =>
+      expect(router.state.location.search).not.toContain('boardId'),
+    );
+    await waitFor(() =>
+      expect(screen.queryByText('Review API contract')).toBeNull(),
+    );
+  });
+
+  it('does not show a late response after an account switch', async () => {
+    storeSession('first-token');
+    let finish!: () => void;
+    const pending = new Promise<ReturnType<typeof tasks>>((resolve) => {
+      finish = () => resolve(tasks());
+    });
+    const calls = mockApi({
+      'GET /users/me': ok(testUser),
+      'GET /workspaces?page=1&limit=100': page([]),
+      'GET /boards?page=1&limit=100': page([]),
+      'GET /users/me/tasks?group=ALL&page=1&sort=dueDate': () => pending,
+    });
+    renderApp('/my-tasks');
+    await waitFor(() =>
+      expect(
+        calls.some((call) => call.path.startsWith('/users/me/tasks?')),
+      ).toBe(true),
+    );
+    mockApi({
+      'GET /users/me': ok({
+        ...testUser,
+        id: '00000000-0000-4000-8000-000000000002',
+        displayName: 'Grace Hopper',
+      }),
+      'GET /workspaces?page=1&limit=100': page([]),
+      'GET /boards?page=1&limit=100': page([]),
+      'GET /users/me/tasks?group=ALL&page=1&sort=dueDate': tasks([]),
+    });
+    storeSession('second-token');
+    act(() =>
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: 'kanban.session',
+          storageArea: localStorage,
+        }),
+      ),
+    );
+    await screen.findByText('No assigned tasks yet');
+    await act(async () => finish());
+    expect(screen.queryByText('Review API contract')).toBeNull();
+    expect(screen.getByText('No assigned tasks yet')).toBeTruthy();
+  });
+
+  it('does not show a late response for an earlier URL', async () => {
+    storeSession();
+    let finish!: () => void;
+    const pending = new Promise<ReturnType<typeof tasks>>((resolve) => {
+      finish = () => resolve(tasks());
+    });
+    const calls = mockApi({
+      'GET /users/me': ok(testUser),
+      'GET /workspaces?page=1&limit=100': page([]),
+      'GET /boards?page=1&limit=100': page([]),
+      'GET /users/me/tasks?group=ALL&page=1&sort=dueDate': () => pending,
+      'GET /users/me/tasks?group=OVERDUE&page=1&sort=dueDate': tasks([]),
+    });
+    const { router } = renderApp('/my-tasks');
+    await waitFor(() =>
+      expect(calls.some((call) => call.path.includes('group=ALL'))).toBe(true),
+    );
+    await act(() => router.navigate('/my-tasks?group=OVERDUE'));
+    await screen.findByText('No matching tasks');
+    await act(async () => finish());
+    expect(screen.queryByText('Review API contract')).toBeNull();
+    expect(screen.getByText('No matching tasks')).toBeTruthy();
+  });
+
+  it('returns to page one when an existing access-change signal invalidates tasks', async () => {
+    storeSession();
+    const secondPage = tasks();
+    secondPage.body.meta = { page: 2, limit: 20, total: 21, totalPages: 2 };
+    secondPage.body.groupCounts.NEXT_7_DAYS = 21;
+    mockApi({
+      'GET /users/me': ok(testUser),
+      'GET /workspaces?page=1&limit=100': page([]),
+      'GET /boards?page=1&limit=100': page([]),
+      'GET /users/me/tasks?group=ALL&page=2&sort=dueDate': secondPage,
+      'GET /users/me/tasks?group=ALL&page=1&sort=dueDate': tasks(),
+    });
+    const { router } = renderApp('/my-tasks?page=2');
+    await screen.findByRole('link', { name: /Review API contract/ });
+    await waitFor(() => expect(createdSockets.length).toBeGreaterThan(0));
+    act(() => createdSockets.at(-1)!.socket.push('access:changed', {}));
+    await waitFor(() => expect(router.state.location.search).toBe(''));
+    expect(
+      await screen.findByRole('link', { name: /Review API contract/ }),
+    ).toBeTruthy();
+  });
+
+  it('clamps an out-of-range page only after the server confirms the last page', async () => {
+    storeSession();
+    const outOfRange = tasks([], {
+      OVERDUE: 0,
+      NEXT_7_DAYS: 1,
+      LATER: 0,
+      NO_DUE_DATE: 0,
+    });
+    outOfRange.body.meta = { page: 9, limit: 20, total: 1, totalPages: 1 };
+    mockApi({
+      'GET /users/me': ok(testUser),
+      'GET /workspaces?page=1&limit=100': page([]),
+      'GET /boards?page=1&limit=100': page([]),
+      'GET /users/me/tasks?group=ALL&page=9&sort=dueDate': outOfRange,
+      'GET /users/me/tasks?group=ALL&page=1&sort=dueDate': tasks(),
+    });
+    const { router } = renderApp('/my-tasks?page=9');
+    expect(
+      await screen.findByRole('link', { name: /Review API contract/ }),
+    ).toBeTruthy();
+    await waitFor(() => expect(router.state.location.search).toBe(''));
   });
 });

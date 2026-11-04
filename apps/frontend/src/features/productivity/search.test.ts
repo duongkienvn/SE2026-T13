@@ -46,4 +46,13 @@ describe('task URL filters', () => {
     );
     expect(normalizeTaskSearch(params).toString()).toBe('view=compact');
   });
+
+  it('normalizes UUID case for matching authorized selector options', () => {
+    const params = new URLSearchParams({
+      boardId: 'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA',
+    });
+    expect(parseTaskSearch(params).boardId).toBe(
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    );
+  });
 });

@@ -62,8 +62,10 @@ export function invalidationTargets<E extends BoardEventName>(
   payload: BoardEventPayload<E>,
 ): InvalidationTarget[] {
   const targets = boardInvalidationTargets(event, payload);
-  if (/^(card:|labels:|board:|member:)/.test(event))
+  if (/^(board:|member:)/.test(event))
     targets.push({ queryKey: productivityKey });
+  else if (/^(card:|labels:)/.test(event))
+    targets.push({ queryKey: [...productivityKey, 'tasks'] });
   return targets;
 }
 

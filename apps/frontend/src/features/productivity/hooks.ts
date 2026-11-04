@@ -14,9 +14,9 @@ export function useMyTasks(
   const query = useQuery({
     queryKey: [
       'productivity',
+      'tasks',
       user?.id,
       scope.generation,
-      'tasks',
       timeZone,
       filters,
     ],

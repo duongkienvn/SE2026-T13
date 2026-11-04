@@ -17,6 +17,7 @@ import { createRealtimeSocket } from './socket-client';
 import { changeBoardAccessVersion } from '../boards/access-version';
 import { refreshWorkspaceGuests } from '../workspaces/members/refresh-guests';
 import { refreshWorkspaceBoardSummaries } from '../workspaces/refresh-board-summaries';
+import { refreshProductivity } from '../productivity/cache';
 
 /**
  * Owns the realtime client of the signed-in session. A new session (sign-in,
@@ -122,7 +123,10 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         void queryClient.invalidateQueries({ queryKey: currentUserQueryKey }),
       keepAlive: true,
       connectionLost: () => {
-        if (isCurrent()) clearAccessSnapshots(queryClient);
+        if (isCurrent()) {
+          clearAccessSnapshots(queryClient);
+          refreshProductivity(queryClient);
+        }
       },
       reconnected: () => {
         if (isCurrent()) refreshAccessSnapshots(queryClient);

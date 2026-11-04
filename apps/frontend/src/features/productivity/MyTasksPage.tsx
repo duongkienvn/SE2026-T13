@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { MyTasksFilters, TaskGroup } from '@kanban/shared';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { PageContainer } from '../../components/PageContainer';
 import { Pagination } from '../../components/Pagination';
@@ -9,8 +9,9 @@ import { isApiError } from '../../lib/api-client';
 import { useAuthSession } from '../auth/auth-session-context';
 import { useAuth } from '../auth/useAuth';
 import { listAllBoards } from '../boards/api';
+import { revokeBoardAccess } from '../boards/revoke-board-access';
 import { useLabelCatalog } from '../labels/hooks';
-import { formatInstantDate } from '../settings/format';
+import { formatCalendarDate, formatInstantDate } from '../settings/format';
 import { usePreferences } from '../settings/hooks';
 import { useWorkspaceDirectory } from '../workspaces/hooks';
 import { nextCalendarDay, startOfDay } from './calendar';
@@ -41,13 +42,15 @@ const control =
 export function MyTasksPage() {
   usePageTitle('My Tasks');
   const [params, setParams] = useSearchParams();
+  const [dateError, setDateError] = useState(false);
   const search = useMemo(() => parseTaskSearch(params), [params]);
   const { user, runAuthorized } = useAuth();
   const scope = useAuthSession();
+  const queryClient = useQueryClient();
   const preferences = usePreferences();
   const directory = useWorkspaceDirectory();
   const boards = useQuery({
-    queryKey: ['productivity', user?.id, scope.generation, 'board-options'],
+    queryKey: ['productivity', 'board-options', user?.id, scope.generation],
     queryFn: ({ signal }) =>
       runAuthorized((token) => listAllBoards(token, signal)),
     enabled: !!user,
@@ -68,6 +71,11 @@ export function MyTasksPage() {
   const labels = useLabelCatalog(search.boardId ?? '', {
     enabled: selectedBoard,
   });
+  const labelAccessLost =
+    selectedBoard &&
+    labels.isError &&
+    isApiError(labels.error) &&
+    [403, 404].includes(labels.error.status);
   const timeZone = preferences.data?.timeZone ?? 'UTC';
   const filters = useMemo<MyTasksFilters>(
     () => ({
@@ -102,6 +110,35 @@ export function MyTasksPage() {
     if (normalized.toString() !== params.toString())
       setParams(normalized, { replace: true });
   }, [params, setParams]);
+
+  useEffect(() => {
+    setDateError(false);
+  }, [search.dueFrom, search.dueTo]);
+
+  useEffect(() => {
+    if (search.page === 1) return;
+    return queryClient.getQueryCache().subscribe((event) => {
+      const key = event.query.queryKey;
+      if (
+        event.type !== 'updated' ||
+        event.action.type !== 'invalidate' ||
+        event.query.getObserversCount() === 0 ||
+        key[0] !== 'productivity' ||
+        key[1] !== 'tasks' ||
+        key[2] !== user?.id ||
+        key[3] !== scope.generation
+      )
+        return;
+      setParams(
+        (current) => {
+          const next = new URLSearchParams(current);
+          next.delete('page');
+          return next;
+        },
+        { replace: true },
+      );
+    });
+  }, [queryClient, scope.generation, search.page, setParams, user?.id]);
 
   function change(
     changes: Record<string, string | undefined>,
@@ -160,7 +197,14 @@ export function MyTasksPage() {
     search.labelIds,
   ]);
 
-  const reset = () =>
+  useEffect(() => {
+    if (!labelAccessLost || !search.boardId || !scope.isCurrent()) return;
+    revokeBoardAccess(queryClient, search.boardId);
+    change({ boardId: undefined, labelIds: undefined });
+  }, [labelAccessLost, search.boardId, queryClient, scope]);
+
+  const reset = () => {
+    setDateError(false);
     change({
       group: undefined,
       sort: undefined,
@@ -170,6 +214,7 @@ export function MyTasksPage() {
       dueFrom: undefined,
       dueTo: undefined,
     });
+  };
   const filtered =
     search.group !== 'ALL' ||
     !!(
@@ -179,7 +224,7 @@ export function MyTasksPage() {
       search.dueFrom ||
       search.dueTo
     );
-  const data = tasks.tasks;
+  const data = labelAccessLost ? undefined : tasks.tasks;
   const taskError = isApiError(tasks.error) ? tasks.error : undefined;
   const errorMessage =
     taskError?.status === 0
@@ -192,14 +237,14 @@ export function MyTasksPage() {
     : undefined;
   return (
     <PageContainer>
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-4xl">
         <h1 className="text-2xl font-semibold text-ink">My Tasks</h1>
         <p className="mt-1 text-sm text-muted">
           Cards assigned to you across your boards.
         </p>
         <nav
           aria-label="Task groups"
-          className="mt-5 flex gap-5 overflow-x-auto border-b border-line"
+          className="mt-5 flex gap-5 overflow-x-auto border-b border-line [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {[{ id: 'ALL', label: 'All Tasks' }, ...groups].map((group) => (
             <button
@@ -280,26 +325,44 @@ export function MyTasksPage() {
                 <option value="board">Board</option>
               </select>
             </label>
-            <label className="text-sm text-muted">
-              Due from
-              <input
-                className={control}
-                type="date"
-                value={search.dueFrom ?? ''}
-                max={search.dueTo}
-                onChange={(event) => change({ dueFrom: event.target.value })}
-              />
-            </label>
-            <label className="text-sm text-muted">
-              Due through
-              <input
-                className={control}
-                type="date"
-                value={search.dueTo ?? ''}
-                min={search.dueFrom}
-                onChange={(event) => change({ dueTo: event.target.value })}
-              />
-            </label>
+            <div className="grid grid-cols-2 gap-3 sm:col-span-2">
+              <label className="min-w-0 text-sm text-muted">
+                Due from
+                <input
+                  className={`${control} min-w-0`}
+                  type="date"
+                  value={search.dueFrom ?? ''}
+                  max={search.dueTo}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (value && search.dueTo && value > search.dueTo) {
+                      setDateError(true);
+                      return;
+                    }
+                    setDateError(false);
+                    change({ dueFrom: value });
+                  }}
+                />
+              </label>
+              <label className="min-w-0 text-sm text-muted">
+                Due through
+                <input
+                  className={`${control} min-w-0`}
+                  type="date"
+                  value={search.dueTo ?? ''}
+                  min={search.dueFrom}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (value && search.dueFrom && value < search.dueFrom) {
+                      setDateError(true);
+                      return;
+                    }
+                    setDateError(false);
+                    change({ dueTo: value });
+                  }}
+                />
+              </label>
+            </div>
             <div>
               <span className="text-sm text-muted">Labels (match any)</span>
               {!search.boardId ? (
@@ -331,11 +394,45 @@ export function MyTasksPage() {
                 </select>
               ) : (
                 <p className="mt-2 text-sm text-muted">
-                  {labels.isError ? 'Labels unavailable.' : 'Loading labels…'}
+                  {labels.isError ? (
+                    <>
+                      Labels unavailable.{' '}
+                      <button
+                        type="button"
+                        className="text-primary underline"
+                        onClick={() => void labels.refetch()}
+                      >
+                        Retry
+                      </button>
+                    </>
+                  ) : (
+                    'Loading labels…'
+                  )}
                 </p>
               )}
             </div>
           </div>
+          {dateError && (
+            <p role="alert" className="mt-3 text-sm text-danger">
+              The end date must be on or after the start date.
+            </p>
+          )}
+          {preferences.data && (search.dueFrom || search.dueTo) && (
+            <p className="mt-3 text-sm text-muted">
+              Applied dates:{' '}
+              {search.dueFrom
+                ? formatCalendarDate(
+                    search.dueFrom,
+                    preferences.data.dateFormat,
+                  )
+                : 'Any start'}{' '}
+              –{' '}
+              {search.dueTo
+                ? formatCalendarDate(search.dueTo, preferences.data.dateFormat)
+                : 'Any end'}{' '}
+              ({timeZone})
+            </p>
+          )}
           {boards.isError && (
             <p role="alert" className="mt-3 text-sm text-danger">
               Boards are unavailable.{' '}
@@ -348,7 +445,7 @@ export function MyTasksPage() {
               </button>
             </p>
           )}
-          {directory.state === 'error' && (
+          {directory.state !== 'ready' && directory.state !== 'loading' && (
             <p role="alert" className="mt-3 text-sm text-danger">
               Workspaces are unavailable.{' '}
               <button
@@ -425,7 +522,7 @@ export function MyTasksPage() {
             )}
           </div>
         ) : (
-          <div className="mt-5 space-y-4">
+          <div className="mt-5 space-y-3">
             {groups
               .filter(
                 (group) =>
@@ -440,7 +537,7 @@ export function MyTasksPage() {
                 >
                   <h2
                     id={`task-${group.id}`}
-                    className={`px-4 py-2 text-sm font-semibold ${group.tone}`}
+                    className={`px-3 py-1.5 text-sm font-semibold ${group.tone}`}
                   >
                     {group.label} ({data.groupCounts[group.id]})
                   </h2>
@@ -454,13 +551,13 @@ export function MyTasksPage() {
                         >
                           <Link
                             to={task.permalink}
-                            className="flex min-h-16 flex-wrap items-center justify-between gap-2 px-4 py-3 hover:bg-primary-soft focus-visible:outline-2 focus-visible:outline-primary"
+                            className="flex min-h-12 flex-wrap items-center justify-between gap-2 px-3 py-2 hover:bg-primary-soft focus-visible:outline-2 focus-visible:outline-primary"
                           >
                             <span className="min-w-0">
-                              <span className="block break-words font-medium text-ink">
+                              <span className="block break-words text-sm font-medium text-ink">
                                 {task.title}
                               </span>
-                              <span className="mt-1 block break-words text-sm text-muted">
+                              <span className="mt-0.5 block break-words text-xs text-muted">
                                 {task.boardName} · {task.workspaceName}
                               </span>
                               {task.labels.length > 0 && (
@@ -468,7 +565,7 @@ export function MyTasksPage() {
                                   {task.labels.slice(0, 5).map((label) => (
                                     <span
                                       key={label.id}
-                                      className="rounded border px-2 py-0.5 text-xs text-ink"
+                                      className="max-w-full break-all rounded border px-2 py-0.5 text-xs text-ink"
                                       style={{ borderColor: label.color }}
                                     >
                                       {label.name}
@@ -482,15 +579,22 @@ export function MyTasksPage() {
                                 </span>
                               )}
                             </span>
-                            <span className="shrink-0 text-sm text-muted">
-                              {task.dueDate && preferences.data
-                                ? formatInstantDate(
-                                    new Date(task.dueDate),
-                                    preferences.data.dateFormat,
-                                    timeZone,
-                                  )
-                                : 'No due date'}
-                            </span>
+                            {task.dueDate && preferences.data ? (
+                              <time
+                                dateTime={task.dueDate}
+                                className={`shrink-0 text-xs ${task.group === 'OVERDUE' ? 'text-danger' : task.group === 'NEXT_7_DAYS' ? 'text-amber-800 dark:text-amber-200' : 'text-muted'}`}
+                              >
+                                {formatInstantDate(
+                                  new Date(task.dueDate),
+                                  preferences.data.dateFormat,
+                                  timeZone,
+                                )}
+                              </time>
+                            ) : (
+                              <span className="shrink-0 text-xs text-muted">
+                                No due date
+                              </span>
+                            )}
                           </Link>
                         </li>
                       ))}
