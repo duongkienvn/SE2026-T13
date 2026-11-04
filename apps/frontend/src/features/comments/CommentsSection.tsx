@@ -421,8 +421,7 @@ export function CommentsSection({
                 hideLabel
                 placeholder="Write a comment…"
                 rows={1}
-                className="min-w-0 flex-1"
-                textareaClassName="min-h-10 border-0 px-2 focus:ring-0"
+                className="min-w-0 flex-1 [&>textarea]:mt-0 [&>textarea]:min-h-10 [&>textarea]:border-0 [&>textarea]:px-2 [&>textarea]:focus:ring-0"
                 value={draft}
                 members={roster}
                 enabled={canReadMembers}

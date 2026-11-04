@@ -41,8 +41,6 @@ interface MentionComposerProps {
   error?: string;
   /** Classes for the wrapper; mirrors TextAreaField so layouts stay as they were. */
   className?: string;
-  /** Extra classes for the textarea itself. */
-  textareaClassName?: string;
   hideLabel?: boolean;
 }
 
@@ -62,7 +60,6 @@ export function MentionComposer({
   maxLength,
   error,
   className = '',
-  textareaClassName = '',
   hideLabel = false,
 }: MentionComposerProps) {
   const id = useId();
@@ -235,7 +232,7 @@ export function MentionComposer({
           error
             ? 'border-danger focus:border-danger'
             : 'border-line focus:border-primary'
-        } ${textareaClassName}`}
+        }`}
       />
       {showList && (
         <ul
