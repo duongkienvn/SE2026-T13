@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { fail, mockApi, ok, storeSession, testUser } from '../../test/mock-api';
 import { renderApp } from '../../test/render';
 import { defaultNotificationPreferences as defaults } from '../../test/notification-fixtures';
