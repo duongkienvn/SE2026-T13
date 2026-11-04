@@ -17,6 +17,7 @@ export class TaskNotificationEmailOutbox1794441600000 implements MigrationInterf
       lease_owner uuid,
       lease_until timestamptz,
       first_attempt_at timestamptz,
+      last_attempt_at timestamptz,
       sent_at timestamptz,
       created_at timestamptz NOT NULL DEFAULT now(),
       updated_at timestamptz NOT NULL DEFAULT now(),
@@ -27,7 +28,16 @@ export class TaskNotificationEmailOutbox1794441600000 implements MigrationInterf
       `CREATE INDEX "IDX_task_email_ready" ON task_notification_email_outbox (next_attempt_at, id) WHERE status IN ('PENDING','PROCESSING')`,
     );
     await runner.query(
+      `CREATE INDEX "IDX_task_email_expired_lease" ON task_notification_email_outbox (lease_until, id) WHERE status = 'PROCESSING'`,
+    );
+    await runner.query(
+      `CREATE INDEX "IDX_task_email_pending_age" ON task_notification_email_outbox (created_at, id) WHERE status = 'PENDING'`,
+    );
+    await runner.query(
       `CREATE INDEX "IDX_task_email_recipient_sent" ON task_notification_email_outbox (recipient_user_id, sent_at) WHERE sent_at IS NOT NULL`,
+    );
+    await runner.query(
+      `CREATE INDEX "IDX_task_email_recipient_attempt" ON task_notification_email_outbox (recipient_user_id, last_attempt_at) WHERE status IN ('PROCESSING','UNKNOWN')`,
     );
     await runner.query(
       `CREATE INDEX "IDX_cards_due_scan" ON cards (due_date, id) WHERE due_date IS NOT NULL AND NOT is_archived`,

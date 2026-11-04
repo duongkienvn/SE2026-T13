@@ -32,6 +32,8 @@ export class DueReminderScanner {
   ) {}
 
   async scan(limit: number): Promise<void> {
+    // A repeated local calendar day can make the earlier 09:00 occur nearly
+    // three days before a late due instant; the index keeps this window bounded.
     const candidates: Candidate[] = await this.dataSource.query(
       `SELECT c.id AS card_id, c.board_id, a.user_id, c.due_date, c.due_date::text AS due_cursor,
               COALESCE(up.time_zone, 'UTC') AS time_zone
@@ -39,7 +41,7 @@ export class DueReminderScanner {
          JOIN card_assignees a ON a.card_id = c.id
          LEFT JOIN user_preferences up ON up.user_id = a.user_id
         WHERE NOT c.is_archived AND NOT b.is_archived
-          AND c.due_date > now() AND c.due_date <= now() + interval '48 hours'
+          AND c.due_date > now() AND c.due_date <= now() + interval '72 hours'
           AND ($1::timestamptz IS NULL OR (c.due_date, c.id, a.user_id) > ($1::timestamptz, $2::uuid, $3::uuid))
           AND (EXISTS (SELECT 1 FROM board_members bm WHERE bm.board_id=b.id AND bm.user_id=a.user_id)
             OR (b.visibility='WORKSPACE_VISIBLE' AND EXISTS
@@ -65,10 +67,16 @@ export class DueReminderScanner {
             'SELECT id FROM boards WHERE id=$1 AND NOT is_archived FOR UPDATE',
             [candidate.board_id],
           );
-          if (
-            !board.length ||
-            !(await lockNotificationRecipient(manager, candidate.user_id))
-          )
+          if (!board.length) return false;
+          // A Workspace member can read a visible Board without Board membership.
+          // Hold that grant until commit so a concurrent Workspace leave cannot
+          // invalidate it between the ACL query and the notification insert.
+          await manager.query(
+            `SELECT wm.user_id FROM workspace_members wm JOIN boards b ON b.workspace_id=wm.workspace_id
+             WHERE b.id=$1 AND wm.user_id=$2 FOR KEY SHARE OF wm`,
+            [candidate.board_id, candidate.user_id],
+          );
+          if (!(await lockNotificationRecipient(manager, candidate.user_id)))
             return false;
           const rows: (Omit<Candidate, 'due_cursor'> & {
             current_time: Date;

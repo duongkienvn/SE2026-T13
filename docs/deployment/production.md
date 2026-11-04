@@ -136,6 +136,13 @@ an SMTP fallback. The migration tool does not consume the mail credentials.
 See [K2 rollout and recovery](../tasks/backend/email-verification.md) for backfill, backup,
 dry-run and real-inbox verification. No real email is sent by automated tests.
 
+Task notifications have two independent default-off flags:
+`TASK_NOTIFICATION_JOBS_ENABLED` starts reminder polling, and
+`TASK_NOTIFICATION_EMAIL_ENABLED` permits task-email dispatch when jobs are
+enabled. Configure neither as true without an explicit rollout decision. See
+the [P4-05 operator record](../tasks/backend/p4-due-reminders-task-email.md)
+for migration, lease recovery, delivery ambiguity, expiry and rate limits.
+
 Workspace invitation email has a separate, default-off destination gate:
 `WORKSPACE_INVITATION_ACCEPT_PATH=`. Keep it empty until #117's acceptance route
 and `#proof=` fragment handling are agreed, deployed and verified. An empty value

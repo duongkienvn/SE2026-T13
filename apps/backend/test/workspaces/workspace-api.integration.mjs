@@ -45,7 +45,8 @@ try {
   source.migrations = allMigrations.filter(
     (migration) =>
       !migration.name.startsWith('NotificationFoundation') &&
-      !migration.name.startsWith('CommentMentions'),
+      !migration.name.startsWith('CommentMentions') &&
+      !migration.name.startsWith('TaskNotificationEmailOutbox'),
   );
   await source.runMigrations();
   await source.undoLastMigration(); // Empty Board background version extension.
@@ -64,10 +65,10 @@ try {
   );
   assert.equal((await source.runMigrations()).length, 10);
   source.migrations = allMigrations;
-  assert.equal((await source.runMigrations()).length, 2);
+  assert.equal((await source.runMigrations()).length, 3);
   await assert.rejects(
     source.undoLastMigration(),
-    /Comment mentions migration is forward-only/,
+    /Task notification email outbox requires a forward fix/,
   );
   assert.deepEqual(await source.runMigrations(), []);
   assert.deepEqual(

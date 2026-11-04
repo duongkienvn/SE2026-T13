@@ -19,6 +19,11 @@ import {
 } from '../../src/mail/welcome-mailer';
 import { ResendWelcomeMailer } from '../../src/mail/resend-welcome-mailer';
 import {
+  TaskNotificationMailer,
+  FakeTaskNotificationMailer,
+  ResendTaskNotificationMailer,
+} from '../../src/mail/task-notification-mailer';
+import {
   PasswordRecoveryMailer,
   FakePasswordRecoveryMailer,
 } from '../../src/mail/password-recovery-mailer';
@@ -142,7 +147,12 @@ describe('mail transport configuration', () => {
             new AbortController().signal,
           ),
         ).toBe('SENT');
-        expect(Resend).toHaveBeenCalledTimes(expected === 'resend' ? 5 : 0);
+        expect(module.get(TaskNotificationMailer)).toBeInstanceOf(
+          expected === 'resend'
+            ? ResendTaskNotificationMailer
+            : FakeTaskNotificationMailer,
+        );
+        expect(Resend).toHaveBeenCalledTimes(expected === 'resend' ? 6 : 0);
         if (expected === 'fake') expect(config.RESEND_API_KEY).toBe('');
         else expect(config.RESEND_API_KEY === mail.RESEND_API_KEY).toBe(true);
       } finally {

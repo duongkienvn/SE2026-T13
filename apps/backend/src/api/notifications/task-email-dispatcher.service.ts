@@ -25,6 +25,16 @@ export class TaskEmailDispatcher {
     private readonly mailer: TaskNotificationMailer,
   ) {}
 
+  async releaseOwned(): Promise<void> {
+    await this.db.query(
+      `UPDATE task_notification_email_outbox SET
+        status=CASE WHEN first_attempt_at IS NULL THEN 'PENDING' ELSE 'UNKNOWN' END,
+        lease_owner=NULL, lease_until=NULL, updated_at=clock_timestamp()
+       WHERE status='PROCESSING' AND lease_owner=$1`,
+      [this.owner],
+    );
+  }
+
   async drain(limit: number): Promise<void> {
     // A crashed sender may have reached the provider: never assume failure.
     await this.db.query(
@@ -64,6 +74,18 @@ export class TaskEmailDispatcher {
   private async send(row: Claimed): Promise<void> {
     const recipient: string | null = await this.db.transaction(
       async (manager) => {
+        // Match domain mutation order and keep the read grant stable until the
+        // dispatch decision commits; provider I/O happens only afterwards.
+        if (row.board_id) {
+          await manager.query('SELECT id FROM boards WHERE id=$1 FOR UPDATE', [
+            row.board_id,
+          ]);
+          await manager.query(
+            `SELECT wm.user_id FROM workspace_members wm JOIN boards b ON b.workspace_id=wm.workspace_id
+             WHERE b.id=$1 AND wm.user_id=$2 FOR KEY SHARE OF wm`,
+            [row.board_id, row.recipient_user_id],
+          );
+        }
         // Serialize per-recipient rate checks across independent worker instances.
         const user = await manager.query(
           'SELECT id FROM users WHERE id=$1 FOR NO KEY UPDATE',
@@ -84,8 +106,8 @@ export class TaskEmailDispatcher {
           JOIN cards c ON c.id=o.card_id AND c.board_id=o.board_id
           JOIN boards b ON b.id=c.board_id
           LEFT JOIN user_preferences up ON up.user_id=u.id
-         WHERE o.id=$1 AND o.status='PROCESSING' AND o.lease_owner=$2 AND o.lease_until > now()
-           AND o.created_at > now()-interval '24 hours' AND u.email_verified_at IS NOT NULL
+         WHERE o.id=$1 AND o.status='PROCESSING' AND o.lease_owner=$2 AND o.lease_until > clock_timestamp()
+           AND o.created_at > clock_timestamp()-interval '24 hours' AND u.email_verified_at IS NOT NULL
            AND NOT c.is_archived AND NOT b.is_archived
            AND (o.kind <> 'DUE_REMINDER' OR (c.due_date > clock_timestamp() AND EXISTS
              (SELECT 1 FROM card_assignees a WHERE a.card_id=c.id AND a.user_id=u.id)))
@@ -94,7 +116,8 @@ export class TaskEmailDispatcher {
              WHEN 'DUE_REMINDER' THEN p.email_due_reminder ELSE false END
            AND (EXISTS (SELECT 1 FROM board_members bm WHERE bm.board_id=b.id AND bm.user_id=u.id)
              OR (b.visibility='WORKSPACE_VISIBLE' AND EXISTS
-               (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id=b.workspace_id AND wm.user_id=u.id)))`,
+               (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id=b.workspace_id AND wm.user_id=u.id)))
+         FOR UPDATE OF o`,
           [row.id, this.owner],
         );
         const record = records[0];
@@ -122,9 +145,9 @@ export class TaskEmailDispatcher {
         }
         const [{ count }]: { count: string }[] = await manager.query(
           `SELECT count(*) AS count FROM task_notification_email_outbox
-        WHERE recipient_user_id=$1 AND id<>$2 AND ((status='SENT' AND sent_at > now()-interval '24 hours')
-          OR (status='UNKNOWN' AND first_attempt_at > now()-interval '24 hours')
-          OR (status='PROCESSING' AND first_attempt_at IS NOT NULL AND lease_until > now()))`,
+        WHERE recipient_user_id=$1 AND id<>$2 AND ((status='SENT' AND sent_at > clock_timestamp()-interval '24 hours')
+          OR (status='UNKNOWN' AND last_attempt_at > clock_timestamp()-interval '24 hours')
+          OR (status='PROCESSING' AND last_attempt_at > clock_timestamp()-interval '24 hours'))`,
           [row.recipient_user_id, row.id],
         );
         if (Number(count) >= 10) {
@@ -136,8 +159,8 @@ export class TaskEmailDispatcher {
           return null;
         }
         await manager.query(
-          `UPDATE task_notification_email_outbox SET first_attempt_at=COALESCE(first_attempt_at,now()),
-        attempts=attempts+1, updated_at=now() WHERE id=$1 AND lease_owner=$2`,
+          `UPDATE task_notification_email_outbox SET first_attempt_at=COALESCE(first_attempt_at,clock_timestamp()), last_attempt_at=clock_timestamp(),
+        attempts=attempts+1, lease_until=clock_timestamp()+interval '2 minutes', updated_at=clock_timestamp() WHERE id=$1 AND lease_owner=$2`,
           [row.id, this.owner],
         );
         return record.email;

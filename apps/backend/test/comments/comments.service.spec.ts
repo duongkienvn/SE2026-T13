@@ -157,6 +157,16 @@ describe('CommentsService', () => {
       }),
     ]);
     expect(h.notificationEvents.afterCommit).toHaveBeenCalledWith([ID.other]);
+    expect(h.manager.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO task_notification_email_outbox'),
+      [
+        ID.other,
+        'COMMENT_MENTIONED',
+        `${ID.comment}:${ID.other}`,
+        ID.board,
+        ID.card,
+      ],
+    );
     await expect(
       h.service.create(ID.user, ID.board, ID.card, {
         content: '😀 @Linh',

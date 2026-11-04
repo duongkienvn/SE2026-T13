@@ -146,6 +146,42 @@ try {
       )[0].count,
     );
   assert.equal(await notificationCount(), 1);
+  await source.query('UPDATE users SET email_verified_at=now() WHERE id=$1', [
+    member.id,
+  ]);
+  await source.query(
+    `INSERT INTO notification_preferences(user_id,in_app_comment_mentioned,email_comment_mentioned)
+    VALUES ($1,false,true) ON CONFLICT (user_id) DO UPDATE SET in_app_comment_mentioned=false,email_comment_mentioned=true`,
+    [member.id],
+  );
+  const emailMention = await service.create(owner.id, board.id, card.id, {
+    content: '@member',
+    mentions: [{ userId: member.id, start: 0, end: 7 }],
+  });
+  await service.update(owner.id, board.id, card.id, emailMention.id, {
+    content: 'plain',
+  });
+  await service.update(owner.id, board.id, card.id, emailMention.id, {
+    content: '@member',
+    mentions: [{ userId: member.id, start: 0, end: 7 }],
+  });
+  const emailMentions = await source.query(
+    "SELECT occurrence_key FROM task_notification_email_outbox WHERE kind='COMMENT_MENTIONED' AND card_id=$1",
+    [card.id],
+  );
+  assert.deepEqual(emailMentions, [
+    { occurrence_key: `${emailMention.id}:${member.id}` },
+  ]);
+  assert.equal(await notificationCount(), 1);
+  await source.query(
+    'DELETE FROM task_notification_email_outbox WHERE occurrence_key=$1',
+    [`${emailMention.id}:${member.id}`],
+  );
+  await comments.delete(emailMention.id);
+  await source.query(
+    'UPDATE notification_preferences SET in_app_comment_mentioned=true,email_comment_mentioned=false WHERE user_id=$1',
+    [member.id],
+  );
   await assert.rejects(
     source.query(
       'INSERT INTO comment_mentions(comment_id,user_id,start_offset,end_offset) VALUES ($1,$2,3,10)',

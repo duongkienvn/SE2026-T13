@@ -2,7 +2,7 @@ import {
   Injectable,
   Logger,
   OnApplicationBootstrap,
-  OnApplicationShutdown,
+  OnModuleDestroy,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EnvironmentConfig } from '../../config/environment';
@@ -11,12 +11,13 @@ import { TaskEmailDispatcher } from './task-email-dispatcher.service';
 
 @Injectable()
 export class TaskNotificationWorker
-  implements OnApplicationBootstrap, OnApplicationShutdown
+  implements OnApplicationBootstrap, OnModuleDestroy
 {
   private readonly logger = new Logger(TaskNotificationWorker.name);
   private timer: NodeJS.Timeout | undefined;
   private running: Promise<void> | undefined;
   private stopped = false;
+  private started = false;
   constructor(
     private readonly config: ConfigService<EnvironmentConfig, true>,
     private readonly scanner: DueReminderScanner,
@@ -25,12 +26,20 @@ export class TaskNotificationWorker
   onApplicationBootstrap(): void {
     if (!this.config.get('TASK_NOTIFICATION_JOBS_ENABLED', { infer: true }))
       return;
+    this.started = true;
     this.tick();
   }
-  async onApplicationShutdown(): Promise<void> {
+  async onModuleDestroy(): Promise<void> {
     this.stopped = true;
     if (this.timer) clearTimeout(this.timer);
     await this.running;
+    if (this.started) {
+      try {
+        await this.dispatcher.releaseOwned();
+      } catch {
+        this.logger.warn('Task notification lease release failed');
+      }
+    }
   }
   private tick(): void {
     if (this.stopped) return;

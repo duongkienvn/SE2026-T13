@@ -22,6 +22,8 @@ export class TaskNotificationEmailOutbox {
   leaseUntil!: Date | null;
   @Column({ name: 'first_attempt_at', type: 'timestamptz', nullable: true })
   firstAttemptAt!: Date | null;
+  @Column({ name: 'last_attempt_at', type: 'timestamptz', nullable: true })
+  lastAttemptAt!: Date | null;
   @Column({ name: 'sent_at', type: 'timestamptz', nullable: true })
   sentAt!: Date | null;
   @Column({ name: 'created_at', type: 'timestamptz' }) createdAt!: Date;

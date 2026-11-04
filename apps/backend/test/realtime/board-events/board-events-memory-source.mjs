@@ -154,6 +154,12 @@ export function boardEventsMemorySource() {
       return repository;
     },
     manager: {
+      queryRunner: { isTransactionActive: true },
+      async query(sql) {
+        if (sql.includes('INSERT INTO task_notification_email_outbox'))
+          return [];
+        throw new Error('Unexpected query in board events test double');
+      },
       async transaction(callback) {
         return callback(this);
       },

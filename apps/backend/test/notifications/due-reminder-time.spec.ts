@@ -30,6 +30,12 @@ describe('due reminder local calendar schedule', () => {
       '2011-12-31',
       '2011-12-30T10:00:00.000Z',
     ],
+    [
+      'Pacific/Kwajalein',
+      '1969-10-02T00:00:00Z',
+      '1969-10-01',
+      '1969-09-29T22:00:00.000Z',
+    ],
   ])(
     '%s uses the preceding local calendar day',
     (zone, due, localDate, eligibleAt) => {

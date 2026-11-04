@@ -24,7 +24,10 @@ describe('task notification lifecycle', () => {
         TASK_NOTIFICATION_BATCH_SIZE: 50,
       };
       const scanner = { scan: jest.fn().mockResolvedValue(undefined) };
-      const dispatcher = { drain: jest.fn().mockResolvedValue(undefined) };
+      const dispatcher = {
+        drain: jest.fn().mockResolvedValue(undefined),
+        releaseOwned: jest.fn().mockResolvedValue(undefined),
+      };
       const worker = new TaskNotificationWorker(
         { get: (key: string) => values[key] } as unknown as ConfigService<
           EnvironmentConfig,
@@ -34,9 +37,10 @@ describe('task notification lifecycle', () => {
         dispatcher as unknown as TaskEmailDispatcher,
       );
       worker.onApplicationBootstrap();
-      await worker.onApplicationShutdown();
+      await worker.onModuleDestroy();
       expect(scanner.scan).toHaveBeenCalledTimes(scans);
       expect(dispatcher.drain).toHaveBeenCalledTimes(sends);
+      expect(dispatcher.releaseOwned).toHaveBeenCalledTimes(scans);
     },
   );
 });
