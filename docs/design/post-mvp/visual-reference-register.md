@@ -2,12 +2,18 @@
 
 **Approval:** All five visual directions approved during the 2026-10-25 Post-MVP design conversation. These are concept compositions, **not pixel-perfect implementation blueprints or proof that the underlying features exist**.
 
+For Issue #210, the user approved a replacement Home Dashboard V2 image on
+2026-11-05. It supersedes earlier Home imagery for layout, proportions, gradients,
+colors, spacing and card styling. This approval applies only to Home; the existing
+Sidebar, Header, My Tasks and all other interfaces retain their previous designs.
+
 | Area                                | Approved image                                            | Governing spec                      |
 | ----------------------------------- | --------------------------------------------------------- | ----------------------------------- |
 | App Shell V2                        | `app-shell/approved-visual-reference-v1.png`              | `app-shell/ux-spec.md`              |
 | Workspace UI V1                     | `workspace/approved-visual-reference-v1.png`              | `workspace/ux-spec.md`              |
 | Board & Card Detail V2              | `board-card/approved-visual-reference-v1.png`             | `board-card/ux-spec.md`             |
-| Home Dashboard & My Tasks V1        | `home-tasks/approved-visual-reference-v1.png`             | `home-tasks/ux-spec.md`             |
+| Home Dashboard V2                   | `home-tasks/approved-home-dashboard-v2.png`               | `home-tasks/ux-spec.md`             |
+| My Tasks V1                         | `home-tasks/approved-visual-reference-v1.png`             | `home-tasks/ux-spec.md`             |
 | Account Settings & Notifications V1 | `settings-notifications/approved-visual-reference-v1.png` | `settings-notifications/ux-spec.md` |
 
 ## Review procedure

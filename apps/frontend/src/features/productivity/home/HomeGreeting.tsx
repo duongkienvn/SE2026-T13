@@ -47,7 +47,7 @@ export function HomeGreeting({
             👋
           </span>
         </h1>
-        <p>Here&apos;s what&apos;s happening with your work today.</p>
+        <p>Here&apos;s a quick look at your work and what&apos;s next.</p>
       </div>
       {timeZone && dateFormat && (
         <p className="home-date">
