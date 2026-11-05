@@ -13,7 +13,7 @@ describe('navGroups', () => {
       {
         id: 'personal',
         items: [
-          'home:soon',
+          'home:available',
           'my-tasks:available',
           'boards:available',
           'starred:available',
@@ -35,6 +35,8 @@ describe('findActiveNavItemId', () => {
   it.each([
     ['/boards', 'boards'],
     ['/my-tasks', 'my-tasks'],
+    ['/home', 'home'],
+    ['/homes', undefined],
     ['/boards/1', 'boards'],
     ['/boards/1/members', 'boards'],
     ['/boards/1/cards/2', 'boards'],

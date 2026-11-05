@@ -48,7 +48,13 @@ export const navGroups: NavGroup[] = [
     id: 'personal',
     label: 'Personal',
     items: [
-      { id: 'home', label: 'Home', icon: HomeIcon, availability: 'soon' },
+      {
+        id: 'home',
+        label: 'Home',
+        icon: HomeIcon,
+        availability: 'available',
+        path: '/home',
+      },
       {
         id: 'my-tasks',
         label: 'My Tasks',

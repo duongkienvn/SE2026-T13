@@ -35,6 +35,7 @@ import { WorkspaceMembersPage } from '../features/workspaces/pages/WorkspaceMemb
 import { PublicOnly, RequireAuth } from './guards';
 import { AuthenticatedLayout } from './layout/AuthenticatedLayout';
 import { MyTasksPage } from '../features/productivity/MyTasksPage';
+import { HomePage } from '../features/productivity/home/HomePage';
 
 export const routes: RouteObject[] = [
   {
@@ -62,6 +63,7 @@ export const routes: RouteObject[] = [
           {
             element: <AuthenticatedLayout />,
             children: [
+              { path: 'home', element: <HomePage /> },
               { path: 'my-tasks', element: <MyTasksPage /> },
               { path: 'workspaces', element: <WorkspacesPage /> },
               {
