@@ -189,8 +189,16 @@ export class TaskEmailDispatcher {
       },
     );
     if (!recipient || !row.board_id || !row.card_id || !kind) return;
-    if (!(await canDeliverToAccount(this.db, row.recipient_user_id, recipient)))
+    if (
+      !(await canDeliverToAccount(this.db, row.recipient_user_id, recipient))
+    ) {
+      await this.db.query(
+        `UPDATE task_notification_email_outbox SET status='CANCELLED', lease_owner=NULL, lease_until=NULL, updated_at=now()
+         WHERE id=$1 AND status='PROCESSING' AND lease_owner=$2`,
+        [row.id, this.owner],
+      );
       return;
+    }
     const result = await this.mailer
       .send({
         recipient,
