@@ -3,6 +3,44 @@ import { BoardRoomCoordinator } from '../../src/realtime/board-room-coordinator.
 import type { RealtimeServer } from '../../src/realtime/realtime.types';
 
 describe('BoardRoomCoordinator', () => {
+  it('revokes old-version sessions synchronously even if transport disconnect fails', async () => {
+    const coordinator = new BoardRoomCoordinator(new BoardPresenceService());
+    const makeSocket = (userId: string, authVersion: number) => ({
+      id: `${userId}-${authVersion}`,
+      data: {
+        identity: { userId, authVersion },
+        authorizedBoardIds: new Set(['board']),
+      },
+      disconnect: jest.fn(),
+    });
+    const stale = makeSocket('changed', 0),
+      current = makeSocket('changed', 1),
+      other = makeSocket('other', 0);
+    coordinator.server = {
+      sockets: {
+        sockets: new Map([
+          [stale.id, stale],
+          [current.id, current],
+          [other.id, other],
+        ]),
+      },
+    } as unknown as RealtimeServer;
+    stale.disconnect.mockImplementation(() => {
+      throw new Error('adapter failure');
+    });
+    const log = jest.spyOn(coordinator['logger'], 'warn').mockImplementation();
+    try {
+      coordinator.revokeUserSessions('changed', 1);
+      expect(stale.data.identity).toBeUndefined();
+      expect(stale.data.authorizedBoardIds.size).toBe(0);
+      expect(current.disconnect).not.toHaveBeenCalled();
+      expect(other.disconnect).not.toHaveBeenCalled();
+      expect(current.data.authorizedBoardIds.has('board')).toBe(true);
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    } finally {
+      log.mockRestore();
+    }
+  });
   it('sends identifier-free access hints only to affected unexpired sessions', () => {
     const coordinator = new BoardRoomCoordinator(new BoardPresenceService());
     const socket = (userId: string, expiresAt: number, connected = true) => ({
