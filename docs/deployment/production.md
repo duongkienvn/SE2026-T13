@@ -136,6 +136,18 @@ an SMTP fallback. The migration tool does not consume the mail credentials.
 See [K2 rollout and recovery](../tasks/backend/email-verification.md) for backfill, backup,
 dry-run and real-inbox verification. No real email is sent by automated tests.
 
+Verified email change adds the forward-only `1794528000217-EmailChangeSecurity`
+migration. Apply it through the existing authorized migration gate before serving
+the new backend; retain the additive table on application rollback. It reuses
+the current mail settings and `PUBLIC_APP_URL`, without a new task-email flag.
+The new mailbox link is `/confirm-email-change?token=...`; coordinate P5-08's
+frontend route before exposing the flow. Redact token query strings at ingress,
+CDN and analytics layers and preserve `no-referrer` on the confirmation page.
+Old-mailbox security alerts are best effort and independent of task-email opt-outs.
+See [P5-02 contracts, migration recovery and socket boundaries](../tasks/backend/p5-secure-email-change.md)
+for the exact operator/frontend handoff. This is rollout guidance, not evidence
+that any production migration or mail delivery has occurred.
+
 Task notifications have two independent default-off flags:
 `TASK_NOTIFICATION_JOBS_ENABLED` starts reminder polling, and
 `TASK_NOTIFICATION_EMAIL_ENABLED` permits task-email dispatch when jobs are
