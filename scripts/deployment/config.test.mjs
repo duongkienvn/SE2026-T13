@@ -12,6 +12,7 @@ const env = {
   JWT_SECRET: 'validation-only-not-a-deployment-jwt-secret',
   GOOGLE_CLIENT_ID: '123456-infra.apps.googleusercontent.com',
   VITE_GOOGLE_CLIENT_ID: '123456-infra.apps.googleusercontent.com',
+  VITE_TASK_EMAIL_ENABLED: 'false',
   RESEND_API_KEY: 're_configuration_test_only',
   MAIL_FROM: 'Kanvexa <no-reply@kanvexa.tech>',
   PUBLIC_APP_URL: 'https://kanvexa.tech',
@@ -44,6 +45,38 @@ function config(local = false, overrides = {}) {
     ),
   );
 }
+
+test('task email UI is default-off public build configuration, independent of backend runtime flags', () => {
+  const example = readFileSync('.env.production.example', 'utf8');
+  assert.match(example, /^VITE_TASK_EMAIL_ENABLED=false$/m);
+  const dockerfile = readFileSync('apps/frontend/Dockerfile', 'utf8');
+  assert.match(dockerfile, /^ARG VITE_TASK_EMAIL_ENABLED=false$/m);
+  assert.match(
+    dockerfile,
+    /VITE_TASK_EMAIL_ENABLED="\$VITE_TASK_EMAIL_ENABLED".*pnpm --filter @kanban\/frontend\.\.\. build/,
+  );
+  for (const value of [undefined, '', 'false']) {
+    const result = config(false, {
+      VITE_TASK_EMAIL_ENABLED: value,
+      TASK_NOTIFICATION_EMAIL_ENABLED: 'true',
+    });
+    assert.equal(
+      result.services.frontend.build.args.VITE_TASK_EMAIL_ENABLED,
+      'false',
+    );
+  }
+  const enabled = config(false, { VITE_TASK_EMAIL_ENABLED: 'true' });
+  assert.equal(
+    enabled.services.frontend.build.args.VITE_TASK_EMAIL_ENABLED,
+    'true',
+  );
+  assert.equal(
+    enabled.services.backend.environment.TASK_NOTIFICATION_EMAIL_ENABLED,
+    'false',
+  );
+  for (const service of Object.values(enabled.services))
+    assert.equal(service.environment?.VITE_TASK_EMAIL_ENABLED, undefined);
+});
 
 test('invitation destination is gated by default and forwarded only to backend', () => {
   assert.equal(
@@ -222,6 +255,7 @@ test('runtime, migrations, readiness and resource limits are explicit', () => {
   assert.deepEqual(services.frontend.build.args, {
     VITE_API_BASE_URL: '/api',
     VITE_GOOGLE_CLIENT_ID: env.VITE_GOOGLE_CLIENT_ID,
+    VITE_TASK_EMAIL_ENABLED: 'false',
   });
   assert.equal(
     services.backend.environment.GOOGLE_CLIENT_ID,
@@ -284,7 +318,7 @@ test('OAuth configuration is public build data and optional backend runtime data
   const dockerfile = readFileSync('apps/frontend/Dockerfile', 'utf8');
   assert.deepEqual(
     [...dockerfile.matchAll(/^ARG (\w+)/gm)].map((m) => m[1]),
-    ['VITE_API_BASE_URL', 'VITE_GOOGLE_CLIENT_ID'],
+    ['VITE_API_BASE_URL', 'VITE_GOOGLE_CLIENT_ID', 'VITE_TASK_EMAIL_ENABLED'],
   );
   assert.match(dockerfile, /VITE_GOOGLE_CLIENT_ID="\$VITE_GOOGLE_CLIENT_ID"/);
   assert.doesNotMatch(

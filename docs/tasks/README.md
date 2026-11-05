@@ -27,6 +27,8 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Backend tasks
 
+- [STAB-01 Backend stabilization](backend/stab-01-backend-stabilization.md)
+
 - [P4-05 Due reminders and task email](backend/p4-due-reminders-task-email.md)
 
 - [P4-04 Notification events and comment mentions](backend/p4-notification-events-mentions.md)

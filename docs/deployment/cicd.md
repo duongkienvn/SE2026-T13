@@ -108,8 +108,16 @@ separately in EC2's protected runtime env and must match the built frontend ID.
 Changing an EC2 variable cannot change an already published Vite bundle; publish
 a new release after a build-time ID change. No client secret, JWT secret or mail
 credential enters build arguments. See the [Google rollout gates](../tasks/backend/google-auth-account-linking.md#production-configuration-and-rollout-gates).
-No production env file enters a build. Build-record artifact
-upload is disabled. Workflow actions are pinned to reviewed full commit IDs; the
+No production env file enters a build.
+
+The public repository variable `VITE_TASK_EMAIL_ENABLED` is also passed to the
+frontend build, defaulting to `false` when unset. It controls email preference
+switch availability, independently of EC2's default-off backend jobs/sender
+flags. Keep it false until the sender is verified. Follow the
+[task-email enablement sequence](production.md) and build a new release after a
+flag change; runtime env edits cannot alter an existing Vite bundle.
+
+Build-record artifact upload is disabled. Workflow actions are pinned to reviewed full commit IDs; the
 adjacent comments identify the upstream major versions for deliberate updates.
 SHA tag names are a release convention, not registry-enforced
 immutability: retain release digests for incident review and restrict package

@@ -143,6 +143,48 @@ enabled. Configure neither as true without an explicit rollout decision. See
 the [P4-05 operator record](../tasks/backend/p4-due-reminders-task-email.md)
 for migration, lease recovery, delivery ambiguity, expiry and rate limits.
 
+The Notification Preferences email switches use a third default-off flag,
+`VITE_TASK_EMAIL_ENABLED=false`, embedded in the frontend image. For CD, set the
+public **repository variable** of that name; for a local Docker build, production
+Compose forwards it from the selected env file as a build argument. It is not a
+frontend container runtime setting. Changing EC2's backend flags or restarting
+Caddy cannot change an existing Vite bundle. No mail credentials enter the build.
+
+Safe task-email enablement sequence (operator actions after integrated QA and
+explicit rollout approval; this stabilization change does not enable anything):
+
+1. Keep `TASK_NOTIFICATION_JOBS_ENABLED=false`,
+   `TASK_NOTIFICATION_EMAIL_ENABLED=false` and `VITE_TASK_EMAIL_ENABLED=false`
+   during stabilization. Complete the STAB-03 integrated QA, including opt-in,
+   verified address, ACL/revocation, retry/UNKNOWN, rate-limit and controlled
+   provider/inbox checks outside production. Automated tests use fake mail only.
+2. Back up and verify the already-required P4-05 schema using the normal explicit
+   migration gate. Review queue age/status and existing recipient opt-ins; old
+   intents can be sent when delivery starts. No new migration is required by
+   [STAB-01](../tasks/backend/stab-01-backend-stabilization.md).
+3. Through the normal approved rollout, set backend jobs to `true`, leave backend
+   email and the frontend build flag `false`, and verify bounded reminder polling,
+   deduplication, database load and queue growth. Defaults are a 60-second poll
+   and batch of 50; valid ranges remain 15–300 seconds and 1–500 jobs.
+4. Verify the existing Resend sender, protected credentials, application origin,
+   recipient consent and readiness on the target server. Only then authorize
+   `TASK_NOTIFICATION_EMAIL_ENABLED=true` with jobs still `true`. Verify worker
+   outcomes and controlled delivery before exposing the UI. `SENT` is provider
+   acceptance, not proof of inbox delivery. Never blindly replay `UNKNOWN` jobs.
+5. Once the backend sender is confirmed enabled, set the repository variable
+   `VITE_TASK_EMAIL_ENABLED=true` and build/publish the **next approved release**
+   through the existing quality/protected deployment pipeline. Use a new release
+   SHA; do not overwrite an old image tag to change its Vite configuration. A
+   local operator build instead supplies the same public flag through production
+   Compose's build args. Verify the served image has enabled switches and saves
+   preferences. The UI cannot discover backend readiness automatically: keep
+   this build flag false on any environment whose backend sender is off.
+6. For a planned disablement, release a frontend built with the flag `false`
+   before turning backend email off. For an emergency stop, turn backend email
+   (or all jobs) off immediately, then restore the UI's disabled state in the
+   next frontend release. Retain queue/deduplication history for investigation;
+   account/security and invitation email flags are independent.
+
 Workspace invitation email has a separate, default-off destination gate:
 `WORKSPACE_INVITATION_ACCEPT_PATH=`. Keep it empty until #117's acceptance route
 and `#proof=` fragment handling are agreed, deployed and verified. An empty value

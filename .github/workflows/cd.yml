@@ -54,6 +54,7 @@ jobs:
           build-args: |
             VITE_API_BASE_URL=/api
             VITE_GOOGLE_CLIENT_ID=${{ vars.VITE_GOOGLE_CLIENT_ID }}
+            VITE_TASK_EMAIL_ENABLED=${{ vars.VITE_TASK_EMAIL_ENABLED || 'false' }}
           labels: |
             org.opencontainers.image.source=https://github.com/duongkienvn/SE2026-T13
             org.opencontainers.image.revision=${{ github.sha }}

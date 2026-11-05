@@ -22,6 +22,10 @@ each poll advances a bounded keyset page and checks the actual local schedule.
 The scanner locks the Board and any Workspace read grant before the recipient
 lock and rechecks current data inside the transaction. Workspace grant removal
 and reminder creation therefore serialize at the relevant membership row.
+The [STAB-01 follow-up](stab-01-backend-stabilization.md) adds a database-clock
+prefilter before those locks and renews still-owned waiting leases at dispatch
+time. Attempted expired leases remain `UNKNOWN`; business ineligibility remains
+separate from lease expiry.
 
 Task emails cover only assignment, explicit mention and due reminder, with
 independent per-kind opt-in, verified recipient and current Board read access.
