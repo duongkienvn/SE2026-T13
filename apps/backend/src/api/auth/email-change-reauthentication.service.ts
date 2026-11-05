@@ -25,7 +25,7 @@ export class EmailChangeReauthenticationService {
   ) {}
   async verify(
     identity: AuthenticatedUser,
-    input: RequestEmailChangeDto,
+    input: Pick<RequestEmailChangeDto, 'currentPassword' | 'googleCredential'>,
   ): Promise<EmailChangeProof> {
     if (
       (input.currentPassword !== undefined) ===
@@ -68,6 +68,7 @@ export class EmailChangeReauthenticationService {
       method = { googleSub: linked.googleSub };
     }
     if (
+      user.deletedAt ||
       !user.emailVerifiedAt ||
       user.authVersion !== identity.authVersion ||
       identity.expiresAt <= Date.now()
