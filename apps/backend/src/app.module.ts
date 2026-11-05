@@ -1,3 +1,4 @@
+import { ExportsModule } from './api/exports/exports.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
@@ -47,6 +48,7 @@ import { NotificationsModule } from './api/notifications/notifications.module';
     ProductivityModule,
     SearchModule,
     NotificationsModule,
+    ExportsModule,
     RealtimeModule,
     LoggerModule.forRootAsync({
       inject: [ConfigService],
