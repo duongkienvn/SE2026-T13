@@ -42,7 +42,8 @@ try {
   source.migrations = migrations.filter(
     (migration) =>
       !migration.name.startsWith('NotificationFoundation') &&
-      !migration.name.startsWith('CommentMentions'),
+      !migration.name.startsWith('CommentMentions') &&
+      !migration.name.startsWith('AccountDeletion'),
   );
   await source.runMigrations();
   const [legacyUser] = await source.query(
@@ -102,7 +103,7 @@ try {
   };
   const before = await snapshot();
   source.migrations = migrations;
-  assert.equal((await source.runMigrations()).length, 2);
+  assert.equal((await source.runMigrations()).length, 3);
   assert.equal(
     (
       await source.query('SELECT count(*)::int AS count FROM comment_mentions')

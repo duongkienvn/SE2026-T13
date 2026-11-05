@@ -49,7 +49,9 @@ try {
   source = await new DataSource({ ...options, database: name }).initialize();
   const migrations = source.migrations;
   source.migrations = migrations.filter(
-    (migration) => !migration.name.startsWith('TaskNotificationEmailOutbox'),
+    (migration) =>
+      !migration.name.startsWith('TaskNotificationEmailOutbox') &&
+      !migration.name.startsWith('AccountDeletion'),
   );
   await source.runMigrations();
   const [user] = await source.query(
@@ -95,7 +97,7 @@ try {
     );
   const beforeUpgrade = await snapshot();
   source.migrations = migrations;
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 2);
   assert.deepEqual(await snapshot(), beforeUpgrade);
   assert.deepEqual(await source.runMigrations(), []);
   const indices = await source.query(

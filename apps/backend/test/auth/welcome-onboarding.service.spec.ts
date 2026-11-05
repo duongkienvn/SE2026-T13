@@ -59,6 +59,7 @@ describe('welcome onboarding delivery boundary', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    repository.existsBy.mockResolvedValue(true);
     inTransaction = false;
     row = Object.assign(new WelcomeEmailDelivery(), {
       userId: 'user',
@@ -112,6 +113,19 @@ describe('welcome onboarding delivery boundary', () => {
       .mockImplementation(() => undefined);
   });
   afterEach(() => log.mockRestore());
+
+  it('suppresses a claimed delivery when identity deletion wins before dispatch', async () => {
+    repository.existsBy.mockResolvedValue(false);
+    await service.deliverPending('user');
+    expect(mailer.send).not.toHaveBeenCalled();
+    expect(repository.existsBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'user',
+        email: 'new@example.test',
+        deletedAt: expect.anything(),
+      }),
+    );
+  });
 
   it('records pending eligibility without enabling unverified accounts', async () => {
     const user = { id: 'new', emailVerifiedAt: null } as User;

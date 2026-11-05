@@ -5,6 +5,6 @@ import { Expose } from 'class-transformer';
 export class DeletedUserAttributionDto {
   @Expose()
   @ApiProperty({ enum: ['Deleted user'] })
-  displayName: 'Deleted user' = 'Deleted user';
-  @Expose() @ApiProperty({ enum: [true] }) isDeleted: true = true;
+  displayName = 'Deleted user' as const;
+  @Expose() @ApiProperty({ enum: [true] }) isDeleted = true as const;
 }

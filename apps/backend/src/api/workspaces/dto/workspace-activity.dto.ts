@@ -8,6 +8,12 @@ import {
 export class WorkspaceActivityActorDto {
   @Expose() @ApiProperty({ format: 'uuid' }) id!: string;
   @Expose() @ApiProperty() displayName!: string;
+  @Expose()
+  @ApiProperty({
+    required: false,
+    description: 'Deleted user; omit a live profile link',
+  })
+  isDeleted?: boolean;
   @Expose() @ApiProperty({ type: String, nullable: true }) avatarUrl!:
     string | null;
 }

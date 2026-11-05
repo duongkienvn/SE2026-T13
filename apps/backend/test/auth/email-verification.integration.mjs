@@ -192,7 +192,8 @@ try {
       !migration.name.startsWith('NotificationFoundation') &&
       !migration.name.startsWith('CommentMentions') &&
       !migration.name.startsWith('TaskNotificationEmailOutbox') &&
-      !migration.name.startsWith('EmailChangeSecurity'),
+      !migration.name.startsWith('EmailChangeSecurity') &&
+      !migration.name.startsWith('AccountDeletion'),
   );
   assert.equal((await fresh.runMigrations()).length, fresh.migrations.length);
   await fresh.query(

@@ -113,7 +113,12 @@ try {
   const avatarMigration = source.migrations.find(
     (m) => m instanceof PrivateAvatars1793102400103,
   );
-  source.migrations = source.migrations.filter((m) => m !== avatarMigration);
+  const deletionMigration = source.migrations.find((m) =>
+    m.name.startsWith('AccountDeletion'),
+  );
+  source.migrations = source.migrations.filter(
+    (m) => m !== avatarMigration && m !== deletionMigration,
+  );
   await source.runMigrations();
   const [legacy] =
     await source.query(`INSERT INTO users(email,password_hash,display_name,avatar_url,email_verified_at)
@@ -143,6 +148,8 @@ try {
     await avatarMigration.up(manager.queryRunner);
   });
   assert.equal((await source.runMigrations()).length, 0);
+  source.migrations.push(deletionMigration);
+  assert.equal((await source.runMigrations()).length, 1);
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries.map(
       (q) => q.query,

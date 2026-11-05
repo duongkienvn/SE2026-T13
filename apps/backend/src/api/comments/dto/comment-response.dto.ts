@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import { toResponseDto } from '../../../common/dto/to-response-dto';
 import { Comment } from '../entities/comment.entity';
 import { CommentMentionDto } from './comment-mention.dto';
@@ -17,6 +17,13 @@ export class CommentResponseDto {
   @Expose() @ApiProperty({ format: 'uuid' }) authorId!: string;
   @Expose()
   @Type(() => DeletedUserAttributionDto)
+  @Transform(
+    ({ value }) =>
+      value?.isDeleted === true && value?.displayName === 'Deleted user'
+        ? value
+        : undefined,
+    { toClassOnly: true },
+  )
   @ApiProperty({
     type: DeletedUserAttributionDto,
     required: false,

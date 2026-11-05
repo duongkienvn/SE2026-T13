@@ -35,7 +35,7 @@ export interface NotificationResponse {
   kind: NotificationKind;
   createdAt: string;
   readAt: string | null;
-  actor: { id: string; displayName: string } | null;
+  actor: { id: string; displayName: string; isDeleted?: boolean } | null;
   summary: string;
   context: {
     workspaceId: string | null;
