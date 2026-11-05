@@ -122,6 +122,7 @@ export function MyTasksPage() {
   function change(
     changes: Record<string, string | undefined>,
     resetPage = true,
+    replace = false,
   ) {
     const next = new URLSearchParams(params);
     for (const [key, value] of Object.entries(changes)) {
@@ -129,13 +130,13 @@ export function MyTasksPage() {
       else next.delete(key);
     }
     if (resetPage) next.delete('page');
-    setParams(next);
+    setParams(next, { replace });
   }
 
   useEffect(() => {
     if (!tasks.tasks) return;
     const last = Math.max(1, tasks.tasks.meta.totalPages);
-    if (search.page > last) change({ page: String(last) }, false);
+    if (search.page > last) change({ page: String(last) }, false, true);
   }, [tasks.tasks, search.page]);
 
   useEffect(() => {
@@ -146,7 +147,8 @@ export function MyTasksPage() {
       !scope.isCurrent()
     )
       return;
-    if (!selectedBoard) change({ boardId: undefined, labelIds: undefined });
+    if (!selectedBoard)
+      change({ boardId: undefined, labelIds: undefined }, true, true);
   }, [
     boards.isSuccess,
     boards.isFetching,
@@ -167,7 +169,7 @@ export function MyTasksPage() {
     const allowed = new Set(labels.data.map((label) => label.id.toLowerCase()));
     const kept = search.labelIds.split(',').filter((id) => allowed.has(id));
     if (kept.length !== search.labelIds.split(',').length)
-      change({ labelIds: kept.join(',') });
+      change({ labelIds: kept.join(',') }, true, true);
   }, [
     labels.isSuccess,
     labels.isFetching,
@@ -179,7 +181,7 @@ export function MyTasksPage() {
   useEffect(() => {
     if (!labelAccessLost || !search.boardId || !scope.isCurrent()) return;
     revokeBoardAccess(queryClient, search.boardId);
-    change({ boardId: undefined, labelIds: undefined });
+    change({ boardId: undefined, labelIds: undefined }, true, true);
   }, [labelAccessLost, search.boardId, queryClient, scope]);
 
   const reset = () => {

@@ -88,6 +88,8 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Frontend tasks
 
+- [STAB-02 Frontend stabilization and Home Dashboard V2](frontend/stab-02-frontend-stabilization.md)
+
 - [P4-10 Comment @Mentions UI and Safe Rendering](frontend/p4-comment-mentions-ui.md)
 
 - [P4-08 Global Search UI](frontend/p4-global-search-ui.md)

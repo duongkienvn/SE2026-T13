@@ -1,4 +1,3 @@
-import { PageContainer } from '../../../components/PageContainer';
 import { usePageTitle } from '../../../hooks/usePageTitle';
 import { isApiError } from '../../../lib/api-client';
 import { useAuth } from '../../auth/useAuth';
@@ -28,7 +27,7 @@ export function HomePage() {
   const failed = preferences.isError || dashboard.isError;
 
   return (
-    <PageContainer>
+    <div className="home-canvas">
       <div className="home-page">
         <HomeGreeting
           name={user?.displayName}
@@ -112,7 +111,7 @@ export function HomePage() {
           </>
         )}
       </div>
-    </PageContainer>
+    </div>
   );
 }
 
@@ -126,7 +125,10 @@ function HomeSkeleton() {
       </div>
       <div className="home-columns">
         <span className="home-shimmer home-skeleton-panel" />
-        <span className="home-shimmer home-skeleton-panel" />
+        <div className="home-side">
+          <span className="home-shimmer home-skeleton-panel" />
+          <span className="home-shimmer home-skeleton-panel" />
+        </div>
       </div>
     </div>
   );

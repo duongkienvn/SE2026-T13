@@ -1,9 +1,22 @@
-# Kanvexa — Home Dashboard & My Tasks V1 UX Specification
+# Kanvexa — Home Dashboard V2 & My Tasks V1 UX Specification
 
 **Status:** Approved visual direction.  
-**Image:** `approved-visual-reference-v1.png` (desktop/mobile collage; Notifications/Settings panes are previews handled in the dedicated spec).
+**Home image:** [Approved Home Dashboard V2](approved-home-dashboard-v2.png),
+provided and explicitly approved by the user for Issue #210 on 2026-11-05.
+It replaces all earlier Home visual references, including layout, proportions,
+gradients, colors, spacing and card styling. Only Home is redesigned; the
+Sidebar, Header and all other pages remain unchanged.
+
+**My Tasks image:** `approved-visual-reference-v1.png` (desktop/mobile collage;
+Notifications/Settings panes are previews handled in the dedicated spec).
 
 ## 1. Home `/home`
+
+- V2 composition: greeting/date, four summary cards, a dominant Up Next panel on
+  the left, and Starred Boards/Recently Viewed stacked on the right. Match the
+  approved purple accents, gradients, surfaces, borders, rounded cards and rhythm.
+- Adapt to short laptops, tablet and mobile with readable content and reachable
+  actions in both themes. Preserve existing pagination and accessible links.
 
 - Personalized summary: assigned Card count, upcoming due count, Workspace count based on authorized data; **never fake statistics**.
 - **Up Next:** prioritize overdue and due-soon assigned cards. Each row links directly to authorized Card permalink.

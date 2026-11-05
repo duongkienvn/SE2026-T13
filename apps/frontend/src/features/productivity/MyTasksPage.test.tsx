@@ -58,11 +58,94 @@ const tasks = (data: TaskCardSummary[] = [task], counts?: TaskGroupCounts) => ({
 });
 
 describe('My Tasks route', () => {
+  it.each([
+    'invalid-page',
+    'page-clamp',
+    'revoked-board',
+    'invalid-label',
+    'label-access-lost',
+  ])(
+    'replaces the %s correction without trapping Back/Forward',
+    async (scenario) => {
+      storeSession();
+      const labelId = '55555555-5555-4555-8555-555555555555';
+      const hasBoard = scenario.includes('label');
+      const initial =
+        scenario === 'invalid-page'
+          ? '?page=invalid'
+          : scenario === 'page-clamp'
+            ? '?page=9'
+            : `?boardId=${boardId}&labelIds=${labelId}`;
+      const corrected =
+        hasBoard && scenario !== 'label-access-lost'
+          ? `?boardId=${boardId}`
+          : '';
+      const outOfRange = tasks([]);
+      outOfRange.body.meta = { page: 9, limit: 20, total: 1, totalPages: 1 };
+      const prefix = 'GET /users/me/tasks?group=ALL&page=1&sort=dueDate';
+      mockApi({
+        'GET /users/me': ok(testUser),
+        'GET /workspaces?page=1&limit=100': page([]),
+        'GET /boards?page=1&limit=100': page(
+          hasBoard
+            ? [makeBoard({ id: boardId, name: 'Delivery', workspaceId })]
+            : [],
+        ),
+        [`GET /boards/${boardId}/labels?page=1&limit=100`]:
+          scenario === 'label-access-lost' ? fail(403, 'FORBIDDEN') : page([]),
+        [prefix]: tasks(),
+        [`${prefix}&boardId=${boardId}`]: tasks(),
+        [`${prefix}&boardId=${boardId}&labelIds=${labelId}`]: tasks(),
+        'GET /users/me/tasks?group=ALL&page=9&sort=dueDate': outOfRange,
+      });
+      const { router } = renderApp('/');
+      await act(() => router.navigate(`/my-tasks${initial}`));
+      await waitFor(() => expect(router.state.location.search).toBe(corrected));
+      expect(router.state.historyAction).toBe('REPLACE');
+      await act(() => router.navigate(-1));
+      expect(router.state.location.pathname).toBe('/');
+      await act(() => router.navigate(1));
+      await waitFor(() =>
+        expect(
+          router.state.location.pathname + router.state.location.search,
+        ).toBe(`/my-tasks${corrected}`),
+      );
+      await act(() => router.navigate(-1));
+      expect(router.state.location.pathname).toBe('/');
+    },
+  );
+
   it('requires authentication', async () => {
     mockApi({});
     const { router } = renderApp('/my-tasks');
     await screen.findByRole('heading', { name: 'Welcome back' });
     expect(router.state.location.pathname).toBe('/login');
+  });
+
+  it('pushes user pagination changes and restores them with Back/Forward', async () => {
+    storeSession();
+    const first = tasks();
+    first.body.meta = { page: 1, limit: 20, total: 21, totalPages: 2 };
+    const second = tasks([{ ...task, title: 'Second page card' }]);
+    second.body.meta = { page: 2, limit: 20, total: 21, totalPages: 2 };
+    mockApi({
+      'GET /users/me': ok(testUser),
+      'GET /workspaces?page=1&limit=100': page([]),
+      'GET /boards?page=1&limit=100': page([]),
+      'GET /users/me/tasks?group=ALL&page=1&sort=dueDate': first,
+      'GET /users/me/tasks?group=ALL&page=2&sort=dueDate': second,
+    });
+    const { router } = renderApp('/my-tasks');
+    fireEvent.click(await screen.findByRole('button', { name: 'Page 2' }));
+    await screen.findByText('Second page card');
+    expect(router.state.historyAction).toBe('PUSH');
+    expect(router.state.location.search).toBe('?page=2');
+    await act(() => router.navigate(-1));
+    await screen.findByText('Review API contract');
+    expect(router.state.location.search).toBe('');
+    await act(() => router.navigate(1));
+    await screen.findByText('Second page card');
+    expect(router.state.location.search).toBe('?page=2');
   });
 
   it('renders all four server groups, including no due date', async () => {

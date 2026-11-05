@@ -16,6 +16,7 @@ import { testUser } from '../../test/mock-api';
 import { SearchTrigger } from './SearchTrigger';
 import { refreshSearch } from './cache';
 import { globalSearch } from './api';
+import { ApiError } from '../../lib/api-client';
 
 vi.mock('./api', () => ({ globalSearch: vi.fn() }));
 
@@ -107,6 +108,81 @@ afterEach(() => {
 });
 
 describe('global search palette', () => {
+  it('keeps settled rows and the selected identity through refresh, reordering and a failed refresh', async () => {
+    let finish!: (value: GlobalSearchResults) => void;
+    vi.mocked(globalSearch)
+      .mockResolvedValueOnce(grouped)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      );
+    const { client } = setup();
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    const input = screen.getByRole('combobox');
+    fireEvent.change(input, { target: { value: 'plan' } });
+    await screen.findByText('Guest board');
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    const selected = input.getAttribute('aria-activedescendant');
+    act(() => {
+      void client.refetchQueries({ queryKey: ['search'] });
+    });
+    await waitFor(() => expect(globalSearch).toHaveBeenCalledTimes(2));
+    expect(screen.getByText('Guest board')).toBeTruthy();
+    expect(input.getAttribute('aria-activedescendant')).toBe(selected);
+    expect(document.querySelector('.motion-safe\\:animate-pulse')).toBeNull();
+    await act(async () =>
+      finish({
+        ...grouped,
+        groups: {
+          ...grouped.groups,
+          workspaces: { items: [], total: 0, hasMore: false },
+        },
+      }),
+    );
+    expect(input.getAttribute('aria-activedescendant')).toBe(selected);
+    expect(
+      screen
+        .getByRole('option', { name: /Guest board/ })
+        .getAttribute('aria-selected'),
+    ).toBe('true');
+    vi.mocked(globalSearch).mockRejectedValueOnce(new Error('offline'));
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ['search'] });
+    });
+    await screen.findByText(/Could not refresh search/);
+    expect(screen.getByText('Guest board')).toBeTruthy();
+    expect(input.getAttribute('aria-activedescendant')).toBe(selected);
+    // An authorization refresh must discard even this retained failed snapshot.
+    vi.mocked(globalSearch).mockImplementation(() => new Promise(() => {}));
+    act(() => refreshSearch(client));
+    await waitFor(() => expect(screen.queryByText('Guest board')).toBeNull());
+    expect(input.getAttribute('aria-activedescendant')).toBeNull();
+  });
+
+  it('never restores a denied snapshot while retrying or after another network failure', async () => {
+    vi.mocked(globalSearch)
+      .mockResolvedValueOnce(grouped)
+      .mockRejectedValueOnce(new ApiError(403, 'FORBIDDEN', 'Forbidden'));
+    const { client } = setup();
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'plan' },
+    });
+    await screen.findByText('Guest board');
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ['search'] });
+    });
+    await screen.findByText('Search is unavailable. Please try again.');
+    expect(screen.queryByText('Guest board')).toBeNull();
+    vi.mocked(globalSearch).mockRejectedValueOnce(new Error('offline'));
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(globalSearch).toHaveBeenCalledTimes(3));
+    expect(screen.queryByText('Guest board')).toBeNull();
+  });
+
   it('debounces, renders safe grouped fields, and navigates the active result', async () => {
     vi.mocked(globalSearch).mockResolvedValue(grouped);
     setup();
@@ -203,6 +279,48 @@ describe('global search palette', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: /Back to all/ }));
     expect(await screen.findByText('Workspace')).toBeTruthy();
+  });
+
+  it('keeps the selected settled page visible while loading another page', async () => {
+    let finish!: (value: GlobalSearchResults) => void;
+    const first = { ...grouped, type: 'boards' as const };
+    vi.mocked(globalSearch).mockImplementation((_token, request) => {
+      if (request.type === 'all') return Promise.resolve(grouped);
+      if (request.page === 1) return Promise.resolve(first);
+      return new Promise((resolve) => {
+        finish = resolve;
+      });
+    });
+    setup();
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    const input = screen.getByRole('combobox');
+    fireEvent.change(input, { target: { value: 'plan' } });
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'See all Boards' }),
+    );
+    const loadMore = await screen.findByRole('button', { name: 'Load more' });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    const selected = input.getAttribute('aria-activedescendant');
+    fireEvent.click(loadMore);
+    await waitFor(() => expect(finish).toBeTypeOf('function'));
+    expect(screen.getByText('Guest board')).toBeTruthy();
+    expect(input.getAttribute('aria-activedescendant')).toBe(selected);
+    expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+    expect(document.querySelector('.motion-safe\\:animate-pulse')).toBeNull();
+    await act(async () =>
+      finish({
+        ...first,
+        groups: {
+          ...first.groups,
+          boards: { ...first.groups.boards, hasMore: false },
+        },
+      }),
+    );
+    expect(screen.getAllByRole('option', { name: /Guest board/ })).toHaveLength(
+      1,
+    );
+    expect(input.getAttribute('aria-activedescendant')).toBe(selected);
+    expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
   });
 
   it('clears protected results on revocation and restores focus on close', async () => {

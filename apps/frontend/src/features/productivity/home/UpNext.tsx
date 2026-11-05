@@ -5,11 +5,13 @@ import {
   CheckSquareIcon,
   ColumnsIcon,
   LayersIcon,
+  CalendarIcon,
 } from '../../../components/icons';
 import { Pagination } from '../../../components/Pagination';
 import { formatInstantDate } from '../../settings/format';
 import type { DateFormat } from '../../settings/types';
 import { usePagedList } from './paging';
+import { SectionHeading } from './SectionHeading';
 
 export const UP_NEXT_PAGE_SIZE = 4;
 
@@ -32,14 +34,21 @@ export function UpNext({
 }) {
   const paged = usePagedList(tasks, UP_NEXT_PAGE_SIZE);
   return (
-    <section aria-labelledby="home-up-next" className="home-section">
-      <div className="home-section-head">
-        <h2 id="home-up-next">Up Next</h2>
+    <section
+      aria-labelledby="home-up-next"
+      className="home-section home-up-next"
+    >
+      <SectionHeading
+        id="home-up-next"
+        title="Up Next"
+        description="Your upcoming and high-priority work."
+        Icon={CalendarIcon}
+      >
         <Link to="/my-tasks" className="home-view-all">
           View all <span className="sr-only">tasks</span>
           <ArrowRightIcon aria-hidden="true" />
         </Link>
-      </div>
+      </SectionHeading>
       {tasks.length === 0 ? (
         <div className="home-panel home-empty">
           <span className="home-empty-icon" aria-hidden="true">
@@ -104,6 +113,7 @@ export function UpNext({
                       {due && (
                         <time dateTime={task.dueDate ?? undefined}>
                           <span className="sr-only">Due </span>
+                          <CalendarIcon aria-hidden="true" />
                           {due}
                         </time>
                       )}

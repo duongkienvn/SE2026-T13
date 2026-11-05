@@ -1,6 +1,11 @@
 import type { HomeBoardSummary } from '@kanban/shared';
 import { Link } from 'react-router';
-import { ArrowRightIcon, ColumnsIcon } from '../../../components/icons';
+import {
+  ArrowRightIcon,
+  ColumnsIcon,
+  ClockIcon,
+  StarIcon,
+} from '../../../components/icons';
 import { Pagination } from '../../../components/Pagination';
 import { formatRelativeTime } from '../../../lib/format';
 import {
@@ -9,6 +14,7 @@ import {
 } from '../../boards/components/BoardBackground';
 import { BoardStar } from '../../boards/components/BoardStar';
 import { usePagedList } from './paging';
+import { SectionHeading } from './SectionHeading';
 
 export const BOARD_PAGE_SIZE = 3;
 
@@ -37,23 +43,29 @@ export function BoardCollection({
   const headingId = `home-${id}`;
   return (
     <section aria-labelledby={headingId} className="home-section">
-      <div className="home-section-head">
-        <h2 id={headingId}>{title}</h2>
-        <div className="home-section-actions">
-          {/* Pages sit in the heading row so both lists fit short screens. */}
-          <Pagination
-            label={`${title} pages`}
-            page={paged.page}
-            pageCount={paged.pageCount}
-            onChange={paged.setPage}
-            className="home-pager-inline"
-          />
-          <Link to={viewAll} className="home-view-all">
-            View all <span className="sr-only">{title.toLowerCase()}</span>
-            <ArrowRightIcon aria-hidden="true" />
-          </Link>
-        </div>
-      </div>
+      <SectionHeading
+        id={headingId}
+        title={title}
+        description={
+          showViewed
+            ? 'Boards you’ve opened recently.'
+            : 'Your favorite boards for quick access.'
+        }
+        Icon={showViewed ? ClockIcon : StarIcon}
+      >
+        {/* Pages sit in the heading row so both lists fit short screens. */}
+        <Pagination
+          label={`${title} pages`}
+          page={paged.page}
+          pageCount={paged.pageCount}
+          onChange={paged.setPage}
+          className="home-pager-inline"
+        />
+        <Link to={viewAll} className="home-view-all">
+          View all <span className="sr-only">{title.toLowerCase()}</span>
+          <ArrowRightIcon aria-hidden="true" />
+        </Link>
+      </SectionHeading>
       {boards.length === 0 ? (
         <div className="home-panel home-empty home-empty-compact">
           <h3>{empty.title}</h3>

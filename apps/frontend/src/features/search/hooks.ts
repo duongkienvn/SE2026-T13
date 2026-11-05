@@ -4,6 +4,7 @@ import { useAuth } from '../auth/useAuth';
 import { useAuthSession } from '../auth/auth-session-context';
 import { globalSearch, type SearchView } from './api';
 import { refreshSearch, searchKey } from './cache';
+import { isApiError } from '../../lib/api-client';
 
 export function useSearch(
   input: string,
@@ -76,13 +77,21 @@ export function useSearch(
   const error = ready
     ? queries.find((query) => query.isError)?.error
     : undefined;
+  const accessDenied = queries.some(
+    (query) =>
+      isApiError(query.error) && [401, 403, 404].includes(query.error.status),
+  );
+  useEffect(() => {
+    if (!accessDenied || !scope.isCurrent()) return;
+    const key = [...searchKey, user?.id, scope.generation];
+    // Retain the error for Retry, but never revive a denied snapshot on Retry.
+    void client.cancelQueries({ queryKey: key });
+    for (const query of client.getQueryCache().findAll({ queryKey: key }))
+      query.setState({ data: undefined });
+  }, [accessDenied, client, scope, user?.id]);
   // Do not expose previous results while input or authorization is changing.
   const data =
-    ready &&
-    scope.isCurrent() &&
-    !fetching &&
-    !error &&
-    queries.every((query) => query.isSuccess)
+    ready && scope.isCurrent() && !accessDenied
       ? queries
           .map((query) => query.data)
           .filter((result) => result !== undefined)
