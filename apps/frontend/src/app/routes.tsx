@@ -37,6 +37,7 @@ import { AuthenticatedLayout } from './layout/AuthenticatedLayout';
 import { MyTasksPage } from '../features/productivity/MyTasksPage';
 import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { NotificationSettingsPage } from '../features/notifications/NotificationSettingsPage';
+import { HomePage } from '../features/productivity/home/HomePage';
 
 export const routes: RouteObject[] = [
   {
@@ -64,6 +65,7 @@ export const routes: RouteObject[] = [
           {
             element: <AuthenticatedLayout />,
             children: [
+              { path: 'home', element: <HomePage /> },
               { path: 'my-tasks', element: <MyTasksPage /> },
               { path: 'notifications', element: <NotificationsPage /> },
               { path: 'workspaces', element: <WorkspacesPage /> },
