@@ -218,6 +218,16 @@ REST and Socket.IO handshake/reconnect check the persisted authVersion. Immediat
 after commit, the existing BoardRoomCoordinator revokes old-version sockets in
 the **current backend process**: application receive grants are cleared and the
 identity removed synchronously, then transport disconnect/presence cleanup run.
+Before scanning, it records a server-owned, monotonic minimum authVersion per User.
+Authentication checks this watermark after the awaited JWT/database lookup;
+connection completion and subsequent `isActive()` checks apply the same fence.
+Thus a handshake absent from the scan cannot become an active old-version session,
+including when later namespace middleware delays publication after authentication
+has already completed. It cannot join Boards or retain the receive grants needed
+for Board events and presence. Delayed older revocation callbacks cannot lower the
+watermark. One version number per locally revoked User is retained for the process
+lifetime and cleared on shutdown; a restart has no surviving in-flight handshakes
+and new handshakes still check PostgreSQL. No socket/device registry is added.
 New-version sockets and other users are preserved; adapter disconnect failures
 cannot restore receive grants. Private notification delivery also retains the
 existing database version and immutable-recipient rechecks.

@@ -8,6 +8,7 @@ import { URL } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { verifyEmailChangeRaces } from './email-change-races.mjs';
 import { verifyEmailChangeQuotaAndFailures } from './email-change-quota.mjs';
+import { verifyEmailChangeHandshakeRaces } from './email-change-handshake-races.mjs';
 
 assert.equal(process.env.EMAIL_CHANGE_DATABASE_TESTS, 'local-only');
 assert.ok(
@@ -684,6 +685,7 @@ try {
   };
   await verifyEmailChangeQuotaAndFailures(context);
   await verifyEmailChangeRaces(context);
+  await verifyEmailChangeHandshakeRaces(context);
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries,
     [],

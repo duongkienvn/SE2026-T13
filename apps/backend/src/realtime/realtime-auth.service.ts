@@ -25,10 +25,14 @@ export class RealtimeAuthService implements OnApplicationShutdown {
     const token: unknown = socket.handshake.auth?.accessToken;
     if (typeof token !== 'string' || !token.trim()) throw this.unauthorized();
     try {
-      socket.data.identity = await this.auth.authenticateAccessToken(token);
-      if (socket.data.identity.expiresAt <= Date.now())
+      const identity = await this.auth.authenticateAccessToken(token);
+      if (
+        identity.expiresAt <= Date.now() ||
+        this.coordinator.isSessionRevoked(identity)
+      )
         throw this.unauthorized();
-      this.owners.set(socket, Object.freeze({ ...socket.data.identity }));
+      socket.data.identity = identity;
+      this.owners.set(socket, Object.freeze({ ...identity }));
     } catch {
       throw this.unauthorized();
     } finally {
@@ -58,7 +62,8 @@ export class RealtimeAuthService implements OnApplicationShutdown {
     if (
       socket.connected &&
       socket.data.identity &&
-      socket.data.identity.expiresAt > Date.now()
+      socket.data.identity.expiresAt > Date.now() &&
+      !this.coordinator.isSessionRevoked(socket.data.identity)
     ) {
       return true;
     }
