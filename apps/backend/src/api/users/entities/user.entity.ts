@@ -17,6 +17,10 @@ import { Card } from '../../cards/entities/card.entity';
 import { Comment } from '../../comments/entities/comment.entity';
 
 @Entity('users')
+@Check(
+  'CK_users_deleted_identity',
+  `deleted_at IS NULL OR (display_name = 'Deleted user' AND email = 'deleted+' || id::text || '@users.invalid' AND password_hash IS NULL AND email_verified_at IS NULL AND avatar_url IS NULL AND avatar_object_key IS NULL)`,
+)
 @Unique('UQ_users_email', ['email'])
 @Check('CK_users_avatar_revision', '"avatar_revision" >= 0')
 @Check(
@@ -34,6 +38,8 @@ export class User {
   passwordHash!: string | null;
   @Column({ name: 'auth_version', type: 'integer', default: 0 })
   authVersion = 0;
+  @Column({ name: 'deleted_at', type: 'timestamptz', nullable: true })
+  deletedAt: Date | null = null;
   @Column({ name: 'display_name', type: 'varchar' }) displayName!: string;
   @Column({ name: 'avatar_url', type: 'varchar', nullable: true }) avatarUrl!:
     string | null;
