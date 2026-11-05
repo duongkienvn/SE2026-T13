@@ -27,6 +27,8 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Backend tasks
 
+- [P5-01 Authorized Board and Account Data Export](backend/p5-authorized-data-export.md)
+
 - [STAB-01 Backend stabilization](backend/stab-01-backend-stabilization.md)
 
 - [P4-05 Due reminders and task email](backend/p4-due-reminders-task-email.md)
