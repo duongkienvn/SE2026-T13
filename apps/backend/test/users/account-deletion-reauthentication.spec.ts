@@ -4,7 +4,9 @@ import { AccountDeletionReauthenticationService } from '../../src/api/users/acco
 import { EmailChangeReauthenticationService } from '../../src/api/auth/email-change-reauthentication.service';
 import { DeleteAccountDto } from '../../src/api/users/account-deletion/delete-account.dto';
 
-jest.mock('@nestjs/typeorm', () => ({ InjectRepository: () => () => undefined }));
+jest.mock('@nestjs/typeorm', () => ({
+  InjectRepository: () => () => undefined,
+}));
 
 describe('Account deletion proof boundary', () => {
   const identity = {
