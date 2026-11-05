@@ -17,6 +17,7 @@ type Candidate = {
   due_date: Date;
   due_cursor: string;
   time_zone: string;
+  current_time: Date;
 };
 class ReminderBecameOverdue extends Error {}
 
@@ -36,7 +37,7 @@ export class DueReminderScanner {
     // three days before a late due instant; the index keeps this window bounded.
     const candidates: Candidate[] = await this.dataSource.query(
       `SELECT c.id AS card_id, c.board_id, a.user_id, c.due_date, c.due_date::text AS due_cursor,
-              COALESCE(up.time_zone, 'UTC') AS time_zone
+              COALESCE(up.time_zone, 'UTC') AS time_zone, clock_timestamp() AS current_time
          FROM cards c JOIN boards b ON b.id = c.board_id
          JOIN card_assignees a ON a.card_id = c.id
          LEFT JOIN user_preferences up ON up.user_id = a.user_id
@@ -59,8 +60,20 @@ export class DueReminderScanner {
       return;
     }
     for (const candidate of candidates) {
-      // Prime the calendar cache before taking a Board lock.
-      dueReminderSchedule(candidate.due_date, candidate.time_zone);
+      // Skip future work without locks, using the database clock rather than
+      // the application's clock. The locked recheck below remains authoritative.
+      const preview = dueReminderSchedule(
+        candidate.due_date,
+        candidate.time_zone,
+      );
+      if (preview.eligibleAt > candidate.current_time) {
+        this.cursor = {
+          due: candidate.due_cursor,
+          card: candidate.card_id,
+          user: candidate.user_id,
+        };
+        continue;
+      }
       const created = await this.dataSource
         .transaction(async (manager) => {
           const board = await manager.query(

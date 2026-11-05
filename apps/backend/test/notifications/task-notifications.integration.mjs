@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
 import process from 'node:process';
 import { setTimeout as delay } from 'node:timers/promises';
+import { verifyTaskStabilization } from './task-stabilization-checks.mjs';
 
 assert.equal(process.env.NOTIFICATION_DATABASE_TESTS, 'local-only');
 assert.ok(
@@ -192,7 +193,7 @@ try {
     for (let i = 0; i < 200 && !waiting; i++) {
       const [state] =
         await source.query(`SELECT EXISTS(SELECT 1 FROM pg_stat_activity
-        WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%SELECT u.email%') AS waiting`);
+        WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%UPDATE task_notification_email_outbox SET lease_until%') AS waiting`);
       waiting = state.waiting;
       if (!waiting) await delay(50);
     }
@@ -1294,6 +1295,7 @@ try {
   console.log(
     'PASS: due edit committed while scanner waits is rechecked under the Board lock',
   );
+  await verifyTaskStabilization({ source, TaskEmailDispatcher, scanner });
   const [lifecycleCard] = await source.query(
     `INSERT INTO cards(board_id,column_id,created_by_id,title,position,due_date)
     VALUES ($1,$2,$3,'Worker task',400,now()+interval '1 hour') RETURNING id`,

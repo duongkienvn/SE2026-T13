@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { DataSource } from 'typeorm';
+import { DataSource, type EntityManager } from 'typeorm';
 import { TaskNotificationMailer } from '../../mail/task-notification-mailer';
 import {
   dueReminderOccurrence,
@@ -92,6 +92,19 @@ export class TaskEmailDispatcher {
           [row.recipient_user_id],
         );
         if (!user.length) return null;
+        // Domain lock waits and earlier sends may outlive the batch lease.
+        // Only this owner can renew, and an expired attempted send is uncertain.
+        const [renewed]: [{ id: string }[], number] = await manager.query(
+          `UPDATE task_notification_email_outbox SET lease_until=clock_timestamp()+interval '2 minutes', updated_at=clock_timestamp()
+           WHERE id=$1 AND status='PROCESSING' AND lease_owner=$2
+             AND (lease_until > clock_timestamp() OR first_attempt_at IS NULL)
+           RETURNING id`,
+          [row.id, this.owner],
+        );
+        if (!renewed.length) {
+          await this.releaseExpiredLease(manager, row.id);
+          return null;
+        }
         const records: {
           email: string;
           due_date: Date | null;
@@ -106,7 +119,7 @@ export class TaskEmailDispatcher {
           JOIN cards c ON c.id=o.card_id AND c.board_id=o.board_id
           JOIN boards b ON b.id=c.board_id
           LEFT JOIN user_preferences up ON up.user_id=u.id
-         WHERE o.id=$1 AND o.status='PROCESSING' AND o.lease_owner=$2 AND o.lease_until > clock_timestamp()
+         WHERE o.id=$1 AND o.status='PROCESSING' AND o.lease_owner=$2
            AND o.created_at > clock_timestamp()-interval '24 hours' AND u.email_verified_at IS NOT NULL
            AND NOT c.is_archived AND NOT b.is_archived
            AND (o.kind <> 'DUE_REMINDER' OR (c.due_date > clock_timestamp() AND EXISTS
@@ -158,11 +171,16 @@ export class TaskEmailDispatcher {
           );
           return null;
         }
-        await manager.query(
+        const [attempted]: [{ id: string }[], number] = await manager.query(
           `UPDATE task_notification_email_outbox SET first_attempt_at=COALESCE(first_attempt_at,clock_timestamp()), last_attempt_at=clock_timestamp(),
-        attempts=attempts+1, lease_until=clock_timestamp()+interval '2 minutes', updated_at=clock_timestamp() WHERE id=$1 AND lease_owner=$2`,
+        attempts=attempts+1, lease_until=clock_timestamp()+interval '2 minutes', updated_at=clock_timestamp()
+        WHERE id=$1 AND status='PROCESSING' AND lease_owner=$2 AND lease_until > clock_timestamp() RETURNING id`,
           [row.id, this.owner],
         );
+        if (!attempted.length) {
+          await this.releaseExpiredLease(manager, row.id);
+          return null;
+        }
         return record.email;
       },
     );
@@ -188,5 +206,15 @@ export class TaskEmailDispatcher {
       [row.id, this.owner, status, delay],
     );
     this.logger.log(`Task email outcome: ${status}`);
+  }
+
+  private async releaseExpiredLease(manager: EntityManager, id: string) {
+    await manager.query(
+      `UPDATE task_notification_email_outbox SET
+       status=CASE WHEN first_attempt_at IS NULL THEN 'PENDING' ELSE 'UNKNOWN' END,
+       lease_owner=NULL, lease_until=NULL, updated_at=clock_timestamp()
+       WHERE id=$1 AND status='PROCESSING' AND lease_owner=$2 AND lease_until <= clock_timestamp()`,
+      [id, this.owner],
+    );
   }
 }
