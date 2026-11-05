@@ -4,7 +4,7 @@ export function csvCell(value: unknown): string {
   const significant = text
     .replace(/^[\p{White_Space}\p{Cc}\p{Cf}\p{M}]*/u, '')
     .normalize('NFKC');
-  if (/^[=+@\-]/u.test(significant)) text = "'" + text;
+  if (/^[=+@-]/u.test(significant)) text = "'" + text;
   return '"' + text.replace(/"/g, '""') + '"';
 }
 export const csvRow = (values: readonly unknown[]): string =>

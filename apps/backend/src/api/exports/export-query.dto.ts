@@ -10,5 +10,5 @@ export class BoardExportQueryDto {
 export class AccountExportQueryDto {
   @ApiPropertyOptional({ enum: ['json'], default: 'json' })
   @IsIn(['json'])
-  format: 'json' = 'json';
+  format = 'json' as const;
 }

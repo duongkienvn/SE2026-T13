@@ -26,3 +26,12 @@ export class ExportBuffer {
     return Buffer.concat(this.chunks, this.bytes);
   }
 }
+
+/** Lower-bound accounting for temporary nested rows, without retaining a second copy. */
+export class ExportSizeBudget {
+  private bytes = 0;
+  json(value: unknown): void {
+    this.bytes += Buffer.byteLength(JSON.stringify(value), 'utf8');
+    if (this.bytes > DATA_EXPORT_BYTE_LIMIT) throw exportTooLarge();
+  }
+}

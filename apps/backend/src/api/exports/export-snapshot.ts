@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { Injectable } from '@nestjs/common';
 import {
   DataSource,
@@ -13,6 +14,7 @@ import { ApplicationException } from '../../exceptions/application.exception';
 
 export const EXPORT_PAGE_SIZE = 100;
 const SNAPSHOT_MS = 15_000;
+const snapshotDeadline = new AsyncLocalStorage<number>();
 export function snapshotAuthorization(
   manager: EntityManager,
 ): BoardAuthorizationService {
@@ -22,7 +24,7 @@ export function snapshotAuthorization(
 export async function* exportPages<T>(
   builder: SelectQueryBuilder<ObjectLiteral>,
 ): AsyncGenerator<T[]> {
-  const deadline = Date.now() + SNAPSHOT_MS;
+  const deadline = snapshotDeadline.getStore() ?? Date.now() + SNAPSHOT_MS;
   for (let offset = 0; ; offset += EXPORT_PAGE_SIZE) {
     if (Date.now() > deadline)
       throw new ApplicationException(503, 'EXPORT_TIMEOUT', 'Export timed out');
@@ -46,7 +48,7 @@ export class ExportSnapshot {
         "SET LOCAL idle_in_transaction_session_timeout = '20s'",
       );
       const deadline = Date.now() + SNAPSHOT_MS;
-      const result = await read(manager);
+      const result = await snapshotDeadline.run(deadline, () => read(manager));
       if (Date.now() > deadline)
         throw new ApplicationException(
           503,

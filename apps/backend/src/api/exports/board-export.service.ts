@@ -19,7 +19,11 @@ import { CardChecklistItem } from '../cards/entities/card-checklist-item.entity'
 import { CardAttachment } from '../cards/entities/card-attachment.entity';
 import { Comment } from '../comments/entities/comment.entity';
 import { CommentMention } from '../comments/entities/comment-mention.entity';
-import { ExportBuffer, exportTooLarge } from './export-buffer';
+import {
+  ExportBuffer,
+  ExportSizeBudget,
+  exportTooLarge,
+} from './export-buffer';
 import {
   ExportSnapshot,
   exportPages,
@@ -191,14 +195,27 @@ export class BoardExportService {
     );
     const cardIds = cards.map((card) => card.id);
     // A separate bounded budget protects temporary batch materialization; no joined products.
-    const budget = new ExportBuffer();
+    const budget = new ExportSizeBudget();
     const collect = async <T>(
       query: SelectQueryBuilder<ObjectLiteral>,
       add: (row: T) => void,
     ) => {
       for await (const page of exportPages<T>(query))
         for (const row of page) {
-          budget.json(row);
+          // Parent association IDs are not repeated inside nested JSON objects.
+          const value = row as Record<string, unknown>;
+          const fields = Object.fromEntries(
+            Object.entries(value).filter(
+              ([key]) => !['cardId', 'checklistId', 'commentId'].includes(key),
+            ),
+          );
+          budget.json(
+            'userId' in fields && Object.keys(fields).length === 1
+              ? fields.userId
+              : 'labelId' in fields && Object.keys(fields).length === 1
+                ? fields.labelId
+                : fields,
+          );
           add(row);
         }
     };
