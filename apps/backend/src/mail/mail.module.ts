@@ -1,6 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
+import {
+  EmailChangeMailer,
+  FakeEmailChangeMailer,
+  ResendEmailChangeMailer,
+} from './email-change-mailer';
 import { EnvironmentConfig } from '../config/environment';
 import {
   FakeVerificationMailer,
@@ -31,6 +36,22 @@ import {
 @Module({
   imports: [ConfigModule],
   providers: [
+    {
+      provide: EmailChangeMailer,
+      inject: [ConfigService],
+      useFactory: (
+        config: ConfigService<EnvironmentConfig, true>,
+      ): EmailChangeMailer => {
+        const appUrl = config.get('PUBLIC_APP_URL', { infer: true });
+        return config.get('MAIL_TRANSPORT', { infer: true }) === 'fake'
+          ? new FakeEmailChangeMailer(appUrl)
+          : new ResendEmailChangeMailer(
+              new Resend(config.get('RESEND_API_KEY', { infer: true })),
+              config.get('MAIL_FROM', { infer: true }),
+              appUrl,
+            );
+      },
+    },
     {
       provide: TaskNotificationMailer,
       inject: [ConfigService],
@@ -129,6 +150,7 @@ import {
     },
   ],
   exports: [
+    EmailChangeMailer,
     TaskNotificationMailer,
     BoardMemberAddedMailer,
     VerificationMailer,
