@@ -114,6 +114,10 @@ test('production delivery retains SHA images, pinned actions and OIDC without ne
   );
   assert.match(
     publish,
+    /VITE_TASK_EMAIL_ENABLED=\$\{\{ vars\.VITE_TASK_EMAIL_ENABLED \|\| 'false' \}\}/,
+  );
+  assert.match(
+    publish,
     /kanvexa-\$\{\{ matrix.service \}\}:\$\{\{ github.sha \}\}/,
   );
   assert.match(publish, /org.opencontainers.image.source=/);
