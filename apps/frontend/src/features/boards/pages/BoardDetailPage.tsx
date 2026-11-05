@@ -39,6 +39,7 @@ import { BoardPresence } from '../../presence/components/BoardPresence';
 import { ArchiveBoardDialog } from '../components/ArchiveBoardDialog';
 import { RestoreBoardDialog } from '../components/RestoreBoardDialog';
 import { KanbanBoard } from '../components/KanbanBoard';
+import { CalendarBoard } from '../components/CalendarBoard';
 import { BoardStar } from '../components/BoardStar';
 import { useRecordBoardView } from '../useRecordBoardView';
 import {
@@ -108,6 +109,19 @@ export function BoardDetailPage() {
   const location = useLocation();
   const settings = useMatch('/boards/:boardId/settings') !== null;
   const membersPage = useMatch('/boards/:boardId/members') !== null;
+  const calendarPage = useMatch('/boards/:boardId/calendar') !== null;
+  const calendarPath = `/boards/${encodeURIComponent(boardId)}/calendar`;
+  const returnTo = (location.state as { cardReturnTo?: unknown } | null)
+    ?.cardReturnTo;
+  const calendar =
+    calendarPage ||
+    (typeof returnTo === 'string' &&
+      (returnTo === calendarPath ||
+        returnTo.startsWith(`${calendarPath}?`) ||
+        returnTo.startsWith(`${calendarPath}#`) ||
+        returnTo === `${calendarPath}/` ||
+        returnTo.startsWith(`${calendarPath}/?`) ||
+        returnTo.startsWith(`${calendarPath}/#`)));
   const { board, verified } = useVerifiedBoard(boardId);
   const client = useQueryClient();
   // Observe roster refusals without loading the roster or mounting Kanban.
@@ -335,7 +349,15 @@ export function BoardDetailPage() {
         </div>
         <BoardNavigation
           boardId={data.id}
-          active={settings ? 'settings' : membersPage ? 'members' : 'kanban'}
+          active={
+            settings
+              ? 'settings'
+              : membersPage
+                ? 'members'
+                : calendar
+                  ? 'calendar'
+                  : 'kanban'
+          }
           canReadMembers={data.currentUserRole !== null}
           onActivity={() => setShowingActivity(true)}
         />
@@ -403,18 +425,27 @@ export function BoardDetailPage() {
         </div>
       ) : (
         <section
-          aria-label="Kanban workspace"
+          aria-label={calendar ? 'Calendar workspace' : 'Kanban workspace'}
           className="board-canvas min-w-0 flex-1"
           style={canvasBackgroundStyle(
             presets.data?.find((item) => item.id === data.backgroundPreset),
           )}
         >
-          <KanbanBoard
-            boardId={data.id}
-            readOnly={readOnly}
-            canReadMembers={data.currentUserRole !== null}
-            boardName={data.name}
-          />
+          {calendar ? (
+            <CalendarBoard
+              boardId={data.id}
+              readOnly={readOnly}
+              canReadMembers={data.currentUserRole !== null}
+              boardName={data.name}
+            />
+          ) : (
+            <KanbanBoard
+              boardId={data.id}
+              readOnly={readOnly}
+              canReadMembers={data.currentUserRole !== null}
+              boardName={data.name}
+            />
+          )}
         </section>
       )}
 
