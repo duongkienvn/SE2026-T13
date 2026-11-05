@@ -56,6 +56,14 @@ export class WorkspaceInvitation {
   })
   workspace!: Workspace;
   @Column({ type: 'varchar', length: 320 }) email!: string;
+  @Column({
+    name: 'erased_recipient_hash',
+    type: 'char',
+    length: 64,
+    nullable: true,
+    select: false,
+  })
+  erasedRecipientHash!: string | null;
   @Column({ type: 'varchar' }) role!: WorkspaceRole;
   @Column({ name: 'token_hash', type: 'char', length: 64, select: false })
   tokenHash!: string;

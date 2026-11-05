@@ -67,6 +67,12 @@ export class CommentsService {
     }
     const [comments, total] = await this.comments
       .createQueryBuilder('comment')
+      .leftJoin(
+        'comment.author',
+        'deletedAuthor',
+        'deletedAuthor.deletedAt IS NOT NULL',
+      )
+      .addSelect(['deletedAuthor.id', 'deletedAuthor.deletedAt'])
       .where('comment.cardId = :cardId', { cardId })
       .andWhere('comment.deletedAt IS NULL')
       .orderBy('comment.createdAt', 'ASC')

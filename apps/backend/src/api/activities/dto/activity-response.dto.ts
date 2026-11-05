@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
+import { DeletedUserAttributionDto } from '../../users/dto/deleted-user-attribution.dto';
 import { toResponseDto } from '../../../common/dto/to-response-dto';
 import {
   ActivityActionType,
@@ -19,6 +20,22 @@ export class ActivityResponseDto {
   @Expose()
   @ApiProperty({ format: 'uuid' })
   actorId!: string;
+  @Expose()
+  @Type(() => DeletedUserAttributionDto)
+  @Transform(
+    ({ value }) =>
+      value?.isDeleted === true && value?.displayName === 'Deleted user'
+        ? value
+        : undefined,
+    { toClassOnly: true },
+  )
+  @ApiProperty({
+    type: DeletedUserAttributionDto,
+    required: false,
+    description:
+      'Present for a deleted actor; render without a live profile link',
+  })
+  actor?: DeletedUserAttributionDto;
 
   @Expose()
   @ApiProperty({ enum: ActivityActionType, enumName: 'ActivityActionType' })
@@ -46,6 +63,9 @@ export function toActivityResponseDto(activity: Activity): ActivityResponseDto {
     id: activity.id,
     boardId: activity.boardId,
     actorId: activity.actorId,
+    ...(activity.actor?.deletedAt
+      ? { actor: new DeletedUserAttributionDto() }
+      : {}),
     actionType: activity.actionType,
     entityType: activity.entityType,
     entityId: activity.entityId,

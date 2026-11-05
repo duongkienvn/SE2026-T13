@@ -47,7 +47,7 @@ export class UserPreferencesService {
         where: { id: userId },
         lock: { mode: 'pessimistic_write' },
       });
-      if (!user) throw this.userNotFound();
+      if (!user || user.deletedAt) throw this.userNotFound();
       const repository = manager.getRepository(UserPreferences);
       const stored = await repository.findOneBy({ userId });
       const preferences =

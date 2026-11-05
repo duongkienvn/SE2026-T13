@@ -8,6 +8,7 @@ import { ApplicationException } from '../../exceptions/application.exception';
 import { ErrorCode } from '../../common/dto/api-error';
 import { PasswordRecoveryMailer } from '../../mail/password-recovery-mailer';
 import { User } from '../users/entities/user.entity';
+import { canDeliverToAccount } from '../users/live-account-delivery';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
 
 export const RECOVERY_COOLDOWN_MS = 60_000;
@@ -35,7 +36,7 @@ export class PasswordSecurityService {
       const user = await manager
         .getRepository(User)
         .findOne({ where: { email }, lock: { mode: 'pessimistic_write' } });
-      if (!user?.emailVerifiedAt) return null;
+      if (user?.deletedAt || !user?.emailVerifiedAt) return null;
       const tokens = manager.getRepository(PasswordResetToken);
       const previous = await tokens.findOneBy({ userId: user.id });
       const now = new Date();
@@ -65,6 +66,14 @@ export class PasswordSecurityService {
       return { token, plaintext, email: user.email };
     });
     if (!issued) return;
+    if (
+      !(await canDeliverToAccount(
+        this.source,
+        issued.token.userId,
+        issued.email,
+      ))
+    )
+      return;
     const url = new URL(
       '/reset-password',
       this.config.get('PUBLIC_APP_URL', { infer: true }),
@@ -114,6 +123,7 @@ export class PasswordSecurityService {
       const token = await tokens.findOneBy({ userId: candidate.userId });
       const now = new Date();
       if (
+        user?.deletedAt ||
         !user?.emailVerifiedAt ||
         !token ||
         token.tokenHash !== hash ||
@@ -143,7 +153,11 @@ export class PasswordSecurityService {
     const snapshot = await this.source
       .getRepository(User)
       .findOneBy({ id: userId });
-    if (!snapshot?.emailVerifiedAt || snapshot.authVersion !== expectedVersion)
+    if (
+      snapshot?.deletedAt ||
+      !snapshot?.emailVerifiedAt ||
+      snapshot.authVersion !== expectedVersion
+    )
       throw new ApplicationException(
         401,
         ErrorCode.UNAUTHORIZED,
@@ -174,6 +188,7 @@ export class PasswordSecurityService {
         lock: { mode: 'pessimistic_write' },
       });
       if (
+        user?.deletedAt ||
         !user?.emailVerifiedAt ||
         user.authVersion !== expectedVersion ||
         user.passwordHash !== snapshot.passwordHash

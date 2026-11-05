@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { ErrorCode } from '../../common/dto/api-error';
 import { ApplicationException } from '../../exceptions/application.exception';
 import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
@@ -34,13 +34,13 @@ export class UsersService {
     // profile edits that started before the password/auth-version transaction.
     const patch: Partial<Pick<User, 'displayName'>> = {};
     if (input.displayName !== undefined) patch.displayName = input.displayName;
-    await this.users.update(userId, patch);
+    await this.users.update({ id: userId, deletedAt: IsNull() }, patch);
     return toUserResponseDto(await this.findUser(userId));
   }
 
   private async findUser(userId: string): Promise<User> {
     const user = await this.users.findOne({ where: { id: userId } });
-    if (!user) {
+    if (!user || user.deletedAt) {
       throw new ApplicationException(
         HttpStatus.NOT_FOUND,
         ErrorCode.NOT_FOUND,

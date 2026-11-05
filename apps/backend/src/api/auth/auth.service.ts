@@ -50,6 +50,12 @@ export class AuthService {
   ) {}
 
   async register(input: RegisterRequestDto): Promise<UserResponseDto> {
+    if (input.email.endsWith('@users.invalid'))
+      throw new ApplicationException(
+        400,
+        ErrorCode.VALIDATION_FAILED,
+        'Email domain is reserved',
+      );
     const existing = await this.users.findOne({
       where: { email: input.email },
     });
@@ -91,7 +97,8 @@ export class AuthService {
     const user = await this.users.findOne({ where: { email: input.email } });
     const passwordHash = user?.passwordHash ?? DUMMY_PASSWORD_HASH;
     const validPassword = await argon2.verify(passwordHash, input.password);
-    if (!user?.passwordHash || !validPassword) throw this.invalidCredentials();
+    if (user?.deletedAt || !user?.passwordHash || !validPassword)
+      throw this.invalidCredentials();
     if (!user.emailVerifiedAt) {
       throw new ApplicationException(
         HttpStatus.FORBIDDEN,
@@ -104,6 +111,7 @@ export class AuthService {
   }
 
   async issueLoginResponse(user: User): Promise<LoginResponseDto> {
+    if (user.deletedAt) throw this.unauthorized();
     if (!user.emailVerifiedAt) {
       throw new ApplicationException(
         HttpStatus.FORBIDDEN,
@@ -129,7 +137,12 @@ export class AuthService {
       user?.passwordHash ?? DUMMY_PASSWORD_HASH,
       password,
     );
-    if (!user?.passwordHash || !user.emailVerifiedAt || !valid)
+    if (
+      user?.deletedAt ||
+      !user?.passwordHash ||
+      !user.emailVerifiedAt ||
+      !valid
+    )
       throw this.invalidCredentials();
     return user;
   }
@@ -157,7 +170,11 @@ export class AuthService {
       throw this.unauthorized();
     }
     const user = await this.users.findOne({ where: { id: claims.sub } });
-    if (!user || (claims.authVersion ?? 0) !== user.authVersion)
+    if (
+      !user ||
+      user.deletedAt ||
+      (claims.authVersion ?? 0) !== user.authVersion
+    )
       throw this.unauthorized();
     if (!user.emailVerifiedAt) {
       if (unverifiedStatus === 403)
@@ -181,9 +198,14 @@ export class AuthService {
   async currentSocketAuthVersion(userId: string): Promise<number | null> {
     const user = await this.users.findOne({
       where: { id: userId },
-      select: { id: true, authVersion: true, emailVerifiedAt: true },
+      select: {
+        id: true,
+        authVersion: true,
+        emailVerifiedAt: true,
+        deletedAt: true,
+      },
     });
-    return user?.emailVerifiedAt ? user.authVersion : null;
+    return user?.emailVerifiedAt && !user.deletedAt ? user.authVersion : null;
   }
 
   private emailAlreadyExists(): ApplicationException {

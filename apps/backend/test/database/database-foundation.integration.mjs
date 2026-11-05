@@ -212,13 +212,18 @@ async function inspectSchema() {
           !sql.includes('"start_date"') &&
           !sql.includes('"IDX_cards_board_due_date"') &&
           !sql.includes('"IDX_cards_due_scan"'),
-      ),
+      )
+      .toSorted(),
     [
       'ALTER TABLE "workspaces" ADD "board_creation_admin_only" boolean NOT NULL DEFAULT false',
       'ALTER TABLE "workspaces" ADD "board_invites_enabled" boolean NOT NULL DEFAULT true',
       'ALTER TABLE "workspaces" ADD "board_membership_changes_enabled" boolean NOT NULL DEFAULT true',
       'ALTER TABLE "workspaces" ADD "board_visibility_changes_enabled" boolean NOT NULL DEFAULT true',
-    ],
+      'ALTER TABLE "users" ADD "deleted_at" TIMESTAMP WITH TIME ZONE',
+      'ALTER TABLE "workspace_invitations" ADD "erased_recipient_hash" character(64)',
+      `ALTER TABLE "users" ADD CONSTRAINT "CK_users_deleted_identity" CHECK (deleted_at IS NULL OR (display_name = 'Deleted user' AND email = 'deleted+' || id::text || '@users.invalid' AND password_hash IS NULL AND email_verified_at IS NULL AND avatar_url IS NULL AND avatar_object_key IS NULL))`,
+      `ALTER TABLE "users" ADD CONSTRAINT "CK_users_live_email" CHECK (deleted_at IS NOT NULL OR email NOT LIKE '%@users.invalid')`,
+    ].toSorted(),
     'Only known later migrations should differ from the historical schema',
   );
 }
@@ -309,6 +314,7 @@ async function inspectPagination() {
   const builder = () =>
     repository
       .createQueryBuilder('user')
+      .select(['user.id', 'user.email', 'user.createdAt'])
       .where('user.email LIKE :prefix', { prefix: 'page-%' });
 
   const first = await paginateQueryBuilder(
@@ -450,7 +456,7 @@ try {
       'workspaces',
     ],
   );
-  assert.equal(source.migrations.length, 28);
+  assert.equal(source.migrations.length, 29);
 
   const originalDatabase = process.env.DATABASE_NAME;
   process.env.DATABASE_NAME = testDatabase;
@@ -484,7 +490,8 @@ try {
       !m.name.startsWith('NotificationFoundation') &&
       !m.name.startsWith('CommentMentions') &&
       !m.name.startsWith('TaskNotificationEmailOutbox') &&
-      !m.name.startsWith('EmailChangeSecurity'),
+      !m.name.startsWith('EmailChangeSecurity') &&
+      !m.name.startsWith('AccountDeletion'),
   );
   source.migrations = allMigrations.filter(
     (m) =>
@@ -502,7 +509,8 @@ try {
       !m.name.startsWith('NotificationFoundation') &&
       !m.name.startsWith('CommentMentions') &&
       !m.name.startsWith('TaskNotificationEmailOutbox') &&
-      !m.name.startsWith('EmailChangeSecurity'),
+      !m.name.startsWith('EmailChangeSecurity') &&
+      !m.name.startsWith('AccountDeletion'),
   );
   assert.equal((await source.runMigrations()).length, 13);
   const cliOutput = execFileSync(
@@ -595,8 +603,15 @@ try {
       ].includes(entity.tableName),
   );
   assert.deepEqual(
-    (await source.driver.createSchemaBuilder().log()).upQueries,
-    [],
+    (await source.driver.createSchemaBuilder().log()).upQueries
+      .map((query) => query.query)
+      .toSorted(),
+    [
+      'ALTER TABLE "users" ADD "deleted_at" TIMESTAMP WITH TIME ZONE',
+      'ALTER TABLE "workspace_invitations" ADD "erased_recipient_hash" character(64)',
+      `ALTER TABLE "users" ADD CONSTRAINT "CK_users_deleted_identity" CHECK (deleted_at IS NULL OR (display_name = 'Deleted user' AND email = 'deleted+' || id::text || '@users.invalid' AND password_hash IS NULL AND email_verified_at IS NULL AND avatar_url IS NULL AND avatar_object_key IS NULL))`,
+      `ALTER TABLE "users" ADD CONSTRAINT "CK_users_live_email" CHECK (deleted_at IS NOT NULL OR email NOT LIKE '%@users.invalid')`,
+    ].toSorted(),
   );
   source.entityMetadatas = allMetadata;
   cardMetadata.indices = allCardIndices;
@@ -619,18 +634,28 @@ try {
     'Enum rollback retains existing values/history; idempotent reapply: PASS',
   );
   source.migrations = allMigrations.filter(
-    (m) => !m.name.startsWith('EmailChangeSecurity'),
+    (m) =>
+      !m.name.startsWith('EmailChangeSecurity') &&
+      !m.name.startsWith('AccountDeletion'),
   );
   assert.equal((await source.runMigrations()).length, 3);
   await assert.rejects(
     source.undoLastMigration(),
     /Task notification email outbox requires a forward fix/,
   );
-  source.migrations = allMigrations;
+  source.migrations = allMigrations.filter(
+    (m) => !m.name.startsWith('AccountDeletion'),
+  );
   assert.equal((await source.runMigrations()).length, 1);
   await assert.rejects(
     source.undoLastMigration(),
     /Email change security is forward-only/,
+  );
+  source.migrations = allMigrations;
+  assert.equal((await source.runMigrations()).length, 1);
+  await assert.rejects(
+    source.undoLastMigration(),
+    /Account deletion is forward-only/,
   );
   assert.deepEqual(await source.runMigrations(), []);
   assert.deepEqual(

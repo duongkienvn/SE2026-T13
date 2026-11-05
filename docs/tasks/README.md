@@ -27,6 +27,8 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Backend tasks
 
+- [P5-03 Safe account deletion and identity erasure](backend/p5-account-deletion.md)
+
 - [P5-02 Verified email change and identity security](backend/p5-secure-email-change.md)
 
 - [P5-01 Authorized Board and Account Data Export](backend/p5-authorized-data-export.md)

@@ -32,12 +32,17 @@ describe('task email kind dispatch boundary', () => {
           work({ query }),
       );
     const dbQuery = jest.fn().mockResolvedValue([]);
+    const existsBy = jest.fn().mockResolvedValue(true);
     const mailer = { send: jest.fn().mockResolvedValue('SENT') };
     const dispatcher = new TaskEmailDispatcher(
-      { query: dbQuery, transaction } as unknown as DataSource,
+      {
+        query: dbQuery,
+        transaction,
+        getRepository: () => ({ existsBy }),
+      } as unknown as DataSource,
       mailer,
     );
-    return { dispatcher, mailer, row, query, dbQuery };
+    return { dispatcher, mailer, row, query, dbQuery, existsBy };
   }
 
   it.each(['CARD_ASSIGNED', 'COMMENT_MENTIONED'])(
@@ -56,6 +61,33 @@ describe('task email kind dispatch boundary', () => {
         expect.stringContaining('sent_at=CASE'),
         [row.id, expect.any(String), 'SENT', 1],
       );
+    },
+  );
+
+  it.each([1, 0])(
+    'cancels a failed final account check only under its own processing lease (%i affected rows)',
+    async (affected) => {
+      const { dispatcher, mailer, row, query, dbQuery, existsBy } =
+        setup('CARD_ASSIGNED');
+      existsBy.mockResolvedValue(false);
+      // Zero affected rows represents a deleted row or a lease reclaimed by
+      // another worker. The dispatcher must not retry with an unguarded write.
+      dbQuery.mockResolvedValue([[], affected]);
+
+      await dispatcher.drain(1);
+
+      const attempt = query.mock.calls.find(([sql]: [string]) =>
+        sql.includes('attempts=attempts+1'),
+      );
+      expect(attempt).toBeDefined();
+      expect(dbQuery).toHaveBeenLastCalledWith(
+        expect.stringMatching(
+          /UPDATE task_notification_email_outbox SET status='CANCELLED', lease_owner=NULL, lease_until=NULL, updated_at=now\(\)\s+WHERE id=\$1 AND status='PROCESSING' AND lease_owner=\$2/,
+        ),
+        [row.id, attempt![1][1]],
+      );
+      expect(dbQuery).toHaveBeenCalledTimes(3);
+      expect(mailer.send).not.toHaveBeenCalled();
     },
   );
 

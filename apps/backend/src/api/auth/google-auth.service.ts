@@ -73,7 +73,7 @@ export class GoogleAuthService {
     const user = await this.source
       .getRepository(User)
       .findOneBy({ id: userId });
-    if (!user?.emailVerifiedAt)
+    if (user?.deletedAt || !user?.emailVerifiedAt)
       throw new ApplicationException(
         401,
         ErrorCode.UNAUTHORIZED,
@@ -113,6 +113,7 @@ export class GoogleAuthService {
         lock: { mode: 'pessimistic_write' },
       });
       if (
+        user?.deletedAt ||
         !user?.passwordHash ||
         !user.emailVerifiedAt ||
         user.passwordHash !== reauthenticated.passwordHash

@@ -11,6 +11,7 @@ import { EnvironmentConfig } from '../../config/environment';
 import { welcomeEmail } from '../../mail/welcome-email';
 import { WelcomeMailer } from '../../mail/welcome-mailer';
 import { User } from '../users/entities/user.entity';
+import { canDeliverToAccount } from '../users/live-account-delivery';
 import { WelcomeEmailDelivery } from './entities/welcome-email-delivery.entity';
 
 // Leave an hour of margin inside Resend's 24-hour idempotency retention.
@@ -100,6 +101,14 @@ export class WelcomeOnboardingService
       }
       let accepted = false;
       try {
+        if (
+          !(await canDeliverToAccount(
+            this.source,
+            delivery.userId,
+            delivery.message!.to,
+          ))
+        )
+          continue;
         // Claim transaction has committed. Frozen sender/body + key survive restarts.
         await this.mailer.send(delivery.message!, `welcome/${delivery.userId}`);
         accepted = true;

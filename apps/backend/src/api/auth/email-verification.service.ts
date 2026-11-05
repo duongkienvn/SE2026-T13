@@ -7,6 +7,7 @@ import { ErrorCode } from '../../common/dto/api-error';
 import { ApplicationException } from '../../exceptions/application.exception';
 import { VerificationMailer } from '../../mail/verification-mailer';
 import { User } from '../users/entities/user.entity';
+import { canDeliverToAccount } from '../users/live-account-delivery';
 import { EmailVerificationToken } from './entities/email-verification-token.entity';
 import { WelcomeOnboardingService } from './welcome-onboarding.service';
 
@@ -34,7 +35,7 @@ export class EmailVerificationService {
       const user = await manager
         .getRepository(User)
         .findOne({ where: { email }, lock: { mode: 'pessimistic_write' } });
-      if (!user || user.emailVerifiedAt !== null) return null;
+      if (!user || user.deletedAt || user.emailVerifiedAt !== null) return null;
       const tokens = manager.getRepository(EmailVerificationToken);
       const previous = await tokens.findOne({ where: { userId: user.id } });
       const now = new Date();
@@ -63,6 +64,14 @@ export class EmailVerificationService {
       return { token, plaintext, email: user.email };
     });
     if (!issued) return;
+    if (
+      !(await canDeliverToAccount(
+        this.source,
+        issued.token.userId,
+        issued.email,
+      ))
+    )
+      return;
     const url = new URL(
       '/verify-email',
       this.config.get('PUBLIC_APP_URL', { infer: true }),
@@ -117,6 +126,7 @@ export class EmailVerificationService {
       const now = new Date();
       if (
         !user ||
+        user.deletedAt ||
         user.emailVerifiedAt !== null ||
         !token ||
         token.tokenHash !== hash ||

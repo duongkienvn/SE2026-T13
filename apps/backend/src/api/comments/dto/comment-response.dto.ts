@@ -1,8 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import { toResponseDto } from '../../../common/dto/to-response-dto';
 import { Comment } from '../entities/comment.entity';
 import { CommentMentionDto } from './comment-mention.dto';
+import { DeletedUserAttributionDto } from '../../users/dto/deleted-user-attribution.dto';
 
 export class CommentMentionResponseDto {
   @Expose() @ApiProperty({ format: 'uuid' }) userId!: string;
@@ -14,6 +15,22 @@ export class CommentResponseDto {
   @Expose() @ApiProperty({ format: 'uuid' }) id!: string;
   @Expose() @ApiProperty({ format: 'uuid' }) cardId!: string;
   @Expose() @ApiProperty({ format: 'uuid' }) authorId!: string;
+  @Expose()
+  @Type(() => DeletedUserAttributionDto)
+  @Transform(
+    ({ value }) =>
+      value?.isDeleted === true && value?.displayName === 'Deleted user'
+        ? value
+        : undefined,
+    { toClassOnly: true },
+  )
+  @ApiProperty({
+    type: DeletedUserAttributionDto,
+    required: false,
+    description:
+      'Present for a deleted author; render Deleted user without a profile link',
+  })
+  author?: DeletedUserAttributionDto;
   @Expose() @ApiProperty({ minLength: 1, maxLength: 2000 }) content!: string;
   @Expose()
   @Type(() => CommentMentionResponseDto)
@@ -31,6 +48,9 @@ export function toCommentResponseDto(
     id: comment.id,
     cardId: comment.cardId,
     authorId: comment.authorId,
+    ...(comment.author?.deletedAt
+      ? { author: new DeletedUserAttributionDto() }
+      : {}),
     content: comment.content,
     mentions: mentions.map(({ userId, start, end }) => ({
       userId,

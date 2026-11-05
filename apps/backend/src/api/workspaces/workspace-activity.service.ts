@@ -39,12 +39,17 @@ export class WorkspaceActivityService {
           'actorMember',
           'actorMember.workspaceId = activity.workspaceId AND actorMember.userId = activity.actorId',
         )
-        .leftJoin('activity.actor', 'actor', 'actor.id = actorMember.userId')
+        .leftJoin(
+          'activity.actor',
+          'actor',
+          '(actor.id = actorMember.userId OR actor.deletedAt IS NOT NULL)',
+        )
         .addSelect([
           'actor.id',
           'actor.displayName',
           'actor.avatarUrl',
           'actor.avatarObjectKey',
+          'actor.deletedAt',
         ])
         .where('activity.workspaceId = :workspaceId', { workspaceId })
         .andWhere(
@@ -81,6 +86,7 @@ export class WorkspaceActivityService {
               ? {
                   id: user.id,
                   displayName: user.displayName,
+                  ...(user.deletedAt ? { isDeleted: true } : {}),
                   avatarUrl: objectId
                     ? `/users/${user.id}/avatar/${objectId}`
                     : user.avatarUrl,

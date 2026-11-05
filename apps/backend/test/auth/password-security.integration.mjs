@@ -157,7 +157,12 @@ try {
   const recoveryMigration = source.migrations.find(
     (m) => m.name === 'PasswordRecoverySecurity1792922400093',
   );
-  source.migrations = source.migrations.filter((m) => m !== recoveryMigration);
+  const deletionMigration = source.migrations.find((m) =>
+    m.name.startsWith('AccountDeletion'),
+  );
+  source.migrations = source.migrations.filter(
+    (m) => m !== recoveryMigration && m !== deletionMigration,
+  );
   await source.runMigrations();
   const oldPassword = 'OldPass123!';
   const oldHash = await argon2.hash(oldPassword, { type: argon2.argon2id });
@@ -196,6 +201,8 @@ try {
     await recoveryMigration.up(manager.queryRunner);
   });
   assert.equal((await source.runMigrations()).length, 0);
+  source.migrations.push(deletionMigration);
+  assert.equal((await source.runMigrations()).length, 1);
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries.map(
       (q) => q.query,

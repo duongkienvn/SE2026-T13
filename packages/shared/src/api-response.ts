@@ -33,5 +33,6 @@ export interface ApiErrorResponse {
   timestamp: string;
   path: string;
   details?: string[];
+  blockers?: import('./account-deletion.js').AccountDeletionBlocker[];
   requestId?: string;
 }

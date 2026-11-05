@@ -13,7 +13,12 @@ import { FakePasswordRecoveryMailer } from '../../src/mail/password-recovery-mai
 describe('PasswordSecurityService decisions', () => {
   let user: User;
   let previous: Partial<PasswordResetToken> | null;
-  let userRepo: { findOne: jest.Mock; findOneBy: jest.Mock; update: jest.Mock };
+  let userRepo: {
+    findOne: jest.Mock;
+    findOneBy: jest.Mock;
+    update: jest.Mock;
+    existsBy: jest.Mock;
+  };
   let tokenRepo: {
     findOneBy: jest.Mock;
     create: jest.Mock;
@@ -31,6 +36,7 @@ describe('PasswordSecurityService decisions', () => {
     });
     previous = null;
     userRepo = {
+      existsBy: jest.fn(async () => !user.deletedAt),
       findOne: jest.fn(async () => user),
       findOneBy: jest.fn(async () => user),
       update: jest.fn(),

@@ -183,18 +183,22 @@ export class NotificationResolver {
           ]
         : [];
     });
-    const actorMap = new Map<string, { id: string; displayName: string }>();
+    const actorMap = new Map<
+      string,
+      { id: string; displayName: string; isDeleted?: boolean }
+    >();
     if (scopes.length) {
       const actors: {
         notificationId: string;
         id: string;
         displayName: string;
+        isDeleted?: boolean;
       }[] = await manager.query(
         `
-        SELECT scope."notificationId", actor.id, actor.display_name AS "displayName"
+        SELECT scope."notificationId", actor.id, actor.display_name AS "displayName", (actor.deleted_at IS NOT NULL) AS "isDeleted"
         FROM jsonb_to_recordset($1::jsonb) AS scope("notificationId" uuid,"actorId" uuid,"workspaceId" uuid,"boardId" uuid,"cardId" uuid,"invitationActor" boolean)
         JOIN users actor ON actor.id=scope."actorId"
-        WHERE actor.id=$2::uuid OR scope."invitationActor" OR
+        WHERE actor.deleted_at IS NOT NULL OR actor.id=$2::uuid OR scope."invitationActor" OR
           (scope."boardId" IS NOT NULL AND EXISTS(SELECT 1 FROM board_members bm WHERE bm.board_id=scope."boardId" AND bm.user_id=actor.id)) OR
           (scope."boardId" IS NULL AND scope."workspaceId" IS NOT NULL AND EXISTS(SELECT 1 FROM workspace_members wm WHERE wm.workspace_id=scope."workspaceId" AND wm.user_id=actor.id))`,
         [JSON.stringify(scopes), recipient],
@@ -203,6 +207,7 @@ export class NotificationResolver {
         actorMap.set(actor.notificationId, {
           id: actor.id,
           displayName: actor.displayName,
+          ...(actor.isDeleted ? { isDeleted: true } : {}),
         });
     }
     return rows.map((row) => {

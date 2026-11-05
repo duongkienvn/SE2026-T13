@@ -110,16 +110,17 @@ try {
   source = await new DataSource({ ...options, database }).initialize();
   const migrations = source.migrations;
   source.migrations = migrations.filter(
-    (migration) => !migration.name.startsWith('EmailChangeSecurity'),
+    (migration) =>
+      !migration.name.startsWith('EmailChangeSecurity') &&
+      !migration.name.startsWith('AccountDeletion'),
   );
   await source.runMigrations();
   const hash = await argon2.hash(password, { type: argon2.argon2id });
-  const legacy = await source.getRepository(User).save({
-    email: 'legacy@email-change.test',
-    displayName: 'Legacy',
-    passwordHash: hash,
-    emailVerifiedAt: new Date(),
-  });
+  // Populate the old schema without asking current entity metadata to write later columns.
+  const [legacy] = await source.query(
+    "INSERT INTO users(email,display_name,password_hash,email_verified_at) VALUES ('legacy@email-change.test','Legacy',$1,now()) RETURNING id,email",
+    [hash],
+  );
   const [workspace] = await source.query(
     "INSERT INTO workspaces(type,name,created_by_id) VALUES ('TEAM','Keep Workspace',$1) RETURNING id",
     [legacy.id],
@@ -140,7 +141,7 @@ try {
     'SELECT id,email,password_hash,auth_version FROM users ORDER BY id',
   );
   source.migrations = migrations;
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 2);
   assert.deepEqual(
     await source.query(
       'SELECT id,email,password_hash,auth_version FROM users ORDER BY id',

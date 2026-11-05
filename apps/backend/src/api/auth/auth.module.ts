@@ -81,6 +81,6 @@ import { RealtimeAccessModule } from '../../realtime/realtime-access.module';
     GoogleAuthService,
     WelcomeOnboardingService,
   ],
-  exports: [AuthService, JwtAuthGuard],
+  exports: [AuthService, JwtAuthGuard, EmailChangeReauthenticationService],
 })
 export class AuthModule {}

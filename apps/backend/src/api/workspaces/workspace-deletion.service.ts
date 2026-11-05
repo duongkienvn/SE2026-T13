@@ -54,7 +54,7 @@ export class WorkspaceDeletionService {
           await manager.query(
             `INSERT INTO deleted_workspace_invitation_quota
             (invitation_id, actor_id, recipient_hash, created_at)
-            SELECT id, invited_by_id, encode(sha256(convert_to(email, 'UTF8')), 'hex'), created_at
+            SELECT id, invited_by_id, COALESCE(erased_recipient_hash, encode(sha256(convert_to(email, 'UTF8')), 'hex')), created_at
             FROM workspace_invitations
             WHERE workspace_id = $1 AND created_at > clock_timestamp() - interval '1 hour'`,
             [workspaceId],

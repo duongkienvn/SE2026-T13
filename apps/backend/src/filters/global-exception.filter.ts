@@ -10,6 +10,7 @@ import { Logger } from 'nestjs-pino';
 import { EntityNotFoundError, QueryFailedError } from 'typeorm';
 import { ApiError, ErrorCode } from '../common/dto/api-error';
 import { ApplicationException } from '../exceptions/application.exception';
+import { AccountDeletionBlockedException } from '../api/users/account-deletion/account-deletion-blocked.exception';
 
 interface ErrorWithCode {
   code?: string;
@@ -116,6 +117,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       path: request.path,
       ...(details ? { details } : {}),
       ...(requestId ? { requestId } : {}),
+      ...(exception instanceof AccountDeletionBlockedException
+        ? { blockers: exception.blockers }
+        : {}),
     };
     response.status(statusCode).json(body);
   }
