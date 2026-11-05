@@ -62,6 +62,52 @@ describe('inbox helpers', () => {
 });
 
 describe('Notifications page', () => {
+  it('keeps header actions usable and marks all read with pending and disabled states', async () => {
+    storeSession();
+    let unread = 2;
+    let finish!: () => void;
+    const pending = new Promise<ReturnType<typeof ok>>((resolve) => {
+      finish = () => {
+        unread = 0;
+        resolve(ok({ updatedCount: 2 }));
+      };
+    });
+    mockApi({
+      ...base,
+      'GET /notifications/unread-count': () => ok({ count: unread }),
+      'GET /notifications?filter=all&page=1&limit=5': () =>
+        notificationPage(
+          [item(1, { readAt: unread ? null : '2026-11-05T10:00:00Z' })],
+          { limit: 5 },
+        ),
+      'POST /notifications/read-all': () => pending,
+    });
+    renderApp('/notifications');
+    await screen.findByText('Summary 1');
+    const header = screen
+      .getByRole('heading', { name: 'Notifications' })
+      .closest('header')!;
+    expect(
+      within(header)
+        .getByRole('link', { name: 'Preferences' })
+        .getAttribute('href'),
+    ).toBe('/settings/notifications');
+    const markAll = within(header).getByRole('button', {
+      name: 'Mark all as read',
+    });
+    await waitFor(() => expect(markAll).toHaveProperty('disabled', false));
+    fireEvent.click(markAll);
+    expect(
+      await within(header).findByRole('button', { name: 'Marking…' }),
+    ).toHaveProperty('disabled', true);
+    await act(async () => finish());
+    await screen.findByText('Marked 2 notifications as read.');
+    await screen.findByRole('link', { name: 'Unread (0)' });
+    expect(
+      within(header).getByRole('button', { name: 'Mark all as read' }),
+    ).toHaveProperty('disabled', true);
+  });
+
   it('renders the server page with All / Unread tabs and pagination in the URL', async () => {
     storeSession();
     const calls = mockApi({
