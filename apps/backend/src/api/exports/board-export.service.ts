@@ -222,7 +222,6 @@ export class BoardExportService {
     const child = (
       entity:
         | typeof CardAssignee
-        | typeof CardLabel
         | typeof CardChecklist
         | typeof CardAttachment
         | typeof Comment,

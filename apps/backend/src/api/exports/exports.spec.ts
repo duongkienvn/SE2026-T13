@@ -146,6 +146,34 @@ describe('bounded export queries and sessions', () => {
       "SET LOCAL statement_timeout = '5s'",
     );
   });
+  it('shares the snapshot deadline across nested collections', async () => {
+    const clock = jest.spyOn(Date, 'now').mockReturnValue(1_000);
+    const manager = { query: jest.fn().mockResolvedValue([]) };
+    const source = {
+      transaction: jest.fn(async (_isolation, read) => read(manager)),
+    };
+    const snapshots = new ExportSnapshot(source as unknown as DataSource);
+    const builder = {
+      clone: jest.fn().mockReturnThis(),
+      offset: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([]),
+    };
+    try {
+      await expect(
+        snapshots.read(async () => {
+          clock.mockReturnValue(17_000);
+          for await (const page of exportPages(
+            builder as unknown as SelectQueryBuilder<ObjectLiteral>,
+          ))
+            void page;
+        }),
+      ).rejects.toThrow('Export timed out');
+      expect(builder.getRawMany).not.toHaveBeenCalled();
+    } finally {
+      clock.mockRestore();
+    }
+  });
   it('rejects expired, invalidated and unverified identities on final check', async () => {
     const repository = {
       exists: jest.fn().mockResolvedValue(false),
