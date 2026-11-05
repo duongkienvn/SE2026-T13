@@ -98,6 +98,7 @@ try {
   const beforeUpgrade = await snapshot();
   source.migrations = migrations;
   assert.equal((await source.runMigrations()).length, 2);
+  for (const row of beforeUpgrade[0]) row.row.deleted_at = null;
   assert.deepEqual(await snapshot(), beforeUpgrade);
   assert.deepEqual(await source.runMigrations(), []);
   const indices = await source.query(

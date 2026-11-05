@@ -124,7 +124,9 @@ try {
     MAIL_TRANSPORT: 'fake',
     EMAIL_CHANGE_DATABASE_TESTS: 'local-only',
     NOTIFICATION_DATABASE_TESTS: 'local-only',
-    TASK_NOTIFICATION_DATABASE_TESTS: 'local-only',
+    WORKSPACE_DATABASE_TESTS: 'local-only',
+    ATTACHMENTS_DATABASE_TESTS: 'local-only',
+    PRIVATE_FILE_DATABASE_TESTS: 'local-only',
     EXPORT_DATABASE_TESTS: 'local-only',
     GOOGLE_CLIENT_ID: '',
     AVATAR_STORAGE_DRIVER: 'disabled',
@@ -402,7 +404,7 @@ try {
     process.argv.includes('--regressions') ||
     process.argv.includes('--regressions-only')
   ) {
-    for (const file of [
+    const regressionFiles = [
       'database/database-foundation',
       'auth/email-change',
       'auth/password-security',
@@ -411,6 +413,7 @@ try {
       'users/user-preferences',
       'users/avatar',
       'boards/boards',
+      'workspaces/workspace-api',
       'board-members/board-members',
       'cards/cards',
       'comments/comments',
@@ -421,7 +424,13 @@ try {
       'attachments/private-files',
       'attachments/attachments',
       'exports/exports',
-    ]) {
+    ];
+    const resume = process.argv
+      .find((arg) => arg.startsWith('--from-regression='))
+      ?.slice('--from-regression='.length);
+    const start = resume ? regressionFiles.indexOf(resume) : 0;
+    assert.ok(start >= 0, 'Unknown regression resume point');
+    for (const file of regressionFiles.slice(start)) {
       execFileSync(process.execPath, [`test/${file}.integration.mjs`], {
         cwd: fileURLToPath(new URL('../../', import.meta.url)),
         stdio: 'inherit',

@@ -39,6 +39,27 @@ const service = (mailer: WorkspaceInvitationMailer) =>
 describe('Workspace invitation dispatch boundary', () => {
   afterEach(() => jest.useRealTimers());
 
+  it('never issues or dispatches an invitation to an internal erasure placeholder', async () => {
+    const send = jest.fn();
+    const invitations = service({ send });
+    await expect(
+      invitations.create('actor', 'workspace', {
+        email: 'deleted+uuid@users.invalid',
+        role: WorkspaceRole.MEMBER,
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      response: { code: 'VALIDATION_FAILED' },
+    });
+    await expect(
+      invitations['dispatch']({
+        ...payload,
+        recipient: 'deleted-invite+uuid@users.invalid',
+      }),
+    ).resolves.toBe('FAILED');
+    expect(send).not.toHaveBeenCalled();
+  });
+
   it.each(['SENT', 'FAILED', 'UNKNOWN'] as const)(
     'preserves explicit %s outcome without retrying the proof',
     async (outcome) => {

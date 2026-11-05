@@ -119,12 +119,16 @@ try {
   assert(source, 'Disposable PostgreSQL must start');
   const migrations = [...source.migrations];
   source.migrations = migrations.filter(
-    (migration) => !migration.name.startsWith('WelcomeEmailOutbox'),
+    (migration) =>
+      !migration.name.startsWith('WelcomeEmailOutbox') &&
+      !migration.name.startsWith('AccountDeletion'),
   );
   await source.runMigrations();
   await source.query(`INSERT INTO users(email,display_name,email_verified_at) VALUES
     ('legacy@example.test','Legacy',now()),('pending-legacy@example.test','Pending legacy',NULL)`);
-  source.migrations = migrations;
+  source.migrations = migrations.filter(
+    (m) => !m.name.startsWith('AccountDeletion'),
+  );
   assert.equal((await source.runMigrations()).length, 1);
   const count = async () =>
     (
@@ -153,6 +157,8 @@ try {
     await outbox.up(manager.queryRunner);
   });
   assert.equal((await source.runMigrations()).length, 0);
+  source.migrations = migrations;
+  assert.equal((await source.runMigrations()).length, 1);
   const drift = await source.driver.createSchemaBuilder().log();
   assert.deepEqual(
     drift.upQueries.map((q) => q.query),

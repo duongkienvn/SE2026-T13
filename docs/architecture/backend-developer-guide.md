@@ -135,6 +135,16 @@ membership mutations, and publish `card:updated` only after commit. Exact ordere
 positions, bounded detail payloads, derived progress and scoped aggregate access
 are documented in [the checklist contract](../tasks/backend/card-checklists.md).
 
+## Account deletion and identity erasure (AC-01)
+
+Account closure uses the dedicated [P5-03 account deletion boundary](../tasks/backend/p5-account-deletion.md).
+Never treat a retained User UUID as an active identity: check `deletedAt`, preserve
+the live-reference database guards, and do not recreate preferences, grants or
+delivery work for tombstones. Shared author/creator references survive; render the
+safe deleted-user attribution without a live profile link. New private/identity
+tables must be added to the explicit cleanup inventory and database acceptance
+tests. Network delivery and physical avatar cleanup remain outside transactions.
+
 ## Notification integration (CX-01)
 
 Future event producers import `NotificationPersistenceModule`, call

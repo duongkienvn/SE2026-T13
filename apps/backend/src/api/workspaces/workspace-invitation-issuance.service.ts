@@ -54,6 +54,12 @@ export class WorkspaceInvitationIssuanceService {
     input: CreateWorkspaceInvitationDto,
   ) {
     const email = input.email.trim().toLowerCase();
+    if (email.endsWith('@users.invalid'))
+      throw new ApplicationException(
+        400,
+        ErrorCode.VALIDATION_FAILED,
+        'Email domain is reserved',
+      );
     const reserved = await this.workspaces.manager.transaction(
       async (manager) => {
         // Shared across instances; serialize actor/recipient quotas before Workspace locks.
@@ -202,6 +208,8 @@ export class WorkspaceInvitationIssuanceService {
   private async dispatch(
     payload: WorkspaceInvitationMail,
   ): Promise<InvitationSendState> {
+    if (payload.recipient.toLowerCase().endsWith('@users.invalid'))
+      return 'FAILED';
     let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
       const outcome = await Promise.race([

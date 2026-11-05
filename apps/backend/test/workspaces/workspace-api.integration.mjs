@@ -46,7 +46,9 @@ try {
     (migration) =>
       !migration.name.startsWith('NotificationFoundation') &&
       !migration.name.startsWith('CommentMentions') &&
-      !migration.name.startsWith('TaskNotificationEmailOutbox'),
+      !migration.name.startsWith('TaskNotificationEmailOutbox') &&
+      !migration.name.startsWith('EmailChangeSecurity') &&
+      !migration.name.startsWith('AccountDeletion'),
   );
   await source.runMigrations();
   await source.undoLastMigration(); // Empty Board background version extension.
@@ -64,11 +66,29 @@ try {
     /Workspace policies require a forward fix/,
   );
   assert.equal((await source.runMigrations()).length, 10);
-  source.migrations = allMigrations;
+  source.migrations = allMigrations.filter(
+    (m) =>
+      !m.name.startsWith('EmailChangeSecurity') &&
+      !m.name.startsWith('AccountDeletion'),
+  );
   assert.equal((await source.runMigrations()).length, 3);
   await assert.rejects(
     source.undoLastMigration(),
     /Task notification email outbox requires a forward fix/,
+  );
+  source.migrations = allMigrations.filter(
+    (m) => !m.name.startsWith('AccountDeletion'),
+  );
+  assert.equal((await source.runMigrations()).length, 1);
+  await assert.rejects(
+    source.undoLastMigration(),
+    /Email change security is forward-only/,
+  );
+  source.migrations = allMigrations;
+  assert.equal((await source.runMigrations()).length, 1);
+  await assert.rejects(
+    source.undoLastMigration(),
+    /Account deletion is forward-only/,
   );
   assert.deepEqual(await source.runMigrations(), []);
   assert.deepEqual(

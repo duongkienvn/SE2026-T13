@@ -112,12 +112,19 @@ Trong các bảng dưới đây, `Không` ở cột Nullable nghĩa là `NOT NUL
 
 ### `users`
 
+P5-03 adds nullable `deleted_at` and an irreversible anonymized tombstone.
+Live-account references are fenced under PostgreSQL User locks; historical FKs
+retain the original UUID. See the [complete current FK/cleanup inventory and
+migration boundary](../tasks/backend/p5-account-deletion.md). Earlier migration
+counts and account-deletion audit notes in this document are historical.
+
 | Cột                 | PostgreSQL type | Nullable | Ràng buộc / ý nghĩa                                                     |
 | ------------------- | --------------- | -------- | ----------------------------------------------------------------------- |
 | `id`                | `uuid`          | Không    | Primary key.                                                            |
 | `email`             | `varchar`       | Không    | Unique; định danh đăng nhập.                                            |
 | `password_hash`     | `varchar`       | Có       | Argon2id cho local account; NULL cho Google-only (#79).                 |
 | `auth_version`      | `integer`       | Không    | Default 0; atomic increment on password reset/change (#93).             |
+| `deleted_at`        | `timestamptz`   | Có       | P5-03 irreversible identity closure; NULL for a live account.           |
 | `display_name`      | `varchar`       | Không    | Tên hiển thị.                                                           |
 | `avatar_url`        | `varchar`       | Có       | Legacy external HTTPS avatar; preserved until upload/removal (#103).    |
 | `avatar_object_key` | `varchar`       | Có       | Stable private object key in the owning User namespace; unique (#103).  |

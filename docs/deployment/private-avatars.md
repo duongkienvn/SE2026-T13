@@ -170,6 +170,13 @@ deployment lock and production approval. No commands here were run on production
 
 ## 4. Rollback and cost controls
 
+P5-03 account deletion clears User pointers and rejects owned intents atomically,
+then reuses the durable avatar sweep for physical deletion/retry. A successful
+account deletion does not certify immediate S3 object deletion. Preserve cleanup
+rows and a configured storage driver until the backlog drains; never delete Board
+attachments as account-owned avatars. See the [account closure retention,
+monitoring and roll-forward contract](../tasks/backend/p5-account-deletion.md).
+
 - Prefer a compatible forward fix with the additive schema retained. Emergency
   `AVATAR_STORAGE_DRIVER=disabled` plus backend recreation stops storage operations;
   managed images then fall back to initials while legacy external images remain.

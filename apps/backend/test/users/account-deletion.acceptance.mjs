@@ -450,6 +450,12 @@ export async function verifyDeletionAcceptance(ctx) {
       .create(other.id, w.id, { email: u.email }),
     (e) => e.getStatus() === 429,
   );
+  await assert.rejects(
+    app
+      .get(WorkspaceInvitationIssuanceService)
+      .create(other.id, w.id, { email: `deleted+${u.id}@users.invalid` }),
+    (e) => e.getStatus() === 400,
+  );
   assert.equal(
     (
       await source.query(

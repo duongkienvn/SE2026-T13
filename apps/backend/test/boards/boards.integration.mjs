@@ -65,7 +65,9 @@ try {
       (migration) =>
         !migration.name.startsWith('NotificationFoundation') &&
         !migration.name.startsWith('CommentMentions') &&
-        !migration.name.startsWith('TaskNotificationEmailOutbox'),
+        !migration.name.startsWith('TaskNotificationEmailOutbox') &&
+        !migration.name.startsWith('EmailChangeSecurity') &&
+        !migration.name.startsWith('AccountDeletion'),
     );
     upgradeSource.migrations = migrations.filter(
       (migration) =>
