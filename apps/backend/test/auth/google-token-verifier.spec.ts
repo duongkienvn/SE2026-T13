@@ -91,6 +91,22 @@ describe('Google ID token verification through the official SDK', () => {
       expect(JSON.stringify(error)).not.toContain(credential);
     }
   });
+  it('requires a fresh issued-at only for explicit reauthentication', async () => {
+    const old = token({ iat: now - 601 });
+    await expect(service.verify(old)).resolves.toMatchObject({
+      sub: claims.sub,
+    });
+    await expect(service.verify(old, 300)).rejects.toMatchObject({
+      status: 401,
+      response: { code: 'INVALID_GOOGLE_CREDENTIAL' },
+    });
+    await expect(service.verify(token(), 300)).resolves.toMatchObject({
+      sub: claims.sub,
+    });
+    await expect(
+      service.verify(token({ iat: now + 120 }), 300),
+    ).rejects.toMatchObject({ status: 401 });
+  });
 
   it('requires verified hosted domain matching the email for Workspace authority', async () => {
     for (const [hd, authoritativeEmail] of [

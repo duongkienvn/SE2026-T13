@@ -36,7 +36,10 @@ export class GoogleTokenVerifier {
     private readonly config: ConfigService<EnvironmentConfig, true>,
   ) {}
 
-  async verify(credential: string): Promise<GoogleProfile> {
+  async verify(
+    credential: string,
+    maxAgeSeconds?: number,
+  ): Promise<GoogleProfile> {
     const audience = this.config.get('GOOGLE_CLIENT_ID', { infer: true });
     if (!audience) throw this.unavailable();
     let payload;
@@ -71,6 +74,8 @@ export class GoogleTokenVerifier {
       payload.exp <= now ||
       !Number.isFinite(payload.iat) ||
       payload.iat > now + 300 ||
+      (maxAgeSeconds !== undefined &&
+        (payload.iat < now - maxAgeSeconds || payload.iat > now + 30)) ||
       typeof payload.sub !== 'string' ||
       !/^[A-Za-z0-9_-]{1,255}$/.test(payload.sub) ||
       typeof payload.email !== 'string' ||

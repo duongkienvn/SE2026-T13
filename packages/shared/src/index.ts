@@ -25,3 +25,4 @@ export * from './search.js';
 export * from './notifications.js';
 
 export * from './data-export.js';
+export * from './email-change.js';

@@ -48,7 +48,8 @@
     "test:search:database": "pnpm build && node test/search/search.integration.mjs",
     "test:notifications:database": "pnpm build && node test/notifications/notifications.integration.mjs",
     "test:task-notifications:database": "pnpm build && node test/notifications/task-notifications.integration.mjs",
-    "test:exports:database": "pnpm build && node test/exports/exports.integration.mjs"
+    "test:exports:database": "pnpm build && node test/exports/exports.integration.mjs",
+    "test:email-change:database": "pnpm build && node test/auth/email-change.integration.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1157.0",

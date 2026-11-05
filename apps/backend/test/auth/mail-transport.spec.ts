@@ -1,6 +1,11 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { Resend } from 'resend';
+import {
+  EmailChangeMailer,
+  FakeEmailChangeMailer,
+  ResendEmailChangeMailer,
+} from '../../src/mail/email-change-mailer';
 import { validateEnvironment } from '../../src/config/environment';
 import { MailModule } from '../../src/mail/mail.module';
 import { ResendVerificationMailer } from '../../src/mail/resend-verification-mailer';
@@ -152,7 +157,22 @@ describe('mail transport configuration', () => {
             ? ResendTaskNotificationMailer
             : FakeTaskNotificationMailer,
         );
-        expect(Resend).toHaveBeenCalledTimes(expected === 'resend' ? 6 : 0);
+        const emailChanges = module.get(EmailChangeMailer);
+        expect(emailChanges).toBeInstanceOf(
+          expected === 'resend'
+            ? ResendEmailChangeMailer
+            : FakeEmailChangeMailer,
+        );
+        await emailChanges.sendProof(
+          'new@example.test',
+          'http://localhost:5173/confirm-email-change?token=synthetic',
+          'proof-configuration',
+        );
+        await emailChanges.sendSecurityAlert(
+          'old@example.test',
+          'alert-configuration',
+        );
+        expect(Resend).toHaveBeenCalledTimes(expected === 'resend' ? 7 : 0);
         if (expected === 'fake') expect(config.RESEND_API_KEY).toBe('');
         else expect(config.RESEND_API_KEY === mail.RESEND_API_KEY).toBe(true);
       } finally {

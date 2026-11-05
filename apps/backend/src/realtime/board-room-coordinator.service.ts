@@ -6,15 +6,59 @@ import {
   type RealtimeSocket,
 } from './realtime.types';
 import { BoardPresenceService } from './board-presence.service';
+import type { AuthenticatedUser } from '../api/auth/constants/auth.constants';
 
 /** Single-process ordering boundary for room access, removal and broadcast. */
 @Injectable()
 export class BoardRoomCoordinator implements OnApplicationShutdown {
   private readonly logger = new Logger(BoardRoomCoordinator.name);
   private readonly pending = new Map<string, Promise<void>>();
+  private readonly minimumAuthVersions = new Map<string, number>();
   server?: RealtimeServer;
 
   constructor(readonly presence: BoardPresenceService) {}
+
+  /** Post-commit credential invalidation in this process. New-version sockets survive. */
+  revokeUserSessions(userId: string, currentVersion: number): void {
+    // Publish before scanning: a handshake may not be in the namespace yet.
+    // Delayed post-commit callbacks must never lower an earlier revocation.
+    const minimumVersion = Math.max(
+      this.minimumAuthVersions.get(userId) ?? 0,
+      currentVersion,
+    );
+    this.minimumAuthVersions.set(userId, minimumVersion);
+    for (const socket of this.server?.sockets.sockets.values() ?? []) {
+      const identity = socket.data.identity;
+      if (
+        !identity ||
+        identity.userId !== userId ||
+        identity.authVersion >= minimumVersion
+      )
+        continue;
+      // disconnect() clears application receive grants synchronously before its
+      // queued presence cleanup. Do not wait for any Board queue or adapter I/O.
+      void this.disconnect(socket).catch(() =>
+        this.logger.warn('Revoked session presence cleanup failed'),
+      );
+      delete socket.data.identity;
+      try {
+        socket.disconnect(true);
+      } catch {
+        this.logger.warn(
+          'Revoked session disconnect failed; receive access revoked',
+        );
+      }
+    }
+  }
+
+  isSessionRevoked(
+    identity: Pick<AuthenticatedUser, 'userId' | 'authVersion'>,
+  ): boolean {
+    return (
+      identity.authVersion <
+      (this.minimumAuthVersions.get(identity.userId) ?? 0)
+    );
+  }
 
   // shortcut: serialize joins with Workspace removal snapshots; partition by Workspace if join contention grows.
   withReadGrantChanges<T>(operation: () => Promise<T>): Promise<T> {
@@ -197,5 +241,6 @@ export class BoardRoomCoordinator implements OnApplicationShutdown {
 
   onApplicationShutdown(): void {
     this.server = undefined;
+    this.minimumAuthVersions.clear();
   }
 }

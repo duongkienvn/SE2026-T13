@@ -27,6 +27,8 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Backend tasks
 
+- [P5-02 Verified email change and identity security](backend/p5-secure-email-change.md)
+
 - [P5-01 Authorized Board and Account Data Export](backend/p5-authorized-data-export.md)
 
 - [STAB-01 Backend stabilization](backend/stab-01-backend-stabilization.md)
