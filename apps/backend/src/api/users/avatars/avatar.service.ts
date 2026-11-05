@@ -353,7 +353,7 @@ export class AvatarService implements OnModuleInit, OnModuleDestroy {
       });
       for (const item of batch) {
         const keys = await this.source.transaction(async (manager) => {
-          const user = await this.lockUser(manager, item.userId);
+          const user = await this.lockUser(manager, item.userId, true);
           const intent = await this.lockIntent(manager, item.userId, item.id);
           if (intent.expiresAt >= now || intent.nextCleanupAt > now)
             return null;
@@ -393,11 +393,14 @@ export class AvatarService implements OnModuleInit, OnModuleDestroy {
   private async lockUser(
     manager: EntityManager,
     userId: string,
+    allowDeleted = false,
   ): Promise<User> {
     const user = await manager
       .getRepository(User)
       .findOne({ where: { id: userId }, lock: { mode: 'pessimistic_write' } });
     if (!user) throw avatarError(404, 'NOT_FOUND', 'User not found.');
+    if (user.deletedAt && !allowDeleted)
+      throw avatarError(401, 'UNAUTHORIZED', 'Unauthorized');
     return user;
   }
   private async lockIntent(

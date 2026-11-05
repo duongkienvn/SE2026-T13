@@ -82,7 +82,10 @@ export class WorkspaceInvitationIssuanceService {
         await this.checkLimits(manager, actor, workspaceId, email, now);
         const repository = manager.getRepository(WorkspaceInvitation);
         const prior = await repository.findOne({
-          where: { workspaceId, email },
+          where: [
+            { workspaceId, email },
+            { workspaceId, erasedRecipientHash: invitationHash(email) },
+          ],
           order: { createdAt: 'DESC' },
         });
         if (
@@ -230,7 +233,7 @@ export class WorkspaceInvitationIssuanceService {
         (SELECT count(*) FROM deleted_workspace_invitation_quota
          WHERE actor_id = $1 AND created_at > $4))::int AS actor,
       count(*) FILTER (WHERE workspace_id = $2)::int AS workspace,
-      (count(*) FILTER (WHERE email = $3) +
+      (count(*) FILTER (WHERE email = $3 OR erased_recipient_hash = encode(sha256(convert_to($3, 'UTF8')), 'hex')) +
         (SELECT count(*) FROM deleted_workspace_invitation_quota
          WHERE recipient_hash = encode(sha256(convert_to($3, 'UTF8')), 'hex') AND created_at > $4))::int AS recipient
       FROM workspace_invitations WHERE created_at > $4`,

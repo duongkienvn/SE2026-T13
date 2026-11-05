@@ -5,6 +5,9 @@ export class AccountDeletion1794614400218 implements MigrationInterface {
   name = 'AccountDeletion1794614400218';
 
   async up(runner: QueryRunner): Promise<void> {
+    await runner.query(
+      'ALTER TABLE workspace_invitations ADD COLUMN erased_recipient_hash char(64)',
+    );
     await runner.query(`ALTER TABLE users ADD COLUMN deleted_at timestamptz,
       ADD CONSTRAINT "CK_users_deleted_identity" CHECK (
         deleted_at IS NULL OR (display_name = 'Deleted user'
