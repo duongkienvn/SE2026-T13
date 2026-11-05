@@ -1,4 +1,11 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { focusManager } from '@tanstack/react-query';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fail, mockApi, ok, storeSession, testUser } from '../../test/mock-api';
 import { renderApp } from '../../test/render';
@@ -128,5 +135,59 @@ describe('Settings > Notifications', () => {
     renderApp('/settings/notifications');
     fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(screen.getAllByRole('switch').length).toBe(9));
+  });
+
+  it('keeps the mounted draft and unsaved-changes guard after a background refetch fails', async () => {
+    storeSession();
+    let refreshFails = false;
+    const calls = mockApi({
+      ...base,
+      'GET /users/me/notification-preferences': () =>
+        refreshFails ? fail(500, 'INTERNAL') : ok(defaults),
+    });
+    renderApp('/settings/notifications');
+    const mentions = await toggle('in-app-commentMentioned');
+    fireEvent.click(mentions);
+    refreshFails = true;
+    try {
+      act(() => {
+        focusManager.setFocused(false);
+        focusManager.setFocused(true);
+      });
+      const notice = await screen.findByText(
+        /Could not refresh your notification preferences/,
+      );
+      expect(await toggle('in-app-commentMentioned')).toBe(mentions);
+      expect(mentions.checked).toBe(false);
+      expect(
+        screen.getByRole('button', { name: 'Save changes' }),
+      ).toHaveProperty('disabled', false);
+      expect(
+        screen.queryByText('Could not load your notification preferences.'),
+      ).toBeNull();
+      fireEvent.click(screen.getByRole('link', { name: 'Home' }));
+      const guard = await screen.findByRole('dialog', {
+        name: 'Discard unsaved changes?',
+      });
+      fireEvent.click(
+        within(guard).getByRole('button', { name: 'Keep editing' }),
+      );
+      expect(mentions.checked).toBe(false);
+
+      refreshFails = false;
+      fireEvent.click(
+        within(notice).getByRole('button', { name: 'Try again' }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.queryByText(/Could not refresh your notification preferences/),
+        ).toBeNull(),
+      );
+      expect(await toggle('in-app-commentMentioned')).toBe(mentions);
+      expect(mentions.checked).toBe(false);
+      expect(calls.some((call) => call.method === 'PATCH')).toBe(false);
+    } finally {
+      act(() => focusManager.setFocused(undefined));
+    }
   });
 });

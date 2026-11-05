@@ -83,7 +83,9 @@ export function useMarkRead() {
             current && {
               ...current,
               items: current.items.map((row) =>
-                row.id === item.id ? item : row,
+                // Access may have changed while mark-read was in flight.
+                // Only list refetches can replace protected notification details.
+                row.id === item.id ? { ...row, readAt: item.readAt } : row,
               ),
             },
         );

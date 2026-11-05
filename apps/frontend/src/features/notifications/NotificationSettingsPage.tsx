@@ -102,7 +102,7 @@ export function NotificationSettingsPage() {
         title="Notification Preferences"
         description="Choose what notifications you want to receive."
       />
-      {preferences.isError ? (
+      {preferences.isError && !preferences.preferences ? (
         <div className="notification-settings-card mt-5 space-y-3">
           <Alert variant="error">
             Could not load your notification preferences.
@@ -119,7 +119,22 @@ export function NotificationSettingsPage() {
           Loading your notification preferences…
         </p>
       ) : (
-        <PreferencesForm key={generation} saved={preferences.preferences} />
+        <>
+          {preferences.isRefetchError && (
+            <p role="status" className="mt-5 text-sm text-muted">
+              Could not refresh your notification preferences. Your changes are
+              still here.{' '}
+              <button
+                type="button"
+                className="notification-link"
+                onClick={() => void preferences.refetch()}
+              >
+                Try again
+              </button>
+            </p>
+          )}
+          <PreferencesForm key={generation} saved={preferences.preferences} />
+        </>
       )}
     </div>
   );

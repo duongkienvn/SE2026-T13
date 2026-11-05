@@ -216,4 +216,78 @@ describe('Notifications page', () => {
     );
     expect(within(list.closest('li')!).queryByRole('link')).toBeNull();
   });
+
+  it.each(['board', 'workspace'] as const)(
+    'does not restore protected details when mark-read finishes after %s access revocation',
+    async (resource) => {
+      storeSession();
+      const original = item(1);
+      const stub = unavailableItem({ id: original.id });
+      const readAt = '2026-11-05T00:00:00.000Z';
+      let finishRead!: () => void;
+      const pendingRead = new Promise<ReturnType<typeof ok>>((resolve) => {
+        finishRead = () => resolve(ok({ ...original, readAt }));
+      });
+      let revoked = false;
+      let readFinished = false;
+      let finishRefresh!: () => void;
+      const pendingRefresh = new Promise<ReturnType<typeof notificationPage>>(
+        (resolve) => {
+          finishRefresh = () =>
+            resolve(notificationPage([{ ...stub, readAt }], { limit: 5 }));
+        },
+      );
+      const calls = mockApi({
+        ...base,
+        'GET /notifications?filter=all&page=1&limit=5': () =>
+          readFinished
+            ? pendingRefresh
+            : notificationPage([revoked ? stub : original], { limit: 5 }),
+        [`PATCH /notifications/${original.id}/read`]: () => pendingRead,
+      });
+      renderApp('/notifications');
+      await screen.findByText(original.summary);
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'Mark as read: Assigned to a card',
+        }),
+      );
+      await waitFor(() =>
+        expect(calls.some((call) => call.method === 'PATCH')).toBe(true),
+      );
+      await waitFor(() => expect(createdSockets.length).toBeGreaterThan(0));
+      revoked = true;
+      act(() =>
+        createdSockets
+          .at(-1)!
+          .socket.push(
+            resource === 'board'
+              ? 'board:access-revoked'
+              : 'workspace:access-revoked',
+            resource === 'board'
+              ? { boardId: original.context!.boardId }
+              : { workspaceId: original.context!.workspaceId },
+          ),
+      );
+      await screen.findByText(stub.summary);
+
+      readFinished = true;
+      await act(async () => finishRead());
+      await waitFor(() =>
+        expect(
+          calls.filter((call) => call.path.startsWith('/notifications?')),
+        ).toHaveLength(3),
+      );
+      // Keep the next list request pending so it cannot hide a stale mutation write.
+      expect(screen.getByText(stub.summary)).toBeTruthy();
+      expect(screen.queryByText(original.summary)).toBeNull();
+      expect(screen.queryByText(original.actor!.displayName)).toBeNull();
+      const row = screen.getByText(stub.summary).closest('li')!;
+      expect(within(row).queryByRole('link')).toBeNull();
+      expect(
+        within(row).queryByRole('button', { name: /Mark as read/ }),
+      ).toBeNull();
+      await act(async () => finishRefresh());
+    },
+  );
 });

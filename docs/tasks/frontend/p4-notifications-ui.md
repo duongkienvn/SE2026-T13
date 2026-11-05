@@ -8,15 +8,15 @@ only; nothing was pushed or deployed.
 
 ## API and realtime mapping
 
-| UI                        | Request                                                    | Notes                                                     |
-| ------------------------- | ---------------------------------------------------------- | --------------------------------------------------------- |
-| Bell badge                | `GET /api/notifications/unread-count`                      | Authoritative; never counted from loaded rows             |
-| Bell popover              | `GET /api/notifications?filter=unread&page=1&limit=5`      | Five newest unread                                        |
-| `/notifications`          | `GET /api/notifications?filter=all\|unread&page=N&limit=5` | Server pages; `filter`/`page` in the URL                  |
-| Open item / Mark as read  | `PATCH /api/notifications/:id/read`                        | Row replaced by the server item; then inbox+count refetch |
-| Mark all as read          | `POST /api/notifications/read-all`                         | Shows the returned `updatedCount`                         |
-| `/settings/notifications` | `GET` / `PATCH /api/users/me/notification-preferences`     | PATCH = changed boolean leaves only                       |
-| Realtime                  | `notifications:changed` on the existing session socket     | Payload ignored; one coalesced (150 ms) REST refetch      |
+| UI                        | Request                                                    | Notes                                                |
+| ------------------------- | ---------------------------------------------------------- | ---------------------------------------------------- |
+| Bell badge                | `GET /api/notifications/unread-count`                      | Authoritative; never counted from loaded rows        |
+| Bell popover              | `GET /api/notifications?filter=unread&page=1&limit=5`      | Five newest unread                                   |
+| `/notifications`          | `GET /api/notifications?filter=all\|unread&page=N&limit=5` | Server pages; `filter`/`page` in the URL             |
+| Open item / Mark as read  | `PATCH /api/notifications/:id/read`                        | Only `readAt` is updated; then inbox+count refetch   |
+| Mark all as read          | `POST /api/notifications/read-all`                         | Shows the returned `updatedCount`                    |
+| `/settings/notifications` | `GET` / `PATCH /api/users/me/notification-preferences`     | PATCH = changed boolean leaves only                  |
+| Realtime                  | `notifications:changed` on the existing session socket     | Payload ignored; one coalesced (150 ms) REST refetch |
 
 All types come from `@kanban/shared` (`NotificationResponse`, `NotificationPreferences`, …).
 `features/notifications/api.ts` checks responses at the trust boundary: unknown kinds are
@@ -69,6 +69,8 @@ Summaries are plain React text (an HTML-looking summary is shown literally — t
   choice is saved either way. Saved values are always shown.
 - Save sends only changed leaves, reconciles the form from the full server response, keeps
   the draft on failure, has Cancel, a saving state and the existing `UnsavedChangesGuard`.
+- A failed background preferences refetch keeps the mounted form, draft and unsaved-changes
+  guard, with a non-blocking retry notice. Initial-load failures keep the full-page error.
 
 ## Session, privacy and cache
 
@@ -82,6 +84,8 @@ storage. Invalidation:
   `refreshAccessSnapshots` (`access:changed`, reconnect) call `clearNotificationDetails`:
   rendered rows are dropped at once, then REST returns the unavailable stubs. The unread count
   is kept (history and count do not change on revocation).
+- Mark-read responses update only `readAt` on existing rows, so a delayed response cannot
+  restore summaries, actors, context or links removed by an access-change refetch.
 - Realtime connection loss does **not** clear the inbox; it stays readable while offline.
 
 ## Global Search (P4-08) coexistence
