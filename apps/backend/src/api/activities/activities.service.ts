@@ -48,6 +48,12 @@ export class ActivitiesService implements ActivityRecorder {
     const access = await this.authorization.requireRead(userId, boardId);
     const builder = this.activities
       .createQueryBuilder('activity')
+      .leftJoin(
+        'activity.actor',
+        'deletedActor',
+        'deletedActor.deletedAt IS NOT NULL',
+      )
+      .addSelect(['deletedActor.id', 'deletedActor.deletedAt'])
       .where('activity.boardId = :boardId', { boardId });
     if (access.member === null)
       builder.andWhere('activity.entityType <> :memberEntityType', {

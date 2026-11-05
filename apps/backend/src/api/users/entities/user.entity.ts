@@ -18,6 +18,10 @@ import { Comment } from '../../comments/entities/comment.entity';
 
 @Entity('users')
 @Check(
+  'CK_users_live_email',
+  "deleted_at IS NOT NULL OR email NOT LIKE '%@users.invalid'",
+)
+@Check(
   'CK_users_deleted_identity',
   `deleted_at IS NULL OR (display_name = 'Deleted user' AND email = 'deleted+' || id::text || '@users.invalid' AND password_hash IS NULL AND email_verified_at IS NULL AND avatar_url IS NULL AND avatar_object_key IS NULL)`,
 )

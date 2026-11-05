@@ -35,11 +35,12 @@ export async function lockNotificationRecipient(
   manager: EntityManager,
   userId: string,
 ): Promise<boolean> {
-  return !!(await manager.getRepository(User).findOne({
-    select: { id: true },
+  const user = await manager.getRepository(User).findOne({
+    select: { id: true, deletedAt: true },
     where: { id: userId },
     lock: { mode: 'for_no_key_update' },
-  }));
+  });
+  return !!user && !user.deletedAt;
 }
 
 export function toNotificationPreferences(

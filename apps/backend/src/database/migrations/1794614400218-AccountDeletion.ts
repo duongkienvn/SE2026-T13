@@ -9,6 +9,7 @@ export class AccountDeletion1794614400218 implements MigrationInterface {
       'ALTER TABLE workspace_invitations ADD COLUMN erased_recipient_hash char(64)',
     );
     await runner.query(`ALTER TABLE users ADD COLUMN deleted_at timestamptz,
+      ADD CONSTRAINT "CK_users_live_email" CHECK (deleted_at IS NOT NULL OR email NOT LIKE '%@users.invalid'),
       ADD CONSTRAINT "CK_users_deleted_identity" CHECK (
         deleted_at IS NULL OR (display_name = 'Deleted user'
         AND email = 'deleted+' || id::text || '@users.invalid'

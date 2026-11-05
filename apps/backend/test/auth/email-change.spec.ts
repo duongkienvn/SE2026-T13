@@ -175,6 +175,7 @@ describe('email change issuance security', () => {
     const now = new Date();
     const mailer = new FakeEmailChangeMailer('https://kanvexa.test');
     const tokens = {
+      existsBy: jest.fn().mockResolvedValue(true),
       findOne: jest.fn().mockResolvedValue(previous),
       create: jest.fn((value) => value),
       save: jest.fn(async (value) => ({ id: 'intent', ...value })),

@@ -34,7 +34,11 @@ describe('task email kind dispatch boundary', () => {
     const dbQuery = jest.fn().mockResolvedValue([]);
     const mailer = { send: jest.fn().mockResolvedValue('SENT') };
     const dispatcher = new TaskEmailDispatcher(
-      { query: dbQuery, transaction } as unknown as DataSource,
+      {
+        query: dbQuery,
+        transaction,
+        getRepository: () => ({ existsBy: jest.fn().mockResolvedValue(true) }),
+      } as unknown as DataSource,
       mailer,
     );
     return { dispatcher, mailer, row, query, dbQuery };

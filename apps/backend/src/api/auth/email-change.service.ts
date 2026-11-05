@@ -7,6 +7,7 @@ import { ApplicationException } from '../../exceptions/application.exception';
 import { ErrorCode } from '../../common/dto/api-error';
 import { EmailChangeMailer } from '../../mail/email-change-mailer';
 import { User } from '../users/entities/user.entity';
+import { canDeliverToAccount } from '../users/live-account-delivery';
 import { GoogleIdentity } from './entities/google-identity.entity';
 import { PendingEmailChange } from './entities/pending-email-change.entity';
 import type { AuthenticatedUser } from './constants/auth.constants';
@@ -43,6 +44,7 @@ export class EmailChangeService {
 
   /** Caller has already proven a fresh credential; no raw proof enters persistence. */
   async request(proof: EmailChangeProof, newEmail: string): Promise<void> {
+    if (newEmail.endsWith('@users.invalid')) return;
     const issued = await this.source.transaction(async (manager) => {
       await this.boundTransaction(manager);
       const users = manager.getRepository(User);
@@ -51,6 +53,7 @@ export class EmailChangeService {
         lock: { mode: 'pessimistic_write' },
       });
       if (
+        user?.deletedAt ||
         !user?.emailVerifiedAt ||
         user.email !== proof.email ||
         user.authVersion !== proof.authVersion ||
@@ -111,6 +114,14 @@ export class EmailChangeService {
       return deliverable ? { token, plaintext } : null;
     });
     if (!issued) return;
+    if (
+      !(await canDeliverToAccount(
+        this.source,
+        proof.userId,
+        issued.token.originalEmail,
+      ))
+    )
+      return;
     const url = new URL(
       '/confirm-email-change',
       this.config.get('PUBLIC_APP_URL', { infer: true }),
@@ -199,6 +210,7 @@ export class EmailChangeService {
       });
       const now = await this.now(manager);
       if (
+        user?.deletedAt ||
         !user?.emailVerifiedAt ||
         user.authVersion !== identity.authVersion ||
         identity.expiresAt <= Date.now() ||

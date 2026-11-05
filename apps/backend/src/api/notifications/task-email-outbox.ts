@@ -41,7 +41,7 @@ export async function enqueueTaskEmail(
        (recipient_user_id, kind, occurrence_key, board_id, card_id)
      SELECT u.id, $2, $3, $4, $5
        FROM users u JOIN notification_preferences p ON p.user_id = u.id
-      WHERE u.id = $1 AND u.email_verified_at IS NOT NULL AND p.${column} = true
+      WHERE u.id = $1 AND u.email_verified_at IS NOT NULL AND u.deleted_at IS NULL AND p.${column} = true
      ON CONFLICT (recipient_user_id, kind, occurrence_key) DO NOTHING`,
     [
       input.recipientUserId,

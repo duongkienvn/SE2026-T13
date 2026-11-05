@@ -32,6 +32,7 @@ describe('welcome onboarding delivery boundary', () => {
   let inTransaction: boolean;
   let source: DataSource;
   const repository = {
+    existsBy: jest.fn().mockResolvedValue(true),
     insert: jest.fn(),
     update: jest.fn(),
     save: jest.fn(),

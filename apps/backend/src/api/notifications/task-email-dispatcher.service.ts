@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { DataSource, type EntityManager } from 'typeorm';
 import { TaskNotificationMailer } from '../../mail/task-notification-mailer';
+import { canDeliverToAccount } from '../users/live-account-delivery';
 import { isTaskEmailKind } from './task-email-outbox';
 import {
   dueReminderOccurrence,
@@ -122,7 +123,7 @@ export class TaskEmailDispatcher {
           JOIN boards b ON b.id=c.board_id
           LEFT JOIN user_preferences up ON up.user_id=u.id
          WHERE o.id=$1 AND o.status='PROCESSING' AND o.lease_owner=$2
-           AND o.created_at > clock_timestamp()-interval '24 hours' AND u.email_verified_at IS NOT NULL
+           AND o.created_at > clock_timestamp()-interval '24 hours' AND u.email_verified_at IS NOT NULL AND u.deleted_at IS NULL
            AND NOT c.is_archived AND NOT b.is_archived
            AND (o.kind <> 'DUE_REMINDER' OR (c.due_date > clock_timestamp() AND EXISTS
              (SELECT 1 FROM card_assignees a WHERE a.card_id=c.id AND a.user_id=u.id)))
@@ -188,6 +189,8 @@ export class TaskEmailDispatcher {
       },
     );
     if (!recipient || !row.board_id || !row.card_id || !kind) return;
+    if (!(await canDeliverToAccount(this.db, row.recipient_user_id, recipient)))
+      return;
     const result = await this.mailer
       .send({
         recipient,

@@ -31,13 +31,15 @@ export class UserResponseDto {
   @Expose()
   @ApiProperty({ format: 'date-time' })
   updatedAt!: string;
+  @Expose() @ApiProperty({ required: false }) isDeleted?: boolean;
 }
 
 export function toUserResponseDto(user: User): UserResponseDto {
   return toResponseDto(UserResponseDto, {
     id: user.id,
-    email: user.email,
+    email: user.deletedAt ? '' : user.email,
     displayName: user.displayName,
+    ...(user.deletedAt ? { isDeleted: true } : {}),
     avatarUrl: user.avatarObjectKey
       ? `/users/${user.id}/avatar/${user.avatarObjectKey
           .split('/')

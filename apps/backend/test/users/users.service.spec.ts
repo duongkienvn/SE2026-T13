@@ -47,9 +47,12 @@ describe('UsersService', () => {
     expect(result.displayName).toBe('Grace Hopper');
     expect(result.avatarUrl).toBeNull();
     expect(result).not.toHaveProperty('passwordHash');
-    expect(repository.update).toHaveBeenCalledWith(USER_ID, {
-      displayName: 'Grace Hopper',
-    });
+    expect(repository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ id: USER_ID, deletedAt: expect.anything() }),
+      {
+        displayName: 'Grace Hopper',
+      },
+    );
   });
 
   it('rejects an empty profile patch', async () => {

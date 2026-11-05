@@ -5,6 +5,12 @@ import { Expose, Type } from 'class-transformer';
 export class NotificationActorDto {
   @Expose() @ApiProperty({ format: 'uuid' }) id!: string;
   @Expose() @ApiProperty() displayName!: string;
+  @Expose()
+  @ApiProperty({
+    required: false,
+    description: 'Render Deleted user without a live profile link',
+  })
+  isDeleted?: boolean;
 }
 export class NotificationContextDto {
   @Expose()
