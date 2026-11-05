@@ -30,6 +30,7 @@ import { useColumns } from '../../columns/hooks';
 import type { Column } from '../../columns/types';
 import { boardKeys } from '../query-keys';
 import { KanbanDndBoard } from './KanbanDndBoard';
+import { BoardViews } from './BoardViews';
 
 interface KanbanBoardProps {
   boardId: string;
@@ -233,6 +234,9 @@ export function KanbanBoard({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="shrink-0 px-4 pt-3 md:px-6">
+        <div className="mb-3 w-fit rounded-xl border border-line bg-surface/90 p-2">
+          <BoardViews boardId={boardId} active="board" />
+        </div>
         {!lostAccess && !filterDenied && (
           <BoardFilter
             filters={filters}

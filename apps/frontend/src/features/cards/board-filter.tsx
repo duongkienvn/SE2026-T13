@@ -9,6 +9,7 @@ import {
 import { SlidersIcon } from '../../components/icons';
 import { Dialog } from '../../components/Dialog';
 import { retryUnlessClientError } from '../../lib/query-client';
+import { fetchAllPages } from '../../lib/api-client';
 import { useAuth } from '../auth/useAuth';
 import { useAuthSession } from '../auth/auth-session-context';
 import type { BoardMember } from '../board-members/types';
@@ -106,6 +107,34 @@ export function useFilteredCards(
     enabled,
   });
 }
+
+/** All matching active cards, using the same server-side filter contract. */
+export function useAllFilteredCards(
+  boardId: string,
+  filters: BoardCardFilters,
+  enabled: boolean,
+) {
+  const { runAuthorized, user } = useAuth();
+  const { generation } = useAuthSession();
+  return useQuery({
+    queryKey: [
+      ...boardKeys.cards(boardId),
+      'filtered',
+      user?.id,
+      generation,
+      filters,
+      'all',
+    ],
+    queryFn: ({ signal }) =>
+      runAuthorized((token) =>
+        fetchAllPages((page) =>
+          listFilteredCards(token, boardId, filters, page, signal),
+        ),
+      ),
+    retry: retryUnlessClientError,
+    enabled,
+  });
+}
 export function usePreviewSummaries(boardId: string, ids: string[]) {
   const { runAuthorized, user } = useAuth();
   const { generation } = useAuthSession();
@@ -150,6 +179,7 @@ export function BoardFilter({
   membersError,
   retryLabels,
   retryMembers,
+  clearLabel = 'Clear filters',
 }: {
   filters: BoardCardFilters;
   apply: (filters: BoardCardFilters) => void;
@@ -161,6 +191,7 @@ export function BoardFilter({
   membersError: boolean;
   retryLabels: () => void;
   retryMembers: () => void;
+  clearLabel?: string;
 }) {
   const dialogId = useId();
   const [open, setOpen] = useState(false);
@@ -244,7 +275,7 @@ export function BoardFilter({
           className="text-sm text-primary underline"
           onClick={() => apply({})}
         >
-          Clear filters
+          {clearLabel}
         </button>
       )}
       <Dialog

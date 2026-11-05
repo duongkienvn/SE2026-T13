@@ -43,7 +43,13 @@ export function useCardRoute(boardId: string) {
         const safeReturn =
           returnTo === boardPath ||
           returnTo.startsWith(`${boardPath}?`) ||
-          returnTo.startsWith(`${boardPath}#`);
+          returnTo.startsWith(`${boardPath}#`) ||
+          returnTo === `${boardPath}/calendar` ||
+          returnTo.startsWith(`${boardPath}/calendar?`) ||
+          returnTo.startsWith(`${boardPath}/calendar#`) ||
+          returnTo === `${boardPath}/calendar/` ||
+          returnTo.startsWith(`${boardPath}/calendar/?`) ||
+          returnTo.startsWith(`${boardPath}/calendar/#`);
         void navigate(safeReturn ? returnTo : boardPath, { replace: true });
       }
     },
