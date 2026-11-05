@@ -18,6 +18,7 @@ require('dotenv').config({
 
 const { Client } = require('pg');
 const { DataSource } = require('typeorm');
+const { instanceToPlain } = require('class-transformer');
 const { databaseOptions } = require('../../dist/database/database-options.js');
 const {
   BoardAuthorizationService,
@@ -133,7 +134,7 @@ try {
     content: '😀 @member',
     mentions: [{ userId: member.id, start: 3, end: 10 }],
   });
-  assert.deepEqual(mention.mentions, [
+  assert.deepEqual(instanceToPlain(mention).mentions, [
     { userId: member.id, start: 3, end: 10 },
   ]);
   const notificationCount = async () =>

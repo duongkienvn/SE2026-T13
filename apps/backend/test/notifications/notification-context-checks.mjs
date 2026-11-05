@@ -347,15 +347,33 @@ export async function verifyNotificationContexts(ctx) {
       .send({ content: '😀 @member', mentions: invalid })
       .expect(400);
   const commentPath = `/api/boards/${privateBoard.id}/cards/${secret}/comments/${mentioned.id}`;
-  await send('owner', 'patch', commentPath)
+  const clearedMention = await send('owner', 'patch', commentPath)
     .send({ content: 'plain' })
     .expect(200);
-  await send('owner', 'patch', commentPath)
+  assert.deepEqual(clearedMention.body.data.mentions, []);
+  const multiple = [
+    { userId: actors.member, start: 3, end: 10 },
+    { userId: actors.member, start: 11, end: 18 },
+  ];
+  const editedMention = await send('owner', 'patch', commentPath)
     .send({
-      content: '😀 @member',
-      mentions: [{ userId: actors.member, start: 3, end: 10 }],
+      content: '😀 @member @member',
+      mentions: multiple,
     })
     .expect(200);
+  assert.deepEqual(editedMention.body.data.mentions, multiple);
+  const listed = (
+    await send(
+      'owner',
+      'get',
+      `/api/boards/${privateBoard.id}/cards/${secret}/comments`,
+    ).expect(200)
+  ).body.data;
+  assert.deepEqual(
+    listed.find((row) => row.id === mentioned.id).mentions,
+    multiple,
+  );
+  assert.ok(listed.some((row) => row.mentions.length === 0));
   await send('owner', 'post', '/api/notifications')
     .send({ kind: 'CARD_ASSIGNED', recipientUserId: actors.outsider })
     .expect(404);

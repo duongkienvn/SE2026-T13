@@ -6,6 +6,8 @@ import {
 import { CreateCommentDto } from '../../src/api/comments/dto/create-comment.dto';
 import { UpdateCommentDto } from '../../src/api/comments/dto/update-comment.dto';
 import { createValidationPipe } from '../../src/config/validation';
+import { instanceToPlain } from 'class-transformer';
+import { toResponseDto } from '../../src/common/dto/to-response-dto';
 
 const ID = 'c6ba7134-97ef-4c1b-a342-001a982a7721';
 const pipe = createValidationPipe();
@@ -13,6 +15,43 @@ const validate = (type: new () => object, value: unknown) =>
   pipe.transform(value, { type: 'body', metatype: type });
 
 describe('Comment DTO contracts', () => {
+  it.each([
+    { mentions: [] },
+    { mentions: [{ userId: ID, start: 3, end: 8 }] },
+    {
+      mentions: [
+        { userId: ID, start: 3, end: 8 },
+        { userId: ID, start: 12, end: 17 },
+      ],
+    },
+  ])(
+    'preserves nested mention spans through both response transformations: %p',
+    ({ mentions }) => {
+      const comment = Object.assign(new Comment(), {
+        id: ID,
+        cardId: ID,
+        authorId: ID,
+        content: '😀 @Linh và @Linh',
+        createdAt: new Date('2026-11-05T00:00:00Z'),
+        updatedAt: new Date('2026-11-05T00:00:00Z'),
+      });
+      const dto = toCommentResponseDto(comment, mentions);
+      expect(instanceToPlain(dto).mentions).toEqual(mentions);
+      for (const span of dto.mentions) {
+        expect(comment.content.slice(span.start, span.end)).toBe('@Linh');
+      }
+      const transformed = toResponseDto(CommentResponseDto, {
+        ...dto,
+        mentions: mentions.map((span) => ({
+          ...span,
+          passwordHash: 'private',
+          commentId: ID,
+        })),
+      });
+      expect(instanceToPlain(transformed).mentions).toEqual(mentions);
+    },
+  );
+
   it('trims content while preserving Unicode and newlines', async () => {
     await expect(
       validate(CreateCommentDto, { content: '  Xin chào\n世界  ' }),
