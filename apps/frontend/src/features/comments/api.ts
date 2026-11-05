@@ -1,4 +1,5 @@
 import { apiRequest, apiRequestPage, type Page } from '../../lib/api-client';
+import { finalizeMentions } from './mentions';
 import type { Comment, CommentRequest } from './types';
 
 export const COMMENTS_PAGE_LIMIT = 20;
@@ -34,7 +35,8 @@ export function createComment(
   return apiRequest(commentsPath(boardId, cardId), {
     method: 'POST',
     accessToken: token,
-    body: { content: input.content.trim() },
+    // Trim and rebase spans together so offsets match the sent content.
+    body: finalizeMentions(input.content, input.mentions),
   });
 }
 
@@ -48,7 +50,8 @@ export function updateComment(
   return apiRequest(commentsPath(boardId, cardId, commentId), {
     method: 'PATCH',
     accessToken: token,
-    body: { content: input.content.trim() },
+    // Trim and rebase spans together so offsets match the sent content.
+    body: finalizeMentions(input.content, input.mentions),
   });
 }
 
