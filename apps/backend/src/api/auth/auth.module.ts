@@ -25,18 +25,25 @@ import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
 import { WelcomeOnboardingService } from './welcome-onboarding.service';
 import { WelcomeEmailDelivery } from './entities/welcome-email-delivery.entity';
+import { PendingEmailChange } from './entities/pending-email-change.entity';
+import { EmailChangeController } from './email-change.controller';
+import { EmailChangeService } from './email-change.service';
+import { EmailChangeReauthenticationService } from './email-change-reauthentication.service';
+import { RealtimeAccessModule } from '../../realtime/realtime-access.module';
 
 @Module({
   imports: [
     ConfigModule,
     MailModule,
     WorkspacesModule,
+    RealtimeAccessModule,
     TypeOrmModule.forFeature([
       User,
       EmailVerificationToken,
       GoogleIdentity,
       PasswordResetToken,
       WelcomeEmailDelivery,
+      PendingEmailChange,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -61,10 +68,13 @@ import { WelcomeEmailDelivery } from './entities/welcome-email-delivery.entity';
     AuthController,
     GoogleAuthController,
     PasswordSecurityController,
+    EmailChangeController,
   ],
   providers: [
     AuthService,
     PasswordSecurityService,
+    EmailChangeService,
+    EmailChangeReauthenticationService,
     JwtAuthGuard,
     EmailVerificationService,
     GoogleTokenVerifier,

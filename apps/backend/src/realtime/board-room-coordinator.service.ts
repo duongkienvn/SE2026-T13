@@ -16,6 +16,32 @@ export class BoardRoomCoordinator implements OnApplicationShutdown {
 
   constructor(readonly presence: BoardPresenceService) {}
 
+  /** Post-commit credential invalidation in this process. New-version sockets survive. */
+  revokeUserSessions(userId: string, currentVersion: number): void {
+    for (const socket of this.server?.sockets.sockets.values() ?? []) {
+      const identity = socket.data.identity;
+      if (
+        !identity ||
+        identity.userId !== userId ||
+        identity.authVersion >= currentVersion
+      )
+        continue;
+      // disconnect() clears application receive grants synchronously before its
+      // queued presence cleanup. Do not wait for any Board queue or adapter I/O.
+      void this.disconnect(socket).catch(() =>
+        this.logger.warn('Revoked session presence cleanup failed'),
+      );
+      delete socket.data.identity;
+      try {
+        socket.disconnect(true);
+      } catch {
+        this.logger.warn(
+          'Revoked session disconnect failed; receive access revoked',
+        );
+      }
+    }
+  }
+
   // shortcut: serialize joins with Workspace removal snapshots; partition by Workspace if join contention grows.
   withReadGrantChanges<T>(operation: () => Promise<T>): Promise<T> {
     return this.run('workspace-read-grants', operation);

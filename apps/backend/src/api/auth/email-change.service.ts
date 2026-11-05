@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomBytes } from 'node:crypto';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, IsNull, QueryFailedError } from 'typeorm';
 import { EnvironmentConfig } from '../../config/environment';
 import { ApplicationException } from '../../exceptions/application.exception';
 import { ErrorCode } from '../../common/dto/api-error';
@@ -16,6 +16,9 @@ import {
 } from './email-change-reauthentication.service';
 import { PendingEmailChangeDto } from './dto/email-change.dto';
 import { toResponseDto } from '../../common/dto/to-response-dto';
+import { PasswordResetToken } from './entities/password-reset-token.entity';
+import { EmailVerificationToken } from './entities/email-verification-token.entity';
+import { BoardRoomCoordinator } from '../../realtime/board-room-coordinator.service';
 
 export const EMAIL_CHANGE_TTL_MS = 30 * 60_000;
 export const EMAIL_CHANGE_COOLDOWN_MS = 60_000;
@@ -35,6 +38,7 @@ export class EmailChangeService {
     private readonly source: DataSource,
     private readonly mailer: EmailChangeMailer,
     private readonly config: ConfigService<EnvironmentConfig, true>,
+    private readonly sessions: BoardRoomCoordinator,
   ) {}
 
   /** Caller has already proven a fresh credential; no raw proof enters persistence. */
@@ -164,6 +168,109 @@ export class EmailChangeService {
         })
       : null;
   }
+
+  async confirm(
+    identity: AuthenticatedUser,
+    plaintext: unknown,
+  ): Promise<void> {
+    if (
+      typeof plaintext !== 'string' ||
+      !EMAIL_CHANGE_TOKEN_PATTERN.test(plaintext)
+    )
+      throw invalidEmailChangeToken();
+    const hash = emailChangeHash(plaintext);
+    const candidate = await this.source
+      .getRepository(PendingEmailChange)
+      .findOne({ where: { tokenHash: hash }, select: { userId: true } });
+    if (!candidate || candidate.userId !== identity.userId)
+      throw invalidEmailChangeToken();
+    const result = await this.source.transaction(async (manager) => {
+      await this.boundTransaction(manager);
+      const users = manager.getRepository(User);
+      // Global credential lock order: User first, then its current proof row.
+      const user = await users.findOne({
+        where: { id: identity.userId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      const tokens = manager.getRepository(PendingEmailChange);
+      const token = await tokens.findOne({
+        where: { userId: identity.userId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      const now = await this.now(manager);
+      if (
+        !user?.emailVerifiedAt ||
+        user.authVersion !== identity.authVersion ||
+        identity.expiresAt <= Date.now() ||
+        !token ||
+        token.tokenHash !== hash ||
+        token.consumedAt ||
+        token.expiresAt <= now ||
+        token.originalEmail !== user.email ||
+        token.originalAuthVersion !== user.authVersion ||
+        token.newEmail === user.email
+      )
+        throw invalidEmailChangeToken();
+      if (await users.existsBy({ email: token.newEmail })) {
+        await tokens.update(token.id, { consumedAt: now });
+        return null; // Commit invalidation before returning the safe collision error.
+      }
+      await manager.query('SAVEPOINT email_change_target');
+      try {
+        // Explicit identity fields only; never save a stale full User snapshot.
+        await users.update(user.id, {
+          email: token.newEmail,
+          emailVerifiedAt: now,
+          authVersion: user.authVersion + 1,
+        });
+      } catch (error) {
+        if (
+          !(error instanceof QueryFailedError) ||
+          error.driverError.code !== '23505' ||
+          error.driverError.constraint !== 'UQ_users_email'
+        )
+          throw error;
+        // A concurrent signup/confirmation can win after the existence check.
+        // Preserve the original User while consuming only this pending request.
+        await manager.query('ROLLBACK TO SAVEPOINT email_change_target');
+        await tokens.update(token.id, { consumedAt: now });
+        return null;
+      }
+      await manager.query('RELEASE SAVEPOINT email_change_target');
+      await tokens.update(token.id, { consumedAt: now });
+      await manager
+        .getRepository(PasswordResetToken)
+        .update({ userId: user.id, consumedAt: IsNull() }, { consumedAt: now });
+      await manager
+        .getRepository(EmailVerificationToken)
+        .update({ userId: user.id, consumedAt: IsNull() }, { consumedAt: now });
+      return {
+        userId: user.id,
+        oldEmail: user.email,
+        version: user.authVersion + 1,
+      };
+    });
+    if (!result)
+      throw new ApplicationException(
+        409,
+        ErrorCode.EMAIL_CHANGE_UNAVAILABLE,
+        'Email change is unavailable. Request a new change.',
+      );
+    try {
+      this.sessions.revokeUserSessions(result.userId, result.version);
+    } catch {
+      this.logger.warn('Email change socket reconciliation unavailable');
+    }
+    try {
+      await this.mailer.sendSecurityAlert(
+        result.oldEmail,
+        `email-change-alert/${result.userId}/${result.version}`,
+      );
+    } catch {
+      // Mandatory security channel, best effort after commit; never roll back.
+      this.logger.warn('Email change security alert delivery unavailable');
+    }
+  }
   private async boundTransaction(manager: EntityManager): Promise<void> {
     await manager.query("SET LOCAL lock_timeout = '2s'");
     await manager.query("SET LOCAL statement_timeout = '3s'");
@@ -174,4 +281,12 @@ export class EmailChangeService {
     );
     return row.now;
   }
+}
+
+export function invalidEmailChangeToken(): ApplicationException {
+  return new ApplicationException(
+    400,
+    ErrorCode.INVALID_EMAIL_CHANGE_TOKEN,
+    'This email change link is invalid or expired. Request a new link.',
+  );
 }
