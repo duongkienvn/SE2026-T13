@@ -16,6 +16,7 @@ import {
   changeAllBoardAccessVersions,
   changeBoardAccessVersion,
 } from '../boards/access-version';
+import { clearNotificationDetails } from '../notifications/cache';
 
 const privateDiscoveryState = {
   queryKey: ['board-discovery'] as const,
@@ -41,6 +42,8 @@ export function clearAccessSnapshots(client: QueryClient): void {
 
 export function refreshAccessSnapshots(client: QueryClient): void {
   clearAccessSnapshots(client);
+  // Re-resolve inbox details so names from lost Boards disappear now.
+  clearNotificationDetails(client);
   void client.invalidateQueries({ queryKey: productivityKey });
   void client.invalidateQueries({ queryKey: searchKey });
   void client.invalidateQueries(privateDiscoveryState);
@@ -127,6 +130,7 @@ export function receiveWorkspaceRevocation(
   const workspaceId = payload.workspaceId.toLowerCase();
   refreshProductivity(client);
   refreshSearch(client);
+  clearNotificationDetails(client);
   const resources = {
     queryKey: workspaceKeys.all,
     predicate: (query: { queryKey: readonly unknown[] }) =>

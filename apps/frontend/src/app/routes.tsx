@@ -35,6 +35,8 @@ import { WorkspaceMembersPage } from '../features/workspaces/pages/WorkspaceMemb
 import { PublicOnly, RequireAuth } from './guards';
 import { AuthenticatedLayout } from './layout/AuthenticatedLayout';
 import { MyTasksPage } from '../features/productivity/MyTasksPage';
+import { NotificationsPage } from '../features/notifications/NotificationsPage';
+import { NotificationSettingsPage } from '../features/notifications/NotificationSettingsPage';
 import { HomePage } from '../features/productivity/home/HomePage';
 
 export const routes: RouteObject[] = [
@@ -65,6 +67,7 @@ export const routes: RouteObject[] = [
             children: [
               { path: 'home', element: <HomePage /> },
               { path: 'my-tasks', element: <MyTasksPage /> },
+              { path: 'notifications', element: <NotificationsPage /> },
               { path: 'workspaces', element: <WorkspacesPage /> },
               {
                 path: 'workspaces/:workspaceId',
@@ -103,6 +106,10 @@ export const routes: RouteObject[] = [
                   { index: true, element: <SettingsIndex /> },
                   { path: 'profile', element: <ProfilePage /> },
                   { path: 'appearance', element: <AppearancePage /> },
+                  {
+                    path: 'notifications',
+                    element: <NotificationSettingsPage />,
+                  },
                   { path: 'preferences', element: <PreferencesPage /> },
                   { path: 'security', element: <SecuritySettingsPage /> },
                   {

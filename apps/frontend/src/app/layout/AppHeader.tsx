@@ -9,6 +9,8 @@ interface AppHeaderProps {
   context?: ReactNode;
   /** Right-aligned actions, e.g. the signed-in user's menu. */
   actions?: ReactNode;
+  /** Live notification bell; the static Soon slot is kept when absent. */
+  notifications?: ReactNode;
   /** Opens the navigation drawer below the desktop breakpoint. */
   navigation?: {
     controls: string;
@@ -17,7 +19,12 @@ interface AppHeaderProps {
   };
 }
 
-export function AppHeader({ context, actions, navigation }: AppHeaderProps) {
+export function AppHeader({
+  context,
+  actions,
+  notifications,
+  navigation,
+}: AppHeaderProps) {
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-surface px-2 sm:gap-4 sm:px-4 md:h-15 md:px-6 lg:gap-5">
       {navigation && (
@@ -49,7 +56,7 @@ export function AppHeader({ context, actions, navigation }: AppHeaderProps) {
       )}
       <SearchTrigger compact={!!context} />
       <div className="ml-auto flex shrink-0 items-center gap-2 md:gap-3">
-        <NotificationsSlot />
+        {notifications ?? <NotificationsSlot />}
         {actions}
       </div>
     </header>

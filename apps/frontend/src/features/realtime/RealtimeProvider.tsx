@@ -19,6 +19,11 @@ import { refreshWorkspaceGuests } from '../workspaces/members/refresh-guests';
 import { refreshWorkspaceBoardSummaries } from '../workspaces/refresh-board-summaries';
 import { refreshProductivity } from '../productivity/cache';
 import { refreshSearch } from '../search/cache';
+import { RealtimeNotificationEvent } from '@kanban/shared';
+import {
+  createNotificationHint,
+  refreshNotifications,
+} from '../notifications/cache';
 
 /**
  * Owns the realtime client of the signed-in session. A new session (sign-in,
@@ -39,6 +44,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!authenticated) return;
     const queue = createInvalidationQueue(queryClient);
+    const notificationHint = createNotificationHint(queryClient);
     const next = new BoardRealtimeClient({
       // `runAuthorized` belongs to this session and refuses once it has ended.
       createSocket: () => {
@@ -90,6 +96,10 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         socket.on('workspace:access-revoked', (payload: unknown) => {
           if (isCurrent()) receiveWorkspaceRevocation(queryClient, payload);
         });
+        // `{}` only: refetch the inbox and count over REST, coalescing bursts.
+        socket.on(RealtimeNotificationEvent.CHANGED, () => {
+          if (isCurrent()) notificationHint.hint();
+        });
         socket.on('access:changed', () => {
           if (isCurrent()) refreshAccessSnapshots(queryClient);
         });
@@ -131,7 +141,11 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         }
       },
       reconnected: () => {
-        if (isCurrent()) refreshAccessSnapshots(queryClient);
+        if (isCurrent()) {
+          refreshAccessSnapshots(queryClient);
+          // Hints are best effort; repair anything missed while offline.
+          refreshNotifications(queryClient);
+        }
       },
     });
     next.start();
@@ -159,6 +173,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('visibilitychange', wake);
       next.dispose();
       queue.dispose();
+      notificationHint.cancel();
       setConnection((current) => (current?.client === next ? null : current));
     };
   }, [authenticated, runAuthorized, queryClient, isCurrent, userId]);

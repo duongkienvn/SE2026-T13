@@ -7,6 +7,7 @@ import { changeBoardAccessVersion } from './access-version';
 import { clearBoardDrafts } from '../cards/card-draft';
 import { refreshProductivity } from '../productivity/cache';
 import { refreshSearch } from '../search/cache';
+import { clearNotificationDetails } from '../notifications/cache';
 
 export const BOARD_ACCESS_REVOKED = 'BOARD_ACCESS_REVOKED';
 
@@ -14,6 +15,8 @@ export const BOARD_ACCESS_REVOKED = 'BOARD_ACCESS_REVOKED';
 export function revokeBoardAccess(client: QueryClient, boardId: string) {
   refreshProductivity(client);
   refreshSearch(client);
+  // Inbox rows may name this Board or its Cards; resolve them again.
+  clearNotificationDetails(client);
   const discoveryState = {
     queryKey: ['board-discovery'],
     predicate: (query: { queryKey: readonly unknown[] }) =>

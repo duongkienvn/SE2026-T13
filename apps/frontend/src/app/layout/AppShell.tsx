@@ -12,6 +12,7 @@ interface AppShellProps {
   activeNavItemId?: string;
   headerContext?: ReactNode;
   headerActions?: ReactNode;
+  headerNotifications?: ReactNode;
   sidebarFooter?: (expanded: boolean) => ReactNode;
   /** Account actions at the bottom of the mobile navigation drawer. */
   drawerFooter?: ReactNode;
@@ -25,6 +26,7 @@ export function AppShell({
   activeNavItemId,
   headerContext,
   headerActions,
+  headerNotifications,
   sidebarFooter,
   drawerFooter,
   workspaceSlots,
@@ -60,6 +62,7 @@ export function AppShell({
           <AppHeader
             context={headerContext}
             actions={headerActions}
+            notifications={headerNotifications}
             navigation={{
               controls: drawerId,
               expanded: showDrawer,
