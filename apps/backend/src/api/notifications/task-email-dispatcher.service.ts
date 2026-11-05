@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { DataSource, type EntityManager } from 'typeorm';
 import { TaskNotificationMailer } from '../../mail/task-notification-mailer';
+import { isTaskEmailKind } from './task-email-outbox';
 import {
   dueReminderOccurrence,
   dueReminderSchedule,
@@ -72,6 +73,7 @@ export class TaskEmailDispatcher {
   }
 
   private async send(row: Claimed): Promise<void> {
+    const kind = isTaskEmailKind(row.kind) ? row.kind : null;
     const recipient: string | null = await this.db.transaction(
       async (manager) => {
         // Match domain mutation order and keep the read grant stable until the
@@ -139,6 +141,7 @@ export class TaskEmailDispatcher {
             ? dueReminderSchedule(record.due_date, record.time_zone)
             : null;
         if (
+          !kind ||
           !record ||
           (row.kind === 'DUE_REMINDER' &&
             (!dueSchedule ||
@@ -184,10 +187,11 @@ export class TaskEmailDispatcher {
         return record.email;
       },
     );
-    if (!recipient || !row.board_id || !row.card_id) return;
+    if (!recipient || !row.board_id || !row.card_id || !kind) return;
     const result = await this.mailer
       .send({
         recipient,
+        kind,
         boardId: row.board_id,
         cardId: row.card_id,
         outboxId: row.id,
