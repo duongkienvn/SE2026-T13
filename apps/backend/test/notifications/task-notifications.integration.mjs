@@ -34,6 +34,7 @@ const {
 const {
   FakeTaskNotificationMailer,
   TaskNotificationMailer,
+  taskNotificationContent,
 } = require('../../dist/mail/task-notification-mailer.js');
 const options = databaseOptions(process.env);
 const name = `kanban_p405_${randomBytes(8).toString('hex')}`;
@@ -161,6 +162,49 @@ try {
   const fake = new FakeTaskNotificationMailer();
   await new TaskEmailDispatcher(source, fake).drain(50);
   assert.equal(fake.deliveries.length, 1);
+  assert.equal(fake.deliveries[0].kind, 'DUE_REMINDER');
+  assert.equal(
+    taskNotificationContent(fake.deliveries[0], 'https://kanvexa.example')
+      .subject,
+    'A task deadline is approaching on Kanvexa',
+  );
+  await source.query(
+    'UPDATE notification_preferences SET email_card_assigned=true, email_comment_mentioned=true WHERE user_id=$1',
+    [user.id],
+  );
+  const mappingMailer = new FakeTaskNotificationMailer();
+  for (const [kind, subject] of [
+    ['CARD_ASSIGNED', "You've been assigned to a card on Kanvexa"],
+    ['COMMENT_MENTIONED', 'Someone mentioned you on Kanvexa'],
+  ]) {
+    const [queued] = await source.query(
+      `INSERT INTO task_notification_email_outbox
+       (recipient_user_id,kind,occurrence_key,board_id,card_id)
+       VALUES ($1,$2,$2,$3,$4) RETURNING id`,
+      [user.id, kind, board.id, card.id],
+    );
+    await new TaskEmailDispatcher(source, mappingMailer).drain(50);
+    const delivery = mappingMailer.deliveries.find(
+      (message) => message.outboxId === queued.id,
+    );
+    assert.ok(delivery);
+    assert.equal(delivery.kind, kind);
+    assert.equal(
+      taskNotificationContent(delivery, 'https://kanvexa.example').subject,
+      subject,
+    );
+    await source.query(
+      'DELETE FROM task_notification_email_outbox WHERE id=$1',
+      [queued.id],
+    );
+  }
+  await source.query(
+    'UPDATE notification_preferences SET email_card_assigned=false, email_comment_mentioned=false WHERE user_id=$1',
+    [user.id],
+  );
+  console.log(
+    'PASS: persisted task email kinds reach the correct renderer variants',
+  );
   await source.query(
     'UPDATE notification_preferences SET email_card_assigned=true WHERE user_id=$1',
     [user.id],

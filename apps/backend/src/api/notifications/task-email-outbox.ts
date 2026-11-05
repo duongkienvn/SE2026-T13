@@ -1,10 +1,18 @@
 import { NotificationKind } from '@kanban/shared';
 import type { EntityManager } from 'typeorm';
 
-type TaskEmailKind =
+export type TaskEmailKind =
   | typeof NotificationKind.CARD_ASSIGNED
   | typeof NotificationKind.COMMENT_MENTIONED
   | typeof NotificationKind.DUE_REMINDER;
+
+export function isTaskEmailKind(value: unknown): value is TaskEmailKind {
+  return (
+    value === NotificationKind.CARD_ASSIGNED ||
+    value === NotificationKind.COMMENT_MENTIONED ||
+    value === NotificationKind.DUE_REMINDER
+  );
+}
 
 const preferenceColumn: Record<TaskEmailKind, string> = {
   [NotificationKind.CARD_ASSIGNED]: 'email_card_assigned',

@@ -29,9 +29,9 @@ separate from lease expiry.
 
 Task emails cover only assignment, explicit mention and due reminder, with
 independent per-kind opt-in, verified recipient and current Board read access.
-They contain generic text and a fixed authenticated Card link, not copied Card
-or comment content. P4-09 should expose email preferences independently of
-in-app preferences; toggling one does not alter the other.
+They contain event-specific generic text and a fixed authenticated Card link,
+not copied Card or comment content. P4-09 should expose email preferences
+independently of in-app preferences; toggling one does not alter the other.
 
 | Source                                  | In-app preference  | Optional task email                | Occurrence                                             |
 | --------------------------------------- | ------------------ | ---------------------------------- | ------------------------------------------------------ |
@@ -114,3 +114,55 @@ with format drift; a check limited to changed source and documentation passed. T
 results do not claim a production deployment or a real provider delivery.
 The unchanged frontend passed all 122 files and 1,297 tests when rerun outside
 the sandbox with `pnpm --filter @kanban/frontend test --maxWorkers=1`.
+
+## P4-POL-01 presentation follow-up
+
+The pure `task-notification-email.ts` renderer uses one branded 600px,
+table-based layout for `CARD_ASSIGNED`, `COMMENT_MENTIONED` and `DUE_REMINDER`.
+Each has its own static subject, heading, description, indicator and CTA, with
+matching plain text, a copyable fallback link, mobile spacing and dark-mode
+styles. The logo is the existing public, versioned brand asset without recipient
+parameters; there are no tracking assets or additional action URLs.
+
+The dispatcher passes only the persisted outbox kind through the typed `TaskMail`
+contract. The existing task-kind union is reused with runtime narrowing.
+Unsupported kinds follow the dispatcher's existing `CANCELLED` eligibility path;
+direct renderer calls reject them, and mail transports return `FAILED` without
+sending. The sender abstraction, idempotency key, retry/UNKNOWN handling,
+eligibility SQL, leases, scanner and schema are unchanged.
+
+Only event-category disclosure is authorized: no titles, names, comments, due
+instants, account details or internal metadata enter either MIME part. The Card
+link still requires a validated application origin and Board/Card UUIDs; HTML
+values and link attributes are escaped. Sign-in and current permissions remain
+necessary to open the destination.
+
+STAB-01 was confirmed integrated in local and remote `main` before this change.
+STAB-03 issue #211 had no integrated QA evidence; the user explicitly authorized
+this scoped follow-up on the STAB-01 baseline with STAB-03 QA pending. This is
+neither release sign-off nor deployment evidence.
+
+Local verification for this follow-up:
+
+- Focused mailer, dispatcher, worker and reminder Jest checks: 5 suites / 56
+  tests passed. `pnpm test` with `VITEST_MAX_WORKERS=2` passed: backend 106
+  suites / 1,133 tests, frontend 140 files / 1,472 tests, shared 20 tests.
+- `pnpm --filter @kanban/backend test:task-notifications:database` passed all
+  17 groups, including persisted-kind mapping and the existing STAB-01 races,
+  consent, verification, ACL/revocation, rate, retry, stale and UNKNOWN checks.
+  `pnpm --filter @kanban/backend test:notifications:database` passed all 16
+  PostgreSQL/HTTP/Socket.IO groups. Both used disposable databases on a dedicated
+  loopback PostgreSQL 16 container, synthetic accounts and fake mail.
+- `pnpm lint` and `pnpm build` passed, including backend/frontend TypeScript
+  compilation. The build retained the existing Vite NODE_ENV and chunk-size
+  warnings. No standalone root typecheck script exists.
+- Changed-file Prettier and `git diff --check` passed. Full `pnpm format:check`
+  failed on existing repository formatting drift; no broad formatting was done.
+- Three synthetic HTML/plain-text previews and exactly three screenshots were
+  generated under ignored `.codex/previews/task-notification-email/`. The only
+  preview substitution is a local copy of the existing logo. Chrome DevTools MCP
+  hit a profile conflict; isolated headless Chrome verified 900px/360px layouts,
+  600px maximum width, wrapping, 54px CTA height, loaded logo and dark-media
+  colors, with no page exceptions or failed requests. Assignment/mention were
+  captured at desktop width and the reminder at mobile width. Actual Gmail and
+  Outlook rendering remains unverified. No real mail or deployment was performed.
