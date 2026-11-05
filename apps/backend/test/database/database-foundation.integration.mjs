@@ -199,6 +199,7 @@ async function inspectSchema() {
           !sql.includes('"user_notifications"') &&
           !sql.includes('"notification_preferences"') &&
           !sql.includes('"comment_mentions"') &&
+          !sql.includes('"pending_email_changes"') &&
           !sql.includes('declined_at') &&
           !sql.includes('CK_workspace_invitations_declined_at') &&
           !sql.includes('"card_checklists"') &&
@@ -413,7 +414,7 @@ try {
   assert.equal(source.options.logging, false);
   assert.equal(source.options.synchronize, false);
   assert.equal(source.options.migrationsRun, false);
-  assert.equal(source.entityMetadatas.length, 29);
+  assert.equal(source.entityMetadatas.length, 30);
   assert.deepEqual(
     source.entityMetadatas.map((entity) => entity.tableName).sort(),
     [
@@ -437,6 +438,7 @@ try {
       'google_identities',
       'notification_preferences',
       'password_reset_tokens',
+      'pending_email_changes',
       'task_notification_email_outbox',
       'user_notifications',
       'user_preferences',
@@ -448,7 +450,7 @@ try {
       'workspaces',
     ],
   );
-  assert.equal(source.migrations.length, 27);
+  assert.equal(source.migrations.length, 28);
 
   const originalDatabase = process.env.DATABASE_NAME;
   process.env.DATABASE_NAME = testDatabase;
@@ -459,7 +461,7 @@ try {
     });
     try {
       const nestDataSource = app.get(DataSource);
-      assert.equal(nestDataSource.entityMetadatas.length, 29);
+      assert.equal(nestDataSource.entityMetadatas.length, 30);
       assert.equal(nestDataSource.migrations.length, source.migrations.length);
       assert.equal(nestDataSource.options.poolSize, source.options.poolSize);
       assert.equal(
@@ -481,7 +483,8 @@ try {
     (m) =>
       !m.name.startsWith('NotificationFoundation') &&
       !m.name.startsWith('CommentMentions') &&
-      !m.name.startsWith('TaskNotificationEmailOutbox'),
+      !m.name.startsWith('TaskNotificationEmailOutbox') &&
+      !m.name.startsWith('EmailChangeSecurity'),
   );
   source.migrations = allMigrations.filter(
     (m) =>
@@ -498,7 +501,8 @@ try {
       !m.name.startsWith('BoardBackgroundVersion') &&
       !m.name.startsWith('NotificationFoundation') &&
       !m.name.startsWith('CommentMentions') &&
-      !m.name.startsWith('TaskNotificationEmailOutbox'),
+      !m.name.startsWith('TaskNotificationEmailOutbox') &&
+      !m.name.startsWith('EmailChangeSecurity'),
   );
   assert.equal((await source.runMigrations()).length, 13);
   const cliOutput = execFileSync(
@@ -524,7 +528,7 @@ try {
       '-e',
       `const dataSource = require('./src/database/data-source.ts').default;
        dataSource.initialize().then(async () => {
-         if (dataSource.entityMetadatas.length !== 29 || dataSource.migrations.length !== ${allMigrations.length}) {
+         if (dataSource.entityMetadatas.length !== 30 || dataSource.migrations.length !== ${allMigrations.length}) {
            throw new Error('TypeScript DataSource discovery mismatch');
          }
          await dataSource.destroy();
@@ -587,6 +591,7 @@ try {
         'notification_preferences',
         'user_notifications',
         'comment_mentions',
+        'pending_email_changes',
       ].includes(entity.tableName),
   );
   assert.deepEqual(
@@ -613,11 +618,19 @@ try {
   console.log(
     'Enum rollback retains existing values/history; idempotent reapply: PASS',
   );
-  source.migrations = allMigrations;
+  source.migrations = allMigrations.filter(
+    (m) => !m.name.startsWith('EmailChangeSecurity'),
+  );
   assert.equal((await source.runMigrations()).length, 3);
   await assert.rejects(
     source.undoLastMigration(),
     /Task notification email outbox requires a forward fix/,
+  );
+  source.migrations = allMigrations;
+  assert.equal((await source.runMigrations()).length, 1);
+  await assert.rejects(
+    source.undoLastMigration(),
+    /Email change security is forward-only/,
   );
   assert.deepEqual(await source.runMigrations(), []);
   assert.deepEqual(
@@ -625,7 +638,7 @@ try {
     [],
   );
   console.log(
-    'Full current schema and forward-only notification boundary: PASS',
+    'Full current schema and forward-only notification/email-change boundaries: PASS',
   );
 } finally {
   if (source?.isInitialized) await source.destroy();

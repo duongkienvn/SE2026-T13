@@ -127,7 +127,10 @@ describe('email change HTTP contracts and IP throttles', () => {
         {
           provide: AuthService,
           useValue: {
-            authenticateAccessToken: jest.fn().mockResolvedValue(identity),
+            authenticateAccessToken: jest.fn(async (token: string) => ({
+              ...identity,
+              userId: token === 'rate-jwt' ? 'rate-user' : identity.userId,
+            })),
           },
         },
         { provide: APP_GUARD, useClass: HttpThrottlerGuard },
@@ -228,6 +231,21 @@ describe('email change HTTP contracts and IP throttles', () => {
       (await post('confirm').send({ token: 'a'.repeat(43), userId: 'other' }))
         .status,
     ).toBe(400);
+  });
+  it('also throttles reauthentication guesses by account across IPs', async () => {
+    for (let i = 1; i <= 5; i++)
+      await request(app.getHttpServer())
+        .post('/auth/email-change/request')
+        .auth('rate-jwt', { type: 'bearer' })
+        .set('X-Forwarded-For', `203.0.113.${i}`)
+        .send({})
+        .expect(400);
+    await request(app.getHttpServer())
+      .post('/auth/email-change/request')
+      .auth('rate-jwt', { type: 'bearer' })
+      .set('X-Forwarded-For', '203.0.113.10')
+      .send({})
+      .expect(429);
   });
   it.each([
     ['request', 5],

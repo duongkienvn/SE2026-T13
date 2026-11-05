@@ -191,7 +191,8 @@ try {
       !migration.name.startsWith('WorkspacePolicies') &&
       !migration.name.startsWith('NotificationFoundation') &&
       !migration.name.startsWith('CommentMentions') &&
-      !migration.name.startsWith('TaskNotificationEmailOutbox'),
+      !migration.name.startsWith('TaskNotificationEmailOutbox') &&
+      !migration.name.startsWith('EmailChangeSecurity'),
   );
   assert.equal((await fresh.runMigrations()).length, fresh.migrations.length);
   await fresh.query(

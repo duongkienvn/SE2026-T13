@@ -24,6 +24,7 @@ import {
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { AuthenticatedUser } from './constants/auth.constants';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { PasswordChangeThrottlerGuard } from './guards/password-change-throttler.guard';
 import { EmailChangeService } from './email-change.service';
 import { EmailChangeReauthenticationService } from './email-change-reauthentication.service';
 import {
@@ -43,6 +44,7 @@ export class EmailChangeController {
     private readonly reauthentication: EmailChangeReauthenticationService,
   ) {}
   @Post('request')
+  @UseGuards(PasswordChangeThrottlerGuard)
   @HttpCode(202)
   @Header('Cache-Control', 'private, no-store')
   @Throttle({ default: { limit: 5, ttl: 300_000 } })
