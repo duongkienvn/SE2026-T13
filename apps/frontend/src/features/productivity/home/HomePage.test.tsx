@@ -6,6 +6,7 @@ import {
   within,
 } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { focusManager } from '@tanstack/react-query';
 import type {
   HomeBoardSummary,
   HomeDashboard,
@@ -179,6 +180,37 @@ describe('Home route', () => {
     expect(home.getAttribute('aria-current')).toBe('page');
   });
 
+  it.each([0, 1, 2])(
+    'uses count-aware summary labels for %i items',
+    async (count) => {
+      storeSession();
+      mockApi({
+        ...base,
+        'GET /users/me/home': ok(
+          dashboard({
+            summary: {
+              assignedActiveCount: count,
+              dueNext7DaysCount: count,
+              overdueCount: count,
+              workspaceCount: count,
+            },
+          }),
+        ),
+      });
+      renderApp('/home');
+      const summary = await screen.findByRole('region', { name: 'Summary' });
+      const card = count === 1 ? 'card' : 'cards';
+      for (const name of [
+        `${count} assigned active ${card}`,
+        `${count} ${card} due in the next 7 days`,
+        `${count} overdue ${card}`,
+        `${count} ${count === 1 ? 'workspace' : 'workspaces'}`,
+      ]) {
+        expect(within(summary).getByRole('link', { name })).toBeTruthy();
+      }
+    },
+  );
+
   it('shows honest empty states for a new user', async () => {
     storeSession();
     mockApi({
@@ -204,7 +236,7 @@ describe('Home route', () => {
     expect(
       screen.getByRole('link', { name: '0 assigned active cards' }),
     ).toBeTruthy();
-    expect(screen.getByRole('link', { name: '1 workspaces' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: '1 workspace' })).toBeTruthy();
     expect(screen.getAllByRole('link', { name: 'Browse boards' })).toHaveLength(
       3,
     );
@@ -287,6 +319,57 @@ describe('Home route', () => {
     });
     renderApp('/home');
     expect(await screen.findByText(/appear to be offline/)).toBeTruthy();
+  });
+
+  it('keeps the dashboard visible with a non-blocking notice after a background refetch fails', async () => {
+    storeSession();
+    let refreshFails = false;
+    const calls = mockApi({
+      ...base,
+      'GET /users/me/home': () =>
+        refreshFails ? fail(500, 'INTERNAL') : ok(dashboard()),
+    });
+    renderApp('/home');
+    await screen.findByRole('link', { name: /Fix authentication bug/ });
+
+    refreshFails = true;
+    try {
+      act(() => {
+        focusManager.setFocused(false);
+        focusManager.setFocused(true);
+      });
+      const notice = await screen.findByText(/Could not refresh Home\./);
+      expect(notice.getAttribute('role')).toBe('status');
+      expect(
+        calls.filter((call) => call.path === '/users/me/home'),
+      ).toHaveLength(2);
+      expect(
+        screen.getByRole('link', { name: '12 assigned active cards' }),
+      ).toBeTruthy();
+      expect(
+        screen.getByRole('link', { name: /Fix authentication bug/ }),
+      ).toBeTruthy();
+      expect(
+        screen.getByRole('link', { name: 'Frontend Development' }),
+      ).toBeTruthy();
+      expect(
+        screen.getByRole('link', { name: 'Backend Development' }),
+      ).toBeTruthy();
+      expect(
+        screen.queryByText('Your Home is unavailable right now.'),
+      ).toBeNull();
+
+      refreshFails = false;
+      fireEvent.click(within(notice).getByRole('button', { name: 'Retry' }));
+      await waitFor(() =>
+        expect(screen.queryByText(/Could not refresh Home\./)).toBeNull(),
+      );
+      expect(
+        screen.getByRole('link', { name: /Fix authentication bug/ }),
+      ).toBeTruthy();
+    } finally {
+      act(() => focusManager.setFocused(undefined));
+    }
   });
 
   it('ends the session after an unauthorized response', async () => {

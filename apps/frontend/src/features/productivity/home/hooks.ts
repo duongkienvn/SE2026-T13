@@ -30,6 +30,6 @@ export function useHomeDashboard(timeZone: string | undefined) {
   return {
     ...query,
     // A snapshot from another account or session generation is never shown.
-    home: scope.isCurrent() && query.isSuccess ? query.data : undefined,
+    home: scope.isCurrent() ? query.data : undefined,
   };
 }

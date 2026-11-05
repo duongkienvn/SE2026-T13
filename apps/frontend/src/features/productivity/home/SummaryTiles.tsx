@@ -43,11 +43,15 @@ const tiles: Tile[] = [
   },
 ];
 
-const descriptions: Record<Tile['id'], string> = {
-  assignedActiveCount: 'assigned active cards',
-  dueNext7DaysCount: 'cards due in the next 7 days',
-  overdueCount: 'overdue cards',
-  workspaceCount: 'workspaces',
+const descriptions: Record<Tile['id'], (count: number) => string> = {
+  assignedActiveCount: (count) =>
+    count === 1 ? 'assigned active card' : 'assigned active cards',
+  dueNext7DaysCount: (count) =>
+    count === 1
+      ? 'card due in the next 7 days'
+      : 'cards due in the next 7 days',
+  overdueCount: (count) => (count === 1 ? 'overdue card' : 'overdue cards'),
+  workspaceCount: (count) => (count === 1 ? 'workspace' : 'workspaces'),
 };
 
 export function SummaryTiles({
@@ -63,7 +67,7 @@ export function SummaryTiles({
           to={to}
           className="home-tile"
           data-tone={id}
-          aria-label={`${summary[id]} ${descriptions[id]}`}
+          aria-label={`${summary[id]} ${descriptions[id](summary[id])}`}
         >
           <span className="home-tile-icon" aria-hidden="true">
             <Icon />
