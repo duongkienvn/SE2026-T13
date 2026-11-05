@@ -1,3 +1,4 @@
+import { PageContainer } from '../../../components/PageContainer';
 import { usePageTitle } from '../../../hooks/usePageTitle';
 import { isApiError } from '../../../lib/api-client';
 import { useAuth } from '../../auth/useAuth';
@@ -27,8 +28,8 @@ export function HomePage() {
   const failed = preferences.isError || dashboard.isError;
 
   return (
-    <div className="home-canvas">
-      <div className="home-page">
+    <PageContainer>
+      <div className="home-canvas home-page">
         <HomeGreeting
           name={user?.displayName}
           timeZone={timeZone}
@@ -111,7 +112,7 @@ export function HomePage() {
           </>
         )}
       </div>
-    </div>
+    </PageContainer>
   );
 }
 

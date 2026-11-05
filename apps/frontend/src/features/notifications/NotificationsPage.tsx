@@ -2,8 +2,13 @@ import type { NotificationResponse } from '@kanban/shared';
 import { useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { PageContainer } from '../../components/PageContainer';
+import { Button, buttonClassName } from '../../components/Button';
 import { Pagination } from '../../components/Pagination';
-import { BellIcon } from '../../components/icons';
+import {
+  BellIcon,
+  CheckCircleIcon,
+  SettingsIcon,
+} from '../../components/icons';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { isApiError } from '../../lib/api-client';
 import { formatInstantDate } from '../settings/format';
@@ -96,13 +101,29 @@ export function NotificationsPage() {
           <span className="notifications-header-icon" aria-hidden="true">
             <BellIcon />
           </span>
-          <div className="min-w-0">
+          <div className="notifications-heading">
             <h1>Notifications</h1>
             <p>Stay updated on what matters.</p>
           </div>
-          <Link to="/settings/notifications" className="notification-link">
-            Preferences
-          </Link>
+          <div className="notifications-actions">
+            <Link
+              to="/settings/notifications"
+              className={buttonClassName('secondary', 'sm')}
+            >
+              <SettingsIcon aria-hidden="true" />
+              Preferences
+            </Link>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="notifications-mark-all"
+              disabled={!unread || markAll.isPending}
+              onClick={() => markAll.mutate()}
+            >
+              <CheckCircleIcon aria-hidden="true" />
+              {markAll.isPending ? 'Marking…' : 'Mark all as read'}
+            </Button>
+          </div>
         </header>
         <div className="notifications-toolbar">
           <nav aria-label="Notification filter" className="notifications-tabs">
@@ -123,14 +144,6 @@ export function NotificationsPage() {
               </Link>
             ))}
           </nav>
-          <button
-            type="button"
-            className="notification-link"
-            disabled={!unread || markAll.isPending}
-            onClick={() => markAll.mutate()}
-          >
-            {markAll.isPending ? 'Marking…' : 'Mark all as read'}
-          </button>
         </div>
         {markAll.isSuccess && (
           <p role="status" className="notifications-status">
