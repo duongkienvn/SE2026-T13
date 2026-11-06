@@ -275,9 +275,7 @@ export function TableBoard({
                       <th scope="col" className="p-3">
                         Status
                       </th>
-                      <th scope="col" className="p-3">
-                        <span className="sr-only">Actions</span>
-                      </th>
+                      <th scope="col" aria-label="Actions" className="p-3" />
                     </tr>
                   </thead>
                   <tbody>

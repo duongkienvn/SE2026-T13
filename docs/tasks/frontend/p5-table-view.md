@@ -30,6 +30,17 @@ formatting reported pre-existing violations across many files; changed files
 passed a targeted check. Chrome captures at 1585×992, 768×1024 and 375×812
 in dark and light themes are in the [implementation evidence](../../design/screens/implementation/p5-table-view/).
 They use synthetic API and Socket.IO responses, including the bundled lake
-background, and show the mobile filter fix after an initial narrow-layout
-failure. They do not prove background persistence, real-user permissions,
-keyboard operation, screen-reader behavior or all metadata combinations.
+background. A later Chrome measurement found that the visually hidden Actions
+heading escaped the table's scroll container; the heading now has an accessible
+name without positioned content. At all three capture sizes, document and main
+scroll widths matched their client widths; the table alone scrolled on narrow
+screens. Enter on the focused title-sort button changed `aria-sort` to
+descending and requested descending order. This is a targeted keyboard check,
+not a complete screen-reader or accessibility audit.
+
+The focused Table suite now covers read-only archived Boards and Workspace
+viewers, labels, accessible assignee names, checklist progress, overdue versus
+column status, URL/search history, Calendar navigation, the retained photo,
+archive invalidation and access revocation. It uses mocks: it does not establish
+real-user permission changes or server-side background persistence. PostgreSQL
+integration also checks ascending and descending ties across page boundaries.
