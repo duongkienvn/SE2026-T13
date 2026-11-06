@@ -40,6 +40,7 @@ import { ArchiveBoardDialog } from '../components/ArchiveBoardDialog';
 import { RestoreBoardDialog } from '../components/RestoreBoardDialog';
 import { KanbanBoard } from '../components/KanbanBoard';
 import { CalendarBoard } from '../components/CalendarBoard';
+import { TableBoard } from '../components/TableBoard';
 import { BoardStar } from '../components/BoardStar';
 import { useRecordBoardView } from '../useRecordBoardView';
 import {
@@ -110,9 +111,20 @@ export function BoardDetailPage() {
   const settings = useMatch('/boards/:boardId/settings') !== null;
   const membersPage = useMatch('/boards/:boardId/members') !== null;
   const calendarPage = useMatch('/boards/:boardId/calendar') !== null;
+  const tablePage = useMatch('/boards/:boardId/table') !== null;
   const calendarPath = `/boards/${encodeURIComponent(boardId)}/calendar`;
   const returnTo = (location.state as { cardReturnTo?: unknown } | null)
     ?.cardReturnTo;
+  const tablePath = `/boards/${encodeURIComponent(boardId)}/table`;
+  const table =
+    tablePage ||
+    (typeof returnTo === 'string' &&
+      (returnTo === tablePath ||
+        returnTo.startsWith(`${tablePath}?`) ||
+        returnTo.startsWith(`${tablePath}#`) ||
+        returnTo === `${tablePath}/` ||
+        returnTo.startsWith(`${tablePath}/?`) ||
+        returnTo.startsWith(`${tablePath}/#`)));
   const calendar =
     calendarPage ||
     (typeof returnTo === 'string' &&
@@ -354,9 +366,11 @@ export function BoardDetailPage() {
               ? 'settings'
               : membersPage
                 ? 'members'
-                : calendar
-                  ? 'calendar'
-                  : 'kanban'
+                : table
+                  ? 'table'
+                  : calendar
+                    ? 'calendar'
+                    : 'kanban'
           }
           canReadMembers={data.currentUserRole !== null}
           onActivity={() => setShowingActivity(true)}
@@ -425,13 +439,26 @@ export function BoardDetailPage() {
         </div>
       ) : (
         <section
-          aria-label={calendar ? 'Calendar workspace' : 'Kanban workspace'}
+          aria-label={
+            table
+              ? 'Table workspace'
+              : calendar
+                ? 'Calendar workspace'
+                : 'Kanban workspace'
+          }
           className="board-canvas min-w-0 flex-1"
           style={canvasBackgroundStyle(
             presets.data?.find((item) => item.id === data.backgroundPreset),
           )}
         >
-          {calendar ? (
+          {table ? (
+            <TableBoard
+              boardId={data.id}
+              readOnly={readOnly}
+              canReadMembers={data.currentUserRole !== null}
+              boardName={data.name}
+            />
+          ) : calendar ? (
             <CalendarBoard
               boardId={data.id}
               readOnly={readOnly}

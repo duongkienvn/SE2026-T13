@@ -95,6 +95,7 @@ export const routes: RouteObject[] = [
                 element: <BoardDetailPage />,
                 children: [
                   { path: 'calendar', element: null },
+                  { path: 'table', element: null },
                   { path: 'cards/:cardId', element: null },
                   { path: 'settings', element: null },
                   { path: 'members', element: <BoardMembersPage /> },

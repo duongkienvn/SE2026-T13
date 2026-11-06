@@ -681,7 +681,14 @@ export class CardsService {
         );
       }
     }
-    if (query.status === 'archived') {
+    if (query.sortBy) {
+      const direction = query.sortDirection === 'desc' ? 'DESC' : 'ASC';
+      builder.orderBy(
+        query.sortBy === 'title' ? 'card.title' : 'card.dueDate',
+        direction,
+        query.sortBy === 'dueDate' ? 'NULLS LAST' : undefined,
+      );
+    } else if (query.status === 'archived') {
       builder.orderBy('card.archivedAt', 'DESC');
     } else if (query.columnId) {
       builder.orderBy('card.position', 'ASC');

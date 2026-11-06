@@ -23,6 +23,12 @@ export function csvIds(value: unknown): unknown {
 }
 
 export class ListCardsDto extends PageQueryDto {
+  @EnumFieldOptional({ TITLE: 'title', DUE_DATE: 'dueDate' })
+  sortBy?: 'title' | 'dueDate';
+
+  @EnumFieldOptional({ ASC: 'asc', DESC: 'desc' })
+  sortDirection?: 'asc' | 'desc';
+
   @EnumFieldOptional({ ACTIVE: 'active', ARCHIVED: 'archived' })
   status?: 'active' | 'archived';
 
