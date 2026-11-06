@@ -47,13 +47,11 @@ export function KeyboardShortcutsPage() {
                 {group.rows.map((row) => (
                   <div
                     key={row.label}
-                    className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-line py-2 last:border-0"
+                    className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-line py-1.5 last:border-0"
                   >
-                    <dt className="min-w-0 text-sm text-ink">
+                    <dt className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-sm text-ink">
                       {row.label}
-                      <span className="block text-xs text-muted">
-                        {row.scope}
-                      </span>
+                      <span className="text-xs text-muted">{row.scope}</span>
                     </dt>
                     <dd
                       className="flex items-center gap-1"
@@ -85,7 +83,7 @@ export function KeyboardShortcutsPage() {
                         ) : (
                           <kbd
                             key={i}
-                            className="min-w-8 rounded-md bg-app px-2 py-1 text-center text-xs font-semibold text-ink"
+                            className="min-w-8 rounded-md bg-primary-soft px-2 py-1 text-center font-sans text-xs font-semibold text-ink"
                           >
                             {key === 'Mod' ? modifier : key}
                           </kbd>
@@ -100,8 +98,9 @@ export function KeyboardShortcutsPage() {
         })}
       </div>
       <p className="mt-4 rounded-xl border border-line bg-surface px-4 py-3 text-sm text-muted">
-        Shortcuts do not run while you type or use an overlay. J and K move
-        focus only; Enter opens the focused card.
+        Navigation and card shortcuts pause while you type or use an overlay.
+        Escape closes the active dialog or inspector. J and K move focus only;
+        Enter opens the focused card.
       </p>
     </div>
   );
