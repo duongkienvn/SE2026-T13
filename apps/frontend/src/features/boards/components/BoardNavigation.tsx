@@ -8,7 +8,7 @@ export function BoardNavigation({
   onActivity,
 }: {
   boardId: string;
-  active: 'kanban' | 'calendar' | 'members' | 'settings';
+  active: 'kanban' | 'calendar' | 'table' | 'members' | 'settings';
   canReadMembers: boolean;
   onActivity: () => void;
 }) {
@@ -43,6 +43,7 @@ export function BoardNavigation({
     >
       {link('kanban', 'Kanban')}
       {link('calendar', 'Calendar', '/calendar')}
+      {link('table', 'Table', '/table')}
       {canReadMembers && link('members', 'Members', '/members')}
       <button
         type="button"

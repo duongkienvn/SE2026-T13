@@ -50,7 +50,16 @@ export function useCardRoute(boardId: string) {
           returnTo === `${boardPath}/calendar/` ||
           returnTo.startsWith(`${boardPath}/calendar/?`) ||
           returnTo.startsWith(`${boardPath}/calendar/#`);
-        void navigate(safeReturn ? returnTo : boardPath, { replace: true });
+        const tableReturn =
+          returnTo === `${boardPath}/table` ||
+          returnTo.startsWith(`${boardPath}/table?`) ||
+          returnTo.startsWith(`${boardPath}/table#`) ||
+          returnTo === `${boardPath}/table/` ||
+          returnTo.startsWith(`${boardPath}/table/?`) ||
+          returnTo.startsWith(`${boardPath}/table/#`);
+        void navigate(safeReturn || tableReturn ? returnTo : boardPath, {
+          replace: true,
+        });
       }
     },
   };
