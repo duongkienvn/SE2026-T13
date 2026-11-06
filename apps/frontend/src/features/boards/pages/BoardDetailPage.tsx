@@ -20,6 +20,7 @@ import { PageContainer } from '../../../components/PageContainer';
 import { TextField } from '../../../components/TextField';
 import { LockIcon, UsersIcon } from '../../../components/icons';
 import { BoardNavigation } from '../components/BoardNavigation';
+import { RemoveSampleBoardDialog } from '../components/RemoveSampleBoardDialog';
 import {
   filterSearchParams,
   parseBoardFilters,
@@ -149,6 +150,7 @@ export function BoardDetailPage() {
     enabled: verified && board.data !== undefined && !unavailable,
   });
   const [editing, setEditing] = useState(false);
+  const [removingSample, setRemovingSample] = useState(false);
   const [changingBackground, setChangingBackground] = useState(false);
   const presets = useBackgroundPresets();
   const [editDirty, setEditDirty] = useState(false);
@@ -356,6 +358,15 @@ export function BoardDetailPage() {
                 label: 'Copy board link',
                 onSelect: () => void copyBoardLink(),
               },
+              ...(data.isStarterBoard &&
+              data.currentUserRole === BoardRole.OWNER
+                ? [
+                    {
+                      label: 'Remove Sample Board',
+                      onSelect: () => setRemovingSample(true),
+                    },
+                  ]
+                : []),
             ]}
           />
         </div>
@@ -477,6 +488,15 @@ export function BoardDetailPage() {
         </section>
       )}
 
+      {removingSample &&
+        data.isStarterBoard &&
+        data.currentUserRole === BoardRole.OWNER && (
+          <RemoveSampleBoardDialog
+            boardId={data.id}
+            onClose={() => setRemovingSample(false)}
+            onRemoved={() => navigate('/boards', { replace: true })}
+          />
+        )}
       {showingArchivedCards && (
         <ArchivedCardsDialog
           boardId={data.id}

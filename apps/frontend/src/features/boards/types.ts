@@ -27,6 +27,7 @@ export interface Board {
   backgroundVersion?: number;
   lastViewedAt?: string | null;
   isStarred?: boolean;
+  isStarterBoard?: boolean;
   capabilities?: BoardCapabilities;
 }
 
