@@ -111,7 +111,7 @@ export function TableBoard({
   const opened = cards.data?.items.find((card) => card.id === cardId);
   const total = cards.data?.meta.total ?? 0;
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 overflow-auto p-4 md:p-6">
+    <div className="flex h-full min-h-0 min-w-0 flex-col gap-3 overflow-x-hidden overflow-y-auto p-4 md:p-6">
       <div className="rounded-xl border border-line bg-surface/90 p-2">
         <BoardViews boardId={boardId} active="table" />
       </div>
@@ -132,7 +132,7 @@ export function TableBoard({
         </div>
       ) : (
         <>
-          <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-xl bg-surface/90 p-2 [&>div]:mb-0 [&>div]:flex-1">
+          <div className="flex min-w-0 flex-col items-stretch gap-2 rounded-xl bg-surface/90 p-2 sm:flex-row sm:items-center [&>div]:mb-0 [&>div]:min-w-0 sm:[&>div]:flex-1">
             <BoardFilter
               filters={filters}
               apply={(next) => {
