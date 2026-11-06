@@ -27,4 +27,4 @@ export * from './notifications.js';
 export * from './data-export.js';
 export * from './email-change.js';
 export * from './account-deletion.js';
-export * from './starter-board';
+export * from './starter-board.js';
