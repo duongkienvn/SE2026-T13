@@ -27,6 +27,8 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Backend tasks
 
+- [Starter Board onboarding](backend/p5-starter-board-onboarding.md)
+
 - [P5-03 Safe account deletion and identity erasure](backend/p5-account-deletion.md)
 
 - [P5-02 Verified email change and identity security](backend/p5-secure-email-change.md)
