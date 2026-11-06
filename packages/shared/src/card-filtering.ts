@@ -1,5 +1,7 @@
 /** Board-local list filters. ID arrays are encoded as comma-separated UUIDs. */
 export interface BoardCardFilters {
+  sortBy?: 'title' | 'dueDate';
+  sortDirection?: 'asc' | 'desc';
   q?: string;
   labelIds?: string[];
   assigneeIds?: string[];

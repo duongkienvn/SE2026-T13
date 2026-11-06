@@ -67,6 +67,8 @@ export class CardsController {
     schema: { minimum: 1, maximum: 100, default: 20 },
   })
   @ApiQuery({ name: 'columnId', required: false, type: String, format: 'uuid' })
+  @ApiQuery({ name: 'sortBy', required: false, enum: ['title', 'dueDate'] })
+  @ApiQuery({ name: 'sortDirection', required: false, enum: ['asc', 'desc'] })
   @ApiQuery({
     name: 'status',
     required: false,

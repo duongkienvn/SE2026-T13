@@ -118,6 +118,23 @@ export async function checkFiltering({
   assert.equal(firstPage.meta.total, 2);
   assert.deepEqual(ids(firstPage), [a.id]);
   assert.deepEqual(ids(secondPage), [b.id]);
+  const sortedDue = {
+    q: 'Filter',
+    sortBy: 'dueDate',
+    sortDirection: 'desc',
+    limit: '1',
+  };
+  assert.deepEqual(ids(await query(sortedDue)), [b.id]);
+  assert.deepEqual(ids(await query({ ...sortedDue, page: '2' })), [a.id]);
+  assert.deepEqual(ids(await query({ ...sortedDue, page: '3' })), [c.id]);
+  const sortedTitle = {
+    q: 'Filter',
+    sortBy: 'title',
+    sortDirection: 'desc',
+    limit: '1',
+  };
+  assert.deepEqual(ids(await query(sortedTitle)), [c.id]);
+  await api('get', `${path}?sortBy=position`).expect(400);
   assert.deepEqual(
     ids(
       await query({
