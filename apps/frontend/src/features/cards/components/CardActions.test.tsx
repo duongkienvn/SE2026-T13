@@ -340,6 +340,23 @@ describe('card detail', () => {
     expect(writes(calls)).toHaveLength(0);
   });
 
+  it('closes the assignee picker before the Card Detail on Escape', async () => {
+    setupCard();
+    const dialog = await openCard('Feed research');
+    const opener = within(dialog).getByRole('button', { name: 'Add assignee' });
+    fireEvent.click(opener);
+    const choice = within(dialog).getByRole('button', {
+      name: 'Assign Grace Hopper',
+    });
+    choice.focus();
+    fireEvent.keyDown(choice, { key: 'Escape' });
+    expect(
+      within(dialog).queryByRole('list', { name: 'Board members' }),
+    ).toBeNull();
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(document.activeElement).toBe(opener);
+  });
+
   it('assigns only board members not yet assigned, then removes them', async () => {
     const assigned = {
       userId: 'ada',

@@ -17,6 +17,7 @@ import { findActiveNavItemId, navGroups } from './navigation';
 import { useWorkspaceDirectory } from '../../features/workspaces/hooks';
 import { workspacePath } from '../../features/workspaces/navigation';
 import { NotificationBell } from '../../features/notifications/NotificationBell';
+import { useKeyboardShortcuts } from '../../features/shortcuts/useKeyboardShortcuts';
 
 /** Application shell for signed-in routes, with App Shell V2 navigation, board context and the user menu. */
 export function AuthenticatedLayout() {
@@ -25,6 +26,7 @@ export function AuthenticatedLayout() {
 }
 
 function SessionLayout() {
+  useKeyboardShortcuts();
   const { user } = useAuth();
   const { pathname, search } = useLocation();
   // The deepest match carries every route param, e.g. `boardId` on board pages.

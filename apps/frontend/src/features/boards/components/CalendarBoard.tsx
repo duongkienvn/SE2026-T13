@@ -146,6 +146,8 @@ export function CalendarBoard({
       <button
         key={card.id}
         type="button"
+        data-shortcut-card
+        data-shortcut-open-card={card.id}
         title={card.title}
         aria-pressed={selectedId === card.id}
         className="calendar-pill"
@@ -300,6 +302,7 @@ export function CalendarBoard({
                           {entries.slice(0, 2).map(pill)}
                           {entries.length > 2 && (
                             <details
+                              data-shortcut-card-overflow
                               onKeyDown={(event) => {
                                 if (event.key === 'Escape') {
                                   event.preventDefault();

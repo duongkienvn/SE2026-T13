@@ -339,7 +339,10 @@ export function KanbanDndBoard({
           Saving the new order…
         </p>
       )}
-      <div className="kanban-columns relative min-h-0 flex-1 overflow-x-auto overscroll-x-contain px-4 pb-3 md:px-6">
+      <div
+        data-shortcut-overlay={activeId ? '' : undefined}
+        className="kanban-columns relative min-h-0 flex-1 overflow-x-auto overscroll-x-contain px-4 pb-3 md:px-6"
+      >
         <DndContext
           sensors={sensors}
           collisionDetection={collisionDetection}

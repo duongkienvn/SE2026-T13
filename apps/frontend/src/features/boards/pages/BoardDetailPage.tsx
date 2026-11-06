@@ -439,6 +439,7 @@ export function BoardDetailPage() {
         </div>
       ) : (
         <section
+          data-shortcut-board={data.id}
           aria-label={
             table
               ? 'Table workspace'

@@ -25,6 +25,31 @@ function Harness({ dismissible = true }: { dismissible?: boolean }) {
 }
 
 describe('Dialog', () => {
+  it('closes only the top nested dialog and preserves the parent focus trap', () => {
+    function Nested() {
+      const [parent, setParent] = useState(true);
+      const [child, setChild] = useState(false);
+      return (
+        <Dialog open={parent} onClose={() => setParent(false)} title="Parent">
+          <button onClick={() => setChild(true)}>Open child</button>
+          <Dialog open={child} onClose={() => setChild(false)} title="Child">
+            <button>Child action</button>
+          </Dialog>
+        </Dialog>
+      );
+    }
+    render(<Nested />);
+    const opener = screen.getByRole('button', { name: 'Open child' });
+    fireEvent.click(opener);
+    expect(screen.getByRole('dialog', { name: 'Child' })).toBeTruthy();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Child' })).toBeNull();
+    expect(screen.getByRole('dialog', { name: 'Parent' })).toBeTruthy();
+    expect(document.activeElement).toBe(opener);
+    expect(document.body.style.overflow).toBe('hidden');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Parent' })).toBeNull();
+  });
   it('is a labelled modal that focuses its first control', () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));
@@ -91,5 +116,16 @@ describe('Dialog', () => {
 
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog')).toBeTruthy();
+  });
+
+  it('does not close during IME composition', () => {
+    const onClose = vi.fn();
+    render(
+      <Dialog open onClose={onClose} title="Editor">
+        <input />
+      </Dialog>,
+    );
+    fireEvent.keyDown(document, { key: 'Escape', isComposing: true });
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

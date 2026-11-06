@@ -322,6 +322,7 @@ export function TableBoard({
                                 />
                               )}
                               <button
+                                data-shortcut-card
                                 className="text-ink focus-visible:outline-2 focus-visible:outline-primary"
                                 onClick={() => openCard(card.id)}
                               >

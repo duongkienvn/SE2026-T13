@@ -33,6 +33,15 @@ function StrokeSvg({ children, ...props }: IconProps) {
   );
 }
 
+export function KeyboardIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M7 9h.01M10 9h.01M13 9h.01M16 9h.01M7 12h.01M10 12h.01M13 12h.01M16 12h.01M8 15h8" />
+    </StrokeSvg>
+  );
+}
+
 export function MailIcon(props: IconProps) {
   return (
     <StrokeSvg {...props}>

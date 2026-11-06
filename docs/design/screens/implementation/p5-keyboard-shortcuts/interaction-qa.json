@@ -1,0 +1,17 @@
+{
+  "first": "Sample card 1",
+  "second": "Sample card 2",
+  "previous": "Sample card 1",
+  "cardOpen": true,
+  "cardClosed": true,
+  "calendar": "/boards/00000000-0000-4000-9000-000000000001/calendar?q=keep",
+  "table": "/boards/00000000-0000-4000-9000-000000000001/table?q=keep",
+  "tasks": "/my-tasks",
+  "help": "/settings/keyboard-shortcuts",
+  "opened": true,
+  "closed": true,
+  "restored": "Search",
+  "accessibleHeading": true,
+  "documentWidth": 1586,
+  "viewport": 1586
+}
