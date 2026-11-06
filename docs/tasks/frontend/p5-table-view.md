@@ -27,6 +27,9 @@ The frontend suite passed 143 files and 1,485 tests with a stable temporary
 directory; the backend suite passed 114 suites and 1,261 tests with loopback
 access. Workspace build, lint and shared tests passed. Repository-wide
 formatting reported pre-existing violations across many files; changed files
-passed a targeted check. Chrome captures made with a mocked API remained on a
-loading state and are not visual evidence. Screenshot comparison, keyboard and
-responsive visual QA remain outstanding.
+passed a targeted check. Chrome captures at 1585×992, 768×1024 and 375×812
+in dark and light themes are in the [implementation evidence](../../design/screens/implementation/p5-table-view/).
+They use synthetic API and Socket.IO responses, including the bundled lake
+background, and show the mobile filter fix after an initial narrow-layout
+failure. They do not prove background persistence, real-user permissions,
+keyboard operation, screen-reader behavior or all metadata combinations.
