@@ -94,6 +94,8 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Frontend tasks
 
+- [P5-05 Table View](frontend/p5-table-view.md)
+
 - [P5-04 Calendar View](frontend/p5-calendar-view.md)
 
 - [STAB-02 Frontend stabilization and Home Dashboard V2](frontend/stab-02-frontend-stabilization.md)
