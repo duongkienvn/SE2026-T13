@@ -19,6 +19,9 @@ function Harness({ overlay = false }: { overlay?: boolean }) {
       {overlay && <div role="dialog">Dialog</div>}
       <section data-shortcut-board={id}>
         <button data-shortcut-card>First card</button>
+        <button data-shortcut-card disabled>
+          Disabled card
+        </button>
         <button data-shortcut-card data-shortcut-open-card="card-2">
           Second card
         </button>
@@ -67,6 +70,14 @@ describe('keyboard shortcuts', () => {
     key('?', { shiftKey: true });
     expect(location()).toBe('/settings/keyboard-shortcuts');
   });
+  it('does not execute another shortcut as the second key of an invalid chord', () => {
+    setup();
+    key('g');
+    key('2');
+    expect(location()).toBe(`/boards/${id}?q=keep`);
+    key('2');
+    expect(location()).toBe(`/boards/${id}/calendar?q=keep`);
+  });
   it.each([
     ['1', ''],
     ['2', '/calendar'],
@@ -87,6 +98,7 @@ describe('keyboard shortcuts', () => {
     fireEvent.keyDown(screen.getByLabelText('rich editor'), { key: 'g' });
     key('h');
     key('?', { isComposing: true });
+    fireEvent.keyDown(document, { key: '?', keyCode: 229 });
     key('?', { metaKey: true });
     expect(location()).toContain('/boards/');
   });
@@ -131,6 +143,13 @@ describe('keyboard shortcuts', () => {
     });
     document.dispatchEvent(search);
     expect(search.defaultPrevented).toBe(false);
+  });
+  it('does not scan card collections for unrelated keys', () => {
+    setup();
+    const board = document.querySelector('[data-shortcut-board]')!;
+    const scan = vi.spyOn(board, 'querySelectorAll');
+    key('x');
+    expect(scan).not.toHaveBeenCalled();
   });
   it('uses the correct platform keycap', () => {
     expect(modifierLabel('MacIntel')).toBe('⌘');

@@ -9,6 +9,7 @@ const overlay =
 
 function visible(element: HTMLElement) {
   if (
+    element.matches(':disabled, [aria-disabled="true"]') ||
     element.closest(
       '[hidden], [inert], [aria-hidden="true"], details:not([open])',
     )
@@ -50,20 +51,19 @@ export function useKeyboardShortcuts() {
         chord.current = 0;
         return;
       }
-      if (event.key === '?') {
-        chord.current = 0;
-        event.preventDefault();
-        void navigate('/settings/keyboard-shortcuts');
-        return;
-      }
       if (chord.current && Date.now() - chord.current <= chordTimeoutMs) {
         chord.current = 0;
         if (navigationKeys[key]) {
           event.preventDefault();
           void navigate(navigationKeys[key]);
-          return;
         }
+        return;
       } else chord.current = 0;
+      if (event.key === '?') {
+        event.preventDefault();
+        void navigate('/settings/keyboard-shortcuts');
+        return;
+      }
       if (key === 'g') {
         chord.current = Date.now();
         return;
@@ -90,6 +90,7 @@ export function useKeyboardShortcuts() {
         );
         return;
       }
+      if (key !== 'j' && key !== 'k' && event.key !== 'Enter') return;
       const cards = [
         ...board.querySelectorAll<HTMLElement>('[data-shortcut-card]'),
       ].filter(visible);
@@ -125,7 +126,14 @@ export function useKeyboardShortcuts() {
         );
       }
     };
+    const resetChord = () => {
+      chord.current = 0;
+    };
     document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
+    document.addEventListener('pointerdown', resetChord);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('pointerdown', resetChord);
+    };
   }, [location.hash, location.pathname, location.search, navigate]);
 }
