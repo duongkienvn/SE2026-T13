@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { StarterBoardProvisioningModule } from '../boards/starter-board-provisioning.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -36,6 +37,7 @@ import { RealtimeAccessModule } from '../../realtime/realtime-access.module';
     ConfigModule,
     MailModule,
     WorkspacesModule,
+    StarterBoardProvisioningModule,
     RealtimeAccessModule,
     TypeOrmModule.forFeature([
       User,

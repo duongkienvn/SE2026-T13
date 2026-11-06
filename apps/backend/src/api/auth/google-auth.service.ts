@@ -11,6 +11,7 @@ import { LoginResponseDto } from './dto/login-response.dto';
 import { LinkedProvidersDto } from './dto/linked-providers.dto';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { WelcomeOnboardingService } from './welcome-onboarding.service';
+import { StarterBoardProvisioningService } from '../boards/starter-board-provisioning.service';
 
 @Injectable()
 export class GoogleAuthService {
@@ -21,6 +22,7 @@ export class GoogleAuthService {
     private readonly verification: EmailVerificationService,
     private readonly workspaces: WorkspacesService,
     private readonly welcome: WelcomeOnboardingService,
+    private readonly starter: StarterBoardProvisioningService,
   ) {}
 
   async signIn(credential: string): Promise<LoginResponseDto> {
@@ -57,7 +59,11 @@ export class GoogleAuthService {
       await identities.save(
         identities.create({ userId: user.id, googleSub: profile.sub }),
       );
-      await this.workspaces.ensurePersonalWorkspace(user.id, manager);
+      const personal = await this.workspaces.ensurePersonalWorkspace(
+        user.id,
+        manager,
+      );
+      await this.starter.provision(manager, user, personal.id);
       await this.welcome.enroll(manager, user);
       return { user, created: true };
     });
