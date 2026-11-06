@@ -135,6 +135,35 @@ export async function checkFiltering({
   };
   assert.deepEqual(ids(await query(sortedTitle)), [c.id]);
   await api('get', `${path}?sortBy=position`).expect(400);
+  await api('get', `${path}?sortDirection=sideways`).expect(400);
+  const tieCards = await Promise.all(
+    [1, 2, 3].map(() =>
+      service.create(owner.id, board.id, {
+        columnId: column.id,
+        title: 'Sorting tie',
+        dueDate: '2030-01-01T00:00:00Z',
+      }),
+    ),
+  );
+  const tieIds = tieCards.map((card) => card.id).sort();
+  for (const sortBy of ['title', 'dueDate']) {
+    for (const sortDirection of ['asc', 'desc']) {
+      for (let page = 1; page <= tieIds.length; page++) {
+        assert.deepEqual(
+          ids(
+            await query({
+              q: 'Sorting tie',
+              sortBy,
+              sortDirection,
+              limit: '1',
+              page: String(page),
+            }),
+          ),
+          [tieIds[page - 1]],
+        );
+      }
+    }
+  }
   assert.deepEqual(
     ids(
       await query({
