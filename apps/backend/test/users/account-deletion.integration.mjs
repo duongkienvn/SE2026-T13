@@ -150,7 +150,9 @@ try {
   }
   const migrations = source.migrations;
   source.migrations = migrations.filter(
-    (m) => !m.name.startsWith('AccountDeletion'),
+    (m) =>
+      !m.name.startsWith('AccountDeletion') &&
+      !m.name.startsWith('StarterBoardOnboarding'),
   );
   await source.runMigrations();
   const hash = await argon2.hash(password, { type: argon2.argon2id });
@@ -162,9 +164,9 @@ try {
   const before = await source.query('SELECT * FROM users');
   const fks =
     await source.query(`SELECT conrelid::regclass::text AS source,conname,pg_get_constraintdef(oid) AS definition FROM pg_constraint
-    WHERE contype='f' ORDER BY conname`);
+    WHERE contype='f' AND conrelid::regclass::text <> 'starter_board_provisions' ORDER BY conname`);
   source.migrations = migrations;
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 2);
   assert.deepEqual(
     await source.query('SELECT id,email,display_name,password_hash FROM users'),
     before.map(({ id, email, display_name, password_hash }) => ({
@@ -180,12 +182,15 @@ try {
   );
   assert.deepEqual(
     await source.query(
-      `SELECT conrelid::regclass::text AS source,conname,pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE contype='f' ORDER BY conname`,
+      `SELECT conrelid::regclass::text AS source,conname,pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE contype='f' AND conrelid::regclass::text <> 'starter_board_provisions' ORDER BY conname`,
     ),
     fks,
   );
   assert.deepEqual(await source.runMigrations(), []);
-  await assert.rejects(source.undoLastMigration(), /forward-only/);
+  await assert.rejects(
+    migrations.find((m) => m.name.startsWith('AccountDeletion')).down(),
+    /forward-only/,
+  );
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries,
     [],

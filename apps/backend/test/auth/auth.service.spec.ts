@@ -1,4 +1,5 @@
 import { Inject } from '@nestjs/common';
+import { StarterBoardProvisioningService } from '../../src/api/boards/starter-board-provisioning.service';
 import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
@@ -51,6 +52,7 @@ describe('AuthService', () => {
   const workspaces = { ensurePersonalWorkspace: jest.fn() };
   const verification = { send: jest.fn() };
   const welcome = { enroll: jest.fn() };
+  const starter = { provision: jest.fn() };
   const manager = { getRepository: jest.fn() };
 
   beforeEach(async () => {
@@ -66,6 +68,7 @@ describe('AuthService', () => {
       .mockResolvedValue({ id: 'personal' });
     verification.send.mockReset().mockResolvedValue(undefined);
     welcome.enroll.mockReset().mockResolvedValue(undefined);
+    starter.provision.mockReset().mockResolvedValue(null);
     jwt = new JwtService({
       secret: JWT_SECRET,
       signOptions: {
@@ -83,6 +86,7 @@ describe('AuthService', () => {
     const module = await Test.createTestingModule({
       providers: [
         AuthService,
+        { provide: StarterBoardProvisioningService, useValue: starter },
         { provide: EmailVerificationService, useValue: verification },
         { provide: WorkspacesService, useValue: workspaces },
         { provide: WelcomeOnboardingService, useValue: welcome },
@@ -122,6 +126,7 @@ describe('AuthService', () => {
     expect(result.email).toBe(input.email);
     expect(user.emailVerifiedAt).toBeNull();
     expect(welcome.enroll).toHaveBeenCalledWith(manager, user);
+    expect(starter.provision).toHaveBeenCalledWith(manager, user, 'personal');
     expect(workspaces.ensurePersonalWorkspace).toHaveBeenCalledWith(
       user.id,
       manager,

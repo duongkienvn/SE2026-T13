@@ -91,6 +91,9 @@ export function boardEventsMemorySource() {
         async count(options) {
           return (await this.find(options)).length;
         },
+        async existsBy(where) {
+          return [...rows.values()].some((row) => matches(row, where));
+        },
         async delete(where) {
           let affected = 0;
           for (const [id, row] of rows)

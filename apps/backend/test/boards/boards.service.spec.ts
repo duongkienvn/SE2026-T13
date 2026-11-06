@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { Inject } from '@nestjs/common';
+import { StarterBoardProvision } from '../../src/api/boards/entities/starter-board-provision.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { BoardsService } from '../../src/api/boards/boards.service';
 import { Board } from '../../src/api/boards/entities/board.entity';
@@ -42,10 +43,15 @@ describe('BoardsService', () => {
   const txBoards = { create: jest.fn(), save: jest.fn(), findOne: jest.fn() };
   const txMembers = { create: jest.fn(), save: jest.fn(), findOne: jest.fn() };
   const txWorkspace = { findOneByOrFail: jest.fn() };
+  const starter = { existsBy: jest.fn() };
   const manager = { getRepository: jest.fn() };
   const transaction = jest.fn();
   const boards = {
-    manager: { transaction, getRepository: () => txWorkspace },
+    manager: {
+      transaction,
+      getRepository: (entity: unknown) =>
+        entity === StarterBoardProvision ? starter : txWorkspace,
+    },
     createQueryBuilder: jest.fn(),
   };
   const readBoard = {
@@ -67,6 +73,7 @@ describe('BoardsService', () => {
 
   beforeEach(async () => {
     jest.resetAllMocks();
+    starter.existsBy.mockResolvedValue(false);
     board = boardFixture();
     readBoard.getOne.mockResolvedValue(null);
     readBoard.where.mockReturnThis();
@@ -98,7 +105,9 @@ describe('BoardsService', () => {
         ? txBoards
         : entity === Workspace
           ? txWorkspace
-          : txMembers,
+          : entity === StarterBoardProvision
+            ? starter
+            : txMembers,
     );
     transaction.mockImplementation(async (callback) => callback(manager));
     const module = await Test.createTestingModule({
@@ -308,8 +317,48 @@ describe('BoardsService', () => {
       });
       expect(result.currentUserRole).toBe(role);
       expect(result.isArchived).toBe(true);
+      expect(result.isStarterBoard).toBe(false);
+      if (role === BoardMemberRole.MEMBER)
+        expect(starter.existsBy).not.toHaveBeenCalled();
     },
   );
+
+  it.each(['update', 'unchanged update', 'archive', 'restore'] as const)(
+    'preserves the eligible owner starter flag after %s',
+    async (operation) => {
+      txBoards.findOne.mockResolvedValue(board);
+      txMembers.findOne.mockResolvedValue({ role: BoardMemberRole.OWNER });
+      starter.existsBy.mockResolvedValue(true);
+      board.isArchived = operation === 'restore';
+
+      const result =
+        operation === 'archive'
+          ? await service.archive(USER_ID, BOARD_ID)
+          : operation === 'restore'
+            ? await service.restore(USER_ID, BOARD_ID)
+            : await service.update(USER_ID, BOARD_ID, {
+                name: operation === 'update' ? 'Changed sample' : board.name,
+              });
+
+      expect(result.isStarterBoard).toBe(true);
+      expect(manager.getRepository).toHaveBeenCalledWith(StarterBoardProvision);
+      expect(starter.existsBy).toHaveBeenCalledWith({
+        boardId: BOARD_ID,
+        userId: USER_ID,
+      });
+    },
+  );
+
+  it('does not mark an update as a starter board without a provision for that owner', async () => {
+    txBoards.findOne.mockResolvedValue(board);
+    txMembers.findOne.mockResolvedValue({ role: BoardMemberRole.OWNER });
+    const result = await service.update(USER_ID, BOARD_ID, { name: 'Changed' });
+    expect(result.isStarterBoard).toBe(false);
+    expect(starter.existsBy).toHaveBeenCalledWith({
+      boardId: BOARD_ID,
+      userId: USER_ID,
+    });
+  });
 
   it('conceals missing and inaccessible boards', async () => {
     members.findOne.mockResolvedValue(null);

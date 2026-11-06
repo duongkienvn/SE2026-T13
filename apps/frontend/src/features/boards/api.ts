@@ -6,6 +6,32 @@ import {
   type Page,
 } from '../../lib/api-client';
 import type { Board, CreateBoardRequest, UpdateBoardRequest } from './types';
+import type {
+  RemoveStarterBoardRequest,
+  StarterBoardRemovalPreview,
+} from '@kanban/shared';
+
+export function getSampleBoardRemoval(
+  accessToken: string,
+  boardId: string,
+  signal?: AbortSignal,
+): Promise<StarterBoardRemovalPreview> {
+  return apiRequest(`/boards/${encodeURIComponent(boardId)}/sample-removal`, {
+    accessToken,
+    signal,
+  });
+}
+export function removeSampleBoard(
+  accessToken: string,
+  boardId: string,
+  input: RemoveStarterBoardRequest,
+): Promise<void> {
+  return apiRequest(`/boards/${encodeURIComponent(boardId)}/sample-removal`, {
+    accessToken,
+    method: 'DELETE',
+    body: input,
+  });
+}
 
 export function listBoards(
   accessToken: string,

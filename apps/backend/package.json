@@ -50,6 +50,7 @@
     "test:task-notifications:database": "pnpm build && node test/notifications/task-notifications.integration.mjs",
     "test:exports:database": "pnpm build && node test/exports/exports.integration.mjs",
     "test:email-change:database": "pnpm build && node test/auth/email-change.integration.mjs",
+    "test:starter-board:database": "pnpm build && node test/boards/starter-board.integration.mjs",
     "test:account-deletion:database": "pnpm build && node test/users/account-deletion.integration.mjs"
   },
   "dependencies": {

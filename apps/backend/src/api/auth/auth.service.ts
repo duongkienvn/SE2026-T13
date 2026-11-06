@@ -21,6 +21,7 @@ import { RegisterRequestDto } from './dto/register-request.dto';
 import { EmailVerificationService } from './email-verification.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { WelcomeOnboardingService } from './welcome-onboarding.service';
+import { StarterBoardProvisioningService } from '../boards/starter-board-provisioning.service';
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -47,6 +48,7 @@ export class AuthService {
     private readonly verification: EmailVerificationService,
     private readonly workspaces: WorkspacesService,
     private readonly welcome: WelcomeOnboardingService,
+    private readonly starter: StarterBoardProvisioningService,
   ) {}
 
   async register(input: RegisterRequestDto): Promise<UserResponseDto> {
@@ -78,7 +80,11 @@ export class AuthService {
             emailVerifiedAt: null,
           }),
         );
-        await this.workspaces.ensurePersonalWorkspace(user.id, manager);
+        const personal = await this.workspaces.ensurePersonalWorkspace(
+          user.id,
+          manager,
+        );
+        await this.starter.provision(manager, user, personal.id);
         await this.welcome.enroll(manager, user);
         return user;
       });

@@ -15,6 +15,7 @@ import { BoardColumn } from '../../src/api/columns/entities/board-column.entity'
 import { ColumnsController } from '../../src/api/columns/columns.controller';
 import { ColumnsService } from '../../src/api/columns/columns.service';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { StarterBoardProvisioningService } from '../../src/api/boards/starter-board-provisioning.service';
 import { WelcomeOnboardingService } from '../../src/api/auth/welcome-onboarding.service';
 import { WorkspacesService } from '../../src/api/workspaces/workspaces.service';
 import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
@@ -81,6 +82,10 @@ describe('columns HTTP contract', () => {
       controllers: [ColumnsController],
       providers: [
         AuthService,
+        {
+          provide: StarterBoardProvisioningService,
+          useValue: { provision: jest.fn() },
+        },
         { provide: WelcomeOnboardingService, useValue: {} },
         {
           provide: WorkspacesService,
