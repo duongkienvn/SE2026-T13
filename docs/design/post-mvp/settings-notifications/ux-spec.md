@@ -5,7 +5,7 @@
 
 ## 1. Account Settings navigation
 
-- Desktop: profile-focused page with narrow section rail and content form. Sections: Profile, Appearance, Notifications, Preferences, Security, Connected Accounts, Data & Privacy.
+- Desktop: profile-focused page with narrow section rail and content form. Sections: Profile, Appearance, Notifications, Preferences, Security, Connected Accounts, Data & Privacy, then Keyboard shortcuts (P5-06).
 - Mobile: section list then full-width detail page, visible Back to Settings behavior; preserve App Shell mobile navigation consistency.
 - `/settings` redirects to `/settings/profile`; preserve `/profile` as an alias/redirect when new settings shipped.
 - Existing profile and connected Google-account logic is reused, not duplicated. Unsaved edits have explicit save/cancel, error validation and retry.

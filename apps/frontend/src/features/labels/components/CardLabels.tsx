@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from 'react';
+import { useId, useRef, useState, type FormEvent } from 'react';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
 import { TextField } from '../../../components/TextField';
@@ -161,181 +161,214 @@ function LabelPicker({
     ? labels.filter((label) => label.name.toLowerCase().includes(query))
     : labels;
 
-  if (mode.type === 'create')
+  const content = () => {
+    if (mode.type === 'create')
+      return (
+        <LabelForm
+          submitLabel="Create label"
+          pending={create.isPending}
+          onCancel={() => setMode({ type: 'list' })}
+          onSubmit={async (input) => {
+            const label = await create.mutateAsync(input);
+            setMode({ type: 'list' });
+            // A label made from a card is meant for that card.
+            if (canAssign)
+              toggle.mutate(
+                { labelId: label.id, assign: true },
+                { onError: (failure) => setError(labelErrorMessage(failure)) },
+              );
+          }}
+        />
+      );
+    if (mode.type === 'edit')
+      return (
+        <LabelForm
+          initial={mode.label}
+          submitLabel="Save label"
+          pending={update.isPending}
+          onCancel={() => setMode({ type: 'list' })}
+          onSubmit={async (input) => {
+            await update.mutateAsync({ labelId: mode.label.id, ...input });
+            setMode({ type: 'list' });
+          }}
+        />
+      );
+    if (mode.type === 'delete')
+      return (
+        <div
+          role="group"
+          aria-label={`Delete ${mode.label.name}`}
+          className="space-y-3 rounded-lg border border-danger/30 bg-danger/5 p-3"
+        >
+          <p className="text-sm text-ink">
+            Delete “{mode.label.name}” from this board? It is removed from every
+            card that uses it. To take it off this card only, untick it instead.
+          </p>
+          {error && <Alert variant="error">{error}</Alert>}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="danger"
+              size="sm"
+              disabled={remove.isPending}
+              onClick={() =>
+                remove.mutate(mode.label.id, {
+                  onSuccess: () => setMode({ type: 'list' }),
+                  onError: (failure) => setError(labelErrorMessage(failure)),
+                })
+              }
+            >
+              {remove.isPending ? 'Deleting…' : 'Delete label'}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              autoFocus
+              disabled={remove.isPending}
+              onClick={() => {
+                setError(undefined);
+                setMode({ type: 'list' });
+              }}
+            >
+              Keep label
+            </Button>
+          </div>
+        </div>
+      );
+
     return (
-      <LabelForm
-        submitLabel="Create label"
-        pending={create.isPending}
-        onCancel={() => setMode({ type: 'list' })}
-        onSubmit={async (input) => {
-          const label = await create.mutateAsync(input);
-          setMode({ type: 'list' });
-          // A label made from a card is meant for that card.
-          if (canAssign)
-            toggle.mutate(
-              { labelId: label.id, assign: true },
-              { onError: (failure) => setError(labelErrorMessage(failure)) },
-            );
-        }}
-      />
-    );
-  if (mode.type === 'edit')
-    return (
-      <LabelForm
-        initial={mode.label}
-        submitLabel="Save label"
-        pending={update.isPending}
-        onCancel={() => setMode({ type: 'list' })}
-        onSubmit={async (input) => {
-          await update.mutateAsync({ labelId: mode.label.id, ...input });
-          setMode({ type: 'list' });
-        }}
-      />
-    );
-  if (mode.type === 'delete')
-    return (
-      <div
-        role="group"
-        aria-label={`Delete ${mode.label.name}`}
-        className="space-y-3 rounded-lg border border-danger/30 bg-danger/5 p-3"
-      >
-        <p className="text-sm text-ink">
-          Delete “{mode.label.name}” from this board? It is removed from every
-          card that uses it. To take it off this card only, untick it instead.
-        </p>
+      <div className="space-y-3 rounded-lg border border-line p-3">
+        <TextField
+          label="Search labels"
+          type="search"
+          autoFocus
+          value={search}
+          onChange={(event) => setSearch(event.currentTarget.value)}
+        />
         {error && <Alert variant="error">{error}</Alert>}
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="danger"
-            size="sm"
-            disabled={remove.isPending}
-            onClick={() =>
-              remove.mutate(mode.label.id, {
-                onSuccess: () => setMode({ type: 'list' }),
-                onError: (failure) => setError(labelErrorMessage(failure)),
-              })
-            }
-          >
-            {remove.isPending ? 'Deleting…' : 'Delete label'}
-          </Button>
+        {catalog.isPending ? (
+          <p role="status" className="text-sm text-muted">
+            Loading labels…
+          </p>
+        ) : catalog.isError ? (
+          <Alert variant="error">
+            We couldn’t load this board’s labels.{' '}
+            <button
+              type="button"
+              className="font-medium underline"
+              onClick={() => void catalog.refetch()}
+            >
+              Try again
+            </button>
+          </Alert>
+        ) : shown.length === 0 ? (
+          <p className="text-sm text-muted">
+            {labels.length === 0
+              ? 'This board has no labels yet.'
+              : 'No labels match your search.'}
+          </p>
+        ) : (
+          <ul aria-label="Board labels" className="space-y-1">
+            {shown.map((label) => (
+              <li key={label.id} className="flex items-center gap-1">
+                <label className="flex min-h-10 min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-md px-1 hover:bg-app has-disabled:cursor-default">
+                  <input
+                    type="checkbox"
+                    className="size-4 shrink-0 accent-[var(--color-primary-solid)]"
+                    checked={assignedIds.has(label.id)}
+                    disabled={!canAssign || toggle.isPending}
+                    onChange={(event) => {
+                      setError(undefined);
+                      toggle.mutate(
+                        {
+                          labelId: label.id,
+                          assign: event.currentTarget.checked,
+                        },
+                        {
+                          onError: (failure) =>
+                            setError(labelErrorMessage(failure)),
+                        },
+                      );
+                    }}
+                  />
+                  <LabelBadge label={label} />
+                </label>
+                <button
+                  type="button"
+                  aria-label={`Edit label ${label.name}`}
+                  className={iconButton}
+                  onClick={() => setMode({ type: 'edit', label })}
+                >
+                  <PencilIcon aria-hidden="true" className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Delete label ${label.name}`}
+                  className={`${iconButton} hover:text-danger`}
+                  onClick={() => setMode({ type: 'delete', label })}
+                >
+                  <TrashIcon aria-hidden="true" className="size-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {labels.length < MAX_BOARD_LABELS ? (
+            <button
+              type="button"
+              className={sectionActionClass}
+              onClick={() => {
+                setError(undefined);
+                setMode({ type: 'create' });
+              }}
+            >
+              <PlusIcon aria-hidden="true" className="size-4" />
+              Create label
+            </button>
+          ) : (
+            <p className="text-[13px] text-muted">
+              This board has the maximum of {MAX_BOARD_LABELS} labels.
+            </p>
+          )}
           <Button
             variant="secondary"
             size="sm"
-            disabled={remove.isPending}
-            onClick={() => {
-              setError(undefined);
-              setMode({ type: 'list' });
-            }}
+            className="ml-auto"
+            onClick={onDone}
           >
-            Keep label
+            Done
           </Button>
         </div>
       </div>
     );
+  };
 
   return (
-    <div className="space-y-3 rounded-lg border border-line p-3">
-      <TextField
-        label="Search labels"
-        type="search"
-        value={search}
-        onChange={(event) => setSearch(event.currentTarget.value)}
-      />
-      {error && <Alert variant="error">{error}</Alert>}
-      {catalog.isPending ? (
-        <p role="status" className="text-sm text-muted">
-          Loading labels…
-        </p>
-      ) : catalog.isError ? (
-        <Alert variant="error">
-          We couldn’t load this board’s labels.{' '}
-          <button
-            type="button"
-            className="font-medium underline"
-            onClick={() => void catalog.refetch()}
-          >
-            Try again
-          </button>
-        </Alert>
-      ) : shown.length === 0 ? (
-        <p className="text-sm text-muted">
-          {labels.length === 0
-            ? 'This board has no labels yet.'
-            : 'No labels match your search.'}
-        </p>
-      ) : (
-        <ul aria-label="Board labels" className="space-y-1">
-          {shown.map((label) => (
-            <li key={label.id} className="flex items-center gap-1">
-              <label className="flex min-h-10 min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-md px-1 hover:bg-app has-disabled:cursor-default">
-                <input
-                  type="checkbox"
-                  className="size-4 shrink-0 accent-[var(--color-primary-solid)]"
-                  checked={assignedIds.has(label.id)}
-                  disabled={!canAssign || toggle.isPending}
-                  onChange={(event) => {
-                    setError(undefined);
-                    toggle.mutate(
-                      {
-                        labelId: label.id,
-                        assign: event.currentTarget.checked,
-                      },
-                      {
-                        onError: (failure) =>
-                          setError(labelErrorMessage(failure)),
-                      },
-                    );
-                  }}
-                />
-                <LabelBadge label={label} />
-              </label>
-              <button
-                type="button"
-                aria-label={`Edit label ${label.name}`}
-                className={iconButton}
-                onClick={() => setMode({ type: 'edit', label })}
-              >
-                <PencilIcon aria-hidden="true" className="size-4" />
-              </button>
-              <button
-                type="button"
-                aria-label={`Delete label ${label.name}`}
-                className={`${iconButton} hover:text-danger`}
-                onClick={() => setMode({ type: 'delete', label })}
-              >
-                <TrashIcon aria-hidden="true" className="size-4" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="flex flex-wrap items-center gap-2">
-        {labels.length < MAX_BOARD_LABELS ? (
-          <button
-            type="button"
-            className={sectionActionClass}
-            onClick={() => {
-              setError(undefined);
-              setMode({ type: 'create' });
-            }}
-          >
-            <PlusIcon aria-hidden="true" className="size-4" />
-            Create label
-          </button>
-        ) : (
-          <p className="text-[13px] text-muted">
-            This board has the maximum of {MAX_BOARD_LABELS} labels.
-          </p>
-        )}
-        <Button
-          variant="secondary"
-          size="sm"
-          className="ml-auto"
-          onClick={onDone}
-        >
-          Done
-        </Button>
-      </div>
+    <div
+      onKeyDown={(event) => {
+        if (
+          event.key !== 'Escape' ||
+          event.nativeEvent.isComposing ||
+          event.keyCode === 229
+        )
+          return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (
+          create.isPending ||
+          update.isPending ||
+          remove.isPending ||
+          toggle.isPending
+        )
+          return;
+        if (mode.type === 'list') onDone();
+        else {
+          setError(undefined);
+          setMode({ type: 'list' });
+        }
+      }}
+    >
+      {content()}
     </div>
   );
 }
@@ -370,6 +403,7 @@ export function CardLabels({
 }) {
   const labels = useCardLabels(boardId, cardId);
   const [picking, setPicking] = useState(false);
+  const pickerButton = useRef<HTMLButtonElement>(null);
   const assigned = labels.data?.labels ?? [];
 
   return (
@@ -392,10 +426,14 @@ export function CardLabels({
             cardId={cardId}
             assigned={assigned}
             canAssign={!cardReadOnly}
-            onDone={() => setPicking(false)}
+            onDone={() => {
+              setPicking(false);
+              requestAnimationFrame(() => pickerButton.current?.focus());
+            }}
           />
         ) : (
           <button
+            ref={pickerButton}
             type="button"
             className={sectionActionClass}
             onClick={() => setPicking(true)}

@@ -57,6 +57,61 @@ describe('label colors', () => {
 });
 
 describe('Card Detail labels', () => {
+  it('uses Escape to leave label editing before closing the Card Detail', async () => {
+    const api = labelsApi([label('l-bug', 'Bug')], []);
+    const { dialog } = openCardDetail({ extra: api.extra });
+    const view = await dialog();
+    const opener = await within(view).findByRole('button', {
+      name: 'Edit labels',
+    });
+    fireEvent.click(opener);
+    expect(document.activeElement).toBe(
+      within(view).getByLabelText('Search labels'),
+    );
+    fireEvent.click(
+      await within(view).findByRole('button', { name: 'Edit label Bug' }),
+    );
+    expect(document.activeElement).toBe(
+      within(view).getByLabelText('Label name'),
+    );
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(
+      await within(view).findByRole('list', { name: 'Board labels' }),
+    ).toBeTruthy();
+    const search = within(view).getByLabelText('Search labels');
+    expect(document.activeElement).toBe(search);
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    await waitFor(() =>
+      expect(
+        within(view).queryByRole('list', { name: 'Board labels' }),
+      ).toBeNull(),
+    );
+    expect(view.isConnected).toBe(true);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(view).getByRole('button', { name: 'Edit labels' }),
+      ),
+    );
+  });
+  it('focuses the safe choice in label deletion and Escape returns to the picker', async () => {
+    const api = labelsApi([label('l-bug', 'Bug')], []);
+    const { dialog } = openCardDetail({ extra: api.extra });
+    const view = await dialog();
+    fireEvent.click(
+      await within(view).findByRole('button', { name: 'Edit labels' }),
+    );
+    fireEvent.click(
+      await within(view).findByRole('button', { name: 'Delete label Bug' }),
+    );
+    expect(document.activeElement).toBe(
+      within(view).getByRole('button', { name: 'Keep label' }),
+    );
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(document.activeElement).toBe(
+      within(view).getByLabelText('Search labels'),
+    );
+    expect(view.isConnected).toBe(true);
+  });
   it('shows assigned labels as named badges in the header and rail', async () => {
     const bug = label('l-bug', 'Bug', '#DC2626');
     const api = labelsApi([bug], [bug]);
