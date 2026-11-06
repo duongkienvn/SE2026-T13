@@ -16,7 +16,13 @@ type Handler = MockResponse | (() => MockResponse | Promise<MockResponse>);
 
 function openBoards(handlers: Record<string, Handler>) {
   storeSession();
-  const calls = mockApi({ 'GET /users/me': ok(testUser), ...handlers });
+  const calls = mockApi({
+    'GET /users/me': ok(testUser),
+    'GET /boards?page=1&limit=1&status=archived&sort=updatedAt': okPage([], {
+      limit: 1,
+    }),
+    ...handlers,
+  });
   renderApp('/boards');
   return calls;
 }
@@ -39,7 +45,7 @@ describe('create board', () => {
     });
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Create board' }),
+      await screen.findByRole('button', { name: 'Create your first board' }),
     );
     const dialog = screen.getByRole('dialog', { name: 'Create a new board' });
     const name = within(dialog).getByLabelText('Board name');
@@ -87,7 +93,7 @@ describe('create board', () => {
     const calls = openBoards({ [LIST]: okPage([]) });
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Create board' }),
+      await screen.findByRole('button', { name: 'Create your first board' }),
     );
     const dialog = screen.getByRole('dialog');
     fireEvent.change(within(dialog).getByLabelText('Board name'), {
@@ -116,7 +122,7 @@ describe('create board', () => {
     });
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Create board' }),
+      await screen.findByRole('button', { name: 'Create your first board' }),
     );
     const dialog = screen.getByRole('dialog');
     fireEvent.change(within(dialog).getByLabelText('Board name'), {
@@ -155,6 +161,8 @@ describe('edit and archive board', () => {
     const calls = openBoards({
       [LIST]: () => okPage(current.isArchived ? [] : [current]),
       [archivedList]: () => okPage(current.isArchived ? [current] : []),
+      'GET /boards?page=1&limit=1&status=archived&sort=updatedAt': () =>
+        okPage(current.isArchived ? [current] : [], { limit: 1 }),
       [`POST /boards/${board.id}/archive`]: () => {
         current = {
           ...current,
@@ -182,11 +190,13 @@ describe('edit and archive board', () => {
       }),
     );
     await screen.findByText('Board “Round trip” archived.');
-    await screen.findByRole('heading', { name: 'No boards yet' });
-    expect(screen.queryByRole('button', { name: 'Create Board' })).toBeNull();
+    await screen.findByRole('heading', { name: 'No active boards' });
     expect(
-      screen.getAllByRole('button', { name: 'Create board' }),
+      screen.getAllByRole('button', { name: 'Create Board' }),
     ).toHaveLength(1);
+    expect(
+      screen.queryByRole('button', { name: 'Create your first board' }),
+    ).toBeNull();
 
     fireEvent.change(screen.getByRole('combobox', { name: 'Board status' }), {
       target: { value: 'archived' },

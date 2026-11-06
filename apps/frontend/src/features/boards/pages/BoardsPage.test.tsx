@@ -76,13 +76,17 @@ describe('server-backed Board directory', () => {
       'GET /users/me': ok(testUser),
       [active]: okPage([], { limit: 20 }),
       [archived]: okPage([board], { limit: 20 }),
+      'GET /boards?page=1&limit=1&status=archived&sort=updatedAt': okPage(
+        [board],
+        { limit: 1 },
+      ),
       'GET /boards?page=1&limit=20&status=archived&sort=name': okPage([board], {
         limit: 20,
       }),
       [sorted]: okPage([], { limit: 20 }),
     });
     renderApp('/boards');
-    await screen.findByRole('heading', { name: 'No boards yet' });
+    await screen.findByRole('heading', { name: 'No active boards' });
     fireEvent.change(screen.getByRole('combobox', { name: 'Sort boards' }), {
       target: { value: 'name-asc' },
     });
@@ -103,6 +107,9 @@ describe('server-backed Board directory', () => {
     storeSession();
     let attempts = 0;
     mockApi({
+      'GET /boards?page=1&limit=1&status=archived&sort=updatedAt': okPage([], {
+        limit: 1,
+      }),
       'GET /users/me': ok(testUser),
       [active]: () =>
         ++attempts === 1 ? fail(503, 'UNAVAILABLE') : okPage([], { limit: 20 }),
@@ -110,6 +117,8 @@ describe('server-backed Board directory', () => {
     renderApp('/boards');
     await screen.findByRole('alert');
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
-    await screen.findByRole('heading', { name: 'No boards yet' });
+    await screen.findByRole('heading', {
+      name: 'Your next big idea starts here',
+    });
   });
 });

@@ -19,6 +19,7 @@ import {
 } from '../components/BoardFormDialog';
 import { ArchiveBoardDialog } from '../components/ArchiveBoardDialog';
 import { RestoreBoardDialog } from '../components/RestoreBoardDialog';
+import { BoardsEmptyState } from '../components/BoardsEmptyState';
 import type { Board } from '../types';
 
 const features = {
@@ -84,6 +85,46 @@ export function BoardDiscoveryPage() {
     },
     retry: false,
   });
+  // Active results alone cannot distinguish an empty account from archived-only
+  // boards. Check a single archived result only when this distinction is needed.
+  const checkingEmptyAccount =
+    result.isSuccess &&
+    !control.debouncing &&
+    !filters.search &&
+    !filters.view &&
+    filters.status === 'active' &&
+    result.data.meta.total === 0;
+  const archivedBoards = useQuery({
+    queryKey: [
+      'boards',
+      'list',
+      user?.id,
+      scope.generation,
+      'empty-state',
+      'archived',
+    ],
+    enabled: !!user && checkingEmptyAccount,
+    queryFn: ({ signal }) =>
+      runAuthorized((accessToken) =>
+        apiRequestPage<Board>(
+          '/boards?page=1&limit=1&status=archived&sort=updatedAt',
+          { accessToken, signal },
+        ),
+      ),
+    retry: false,
+  });
+  const emptyAccount =
+    checkingEmptyAccount &&
+    !result.isFetching &&
+    archivedBoards.isSuccess &&
+    !archivedBoards.isFetching &&
+    archivedBoards.data.meta.total === 0;
+  const checkingArchived =
+    checkingEmptyAccount &&
+    (result.isFetching ||
+      archivedBoards.isPending ||
+      archivedBoards.isFetching);
+  const archivedCheckFailed = checkingEmptyAccount && archivedBoards.isError;
   useEffect(() => {
     if (!result.isSuccess || control.debouncing) return;
     const lastPage = Math.max(1, result.data.meta.totalPages);
@@ -96,7 +137,7 @@ export function BoardDiscoveryPage() {
     control.page,
   ]);
   return (
-    <PageContainer>
+    <PageContainer fill={emptyAccount}>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-ink">
@@ -108,32 +149,46 @@ export function BoardDiscoveryPage() {
         </div>
         {filters.status === 'active' &&
           result.isSuccess &&
-          result.data.meta.total > 0 && (
+          (result.data.meta.total > 0 ||
+            (checkingEmptyAccount &&
+              archivedBoards.data &&
+              archivedBoards.data.meta.total > 0)) && (
             <Button onClick={() => setCreating(true)}>Create Board</Button>
           )}
       </div>
-      <WorkspaceBoardsToolbar
-        control={control}
-        features={features}
-        available
-        personal
-      />
+      {!emptyAccount && (
+        <WorkspaceBoardsToolbar
+          control={control}
+          features={features}
+          available
+          personal
+        />
+      )}
       {notice && (
         <div className="mt-4">
           <Alert variant="success">{notice}</Alert>
         </div>
       )}
-      {result.isPending || control.debouncing ? (
+      {result.isPending || control.debouncing || checkingArchived ? (
         <p role="status" className="mt-6">
           Loading boards…
         </p>
-      ) : result.isError ? (
+      ) : result.isError || archivedCheckFailed ? (
         <div role="alert" className="mt-6">
           Boards unavailable.{' '}
-          <button type="button" onClick={() => void result.refetch()}>
+          <button
+            type="button"
+            onClick={() =>
+              void (archivedCheckFailed
+                ? archivedBoards.refetch()
+                : result.refetch())
+            }
+          >
             Retry
           </button>
         </div>
+      ) : emptyAccount ? (
+        <BoardsEmptyState onCreate={() => setCreating(true)} />
       ) : (
         <>
           {result.data.items.length ? (
@@ -179,21 +234,41 @@ export function BoardDiscoveryPage() {
                       ? 'No matching boards'
                       : filters.status === 'archived'
                         ? 'No archived boards'
-                        : 'No boards yet'}
+                        : 'No active boards'}
               </h2>
               {!filters.view &&
                 !filters.search &&
                 filters.status === 'active' && (
-                  <Button className="mt-4" onClick={() => setCreating(true)}>
-                    Create board
-                  </Button>
+                  <>
+                    <p className="mt-2 text-sm text-muted">
+                      Your archived boards are available in the status filter.
+                    </p>
+                    <Button
+                      variant="secondary"
+                      className="mt-4"
+                      onClick={() => control.status('archived')}
+                    >
+                      View archived boards
+                    </Button>
+                  </>
                 )}
+              {control.filtered && (
+                <Button
+                  variant="secondary"
+                  className="mt-4"
+                  onClick={control.clear}
+                >
+                  Reset filters
+                </Button>
+              )}
             </div>
           )}
-          <p className="mt-4 text-sm text-muted" role="status">
-            {result.data.meta.total} accessible{' '}
-            {result.data.meta.total === 1 ? 'board' : 'boards'}
-          </p>
+          {result.data.meta.total > 0 && (
+            <p className="mt-4 text-sm text-muted" role="status">
+              {result.data.meta.total} accessible{' '}
+              {result.data.meta.total === 1 ? 'board' : 'boards'}
+            </p>
+          )}
           <Pagination
             label="Board discovery pages"
             page={result.data.meta.page}
