@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert } from '../../../components/Alert';
 import { CloseIcon, PlusIcon, UsersIcon } from '../../../components/icons';
 import { isApiError } from '../../../lib/api-client';
@@ -35,6 +35,7 @@ export function CardAssignees({ card, members, readOnly }: CardAssigneesProps) {
   const assign = useAssignCard(card.boardId, card.id);
   const unassign = useUnassignCard(card.boardId, card.id);
   const [picking, setPicking] = useState(false);
+  const pickerButton = useRef<HTMLButtonElement>(null);
   const busy = assign.isPending || unassign.isPending;
   const error = assigneeError(assign.error ?? unassign.error);
 
@@ -50,7 +51,22 @@ export function CardAssignees({ card, members, readOnly }: CardAssigneesProps) {
   };
 
   return (
-    <section aria-labelledby={`assignees-${card.id}`} className="space-y-2">
+    <section
+      aria-labelledby={`assignees-${card.id}`}
+      className="space-y-2"
+      onKeyDown={(event) => {
+        if (
+          picking &&
+          event.key === 'Escape' &&
+          !event.nativeEvent.isComposing
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          setPicking(false);
+          pickerButton.current?.focus();
+        }
+      }}
+    >
       <h3
         id={`assignees-${card.id}`}
         className="flex items-center gap-2 text-sm font-semibold text-ink"
@@ -101,6 +117,7 @@ export function CardAssignees({ card, members, readOnly }: CardAssigneesProps) {
       {!readOnly && available.length > 0 && (
         <>
           <button
+            ref={pickerButton}
             type="button"
             aria-expanded={picking}
             disabled={busy}

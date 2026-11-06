@@ -77,6 +77,7 @@ export function KanbanCard({
           {onOpen ? (
             <button
               type="button"
+              data-shortcut-card
               onClick={() => onOpen(card)}
               className="text-left after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-primary"
             >

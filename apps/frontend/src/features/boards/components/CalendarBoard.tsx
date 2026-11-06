@@ -153,6 +153,8 @@ export function CalendarBoard({
       <button
         key={card.id}
         type="button"
+        data-shortcut-card
+        data-shortcut-open-card={card.id}
         title={card.title}
         aria-pressed={selectedId === card.id}
         className="flex min-h-11 w-full min-w-0 items-center gap-1 rounded-md border border-line bg-surface/90 px-2 py-1 text-left text-xs font-medium text-ink hover:border-primary focus-visible:outline-2 focus-visible:outline-primary aria-pressed:border-primary sm:min-h-9 lg:min-h-0"
@@ -309,6 +311,7 @@ export function CalendarBoard({
                           {entries.slice(0, 2).map(pill)}
                           {entries.length > 2 && (
                             <details
+                              data-shortcut-card-overflow
                               onKeyDown={(event) => {
                                 if (event.key === 'Escape') {
                                   event.preventDefault();

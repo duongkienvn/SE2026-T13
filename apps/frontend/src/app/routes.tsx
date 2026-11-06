@@ -38,6 +38,7 @@ import { MyTasksPage } from '../features/productivity/MyTasksPage';
 import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { NotificationSettingsPage } from '../features/notifications/NotificationSettingsPage';
 import { HomePage } from '../features/productivity/home/HomePage';
+import { KeyboardShortcutsPage } from '../features/shortcuts/KeyboardShortcutsPage';
 
 export const routes: RouteObject[] = [
   {
@@ -114,6 +115,10 @@ export const routes: RouteObject[] = [
                   },
                   { path: 'preferences', element: <PreferencesPage /> },
                   { path: 'security', element: <SecuritySettingsPage /> },
+                  {
+                    path: 'keyboard-shortcuts',
+                    element: <KeyboardShortcutsPage />,
+                  },
                   {
                     path: 'connected-accounts',
                     element: <ConnectedAccountsPage />,

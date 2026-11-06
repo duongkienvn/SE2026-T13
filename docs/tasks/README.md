@@ -94,6 +94,8 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Frontend tasks
 
+- [P5-06 Keyboard Shortcuts, Accessibility & Performance](frontend/p5-keyboard-shortcuts.md)
+
 - [P5-05 Table View](frontend/p5-table-view.md)
 
 - [P5-04 Calendar View](frontend/p5-calendar-view.md)

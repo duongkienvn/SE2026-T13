@@ -80,6 +80,7 @@ export function ActionMenu({ label, items, className = '' }: ActionMenuProps) {
       </button>
       {open && (
         <ul
+          data-shortcut-overlay
           ref={panelRef}
           id={panelId}
           className={`absolute right-0 z-20 w-60 rounded-xl border border-line bg-surface p-1.5 shadow-frame ${
