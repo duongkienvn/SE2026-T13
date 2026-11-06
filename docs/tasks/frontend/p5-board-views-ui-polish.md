@@ -30,7 +30,8 @@ increase row heights, unlike the illustrative single-status mockup. Existing
 saved timezone/date-format semantics retain full date/time values. Inspector
 timestamps are exact formatted dates rather than introducing a relative-time
 formatter. Avatar initials remain the supported fallback when no avatar URL is
-available. Long inspector labels wrap rather than losing their text.
+available. Inspector labels use equal-height single-line badges; long names
+retain their full text in the existing title tooltip.
 
 ## Layout diagnosis
 
@@ -126,3 +127,34 @@ Visual QA demonstrates local rendering with fixture data, not live backend or
 deployment readiness. Existing component tests cover permission/read-only,
 realtime access revocation, archive updates, pagination, search/history and
 Card Detail return navigation. No additional functional limitations introduced.
+
+## Follow-up: separate statuses and balance the inspector
+
+The user's follow-up requests three additional refinements:
+
+- Table now has distinct **Column** and **Status** columns. Column displays only
+  the existing Kanban column name. Status displays only the existing computed
+  due-date badge, with an em dash for cards without a due date. The table's
+  minimum width accommodates the extra column inside its existing scroller.
+- Inspector label styles target badge wrappers, not every nested span. Chips
+  share a 24px height, 16px line-height, 8px horizontal padding, 6px radius and
+  centered alignment. Canonical colors/text and the full-name tooltip remain.
+- Desktop inspector stretches to the Calendar panel's height. CSS size
+  containment lets the Calendar determine the row height, while long inspector
+  content scrolls internally. Below 1200px the stacked layout disables size
+  containment and retains its 40dvh inspector height limit.
+
+Follow-up verification: 21/21 Calendar/Table tests pass, including new assertions
+for Upcoming, Overdue and unscheduled cards in separate Column/Status cells.
+Focused ESLint and frontend TypeScript/Vite build pass; the existing build
+advisories remain. Changed-file Prettier and `git diff --check` pass.
+
+Two additional desktop screenshots verified the inspector and separated table
+columns. Browser measurements confirmed equal panel heights of 608px (November),
+660px (empty December with explanatory text), and 764px (six-week January).
+DOM stress checks with additional short/long label text kept every badge at
+24px and retained their full titles. Long inspector text expanded its scrollable
+content to 1952px without changing the 608px panel height. At 375×812 the stacked
+inspector remained bounded to 324.8px, with no outer page overflow. Final browser
+console had no warnings/errors. These checks used the same isolated QA fixture;
+backend and unrelated suites were not run.

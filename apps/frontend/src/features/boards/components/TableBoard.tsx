@@ -228,12 +228,13 @@ export function TableBoard({
               <div className="max-w-full overflow-x-auto">
                 <table className="board-table">
                   <colgroup>
+                    <col style={{ width: '18%' }} />
                     <col style={{ width: '20%' }} />
-                    <col style={{ width: '22%' }} />
+                    <col style={{ width: '9%' }} />
+                    <col style={{ width: '16%' }} />
+                    <col style={{ width: '12%' }} />
                     <col style={{ width: '10%' }} />
-                    <col style={{ width: '17%' }} />
-                    <col style={{ width: '13%' }} />
-                    <col style={{ width: '13%' }} />
+                    <col style={{ width: '10%' }} />
                     <col style={{ width: 64 }} />
                   </colgroup>
                   <thead>
@@ -288,6 +289,9 @@ export function TableBoard({
                       </th>
                       <th scope="col" className="p-3">
                         Checklist
+                      </th>
+                      <th scope="col" className="p-3">
+                        Column
                       </th>
                       <th scope="col" className="p-3">
                         Status
@@ -417,18 +421,22 @@ export function TableBoard({
                             )}
                           </td>
                           <td className="p-3">
-                            <div className="board-table-status">
-                              <span className="board-table-column">
-                                {columns.data?.find(
-                                  (column) => column.id === card.columnId,
-                                )?.name ?? 'Unavailable'}
-                              </span>{' '}
+                            <span className="board-table-column">
+                              {columns.data?.find(
+                                (column) => column.id === card.columnId,
+                              )?.name ?? 'Unavailable'}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            {card.dueDate ? (
                               <DueStatusBadge
                                 dueDate={card.dueDate}
                                 timeZone={timeZone}
                                 now={now}
                               />
-                            </div>
+                            ) : (
+                              <span className="text-muted">—</span>
+                            )}
                           </td>
                           <td className="p-3">
                             <button
