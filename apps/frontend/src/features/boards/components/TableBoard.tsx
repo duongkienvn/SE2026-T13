@@ -386,12 +386,23 @@ export function TableBoard({
                                     {summary.checklist.checkedItems}/
                                     {summary.checklist.totalItems}
                                   </span>
-                                  <progress
+                                  <span
+                                    role="progressbar"
                                     aria-label={`Checklist for ${card.title}`}
-                                    value={summary.checklist.checkedItems}
-                                    max={summary.checklist.totalItems}
-                                    className="w-20 accent-primary"
-                                  />
+                                    aria-valuenow={
+                                      summary.checklist.checkedItems
+                                    }
+                                    aria-valuemin={0}
+                                    aria-valuemax={summary.checklist.totalItems}
+                                    className="h-2 w-20 overflow-hidden rounded-full bg-primary-soft"
+                                  >
+                                    <span
+                                      className={`block h-full rounded-full ${summary.checklist.checkedItems === summary.checklist.totalItems ? 'bg-success' : 'bg-primary'}`}
+                                      style={{
+                                        width: `${(summary.checklist.checkedItems / summary.checklist.totalItems) * 100}%`,
+                                      }}
+                                    />
+                                  </span>
                                 </div>
                               ) : (
                                 '—'

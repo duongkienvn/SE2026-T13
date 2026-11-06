@@ -293,7 +293,7 @@ describe('Table view', () => {
     expect(
       within(row)
         .getByRole('progressbar', { name: `Checklist for ${longTitle}` })
-        .getAttribute('value'),
+        .getAttribute('aria-valuenow'),
     ).toBe('1');
     expect(within(row).getByText('Review')).toBeTruthy();
     expect(within(row).getByText('Overdue')).toBeTruthy();

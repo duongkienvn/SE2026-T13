@@ -23,14 +23,19 @@ the server. Mutations and realtime events reuse the existing query invalidation.
 The reference is [issue #222](https://github.com/duongkienvn/SE2026-T13/issues/222).
 The Card PostgreSQL integration suite passed 15 groups using a disposable
 local PostgreSQL container, including the new sorted multi-page assertions.
-The frontend suite passed 143 files and 1,485 tests with a stable temporary
-directory; the backend suite passed 114 suites and 1,261 tests with loopback
-access. Workspace build, lint and shared tests passed. Repository-wide
-formatting reported pre-existing violations across many files; changed files
+`pnpm test` passed with workspace concurrency set to one, a stable temporary
+directory and loopback access: shared 20 tests, backend 114 suites/1,261 tests,
+and frontend 143 files/1,491 tests. An earlier concurrent `pnpm test` run failed
+one Board navigation assertion: two realtime joins were observed where one was
+expected; all 16 navigation tests passed when rerun alone. That concurrent-run
+failure remains unexplained. Workspace build and lint passed. Repository-wide
+formatting reported 1,107 files with style issues; changed files
 passed a targeted check. Chrome captures at 1585×992, 768×1024 and 375×812
 in dark and light themes are in the [implementation evidence](../../design/screens/implementation/p5-table-view/).
 They use synthetic API and Socket.IO responses, including the bundled lake
-background. A later Chrome measurement found that the visually hidden Actions
+background and sample labels, assignees, checklist counts and due states. The
+checklist uses the same semantic progress treatment as Kanban Card previews.
+A later Chrome measurement found that the visually hidden Actions
 heading escaped the table's scroll container; the heading now has an accessible
 name without positioned content. At all three capture sizes, document and main
 scroll widths matched their client widths; the table alone scrolled on narrow
