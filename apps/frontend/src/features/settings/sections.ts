@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import {
   BellIcon,
   LinkIcon,
+  KeyboardIcon,
   LockIcon,
   PaletteIcon,
   ShieldCheckIcon,
@@ -95,6 +96,14 @@ export const settingsSections: SettingsSection[] = [
     summary: 'Data export and account controls',
     icon: LockIcon,
     availability: 'soon',
+  },
+  {
+    id: 'keyboard-shortcuts',
+    label: 'Keyboard shortcuts',
+    summary: 'View available keyboard commands',
+    icon: KeyboardIcon,
+    availability: 'available',
+    path: 'keyboard-shortcuts',
   },
 ];
 

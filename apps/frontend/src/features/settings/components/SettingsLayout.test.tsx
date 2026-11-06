@@ -36,7 +36,32 @@ function signedIn() {
 const settingsNav = () => screen.getByRole('navigation', { name: 'Settings' });
 
 describe('Settings on desktop', () => {
-  it('opens Profile from /settings and lists all seven sections in order', async () => {
+  it('opens the dedicated shortcuts page and selects its navigation entry', async () => {
+    stubViewport(true);
+    signedIn();
+    const { router } = renderApp('/settings/keyboard-shortcuts');
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Keyboard shortcuts',
+        level: 1,
+      }),
+    ).toBeTruthy();
+    expect(
+      within(settingsNav())
+        .getByRole('link', { name: 'Keyboard shortcuts' })
+        .getAttribute('aria-current'),
+    ).toBe('page');
+    const labels = within(settingsNav())
+      .getAllByRole('listitem')
+      .map((item) => item.textContent ?? '');
+    expect(labels.at(-2)).toContain('Data & Privacy');
+    expect(labels.at(-1)).toContain('Keyboard shortcuts');
+    expect(screen.getByRole('heading', { name: 'Board & Cards' })).toBeTruthy();
+    expect(screen.queryByText('Create a new card')).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(router.state.location.pathname).toBe('/settings/keyboard-shortcuts');
+  });
+  it('opens Profile from /settings and lists all sections in order', async () => {
     stubViewport(true);
     signedIn();
     const { router } = renderApp('/settings');
@@ -146,7 +171,8 @@ describe('Settings on phones', () => {
     await screen.findByRole('heading', { name: 'Settings', level: 1 });
     expect(router.state.location.pathname).toBe('/settings');
     const list = within(settingsNav());
-    expect(list.getAllByRole('listitem')).toHaveLength(7);
+    expect(list.getAllByRole('listitem')).toHaveLength(8);
+    expect(list.getByRole('link', { name: /Keyboard shortcuts/ })).toBeTruthy();
     expect(list.getByText('Password and account recovery')).toBeTruthy();
     expect(list.getByRole('link', { name: /Notifications/ })).toBeTruthy();
     expect(list.queryByRole('link', { name: /Data & Privacy/ })).toBeNull();
