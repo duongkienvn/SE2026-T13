@@ -22,8 +22,13 @@ import {
   STARTER_TEMPLATE_VERSION,
 } from './starter-board-template';
 import { starterBoardSnapshot } from './starter-board-snapshot';
+import { appendPosition } from '../columns/columns-ordering';
 
-const position = (index: number) => ((BigInt(index) + 1n) * 1024n).toString();
+const position = (index: number) => {
+  let value = '0.0000000000';
+  for (let step = 0; step <= index; step++) value = appendPosition(value);
+  return value;
+};
 
 /** Internal signup-only persistence. No notifications, Activity or external I/O. */
 @Injectable()
@@ -46,13 +51,11 @@ export class StarterBoardProvisioningService {
       .getRepository(StarterBoardProvision)
       .findOneBy({ userId: user.id });
     if (existing) return existing.boardId;
-    const workspace = await manager
-      .getRepository(Workspace)
-      .findOneBy({
-        id: workspaceId,
-        createdById: user.id,
-        type: WorkspaceType.PERSONAL,
-      });
+    const workspace = await manager.getRepository(Workspace).findOneBy({
+      id: workspaceId,
+      createdById: user.id,
+      type: WorkspaceType.PERSONAL,
+    });
     if (!workspace)
       throw new Error('Starter Board requires the account Personal Workspace');
     const board = await manager.getRepository(Board).save(
@@ -67,15 +70,13 @@ export class StarterBoardProvisioningService {
         archivedAt: null,
       }),
     );
-    await manager
-      .getRepository(BoardMember)
-      .save(
-        manager.create(BoardMember, {
-          boardId: board.id,
-          userId: user.id,
-          role: BoardMemberRole.OWNER,
-        }),
-      );
+    await manager.getRepository(BoardMember).save(
+      manager.create(BoardMember, {
+        boardId: board.id,
+        userId: user.id,
+        role: BoardMemberRole.OWNER,
+      }),
+    );
     const labelIds = new Map<string, string>();
     for (const [name, color] of Object.entries(STARTER_LABELS)) {
       const label = await manager
@@ -88,15 +89,13 @@ export class StarterBoardProvisioningService {
         ? null
         : new Date(active.createdAt.getTime() + day * 86400000);
     for (const [index, template] of STARTER_COLUMNS.entries()) {
-      const column = await manager
-        .getRepository(BoardColumn)
-        .save(
-          manager.create(BoardColumn, {
-            boardId: board.id,
-            name: template.name,
-            position: position(index),
-          }),
-        );
+      const column = await manager.getRepository(BoardColumn).save(
+        manager.create(BoardColumn, {
+          boardId: board.id,
+          name: template.name,
+          position: position(index),
+        }),
+      );
       for (const [cardIndex, example] of template.cards.entries()) {
         const card = await manager.getRepository(Card).save(
           manager.create(Card, {
@@ -112,48 +111,40 @@ export class StarterBoardProvisioningService {
             archivedAt: null,
           }),
         );
-        await manager
-          .getRepository(CardLabel)
-          .save(
-            example.labels.map((name) =>
-              manager.create(CardLabel, {
-                boardId: board.id,
-                cardId: card.id,
-                labelId: labelIds.get(name)!,
-              }),
-            ),
-          );
-        if (example.assigned)
-          await manager
-            .getRepository(CardAssignee)
-            .save(
-              manager.create(CardAssignee, {
-                cardId: card.id,
-                userId: user.id,
-                assignedById: user.id,
-              }),
-            );
-        const checklist = await manager
-          .getRepository(CardChecklist)
-          .save(
-            manager.create(CardChecklist, {
+        await manager.getRepository(CardLabel).save(
+          example.labels.map((name) =>
+            manager.create(CardLabel, {
+              boardId: board.id,
               cardId: card.id,
-              title: example.checklist.title,
-              position: position(0),
+              labelId: labelIds.get(name)!,
+            }),
+          ),
+        );
+        if (example.assigned)
+          await manager.getRepository(CardAssignee).save(
+            manager.create(CardAssignee, {
+              cardId: card.id,
+              userId: user.id,
+              assignedById: user.id,
             }),
           );
-        await manager
-          .getRepository(CardChecklistItem)
-          .save(
-            example.checklist.items.map((text, itemIndex) =>
-              manager.create(CardChecklistItem, {
-                checklistId: checklist.id,
-                text,
-                position: position(itemIndex),
-                isChecked: itemIndex < example.checklist.checked,
-              }),
-            ),
-          );
+        const checklist = await manager.getRepository(CardChecklist).save(
+          manager.create(CardChecklist, {
+            cardId: card.id,
+            title: example.checklist.title,
+            position: position(0),
+          }),
+        );
+        await manager.getRepository(CardChecklistItem).save(
+          example.checklist.items.map((text, itemIndex) =>
+            manager.create(CardChecklistItem, {
+              checklistId: checklist.id,
+              text,
+              position: position(itemIndex),
+              isChecked: itemIndex < example.checklist.checked,
+            }),
+          ),
+        );
       }
     }
     await manager.getRepository(StarterBoardProvision).save(

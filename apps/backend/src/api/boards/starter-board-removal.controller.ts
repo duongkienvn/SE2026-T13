@@ -22,6 +22,7 @@ import {
   ApiBearerToken,
   ApiCommonErrors,
   ApiSuccess,
+  ApiNoContent,
 } from '../../decorators/swagger-response.decorators';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -43,12 +44,12 @@ class StarterBoardRemovalPreviewDto implements StarterBoardRemovalPreview {
   confirmation!: StarterBoardRemovalPreview['confirmation'];
 }
 @ApiTags('boards')
-@ApiBearerToken()
 @UseGuards(JwtAuthGuard)
 @Controller('boards/:boardId/sample-removal')
 export class StarterBoardRemovalController {
   constructor(private readonly removal: StarterBoardRemovalService) {}
   @Get()
+  @ApiBearerToken()
   @Header('Cache-Control', 'no-store')
   @SerializeResponse(StarterBoardRemovalPreviewDto)
   @ApiSuccess({
@@ -63,9 +64,9 @@ export class StarterBoardRemovalController {
     return this.removal.preview(user.userId, boardId);
   }
   @Delete()
+  @ApiBearerToken()
   @HttpCode(204)
-  @ApiSuccess({
-    status: 204,
+  @ApiNoContent({
     summary:
       'Permanently remove an eligible sample board after fresh confirmation',
   })

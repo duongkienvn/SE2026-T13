@@ -76,6 +76,7 @@ const board: Board = {
   workspaceId:
     scenario === 'workspace-owner' ? 'joined-destination' : 'source-not-joined',
   visibility: scenario === 'reader' ? 'WORKSPACE_VISIBLE' : 'PRIVATE',
+  isStarterBoard: params.has('sample'),
   backgroundPreset: params.get('background') ?? 'mountains',
   backgroundVersion: 0,
   currentUserRole:
@@ -162,6 +163,18 @@ function response(data: unknown, page = false) {
 // Every API request is intercepted locally; this fixture never contacts a backend.
 window.fetch = async (input, init) => {
   const path = String(input).replace(env.apiBaseUrl, '');
+  if (params.has('sample') && path === `/boards/${board.id}/sample-removal`) {
+    if (init?.method === 'DELETE') return new Response(null, { status: 204 });
+    const isCustomized = params.get('sample') === 'customized';
+    return response({
+      boardName: board.name,
+      isCustomized,
+      version: 'a'.repeat(64),
+      confirmation: isCustomized
+        ? 'DELETE MY CUSTOMIZED BOARD'
+        : 'REMOVE SAMPLE BOARD',
+    });
+  }
   if (params.has('view') && path === '/notifications/unread-count')
     return response({ count: 2 });
   if (params.has('detail') || params.has('view')) {

@@ -93,12 +93,10 @@ export class StarterBoardRemovalService {
         'STARTER_BOARD_NOT_FOUND',
         'This board is not your provisioned sample board.',
       );
-    const workspace = await manager
-      .getRepository(Workspace)
-      .findOne({
-        where: { id: board.workspaceId },
-        lock: { mode: 'pessimistic_read' },
-      });
+    const workspace = await manager.getRepository(Workspace).findOne({
+      where: { id: board.workspaceId },
+      lock: { mode: 'pessimistic_read' },
+    });
     if (
       board.createdById !== userId ||
       board.visibility !== 'PRIVATE' ||

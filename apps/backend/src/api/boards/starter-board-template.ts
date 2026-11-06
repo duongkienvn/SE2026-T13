@@ -200,7 +200,7 @@ export const STARTER_COLUMNS: readonly {
         title: 'Discover Kanvexa Features',
         labels: ['Completed', 'Getting Started'],
         description:
-          'Use descriptions, labels, assignees, dates, and checklists to keep context with each task. Search and filters help you find work; comments and activity support collaboration when you choose to share a board.\n\nKanvexa also provides multiple board views and keyboard shortcuts in account settings. These example checkmarks illustrate a completed list; no comments, attachments, activity, or assignment notifications were fabricated for this board.',
+          'Use descriptions, labels, assignees, dates, and checklists to keep context with each task. Search and filters help you find work; comments and activity support collaboration when you choose to share a board.\n\nKanvexa also provides multiple board views and keyboard shortcuts in account settings. The completed checklist below is a reference you can reuse. Open another example to practice editing, or replace these cards with your own project.',
         checklist: {
           title: 'Features to explore',
           checked: 4,

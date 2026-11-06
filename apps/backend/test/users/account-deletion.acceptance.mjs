@@ -575,7 +575,7 @@ export async function verifyDeletionAcceptance(ctx) {
         [registered.id],
       )
     )[0].n,
-    0,
+    1,
   );
   const g = await factory('google'),
     oldG = await session(g);
