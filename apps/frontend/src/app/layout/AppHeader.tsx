@@ -70,7 +70,7 @@ function NotificationsSlot() {
       title="Notifications — coming soon"
       className="grid size-10 shrink-0 place-items-center rounded-lg text-muted/60"
     >
-      <BellIcon className="size-5" />
+      <BellIcon className="size-[22px]" />
       <span className="sr-only">Notifications, coming soon</span>
     </span>
   );

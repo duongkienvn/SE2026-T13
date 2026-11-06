@@ -81,7 +81,7 @@ export function NotificationBell() {
         onClick={() => setOpen((current) => !current)}
         className="notification-bell-button"
       >
-        <BellIcon className="size-5" />
+        <BellIcon className="size-[22px]" />
         {!!value && (
           <span className="notification-badge" aria-hidden="true">
             {badgeText(value)}

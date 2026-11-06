@@ -1,6 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ErrorState, LoadingState } from '../../../components/states';
+import {
+  CalendarIcon,
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ExternalLinkIcon,
+  SearchIcon,
+} from '../../../components/icons';
+import { LabelBadge } from '../../labels/components/LabelBadge';
+import { ChecklistProgress } from './ChecklistProgress';
 import { isApiError } from '../../../lib/api-client';
 import { UserAvatar } from '../../auth/components/UserAvatar';
 import { useBoardMembers } from '../../board-members/hooks';
@@ -111,8 +121,8 @@ export function TableBoard({
   const opened = cards.data?.items.find((card) => card.id === cardId);
   const total = cards.data?.meta.total ?? 0;
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col gap-3 overflow-x-hidden overflow-y-auto p-4 md:p-6">
-      <div className="rounded-xl border border-line bg-surface/90 p-2">
+    <div className="board-view-workspace">
+      <div className="board-view-toolbar">
         <BoardViews boardId={boardId} active="table" />
       </div>
       {denied ? (
@@ -132,8 +142,9 @@ export function TableBoard({
         </div>
       ) : (
         <>
-          <div className="flex min-w-0 flex-col items-stretch gap-2 rounded-xl bg-surface/90 p-2 sm:flex-row sm:items-center [&>div]:mb-0 [&>div]:min-w-0 sm:[&>div]:flex-1">
+          <div className="board-table-toolbar">
             <BoardFilter
+              compact
               filters={filters}
               apply={(next) => {
                 setSearch(next.q ?? '');
@@ -150,28 +161,29 @@ export function TableBoard({
               clearLabel="Clear all"
             />
             <form
-              className="flex min-w-0 items-center gap-2"
+              className="board-table-search"
               onSubmit={(event) => {
                 event.preventDefault();
                 apply({ ...filters, q: search.trim() || undefined });
               }}
             >
-              <label className="block text-sm text-muted">
+              <button
+                type="submit"
+                aria-label="Search cards"
+                title="Search cards"
+              >
+                <SearchIcon className="size-4" />
+              </button>
+              <label>
                 <span className="sr-only">Search cards</span>
                 <input
-                  className="max-w-full rounded-lg border border-line bg-surface px-3 py-2 text-ink"
+                  className="text-ink"
                   placeholder="Search cards..."
                   value={search}
                   maxLength={200}
                   onChange={(event) => setSearch(event.target.value)}
                 />
               </label>
-              <button
-                type="submit"
-                className="min-h-10 rounded px-2 text-sm text-primary focus-visible:outline-2 focus-visible:outline-primary"
-              >
-                Search
-              </button>
             </form>
           </div>
           {cards.isPending || columns.isPending || preferencesLoading ? (
@@ -186,7 +198,7 @@ export function TableBoard({
               }}
             />
           ) : (
-            <div className="min-w-0 overflow-hidden rounded-xl border border-line bg-surface/90 text-sm text-ink">
+            <div className="board-table-panel">
               {(labels.isError || (canReadMembers && members.isError)) && (
                 <p role="alert" className="p-3 text-danger">
                   Some card metadata could not be loaded.{' '}
@@ -214,7 +226,17 @@ export function TableBoard({
                 </p>
               )}
               <div className="max-w-full overflow-x-auto">
-                <table className="w-full min-w-[850px] text-left">
+                <table className="board-table">
+                  <colgroup>
+                    <col style={{ width: '18%' }} />
+                    <col style={{ width: '20%' }} />
+                    <col style={{ width: '9%' }} />
+                    <col style={{ width: '16%' }} />
+                    <col style={{ width: '12%' }} />
+                    <col style={{ width: '10%' }} />
+                    <col style={{ width: '10%' }} />
+                    <col style={{ width: 64 }} />
+                  </colgroup>
                   <thead>
                     <tr className="border-b border-line">
                       <th
@@ -233,11 +255,9 @@ export function TableBoard({
                           onClick={() => changeSort('title')}
                         >
                           Card name{' '}
-                          {sortBy === 'title'
-                            ? sortDirection === 'asc'
-                              ? '↑'
-                              : '↓'
-                            : '↕'}
+                          <ChevronDownIcon
+                            className={`ml-1 inline size-3 ${sortBy === 'title' ? `text-primary ${sortDirection === 'asc' ? 'rotate-180' : ''}` : 'text-muted'}`}
+                          />
                         </button>
                       </th>
                       <th scope="col" className="p-3">
@@ -262,15 +282,16 @@ export function TableBoard({
                           onClick={() => changeSort('dueDate')}
                         >
                           Due date{' '}
-                          {sortBy === 'dueDate'
-                            ? sortDirection === 'asc'
-                              ? '↑'
-                              : '↓'
-                            : '↕'}
+                          <ChevronDownIcon
+                            className={`ml-1 inline size-3 ${sortBy === 'dueDate' ? `text-primary ${sortDirection === 'asc' ? 'rotate-180' : ''}` : 'text-muted'}`}
+                          />
                         </button>
                       </th>
                       <th scope="col" className="p-3">
                         Checklist
+                      </th>
+                      <th scope="col" className="p-3">
+                        Column
                       </th>
                       <th scope="col" className="p-3">
                         Status
@@ -288,36 +309,31 @@ export function TableBoard({
                           summary?.labelIds.includes(label.id),
                         ) ?? [];
                       return (
-                        <tr key={card.id} className="border-b border-line/70">
-                          <td className="max-w-64 p-3">
-                            {cardLabels[0] && (
-                              <span
-                                aria-hidden="true"
-                                className="mr-2 inline-block size-2 rounded-full"
-                                style={{ backgroundColor: cardLabels[0].color }}
-                              />
-                            )}
-                            <button
-                              data-shortcut-card
-                              className="text-left font-medium break-words text-primary hover:underline focus-visible:outline-2 focus-visible:outline-primary"
-                              onClick={() => openCard(card.id)}
-                            >
-                              {card.title}
-                            </button>
+                        <tr key={card.id}>
+                          <td>
+                            <div className="board-table-title">
+                              {cardLabels[0] && (
+                                <span
+                                  aria-hidden="true"
+                                  className="size-2 shrink-0 rounded-full"
+                                  style={{
+                                    backgroundColor: cardLabels[0].color,
+                                  }}
+                                />
+                              )}
+                              <button
+                                data-shortcut-card
+                                className="text-ink focus-visible:outline-2 focus-visible:outline-primary"
+                                onClick={() => openCard(card.id)}
+                              >
+                                {card.title}
+                              </button>
+                            </div>
                           </td>
                           <td className="max-w-64 p-3">
                             <div className="flex flex-wrap gap-1">
                               {cardLabels.map((label) => (
-                                <span
-                                  key={label.id}
-                                  className="rounded border-2 px-2 py-0.5 text-xs"
-                                  style={{
-                                    borderColor: label.color,
-                                    backgroundColor: `${label.color}33`,
-                                  }}
-                                >
-                                  {label.name}
-                                </span>
+                                <LabelBadge key={label.id} label={label} />
                               ))}
                               {!cardLabels.length && (
                                 <span className="text-muted">
@@ -333,7 +349,7 @@ export function TableBoard({
                             </div>
                           </td>
                           <td className="p-3">
-                            <div className="flex gap-1">
+                            <div className="flex flex-wrap gap-1">
                               {card.assignees.length ? (
                                 card.assignees.map((assignee) => {
                                   const user = members.data?.find(
@@ -368,13 +384,16 @@ export function TableBoard({
                           </td>
                           <td className="whitespace-nowrap p-3">
                             {card.dueDate ? (
-                              <time dateTime={card.dueDate}>
-                                {formatCardInstant(
-                                  card.dueDate,
-                                  dateFormat,
-                                  timeZone,
-                                )}
-                              </time>
+                              <span className="board-table-date">
+                                <CalendarIcon className="size-4 shrink-0" />
+                                <time dateTime={card.dueDate}>
+                                  {formatCardInstant(
+                                    card.dueDate,
+                                    dateFormat,
+                                    timeZone,
+                                  )}
+                                </time>
+                              </span>
                             ) : (
                               '—'
                             )}
@@ -387,23 +406,11 @@ export function TableBoard({
                                     {summary.checklist.checkedItems}/
                                     {summary.checklist.totalItems}
                                   </span>
-                                  <span
-                                    role="progressbar"
-                                    aria-label={`Checklist for ${card.title}`}
-                                    aria-valuenow={
-                                      summary.checklist.checkedItems
-                                    }
-                                    aria-valuemin={0}
-                                    aria-valuemax={summary.checklist.totalItems}
-                                    className="h-2 w-20 overflow-hidden rounded-full bg-primary-soft"
-                                  >
-                                    <span
-                                      className={`block h-full rounded-full ${summary.checklist.checkedItems === summary.checklist.totalItems ? 'bg-success' : 'bg-primary'}`}
-                                      style={{
-                                        width: `${(summary.checklist.checkedItems / summary.checklist.totalItems) * 100}%`,
-                                      }}
-                                    />
-                                  </span>
+                                  <ChecklistProgress
+                                    checked={summary.checklist.checkedItems}
+                                    total={summary.checklist.totalItems}
+                                    label={`Checklist for ${card.title}`}
+                                  />
                                 </div>
                               ) : (
                                 '—'
@@ -415,24 +422,30 @@ export function TableBoard({
                             )}
                           </td>
                           <td className="p-3">
-                            <span className="rounded-full bg-primary-soft px-2 py-1 text-xs text-primary">
+                            <span className="board-table-column">
                               {columns.data?.find(
                                 (column) => column.id === card.columnId,
                               )?.name ?? 'Unavailable'}
-                            </span>{' '}
-                            <DueStatusBadge
-                              dueDate={card.dueDate}
-                              timeZone={timeZone}
-                              now={now}
-                            />
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            {card.dueDate ? (
+                              <DueStatusBadge
+                                dueDate={card.dueDate}
+                                timeZone={timeZone}
+                                now={now}
+                              />
+                            ) : (
+                              <span className="text-muted">—</span>
+                            )}
                           </td>
                           <td className="p-3">
                             <button
-                              className="rounded px-2 py-1 text-primary hover:underline focus-visible:outline-2 focus-visible:outline-primary"
+                              className="grid size-8 place-items-center rounded-md text-muted hover:bg-app hover:text-ink focus-visible:outline-2 focus-visible:outline-primary"
                               aria-label={`Open ${card.title}`}
                               onClick={() => openCard(card.id)}
                             >
-                              Open
+                              <ExternalLinkIcon className="size-4" />
                             </button>
                           </td>
                         </tr>
@@ -450,7 +463,7 @@ export function TableBoard({
               )}
               <nav
                 aria-label="Card results pages"
-                className="flex flex-wrap items-center justify-between gap-3 p-4 text-muted"
+                className="board-table-footer"
               >
                 <span>
                   {total
@@ -459,22 +472,27 @@ export function TableBoard({
                 </span>
                 <div className="flex items-center gap-2">
                   <button
-                    className="rounded border border-line px-3 py-1 disabled:opacity-50"
+                    className="board-page-button"
                     disabled={page <= 1}
                     onClick={() => setPage(page - 1)}
                   >
-                    Previous
+                    <ChevronLeftIcon className="size-4" />
+                    <span className="sr-only">Previous</span>
                   </button>
-                  <span>
-                    Page {page} of{' '}
-                    {Math.max(1, cards.data?.meta.totalPages ?? 1)}
+                  <span
+                    aria-current="page"
+                    aria-label={`Page ${page} of ${Math.max(1, cards.data?.meta.totalPages ?? 1)}`}
+                    className="grid size-8 place-items-center rounded-md bg-primary-solid font-medium text-white"
+                  >
+                    {page}
                   </span>
                   <button
-                    className="rounded border border-line px-3 py-1 disabled:opacity-50"
+                    className="board-page-button"
                     disabled={page >= (cards.data?.meta.totalPages ?? 1)}
                     onClick={() => setPage(page + 1)}
                   >
-                    Next
+                    <ChevronRightIcon className="size-4" />
+                    <span className="sr-only">Next</span>
                   </button>
                 </div>
               </nav>

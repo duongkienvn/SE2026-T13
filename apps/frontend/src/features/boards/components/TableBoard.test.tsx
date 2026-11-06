@@ -24,6 +24,50 @@ import { renderApp } from '../../../test/render';
 import { createdSockets, joined } from '../../../test/fake-socket';
 
 describe('Table view', () => {
+  it.each([
+    ['upcoming', 'Upcoming'],
+    ['overdue', 'Overdue'],
+    ['unscheduled', '—'],
+  ])('separates the Kanban column from %s due status', async (mode, status) => {
+    storeSession();
+    const board = makeBoard();
+    const column = makeColumn({ boardId: board.id, name: 'Review queue' });
+    const card = makeCard({
+      boardId: board.id,
+      columnId: column.id,
+      title: 'Release checklist',
+      dueDate:
+        mode === 'unscheduled'
+          ? null
+          : new Date(
+              Date.now() + (mode === 'upcoming' ? 7 : -7) * 86400000,
+            ).toISOString(),
+    });
+    mockApi({
+      'GET /users/me': ok(testUser),
+      [`GET /boards/${board.id}`]: ok(board),
+      [`GET /boards/${board.id}/columns?page=1&limit=100`]: okPage([column]),
+      [`GET /boards/${board.id}/members?page=1&limit=100`]: okPage([]),
+      [`GET /boards/${board.id}/cards?page=1&limit=100&sortBy=title&sortDirection=asc`]:
+        okPage([card]),
+    });
+    renderApp(`/boards/${board.id}/table`);
+    const title = await screen.findByRole('button', { name: card.title });
+    const headers = within(screen.getByRole('table')).getAllByRole(
+      'columnheader',
+    );
+    const cells = within(title.closest('tr')!).getAllByRole('cell');
+    const columnIndex = headers.findIndex(
+      (header) => header.textContent === 'Column',
+    );
+    const statusIndex = headers.findIndex(
+      (header) => header.textContent === 'Status',
+    );
+    expect(columnIndex).toBeGreaterThan(-1);
+    expect(statusIndex).toBeGreaterThan(-1);
+    expect(cells[columnIndex].textContent).toBe('Review queue');
+    expect(cells[statusIndex].textContent).toBe(status);
+  });
   it('opens a card and sends sort changes to the paginated API', async () => {
     storeSession();
     const board = makeBoard();
@@ -315,6 +359,17 @@ describe('Table view', () => {
     });
     const { router } = renderApp(`/boards/${board.id}/table`);
     const input = await screen.findByRole('textbox', { name: 'Search cards' });
+    fireEvent.change(input, { target: { value: 'two words' } });
+    expect(router.state.location.search).toBe('');
+    fireEvent.click(screen.getByRole('button', { name: 'Search cards' }));
+    await waitFor(() =>
+      expect(router.state.location.search).toBe('?q=two+words'),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Remove Keyword: two words' }),
+    );
+    await waitFor(() => expect(router.state.location.search).toBe(''));
+    expect((input as HTMLInputElement).value).toBe('');
     fireEvent.change(input, { target: { value: 'two words' } });
     fireEvent.submit(input.closest('form')!);
     await waitFor(() =>

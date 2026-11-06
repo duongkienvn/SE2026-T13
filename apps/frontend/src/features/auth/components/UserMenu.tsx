@@ -116,6 +116,7 @@ export function UserMenu({ expanded = true }: { expanded?: boolean }) {
             className="fixed z-50 max-h-[calc(100dvh-1rem)] w-64 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-xl border border-line bg-surface p-2 shadow-frame"
           >
             <AccountLinks
+              compact
               showIdentity={false}
               onAction={() => {
                 buttonRef.current?.focus();

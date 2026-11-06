@@ -17,6 +17,51 @@ import { renderApp } from '../../test/render';
 
 afterEach(() => vi.restoreAllMocks());
 describe('Board shortcuts integration', () => {
+  it('skips collapsed Calendar overflow cards and includes them after expansion', async () => {
+    vi.spyOn(Element.prototype, 'getClientRects').mockReturnValue({
+      length: 1,
+    } as DOMRectList);
+    storeSession();
+    const board = makeBoard();
+    const column = makeColumn({ boardId: board.id });
+    const dueDate = new Date().toISOString();
+    const cards = ['Alpha', 'Beta', 'Gamma'].map((title) =>
+      makeCard({ boardId: board.id, columnId: column.id, title, dueDate }),
+    );
+    mockApi({
+      'GET /users/me': ok(testUser),
+      [`GET /boards/${board.id}`]: ok(board),
+      [`GET /boards/${board.id}/columns?page=1&limit=100`]: okPage([column]),
+      [`GET /boards/${board.id}/members?page=1&limit=100`]: okPage([]),
+      [`GET /boards/${board.id}/cards?page=1&limit=100`]: okPage(cards),
+      [`GET /boards/${board.id}/cards/${cards[2].id}`]: ok(cards[2]),
+    });
+    const { router } = renderApp(`/boards/${board.id}/calendar`);
+    const alpha = await screen.findByRole('button', { name: /^Alpha/ });
+    const beta = screen.getByRole('button', { name: /^Beta/ });
+    fireEvent.keyDown(document, { key: 'j' });
+    expect(document.activeElement).toBe(alpha);
+    fireEvent.keyDown(document, { key: 'j' });
+    expect(document.activeElement).toBe(beta);
+    fireEvent.keyDown(document, { key: 'j' });
+    expect(document.activeElement).toBe(beta);
+    fireEvent.click(screen.getByText('+1 more'));
+    const gamma = screen.getByRole('button', { name: /^Gamma/ });
+    fireEvent.keyDown(document, { key: 'j' });
+    expect(document.activeElement).toBe(gamma);
+    fireEvent.keyDown(gamma, { key: 'Enter' });
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(
+        `/boards/${board.id}/cards/${cards[2].id}`,
+      ),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Close card' }));
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(
+        `/boards/${board.id}/calendar`,
+      ),
+    );
+  });
   it('switches all three views with filter and background retained', async () => {
     storeSession();
     const board = makeBoard({ backgroundPreset: 'lake' });

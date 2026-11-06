@@ -6,7 +6,7 @@ import {
   type BoardCardFilters,
   type CardPreviewSummary,
 } from '@kanban/shared';
-import { SlidersIcon } from '../../components/icons';
+import { CloseIcon, SlidersIcon } from '../../components/icons';
 import { Dialog } from '../../components/Dialog';
 import { retryUnlessClientError } from '../../lib/query-client';
 import { fetchAllPages } from '../../lib/api-client';
@@ -180,6 +180,7 @@ export function BoardFilter({
   retryLabels,
   retryMembers,
   clearLabel = 'Clear filters',
+  compact = false,
 }: {
   filters: BoardCardFilters;
   apply: (filters: BoardCardFilters) => void;
@@ -192,6 +193,7 @@ export function BoardFilter({
   retryLabels: () => void;
   retryMembers: () => void;
   clearLabel?: string;
+  compact?: boolean;
 }) {
   const dialogId = useId();
   const [open, setOpen] = useState(false);
@@ -211,6 +213,28 @@ export function BoardFilter({
   const count = Object.values(filters).filter((value) =>
     Array.isArray(value) ? value.length : !!value,
   ).length;
+  const chip = (text: string, next: BoardCardFilters, key?: string) => (
+    <span
+      key={key}
+      className={
+        compact
+          ? 'inline-flex items-center gap-1 rounded-full bg-app/80 px-3 py-1.5 text-xs text-ink'
+          : 'rounded bg-app px-2 py-1 text-xs'
+      }
+    >
+      <span className="min-w-0 break-words">{text}</span>
+      {compact && (
+        <button
+          type="button"
+          aria-label={`Remove ${text}`}
+          onClick={() => apply(next)}
+          className="grid size-6 shrink-0 place-items-center rounded-full text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-primary"
+        >
+          <CloseIcon className="size-3" />
+        </button>
+      )}
+    </span>
+  );
   return (
     <div
       role="group"
@@ -231,9 +255,14 @@ export function BoardFilter({
         <SlidersIcon className="size-4" />
         Filter
         {count > 0 && (
-          <span className="rounded-md bg-primary-soft px-1.5 text-xs text-primary">
-            {' '}
-            ({count})
+          <span
+            className={
+              compact
+                ? 'grid size-5 place-items-center rounded-full bg-primary-solid text-xs text-white'
+                : 'rounded-md bg-primary-soft px-1.5 text-xs text-primary'
+            }
+          >
+            {compact ? count : `(${count})`}
           </span>
         )}
       </button>
@@ -242,33 +271,38 @@ export function BoardFilter({
           No filters applied
         </span>
       )}
-      {filters.q && (
-        <span className="rounded bg-app px-2 py-1 text-xs">
-          Keyword: {filters.q}
-        </span>
+      {filters.q && chip(`Keyword: ${filters.q}`, { ...filters, q: undefined })}
+      {filters.labelIds?.map((id) =>
+        chip(
+          `Label: ${labels.find((item) => item.id === id)?.name ?? 'Unavailable'}`,
+          {
+            ...filters,
+            labelIds: filters.labelIds?.filter((value) => value !== id),
+          },
+          id,
+        ),
       )}
-      {filters.labelIds?.map((id) => (
-        <span key={id} className="rounded bg-app px-2 py-1 text-xs">
-          Label: {labels.find((item) => item.id === id)?.name ?? 'Unavailable'}
-        </span>
-      ))}
-      {filters.assigneeIds?.map((id) => (
-        <span key={id} className="rounded bg-app px-2 py-1 text-xs">
-          Assignee:{' '}
-          {members.find((item) => item.user.id === id)?.user.displayName ??
-            'Unavailable'}
-        </span>
-      ))}
-      {filters.dueStatus && (
-        <span className="rounded bg-app px-2 py-1 text-xs">
-          {filters.dueStatus.replaceAll('_', ' ')}
-        </span>
+      {filters.assigneeIds?.map((id) =>
+        chip(
+          `Assignee: ${members.find((item) => item.user.id === id)?.user.displayName ?? 'Unavailable'}`,
+          {
+            ...filters,
+            assigneeIds: filters.assigneeIds?.filter((value) => value !== id),
+          },
+          id,
+        ),
       )}
-      {(filters.dueFrom || filters.dueTo) && (
-        <span className="rounded bg-app px-2 py-1 text-xs">
-          Due date range (UTC)
-        </span>
-      )}
+      {filters.dueStatus &&
+        chip(filters.dueStatus.replaceAll('_', ' '), {
+          ...filters,
+          dueStatus: undefined,
+        })}
+      {(filters.dueFrom || filters.dueTo) &&
+        chip('Due date range (UTC)', {
+          ...filters,
+          dueFrom: undefined,
+          dueTo: undefined,
+        })}
       {count > 0 && (
         <button
           type="button"

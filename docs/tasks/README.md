@@ -94,6 +94,7 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Frontend tasks
 
+- [Phase 5 Board views and global UI polish](frontend/p5-board-views-ui-polish.md)
 - [P5-06 Keyboard Shortcuts, Accessibility & Performance](frontend/p5-keyboard-shortcuts.md)
 
 - [P5-05 Table View](frontend/p5-table-view.md)
