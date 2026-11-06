@@ -298,6 +298,7 @@ export function TableBoard({
                               />
                             )}
                             <button
+                              data-shortcut-card
                               className="text-left font-medium break-words text-primary hover:underline focus-visible:outline-2 focus-visible:outline-primary"
                               onClick={() => openCard(card.id)}
                             >
