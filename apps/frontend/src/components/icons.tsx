@@ -536,6 +536,23 @@ export function CalendarIcon(props: IconProps) {
   );
 }
 
+export function TableIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+      <path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5v10" />
+    </StrokeSvg>
+  );
+}
+
+export function LogoutIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <path d="M10 4H5a1.5 1.5 0 0 0-1.5 1.5v13A1.5 1.5 0 0 0 5 20h5M9 12h12m-4-4 4 4-4 4" />
+    </StrokeSvg>
+  );
+}
+
 export function TextIcon(props: IconProps) {
   return (
     <StrokeSvg {...props}>

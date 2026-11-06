@@ -10,6 +10,7 @@ import {
   makeBoard,
   makeCard,
   makeColumn,
+  makeMember,
   okPage,
 } from '../../../test/board-fixtures';
 import {
@@ -23,6 +24,133 @@ import { renderApp } from '../../../test/render';
 import { createdSockets, joined } from '../../../test/fake-socket';
 
 describe('Calendar view', () => {
+  it.each([500, 403])(
+    'handles checklist HTTP %s without exposing stale items',
+    async (status) => {
+      storeSession();
+      const board = makeBoard();
+      const column = makeColumn({ boardId: board.id });
+      const card = makeCard({
+        boardId: board.id,
+        columnId: column.id,
+        title: 'Checklist access',
+        dueDate: new Date().toISOString(),
+      });
+      let retried = false;
+      mockApi({
+        'GET /users/me': ok(testUser),
+        [`GET /boards/${board.id}`]: ok(board),
+        [`GET /boards/${board.id}/columns?page=1&limit=100`]: okPage([column]),
+        [`GET /boards/${board.id}/cards?page=1&limit=100`]: okPage([card]),
+        [`GET /boards/${board.id}/members?page=1&limit=100`]: okPage([]),
+        [`GET /boards/${board.id}/cards/${card.id}/checklists`]: () =>
+          retried
+            ? ok({
+                cardId: card.id,
+                checklists: [],
+                checkedItems: 0,
+                totalItems: 0,
+                completionPercentage: 0,
+              })
+            : fail(status, status === 403 ? 'FORBIDDEN' : 'INTERNAL_ERROR'),
+      });
+      renderApp(`/boards/${board.id}/calendar`);
+      fireEvent.click(
+        await screen.findByRole('button', { name: /Checklist access/ }),
+      );
+      const inspector = within(
+        screen.getByRole('complementary', { name: 'Selected card' }),
+      );
+      if (status === 403) {
+        await inspector.findByText('Checking card access…');
+        expect(
+          inspector.queryByRole('heading', { name: 'Checklist access' }),
+        ).toBeNull();
+      } else {
+        await inspector.findByRole('alert', {}, { timeout: 5000 });
+        retried = true;
+        fireEvent.click(inspector.getByRole('button', { name: 'Retry' }));
+        await inspector.findByText('No checklists');
+      }
+    },
+  );
+  it('loads real checklist items only on selection and keeps the inspector read-only', async () => {
+    storeSession();
+    const board = makeBoard({ isArchived: true });
+    const column = makeColumn({ boardId: board.id });
+    const member = makeMember();
+    const card = makeCard({
+      boardId: board.id,
+      columnId: column.id,
+      title: 'Inspect release',
+      description: 'Actual description',
+      dueDate: new Date().toISOString(),
+      assignees: [
+        {
+          userId: member.user.id,
+          assignedById: null,
+          createdAt: board.createdAt,
+        },
+      ],
+    });
+    const base = `/boards/${board.id}/cards/${card.id}/checklists`;
+    const calls = mockApi({
+      'GET /users/me': ok(testUser),
+      [`GET /boards/${board.id}`]: ok(board),
+      [`GET /boards/${board.id}/columns?page=1&limit=100`]: okPage([column]),
+      [`GET /boards/${board.id}/cards?page=1&limit=100`]: okPage([card]),
+      [`GET /boards/${board.id}/members?page=1&limit=100`]: okPage([member]),
+      [`GET ${base}`]: ok({
+        cardId: card.id,
+        checkedItems: 1,
+        totalItems: 2,
+        completionPercentage: 50,
+        checklists: [
+          {
+            id: 'list',
+            cardId: card.id,
+            title: 'Release readiness',
+            checkedItems: 1,
+            totalItems: 2,
+            completionPercentage: 50,
+            items: [
+              { id: 'one', text: 'Review notes', isChecked: true },
+              { id: 'two', text: 'Publish notes', isChecked: false },
+            ],
+          },
+        ],
+      }),
+    });
+    renderApp(`/boards/${board.id}/calendar`);
+    const pill = await screen.findByRole('button', { name: /Inspect release/ });
+    expect(calls.some((call) => call.path === base)).toBe(false);
+    fireEvent.click(pill);
+    const inspector = within(
+      screen.getByRole('complementary', { name: 'Selected card' }),
+    );
+    await inspector.findByText('Review notes');
+    expect(inspector.getByText('Publish notes')).toBeTruthy();
+    expect(inspector.getByText('Actual description')).toBeTruthy();
+    expect(inspector.getByText(member.user.displayName)).toBeTruthy();
+    expect(
+      inspector
+        .getByRole('progressbar', { name: 'Checklist Release readiness' })
+        .getAttribute('aria-valuenow'),
+    ).toBe('1');
+    expect(inspector.queryByRole('checkbox')).toBeNull();
+    expect(
+      inspector
+        .getAllByRole('button')
+        .map((button) => button.getAttribute('aria-label')),
+    ).toEqual(['Open card', 'Close inspector']);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(document.activeElement).toBe(pill);
+    expect(
+      calls.filter(
+        (call) => call.method !== 'GET' && call.path.includes('/checklists'),
+      ),
+    ).toHaveLength(0);
+  });
   it.each(['archived', 'workspace viewer'] as const)(
     'shows %s cards without enabling edits',
     async (mode) => {

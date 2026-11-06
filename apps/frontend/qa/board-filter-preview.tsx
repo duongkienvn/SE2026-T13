@@ -162,9 +162,17 @@ function response(data: unknown, page = false) {
 // Every API request is intercepted locally; this fixture never contacts a backend.
 window.fetch = async (input, init) => {
   const path = String(input).replace(env.apiBaseUrl, '');
-  if (params.has('detail')) {
-    const base = `/boards/${board.id}/cards/${detailCard.id}`;
-    if (path === '/users/me/preferences') return response(DEFAULT_PREFERENCES);
+  if (params.has('view') && path === '/notifications/unread-count')
+    return response({ count: 2 });
+  if (params.has('detail') || params.has('view')) {
+    const base = params.has('view')
+      ? `/boards/${board.id}/cards/${/^\/boards\/qa-board\/cards\/([^/?]+)/.exec(path)?.[1] ?? 'card-0'}`
+      : `/boards/${board.id}/cards/${detailCard.id}`;
+    if (path === '/users/me/preferences')
+      return response({
+        ...DEFAULT_PREFERENCES,
+        theme: params.get('theme') ?? 'light',
+      });
     if (path === base) return response(detailCard);
     if (path === `${base}/labels`)
       return response({ cardId: detailCard.id, labels: [detailLabel] });
@@ -405,7 +413,10 @@ window.fetch = async (input, init) => {
         .map((cardId) => ({
           cardId,
           labelIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'],
-          checklist: { checkedItems: 2, totalItems: 3 },
+          checklist: {
+            checkedItems: 2,
+            totalItems: params.has('view') ? 2 : 3,
+          },
           attachmentCount: 1,
           commentCount: 2,
         })),
@@ -438,7 +449,14 @@ window.fetch = async (input, init) => {
       document.documentElement.dataset.cardPageRequests = String(
         Number(document.documentElement.dataset.cardPageRequests ?? 0) + 1,
       );
-      const total = scenario === 'large' ? 1000 : scenario === 'tall' ? 40 : 10;
+      const total =
+        scenario === 'large'
+          ? 1000
+          : scenario === 'tall'
+            ? 40
+            : params.has('view')
+              ? 6
+              : 10;
       const page = Number(
         new URLSearchParams(path.split('?')[1]).get('page') ?? 1,
       );
@@ -461,8 +479,16 @@ window.fetch = async (input, init) => {
               'A longer description to check the compact preview layout.',
             position: `${index + 1}.0000000000`,
             createdById: board.createdById,
-            startDate: index % 3 === 1 ? '2027-04-12T08:00:00Z' : null,
-            dueDate: index % 3 === 2 ? null : '2027-04-15T12:00:00Z',
+            startDate: params.has('view')
+              ? `${new Date().toISOString().slice(0, 7)}-02T08:00:00Z`
+              : index % 3 === 1
+                ? '2027-04-12T08:00:00Z'
+                : null,
+            dueDate: params.has('view')
+              ? `${new Date().toISOString().slice(0, 7)}-${['05', '04', '19', '16', '10', '13'][index % 6]}T12:00:00Z`
+              : index % 3 === 2
+                ? null
+                : '2027-04-15T12:00:00Z',
             isArchived: false,
             archivedAt: null,
             createdAt: board.createdAt,
@@ -524,6 +550,8 @@ const router = createMemoryRouter(
             { path: 'cards/:cardId', element: null },
             { path: 'settings', element: null },
             { path: 'members', element: <BoardMembersPage /> },
+            { path: 'calendar', element: null },
+            { path: 'table', element: null },
           ],
         },
       ],
@@ -531,7 +559,7 @@ const router = createMemoryRouter(
   ],
   {
     initialEntries: [
-      `/boards/${board.id}${params.has('detail') ? `/cards/${detailCard.id}` : params.get('route') === 'members' ? '/members' : params.get('settings') === 'true' ? '/settings' : ''}?${filterSearchParams(parseBoardFilters(params))}`,
+      `/boards/${board.id}${params.has('detail') ? `/cards/${detailCard.id}` : ['calendar', 'table'].includes(params.get('view') ?? '') ? `/${params.get('view')}` : params.get('route') === 'members' ? '/members' : params.get('settings') === 'true' ? '/settings' : ''}?${filterSearchParams(parseBoardFilters(params))}`,
     ],
   },
 );

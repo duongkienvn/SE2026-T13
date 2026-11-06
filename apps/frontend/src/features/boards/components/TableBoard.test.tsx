@@ -316,6 +316,17 @@ describe('Table view', () => {
     const { router } = renderApp(`/boards/${board.id}/table`);
     const input = await screen.findByRole('textbox', { name: 'Search cards' });
     fireEvent.change(input, { target: { value: 'two words' } });
+    expect(router.state.location.search).toBe('');
+    fireEvent.click(screen.getByRole('button', { name: 'Search cards' }));
+    await waitFor(() =>
+      expect(router.state.location.search).toBe('?q=two+words'),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Remove Keyword: two words' }),
+    );
+    await waitFor(() => expect(router.state.location.search).toBe(''));
+    expect((input as HTMLInputElement).value).toBe('');
+    fireEvent.change(input, { target: { value: 'two words' } });
     fireEvent.submit(input.closest('form')!);
     await waitFor(() =>
       expect(router.state.location.search).toBe('?q=two+words'),

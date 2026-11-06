@@ -94,6 +94,8 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Frontend tasks
 
+- [Phase 5 Board views and global UI polish](frontend/p5-board-views-ui-polish.md)
+
 - [P5-05 Table View](frontend/p5-table-view.md)
 
 - [P5-04 Calendar View](frontend/p5-calendar-view.md)

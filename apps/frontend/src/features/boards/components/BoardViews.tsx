@@ -1,4 +1,10 @@
 import { Link, useLocation } from 'react-router';
+import {
+  CalendarIcon,
+  ColumnsIcon,
+  TableIcon,
+} from '../../../components/icons';
+import './board-views.css';
 
 export function BoardViews({
   boardId,
@@ -9,14 +15,21 @@ export function BoardViews({
 }) {
   const { search } = useLocation();
   return (
-    <nav aria-label="Board views" className="flex items-center gap-2 text-sm">
+    <nav aria-label="Board views" className="board-views">
       {(['board', 'calendar', 'table'] as const).map((view) => (
         <Link
           key={view}
           aria-current={active === view ? 'page' : undefined}
-          className={`rounded-lg px-3 py-2 font-medium ${active === view ? 'bg-primary text-white' : 'text-ink hover:bg-app'}`}
+          className="board-view-button"
           to={`/boards/${encodeURIComponent(boardId)}${view === 'board' ? '' : `/${view}`}${search}`}
         >
+          {view === 'board' ? (
+            <ColumnsIcon />
+          ) : view === 'calendar' ? (
+            <CalendarIcon />
+          ) : (
+            <TableIcon />
+          )}
           {view === 'board'
             ? 'Board'
             : view === 'calendar'

@@ -75,6 +75,38 @@ afterEach(() => {
 });
 
 describe('Board navigation polish', () => {
+  it.each(['calendar', 'table'])(
+    'keeps %s reachable only through the shared view switcher and preserves history',
+    async (view) => {
+      const { board, router } = setup(`/${view}?q=release`);
+      await screen.findByRole('heading', { name: board.name });
+      expectActive('Kanban');
+      expect(boardNav().queryByRole('link', { name: 'Calendar' })).toBeNull();
+      expect(boardNav().queryByRole('link', { name: 'Table' })).toBeNull();
+      const views = within(
+        screen.getByRole('navigation', { name: 'Board views' }),
+      );
+      expect(
+        views
+          .getByRole('link', {
+            name: view === 'calendar' ? 'Calendar' : 'Table',
+          })
+          .getAttribute('aria-current'),
+      ).toBe('page');
+      fireEvent.click(views.getByRole('link', { name: 'Board' }));
+      await waitFor(() =>
+        expect(router.state.location.pathname).toBe(`/boards/${board.id}`),
+      );
+      expect(router.state.location.search).toBe('?q=release');
+      await act(async () => {
+        await router.navigate(-1);
+      });
+      expect(router.state.location.pathname).toBe(
+        `/boards/${board.id}/${view}`,
+      );
+      expect(router.state.location.search).toBe('?q=release');
+    },
+  );
   it('keeps star and background customization accessible in the updated settings', async () => {
     const { board } = setup(
       '/settings',

@@ -1,11 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ErrorState, LoadingState } from '../../../components/states';
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  CloseIcon,
-} from '../../../components/icons';
+import { ChevronLeftIcon, ChevronRightIcon } from '../../../components/icons';
 import { isApiError } from '../../../lib/api-client';
 import { useBoardMembers } from '../../board-members/hooks';
 import { UserAvatar } from '../../auth/components/UserAvatar';
@@ -15,11 +11,7 @@ import {
   useBoardFilters,
   usePreviewSummaries,
 } from '../../cards/board-filter';
-import {
-  cardDueStatus,
-  formatCardInstant,
-  wallClockOf,
-} from '../../cards/card-dates';
+import { cardDueStatus, wallClockOf } from '../../cards/card-dates';
 import { CardDetailDialog } from '../../cards/components/CardDetailDialog';
 import {
   DueStatusBadge,
@@ -33,6 +25,7 @@ import { useLabelCatalog } from '../../labels/hooks';
 import { calendarDays, cardsByDueDay } from '../calendar';
 import { boardKeys } from '../query-keys';
 import { BoardViews } from './BoardViews';
+import { CalendarCardInspector } from './CalendarCardInspector';
 
 export function CalendarBoard({
   boardId,
@@ -155,7 +148,7 @@ export function CalendarBoard({
         type="button"
         title={card.title}
         aria-pressed={selectedId === card.id}
-        className="flex min-h-11 w-full min-w-0 items-center gap-1 rounded-md border border-line bg-surface/90 px-2 py-1 text-left text-xs font-medium text-ink hover:border-primary focus-visible:outline-2 focus-visible:outline-primary aria-pressed:border-primary sm:min-h-9 lg:min-h-0"
+        className="calendar-pill"
         onClick={(event) => select(card, event.currentTarget)}
       >
         {firstLabel && (
@@ -170,7 +163,7 @@ export function CalendarBoard({
           <UserAvatar user={assignee} className="size-5 text-[9px]" />
         )}
         {cardDueStatus(card.dueDate, now, timeZone) === 'OVERDUE' && (
-          <span className="ml-1">
+          <span className="calendar-pill-status">
             <DueStatusBadge
               dueDate={card.dueDate}
               timeZone={timeZone}
@@ -183,8 +176,8 @@ export function CalendarBoard({
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 overflow-auto p-4 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface/90 p-2">
+    <div className="board-view-workspace">
+      <div className="board-view-toolbar">
         <BoardViews boardId={boardId} active="calendar" />
         <div className="flex items-center gap-2">
           <button
@@ -236,13 +229,11 @@ export function CalendarBoard({
           )}
         </div>
       ) : (
-        <div className="flex flex-none flex-col-reverse gap-3 xl:min-h-0 xl:flex-1 xl:flex-row">
-          <section
-            aria-label="Calendar"
-            className="min-w-0 flex-1 rounded-xl border border-line bg-surface/90"
-          >
-            <div className="border-b border-line p-3">
+        <div className="calendar-layout">
+          <section aria-label="Calendar" className="calendar-panel">
+            <div className="calendar-filters">
               <BoardFilter
+                compact
                 filters={filters}
                 apply={apply}
                 labels={labels.data ?? []}
@@ -269,7 +260,7 @@ export function CalendarBoard({
               />
             ) : (
               <>
-                <div className="hidden grid-cols-7 border-b border-line sm:grid">
+                <div className="calendar-weekdays">
                   {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(
                     (day) => (
                       <div
@@ -281,13 +272,13 @@ export function CalendarBoard({
                     ),
                   )}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-7">
+                <div className="calendar-grid">
                   {days.map((day) => {
                     const entries = groups.get(day) ?? [];
                     return (
                       <div
                         key={day}
-                        className={`min-w-0 border-b border-r border-line p-2 sm:min-h-28 ${day === today ? 'bg-primary/10' : ''} ${day.slice(0, 7) !== month ? 'text-muted' : 'text-ink'}`}
+                        className={`calendar-cell ${day === today ? 'bg-primary/10' : ''} ${day.slice(0, 7) !== month ? 'text-muted' : 'text-ink'}`}
                       >
                         <div className="mb-1 text-sm font-medium">
                           <time
@@ -355,112 +346,27 @@ export function CalendarBoard({
             )}
           </section>
           {selected && (
-            <aside
-              aria-label="Selected card"
-              className="max-h-[40vh] w-full shrink-0 overflow-y-auto rounded-xl border border-line bg-surface/95 p-4 text-sm text-ink xl:max-h-none xl:w-80"
-            >
-              <div className="flex items-start gap-2">
-                <h2 className="min-w-0 flex-1 text-lg font-semibold break-words">
-                  {selected.title}
-                </h2>
-                <button
-                  type="button"
-                  className="text-primary underline"
-                  onClick={() => openCard(selected.id)}
-                >
-                  Open card
-                </button>
-                <button
-                  type="button"
-                  aria-label="Close inspector"
-                  ref={closeButton}
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg focus-visible:outline-2 focus-visible:outline-primary"
-                  onClick={closeInspector}
-                >
-                  <CloseIcon aria-hidden="true" className="size-4" />
-                </button>
-              </div>
-              <p className="mt-1 text-xs text-muted">
-                {
-                  columns.data?.find(
-                    (column) => column.id === selected.columnId,
-                  )?.name
-                }{' '}
-                · {boardName}
-              </p>
-              <div className="mt-3 flex flex-wrap gap-1">
-                {labels.data
-                  ?.filter((label) => summary?.labelIds.includes(label.id))
-                  .map((label) => (
-                    <span
-                      key={label.id}
-                      className="rounded border-2 bg-surface px-2 py-1 text-xs font-medium text-ink"
-                      style={{ borderColor: label.color }}
-                    >
-                      {label.name}
-                    </span>
-                  ))}
-              </div>
-              <h3 className="mt-4 border-t border-line pt-3 font-semibold">
-                Description
-              </h3>
-              <p className="mt-1 line-clamp-4 whitespace-pre-wrap text-muted">
-                {selected.description || 'No description'}
-              </p>
-              <h3 className="mt-4 border-t border-line pt-3 font-semibold">
-                Assignees
-              </h3>
-              <p className="mt-1 text-muted">
-                {selected.assignees
-                  .map(
-                    (assignee) =>
-                      members.data?.find(
-                        (member) => member.user.id === assignee.userId,
-                      )?.user.displayName ?? 'Unavailable',
-                  )
-                  .filter(Boolean)
-                  .join(', ') || 'None'}
-              </p>
-              <h3 className="mt-4 border-t border-line pt-3 font-semibold">
-                Dates
-              </h3>
-              <p className="mt-1 text-muted">
-                Start:{' '}
-                {selected.startDate
-                  ? formatCardInstant(selected.startDate, dateFormat, timeZone)
-                  : 'None'}
-              </p>
-              <p className="text-muted">
-                Due:{' '}
-                {selected.dueDate
-                  ? formatCardInstant(selected.dueDate, dateFormat, timeZone)
-                  : 'None'}
-              </p>
-              <DueStatusBadge
-                dueDate={selected.dueDate}
-                timeZone={timeZone}
-                now={now}
-              />
-              <h3 className="mt-4 border-t border-line pt-3 font-semibold">
-                Checklists
-              </h3>
-              <p className="mt-1 text-muted">
-                {summary
-                  ? `${summary.checklist.checkedItems} of ${summary.checklist.totalItems} completed`
-                  : summaries.isError
-                    ? 'Could not load checklist summary.'
-                    : 'Loading…'}
-                {summaries.isError && (
-                  <button
-                    type="button"
-                    className="ml-1 text-primary underline"
-                    onClick={() => void summaries.refetch()}
-                  >
-                    Retry
-                  </button>
-                )}
-              </p>
-            </aside>
+            <CalendarCardInspector
+              key={selected.id}
+              card={selected}
+              boardName={boardName}
+              columnName={
+                columns.data?.find((column) => column.id === selected.columnId)
+                  ?.name
+              }
+              labels={
+                labels.data?.filter((label) =>
+                  summary?.labelIds.includes(label.id),
+                ) ?? []
+              }
+              members={canReadMembers ? (members.data ?? []) : []}
+              timeZone={timeZone}
+              dateFormat={dateFormat}
+              now={now}
+              closeButton={closeButton}
+              onClose={closeInspector}
+              onOpen={() => openCard(selected.id)}
+            />
           )}
         </div>
       )}
