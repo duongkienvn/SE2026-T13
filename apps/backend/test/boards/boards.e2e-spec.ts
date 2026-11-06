@@ -15,7 +15,9 @@ import { BoardsService } from '../../src/api/boards/boards.service';
 import { ActivityWriterService } from '../../src/api/activities/activity-writer.service';
 import { BoardAuthorizationService } from '../../src/api/board-members/board-authorization.service';
 import { Board } from '../../src/api/boards/entities/board.entity';
+import { StarterBoardProvision } from '../../src/api/boards/entities/starter-board-provision.entity';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { StarterBoardProvisioningService } from '../../src/api/boards/starter-board-provisioning.service';
 import { WelcomeOnboardingService } from '../../src/api/auth/welcome-onboarding.service';
 import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
 import { JwtAuthGuard } from '../../src/api/auth/guards/jwt-auth.guard';
@@ -74,6 +76,7 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
     boardMembershipChangesEnabled: true,
   };
   const txWorkspace = { findOneByOrFail: jest.fn(async () => workspace) };
+  const starter = { existsBy: jest.fn(async () => false) };
   const readBoard = {
     innerJoinAndSelect: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
@@ -85,7 +88,11 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
     manager: { getRepository: () => ({ createQueryBuilder: () => readBoard }) },
   };
   const boards = {
-    manager: { transaction: jest.fn(), getRepository: () => txWorkspace },
+    manager: {
+      transaction: jest.fn(),
+      getRepository: (entity: unknown) =>
+        entity === StarterBoardProvision ? starter : txWorkspace,
+    },
     createQueryBuilder: jest.fn(),
   };
   const users = { findOne: jest.fn() };
@@ -122,6 +129,10 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
         { provide: BoardEventPublisher, useValue: { publish: jest.fn() } },
         BoardAuthorizationService,
         AuthService,
+        {
+          provide: StarterBoardProvisioningService,
+          useValue: { provision: jest.fn() },
+        },
         { provide: WelcomeOnboardingService, useValue: {} },
         { provide: EmailVerificationService, useValue: { send: jest.fn() } },
         JwtAuthGuard,
@@ -208,7 +219,9 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
             ? txBoards
             : entity === Workspace
               ? txWorkspace
-              : txMembers,
+              : entity === StarterBoardProvision
+                ? starter
+                : txMembers,
       }),
     );
   });
@@ -324,7 +337,7 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
       const response = await get(`/api/boards/${BOARD_ID}`, user).expect(200);
       expect(response.body.data.currentUserRole).toBe(roles.get(user));
       expect(Object.keys(response.body.data).sort()).toEqual(
-        [...PUBLIC_FIELDS].sort(),
+        [...PUBLIC_FIELDS, 'isStarterBoard'].sort(),
       );
       expect(response.body.data.createdAt).toBe('2026-10-13T00:00:00.000Z');
     },
@@ -362,6 +375,27 @@ describe('boards HTTP contract (mock repositories, real service and JWT)', () =>
     });
     const cleared = await patch(OWNER, { description: null }).expect(200);
     expect(cleared.body.data.description).toBeNull();
+  });
+
+  it('returns the owner starter flag after editing without disclosing it to members', async () => {
+    starter.existsBy.mockResolvedValueOnce(true);
+    const updated = await patch(OWNER, { name: 'Edited sample board' }).expect(
+      200,
+    );
+    expect(updated.body.data).toMatchObject({
+      name: 'Edited sample board',
+      isStarterBoard: true,
+    });
+    expect(starter.existsBy).toHaveBeenCalledWith({
+      boardId: BOARD_ID,
+      userId: OWNER,
+    });
+    starter.existsBy.mockClear();
+    const memberDetail = await get(`/api/boards/${BOARD_ID}`, MEMBER).expect(
+      200,
+    );
+    expect(memberDetail.body.data.isStarterBoard).toBe(false);
+    expect(starter.existsBy).not.toHaveBeenCalled();
   });
 
   it.each([

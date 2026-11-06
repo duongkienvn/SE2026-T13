@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { type EntityManager, Repository } from 'typeorm';
 import { BoardMember } from '../board-members/entities/board-member.entity';
 import { Board } from './entities/board.entity';
 import { StarterBoardProvision } from './entities/starter-board-provision.entity';
@@ -64,7 +64,12 @@ export class BoardsService {
         entityId: boardId,
         metadata: null,
       });
-      return toBoardResponseDto(saved, member.role);
+      return this.toResponseWithStarterFlag(
+        manager,
+        saved,
+        member.role,
+        userId,
+      );
     });
     await this.events.publish(RealtimeServerEvent.BOARD_ARCHIVED, { boardId });
     return saved;
@@ -98,7 +103,12 @@ export class BoardsService {
         entityId: boardId,
         metadata: null,
       });
-      return toBoardResponseDto(saved, member.role);
+      return this.toResponseWithStarterFlag(
+        manager,
+        saved,
+        member.role,
+        userId,
+      );
     });
     await this.events.publish(RealtimeServerEvent.BOARD_RESTORED, { boardId });
     return saved;
@@ -130,7 +140,13 @@ export class BoardsService {
         (input.name !== undefined && input.name !== board.name) ||
         (input.description !== undefined &&
           input.description !== board.description);
-      if (!changed) return toBoardResponseDto(board, member.role);
+      if (!changed)
+        return this.toResponseWithStarterFlag(
+          manager,
+          board,
+          member.role,
+          userId,
+        );
       if (input.name !== undefined) board.name = input.name;
       if (input.description !== undefined)
         board.description = input.description;
@@ -143,7 +159,12 @@ export class BoardsService {
         entityId: saved.id,
         metadata: null,
       });
-      return toBoardResponseDto(saved, member.role);
+      return this.toResponseWithStarterFlag(
+        manager,
+        saved,
+        member.role,
+        userId,
+      );
     });
   }
 
@@ -156,10 +177,25 @@ export class BoardsService {
       board.workspace = await this.boards.manager
         .getRepository(Workspace)
         .findOneByOrFail({ id: board.workspaceId });
-    const response = toBoardResponseDto(board, member?.role ?? null);
+    return this.toResponseWithStarterFlag(
+      this.boards.manager,
+      board,
+      member?.role ?? null,
+      userId,
+    );
+  }
+
+  /** Resolve the owner-only flag in the same scope as each read or mutation. */
+  private async toResponseWithStarterFlag(
+    manager: EntityManager,
+    board: Board,
+    role: BoardMemberRole | null,
+    userId: string,
+  ): Promise<BoardResponseDto> {
+    const response = toBoardResponseDto(board, role);
     response.isStarterBoard =
-      member?.role === BoardMemberRole.OWNER &&
-      (await this.boards.manager
+      role === BoardMemberRole.OWNER &&
+      (await manager
         .getRepository(StarterBoardProvision)
         .existsBy({ boardId: board.id, userId }));
     return response;

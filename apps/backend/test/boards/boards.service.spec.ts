@@ -105,7 +105,9 @@ describe('BoardsService', () => {
         ? txBoards
         : entity === Workspace
           ? txWorkspace
-          : txMembers,
+          : entity === StarterBoardProvision
+            ? starter
+            : txMembers,
     );
     transaction.mockImplementation(async (callback) => callback(manager));
     const module = await Test.createTestingModule({
@@ -315,8 +317,48 @@ describe('BoardsService', () => {
       });
       expect(result.currentUserRole).toBe(role);
       expect(result.isArchived).toBe(true);
+      expect(result.isStarterBoard).toBe(false);
+      if (role === BoardMemberRole.MEMBER)
+        expect(starter.existsBy).not.toHaveBeenCalled();
     },
   );
+
+  it.each(['update', 'unchanged update', 'archive', 'restore'] as const)(
+    'preserves the eligible owner starter flag after %s',
+    async (operation) => {
+      txBoards.findOne.mockResolvedValue(board);
+      txMembers.findOne.mockResolvedValue({ role: BoardMemberRole.OWNER });
+      starter.existsBy.mockResolvedValue(true);
+      board.isArchived = operation === 'restore';
+
+      const result =
+        operation === 'archive'
+          ? await service.archive(USER_ID, BOARD_ID)
+          : operation === 'restore'
+            ? await service.restore(USER_ID, BOARD_ID)
+            : await service.update(USER_ID, BOARD_ID, {
+                name: operation === 'update' ? 'Changed sample' : board.name,
+              });
+
+      expect(result.isStarterBoard).toBe(true);
+      expect(manager.getRepository).toHaveBeenCalledWith(StarterBoardProvision);
+      expect(starter.existsBy).toHaveBeenCalledWith({
+        boardId: BOARD_ID,
+        userId: USER_ID,
+      });
+    },
+  );
+
+  it('does not mark an update as a starter board without a provision for that owner', async () => {
+    txBoards.findOne.mockResolvedValue(board);
+    txMembers.findOne.mockResolvedValue({ role: BoardMemberRole.OWNER });
+    const result = await service.update(USER_ID, BOARD_ID, { name: 'Changed' });
+    expect(result.isStarterBoard).toBe(false);
+    expect(starter.existsBy).toHaveBeenCalledWith({
+      boardId: BOARD_ID,
+      userId: USER_ID,
+    });
+  });
 
   it('conceals missing and inaccessible boards', async () => {
     members.findOne.mockResolvedValue(null);

@@ -26,6 +26,7 @@ function setup(
   const calls = mockApi({
     'GET /users/me': ok(testUser),
     [`GET /boards/${board.id}`]: ok(board),
+    [`PATCH /boards/${board.id}`]: ({ body }) => ok(Object.assign(board, body)),
     [`GET /boards/${board.id}/columns?page=1&limit=100`]: okPage([]),
     [`GET /boards/${board.id}/cards?page=1&limit=100`]: okPage([]),
     [`GET /boards/${board.id}/members?page=1&limit=100`]: okPage([]),
@@ -60,6 +61,23 @@ async function open(name: string) {
   return within(screen.getByRole('dialog', { name: 'Remove Sample Board' }));
 }
 describe('Sample board removal', () => {
+  it('keeps removal available after editing a starter board', async () => {
+    const { board, calls } = setup();
+    await screen.findByRole('heading', { name: board.name });
+    fireEvent.click(screen.getByRole('link', { name: 'Board settings' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit board' }));
+    fireEvent.change(screen.getByLabelText('Board name'), {
+      target: { value: 'My edited sample board' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await screen.findByRole('heading', { name: 'My edited sample board' });
+    expect(calls.find((call) => call.method === 'PATCH')?.body).toMatchObject({
+      name: 'My edited sample board',
+    });
+    const dialog = await open('My edited sample board');
+    expect(await dialog.findByRole('textbox')).toBeTruthy();
+  });
+
   it.each([false, true])(
     'requires the exact reviewed phrase for customized=%s',
     async (customized) => {

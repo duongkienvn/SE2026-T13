@@ -16,6 +16,7 @@ import {
 } from '../../src/common/enums/database-enums';
 import { paginate } from '../../src/common/dto/paginated-response';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { StarterBoardProvisioningService } from '../../src/api/boards/starter-board-provisioning.service';
 import { WelcomeOnboardingService } from '../../src/api/auth/welcome-onboarding.service';
 import { WorkspacesService } from '../../src/api/workspaces/workspaces.service';
 import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
@@ -94,6 +95,10 @@ describe('Activities HTTP API with real JWT and validation', () => {
       providers: [
         { provide: ActivitiesService, useValue: activities },
         AuthService,
+        {
+          provide: StarterBoardProvisioningService,
+          useValue: { provision: jest.fn() },
+        },
         { provide: WelcomeOnboardingService, useValue: {} },
         {
           provide: WorkspacesService,

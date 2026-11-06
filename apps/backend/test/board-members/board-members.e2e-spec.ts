@@ -19,6 +19,7 @@ import { BoardMember } from '../../src/api/board-members/entities/board-member.e
 import { Board } from '../../src/api/boards/entities/board.entity';
 import { Workspace } from '../../src/api/workspaces/entities/workspace.entity';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { StarterBoardProvisioningService } from '../../src/api/boards/starter-board-provisioning.service';
 import { WelcomeOnboardingService } from '../../src/api/auth/welcome-onboarding.service';
 import { WorkspacesService } from '../../src/api/workspaces/workspaces.service';
 import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
@@ -129,6 +130,10 @@ describe('board-members HTTP contract', () => {
         { provide: ActivityWriterService, useValue: { record: jest.fn() } },
         BoardAuthorizationService,
         AuthService,
+        {
+          provide: StarterBoardProvisioningService,
+          useValue: { provision: jest.fn() },
+        },
         { provide: WelcomeOnboardingService, useValue: {} },
         {
           provide: WorkspacesService,

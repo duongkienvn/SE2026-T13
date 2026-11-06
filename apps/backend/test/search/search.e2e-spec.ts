@@ -13,6 +13,7 @@ import { Logger } from 'nestjs-pino';
 import { QueryFailedError } from 'typeorm';
 import request from 'supertest';
 import { AuthService } from '../../src/api/auth/auth.service';
+import { StarterBoardProvisioningService } from '../../src/api/boards/starter-board-provisioning.service';
 import { WelcomeOnboardingService } from '../../src/api/auth/welcome-onboarding.service';
 import { WorkspacesService } from '../../src/api/workspaces/workspaces.service';
 import { EmailVerificationService } from '../../src/api/auth/email-verification.service';
@@ -59,6 +60,10 @@ async function boot(limit = 10000) {
     controllers: [SearchController],
     providers: [
       AuthService,
+      {
+        provide: StarterBoardProvisioningService,
+        useValue: { provision: jest.fn() },
+      },
       JwtAuthGuard,
       { provide: APP_GUARD, useClass: HttpThrottlerGuard },
       { provide: WelcomeOnboardingService, useValue: {} },
