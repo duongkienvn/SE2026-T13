@@ -17,6 +17,7 @@ export class BoardCapabilitiesDto implements BoardCapabilities {
 }
 
 export class BoardResponseDto {
+  @Expose() @ApiProperty({ required: false }) isStarterBoard?: boolean;
   @Expose()
   @ApiProperty({ format: 'uuid' })
   id!: string;

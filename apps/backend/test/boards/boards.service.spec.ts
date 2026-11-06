@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { Inject } from '@nestjs/common';
+import { StarterBoardProvision } from '../../src/api/boards/entities/starter-board-provision.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { BoardsService } from '../../src/api/boards/boards.service';
 import { Board } from '../../src/api/boards/entities/board.entity';
@@ -42,10 +43,15 @@ describe('BoardsService', () => {
   const txBoards = { create: jest.fn(), save: jest.fn(), findOne: jest.fn() };
   const txMembers = { create: jest.fn(), save: jest.fn(), findOne: jest.fn() };
   const txWorkspace = { findOneByOrFail: jest.fn() };
+  const starter = { existsBy: jest.fn() };
   const manager = { getRepository: jest.fn() };
   const transaction = jest.fn();
   const boards = {
-    manager: { transaction, getRepository: () => txWorkspace },
+    manager: {
+      transaction,
+      getRepository: (entity: unknown) =>
+        entity === StarterBoardProvision ? starter : txWorkspace,
+    },
     createQueryBuilder: jest.fn(),
   };
   const readBoard = {
@@ -67,6 +73,7 @@ describe('BoardsService', () => {
 
   beforeEach(async () => {
     jest.resetAllMocks();
+    starter.existsBy.mockResolvedValue(false);
     board = boardFixture();
     readBoard.getOne.mockResolvedValue(null);
     readBoard.where.mockReturnThis();

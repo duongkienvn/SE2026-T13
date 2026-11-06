@@ -38,6 +38,7 @@ export async function eraseAccountPrivateState(
     'user_preferences',
     'notification_preferences',
     'board_user_states',
+    'starter_board_provisions',
     'card_assignees',
   ])
     await manager.query(`DELETE FROM ${table} WHERE user_id=$1`, [user.id]);

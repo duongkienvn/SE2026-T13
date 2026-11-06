@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { StarterBoardRemovalController } from './starter-board-removal.controller';
+import { StarterBoardRemovalService } from './starter-board-removal.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { BoardMembersModule } from '../board-members/board-members.module';
@@ -29,6 +31,7 @@ import { BoardDiscoveryService } from './board-discovery.service';
     TypeOrmModule.forFeature([Board, BoardMember, Workspace]),
   ],
   controllers: [
+    StarterBoardRemovalController,
     BoardDiscoveryController,
     BoardsController,
     BoardVisibilityController,
@@ -36,6 +39,7 @@ import { BoardDiscoveryService } from './board-discovery.service';
     BoardPolicyController,
   ],
   providers: [
+    StarterBoardRemovalService,
     BoardsService,
     BoardDiscoveryService,
     BoardVisibilityService,

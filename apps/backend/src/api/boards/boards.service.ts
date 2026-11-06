@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BoardMember } from '../board-members/entities/board-member.entity';
 import { Board } from './entities/board.entity';
+import { StarterBoardProvision } from './entities/starter-board-provision.entity';
 import {
   ActivityActionType,
   ActivityEntityType,
@@ -155,7 +156,13 @@ export class BoardsService {
       board.workspace = await this.boards.manager
         .getRepository(Workspace)
         .findOneByOrFail({ id: board.workspaceId });
-    return toBoardResponseDto(board, member?.role ?? null);
+    const response = toBoardResponseDto(board, member?.role ?? null);
+    response.isStarterBoard =
+      member?.role === BoardMemberRole.OWNER &&
+      (await this.boards.manager
+        .getRepository(StarterBoardProvision)
+        .existsBy({ boardId: board.id, userId }));
+    return response;
   }
 
   private notFound(): ApplicationException {
