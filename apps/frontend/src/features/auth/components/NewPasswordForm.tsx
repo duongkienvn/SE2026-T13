@@ -1,4 +1,11 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
 import { PasswordField } from '../../../components/PasswordField';
@@ -20,14 +27,21 @@ type Field = keyof typeof labels;
 export function NewPasswordForm({
   requireCurrent = false,
   appearance = 'default',
+  density = 'default',
+  footer,
   submit,
   onSuccess,
 }: {
   requireCurrent?: boolean;
   appearance?: 'default' | 'auth';
+  /** `compact`: dense Security layout with the submit button beside `footer`. */
+  density?: 'default' | 'compact';
+  /** Shown beside the compact submit button, e.g. the recovery link. */
+  footer?: ReactNode;
   submit: (newPassword: string, currentPassword: string) => Promise<void>;
   onSuccess: () => void;
 }) {
+  const compact = density === 'compact';
   const scope = useAuthSession();
   const alive = useRef(false);
   useEffect(() => {
@@ -120,13 +134,20 @@ export function NewPasswordForm({
       ref={formRef}
       onSubmit={handleSubmit}
       noValidate
-      className={appearance === 'auth' ? 'auth-entry-form' : 'mt-6 space-y-4'}
+      className={
+        appearance === 'auth'
+          ? 'auth-entry-form'
+          : compact
+            ? 'mt-2.5 space-y-2'
+            : 'mt-6 space-y-4'
+      }
       aria-busy={pending}
     >
       {error && <Alert variant="error">{error}</Alert>}
       {requireCurrent && (
         <PasswordField
           appearance={appearance}
+          density={density}
           label="Current password"
           name="currentPassword"
           autoComplete="current-password"
@@ -136,9 +157,10 @@ export function NewPasswordForm({
           disabled={pending || invalidToken}
         />
       )}
-      <div className="space-y-4">
+      <div className={compact ? 'space-y-2' : 'space-y-4'}>
         <PasswordField
           appearance={appearance}
+          density={density}
           label="New password"
           name="newPassword"
           autoComplete="new-password"
@@ -157,6 +179,7 @@ export function NewPasswordForm({
         <div>
           <PasswordField
             appearance={appearance}
+            density={density}
             label="Confirm password"
             name="confirmPassword"
             autoComplete="new-password"
@@ -167,18 +190,31 @@ export function NewPasswordForm({
           />
         </div>
       </div>
-      <Button
-        size={appearance === 'auth' ? 'lg' : 'md'}
-        type="submit"
-        disabled={pending || invalidToken}
-        className={appearance === 'auth' ? 'auth-entry-submit' : 'w-full'}
-      >
-        {pending
-          ? 'Saving password…'
-          : requireCurrent
-            ? 'Change password'
-            : 'Save password'}
-      </Button>
+      {compact ? (
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1">
+          <Button size="sm" type="submit" disabled={pending || invalidToken}>
+            {pending
+              ? 'Saving password…'
+              : requireCurrent
+                ? 'Change password'
+                : 'Save password'}
+          </Button>
+          {footer}
+        </div>
+      ) : (
+        <Button
+          size={appearance === 'auth' ? 'lg' : 'md'}
+          type="submit"
+          disabled={pending || invalidToken}
+          className={appearance === 'auth' ? 'auth-entry-submit' : 'w-full'}
+        >
+          {pending
+            ? 'Saving password…'
+            : requireCurrent
+              ? 'Change password'
+              : 'Save password'}
+        </Button>
+      )}
     </form>
   );
 }

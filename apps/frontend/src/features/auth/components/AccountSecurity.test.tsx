@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router';
@@ -27,22 +28,27 @@ async function fillChange(
   currentPassword = 'OldPass123!',
   newPassword = 'NewPass123!',
 ) {
-  await screen.findByLabelText('Current password');
-  fireEvent.change(screen.getByLabelText('Current password'), {
+  // The Change email card (#225) has its own current-password field.
+  const card = within(
+    await screen.findByRole('region', { name: 'Change password' }),
+  );
+  await card.findByLabelText('Current password');
+  fireEvent.change(card.getByLabelText('Current password'), {
     target: { value: currentPassword },
   });
-  fireEvent.change(screen.getByLabelText('New password'), {
+  fireEvent.change(card.getByLabelText('New password'), {
     target: { value: newPassword },
   });
-  fireEvent.change(screen.getByLabelText('Confirm password'), {
+  fireEvent.change(card.getByLabelText('Confirm password'), {
     target: { value: newPassword },
   });
-  fireEvent.click(screen.getByRole('button', { name: 'Change password' }));
+  fireEvent.click(card.getByRole('button', { name: 'Change password' }));
 }
 function handlers(hasPassword = true) {
   return {
     'GET /users/me': ok(testUser),
     'GET /auth/linked-providers': ok({ hasPassword, googleLinked: true }),
+    'GET /auth/email-change/pending': ok(null),
     'POST /auth/logout': { status: 204 },
   };
 }

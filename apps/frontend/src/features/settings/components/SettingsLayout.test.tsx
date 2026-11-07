@@ -28,6 +28,7 @@ function signedIn() {
       googleLinked: false,
       hasPassword: true,
     }),
+    'GET /auth/email-change/pending': ok(null),
     'PATCH /users/me': ok({ ...testUser, displayName: 'Ada King' }),
     'POST /auth/logout': ok(null),
   });
@@ -109,7 +110,7 @@ describe('Settings on desktop', () => {
     const { router } = renderApp('/settings/profile');
     await screen.findByRole('heading', { name: 'Profile', level: 1 });
     expect(
-      screen.queryByRole('heading', { name: 'Account security' }),
+      screen.queryByRole('heading', { name: 'Change password' }),
     ).toBeNull();
     expect(
       screen.queryByRole('heading', { name: 'Connected accounts' }),
@@ -119,11 +120,10 @@ describe('Settings on desktop', () => {
       within(settingsNav()).getByRole('link', { name: 'Security' }),
     );
     expect(
-      await screen.findByRole('heading', { name: 'Account security' }),
+      await screen.findByRole('heading', { name: 'Change password' }),
     ).toBeTruthy();
-    expect(await screen.findAllByLabelText(/current password/i)).toHaveLength(
-      1,
-    );
+    // Change password and Change email (#225) each confirm the password.
+    expect(await screen.findAllByLabelText('Current password')).toHaveLength(2);
     expect(router.state.location.pathname).toBe('/settings/security');
 
     fireEvent.click(
@@ -167,7 +167,7 @@ describe('Settings on phones', () => {
     expect(list.getByRole('link', { name: /Data & Privacy/ })).toBeTruthy();
 
     fireEvent.click(list.getByRole('link', { name: /Security/ }));
-    await screen.findByRole('heading', { name: 'Account security' });
+    await screen.findByRole('heading', { name: 'Change password' });
     expect(screen.queryByRole('navigation', { name: 'Settings' })).toBeNull();
 
     fireEvent.click(screen.getByRole('link', { name: 'Back to Settings' }));
@@ -213,7 +213,7 @@ describe('Unsaved profile edits', () => {
         name: 'Discard changes',
       }),
     );
-    await screen.findByRole('heading', { name: 'Account security' });
+    await screen.findByRole('heading', { name: 'Change password' });
     expect(router.state.location.pathname).toBe('/settings/security');
   });
 
@@ -228,7 +228,7 @@ describe('Unsaved profile edits', () => {
     fireEvent.click(
       within(settingsNav()).getByRole('link', { name: 'Security' }),
     );
-    await screen.findByRole('heading', { name: 'Account security' });
+    await screen.findByRole('heading', { name: 'Change password' });
     expect(router.state.location.pathname).toBe('/settings/security');
   });
 
