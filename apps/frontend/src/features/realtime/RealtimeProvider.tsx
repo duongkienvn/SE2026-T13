@@ -19,7 +19,7 @@ import { refreshWorkspaceGuests } from '../workspaces/members/refresh-guests';
 import { refreshWorkspaceBoardSummaries } from '../workspaces/refresh-board-summaries';
 import { refreshProductivity } from '../productivity/cache';
 import { refreshSearch } from '../search/cache';
-import { clearLocalOperations, consumeCommentHint } from './local-operation';
+import { clearLocalOperations, consumeLocalHint } from './local-operation';
 import { RealtimeNotificationEvent } from '@kanban/shared';
 import {
   createNotificationHint,
@@ -45,6 +45,9 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!authenticated) return;
     const queue = createInvalidationQueue(queryClient);
+    const enqueue = (targets: Parameters<typeof queue.add>[0]) => {
+      if (isCurrent()) queue.add(targets);
+    };
     const notificationHint = createNotificationHint(queryClient);
     const next = new BoardRealtimeClient({
       // `runAuthorized` belongs to this session and refuses once it has ended.
@@ -128,12 +131,10 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         }
         return socket;
       },
-      invalidate: (targets) => {
-        if (isCurrent()) queue.add(targets);
-      },
+      invalidate: enqueue,
       consumeHint: (event, payload, targets) =>
         isCurrent() &&
-        consumeCommentHint(queryClient, event, payload, targets, queue.add),
+        consumeLocalHint(queryClient, event, payload, targets, enqueue),
       accessRevoked: (boardId) => {
         if (isCurrent()) receiveBoardRevocation(queryClient, { boardId });
       },

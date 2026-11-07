@@ -68,6 +68,11 @@ export function invalidationTargets<E extends BoardEventName>(
   payload: BoardEventPayload<E>,
 ): InvalidationTarget[] {
   const targets = boardInvalidationTargets(event, payload);
+  if (
+    event === 'card:updated' &&
+    (payload as BoardEventPayload<'card:updated'>).changeScope === 'attachments'
+  )
+    return targets;
   if (/^(board:|member:|card:)/.test(event))
     targets.push({ queryKey: searchKey });
   if (/^(board:|member:)/.test(event))
@@ -113,6 +118,11 @@ function boardInvalidationTargets<E extends BoardEventName>(
     case 'card:updated': {
       const { cardId, changeScope } =
         payload as BoardEventPayload<'card:updated'>;
+      if (changeScope === 'attachments')
+        return [
+          preview(boardId, cardId),
+          { queryKey: [...boardKeys.card(boardId, cardId), 'attachments'] },
+        ];
       if (changeScope === 'card-fields')
         return [
           cardList(boardId),

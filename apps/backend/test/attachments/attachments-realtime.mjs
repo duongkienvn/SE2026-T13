@@ -154,11 +154,16 @@ export async function verifyAttachmentRealtime(ctx) {
       return before;
     };
     const delivered = next(owner, 'card:updated');
+    const operationId = '12345678-1234-4234-8234-123456789abc';
     const before = await gate(() =>
-      service.update(actors.owner, board.id, card.id, asset.id, {
-        expectedRevision: asset.revision,
-        displayName: 'Committed',
-      }),
+      service.update(
+        actors.owner,
+        board.id,
+        card.id,
+        asset.id,
+        { expectedRevision: asset.revision, displayName: 'Committed' },
+        operationId,
+      ),
     );
     const column = (
       await source.query('SELECT column_id FROM cards WHERE id=$1', [card.id])
@@ -167,6 +172,8 @@ export async function verifyAttachmentRealtime(ctx) {
       boardId: board.id,
       cardId: card.id,
       columnId: column,
+      changeScope: 'attachments',
+      operationId,
     });
     await flush();
     for (const socket of [owner, guest, viewer])
@@ -178,6 +185,23 @@ export async function verifyAttachmentRealtime(ctx) {
       received.get(foreign).length,
       before[clients.indexOf(foreign)],
     );
+    const fromHttp = next(owner, 'card:updated');
+    asset = (
+      await send('owner', 'patch', `${attachments}/${asset.id}`)
+        .set('X-Kanvexa-Operation-Id', operationId)
+        .send({
+          expectedRevision: asset.revision,
+          displayName: 'HTTP correlation',
+        })
+        .expect(200)
+    ).body.data;
+    assert.deepEqual(await fromHttp, {
+      boardId: board.id,
+      cardId: card.id,
+      columnId: column,
+      changeScope: 'attachments',
+      operationId,
+    });
     const silent = await gate(
       () =>
         service.update(actors.owner, board.id, card.id, asset.id, {

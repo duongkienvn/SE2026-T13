@@ -13,7 +13,7 @@ import {
 import type { CommentRequest } from './types';
 import { commentKeys } from './query-keys';
 import { previewSummaryFilters } from '../cards/preview-summary-cache';
-import { beginCommentOperation } from '../realtime/local-operation';
+import { beginLocalOperation } from '../realtime/local-operation';
 
 export { commentKeys } from './query-keys';
 
@@ -57,7 +57,7 @@ function useCommentMutation(
       event: 'comment:created' | 'comment:updated' | 'comment:deleted',
       request: (operationId?: string) => Promise<T>,
     ): Promise<T> => {
-      const operation = beginCommentOperation(
+      const operation = beginLocalOperation(
         queryClient,
         event,
         boardId,

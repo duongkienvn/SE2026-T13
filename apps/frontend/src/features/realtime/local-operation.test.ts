@@ -1,9 +1,9 @@
 import { QueryClient } from '@tanstack/react-query';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import {
-  beginCommentOperation,
+  beginLocalOperation,
   clearLocalOperations,
-  consumeCommentHint,
+  consumeLocalHint,
 } from './local-operation';
 
 beforeEach(() => vi.useFakeTimers());
@@ -13,7 +13,7 @@ it('suppresses only the matching tab hint after a successful refresh', () => {
   const local = new QueryClient();
   const otherTab = new QueryClient();
   const enqueue = vi.fn();
-  const operation = beginCommentOperation(
+  const operation = beginLocalOperation(
     local,
     'comment:created',
     'board',
@@ -26,10 +26,10 @@ it('suppresses only the matching tab hint after a successful refresh', () => {
   };
   const targets = [{ queryKey: ['comments'] }];
   expect(
-    consumeCommentHint(otherTab, 'comment:created', payload, targets, enqueue),
+    consumeLocalHint(otherTab, 'comment:created', payload, targets, enqueue),
   ).toBe(false);
   expect(
-    consumeCommentHint(
+    consumeLocalHint(
       local,
       'comment:created',
       { ...payload, cardId: 'other' },
@@ -38,12 +38,12 @@ it('suppresses only the matching tab hint after a successful refresh', () => {
     ),
   ).toBe(false);
   expect(
-    consumeCommentHint(local, 'comment:created', payload, targets, enqueue),
+    consumeLocalHint(local, 'comment:created', payload, targets, enqueue),
   ).toBe(true);
   operation.success();
   expect(enqueue).not.toHaveBeenCalled();
   expect(
-    consumeCommentHint(local, 'comment:created', payload, targets, enqueue),
+    consumeLocalHint(local, 'comment:created', payload, targets, enqueue),
   ).toBe(false);
   clearLocalOperations(local);
 });
@@ -52,14 +52,14 @@ it('replays a buffered hint on failed mutation or expiry', async () => {
   const client = new QueryClient();
   const enqueue = vi.fn();
   const targets = [{ queryKey: ['comments'] }];
-  const first = beginCommentOperation(
+  const first = beginLocalOperation(
     client,
     'comment:created',
     'board',
     'card',
   )!;
   const hint = (id: string) =>
-    consumeCommentHint(
+    consumeLocalHint(
       client,
       'comment:created',
       { boardId: 'board', cardId: 'card', operationId: id },
@@ -69,7 +69,7 @@ it('replays a buffered hint on failed mutation or expiry', async () => {
   expect(hint(first.id)).toBe(true);
   first.failure();
   expect(enqueue).toHaveBeenCalledTimes(1);
-  const second = beginCommentOperation(
+  const second = beginLocalOperation(
     client,
     'comment:created',
     'board',
@@ -85,7 +85,7 @@ it('suppresses a late matching hint once and discards pending hints on session d
   const client = new QueryClient();
   const enqueue = vi.fn();
   const targets = [{ queryKey: ['comments'] }];
-  const operation = beginCommentOperation(
+  const operation = beginLocalOperation(
     client,
     'comment:deleted',
     'board',
@@ -98,19 +98,19 @@ it('suppresses a late matching hint once and discards pending hints on session d
     operationId: operation.id,
   };
   expect(
-    consumeCommentHint(client, 'comment:deleted', payload, targets, enqueue),
+    consumeLocalHint(client, 'comment:deleted', payload, targets, enqueue),
   ).toBe(true);
   expect(
-    consumeCommentHint(client, 'comment:deleted', payload, targets, enqueue),
+    consumeLocalHint(client, 'comment:deleted', payload, targets, enqueue),
   ).toBe(false);
-  const pending = beginCommentOperation(
+  const pending = beginLocalOperation(
     client,
     'comment:created',
     'board',
     'card',
   )!;
   expect(
-    consumeCommentHint(
+    consumeLocalHint(
       client,
       'comment:created',
       { ...payload, operationId: pending.id },
@@ -127,13 +127,13 @@ it('keeps simultaneous operations independent and never suppresses an uncorrelat
   const client = new QueryClient();
   const enqueue = vi.fn();
   const targets = [{ queryKey: ['comments'] }];
-  const first = beginCommentOperation(
+  const first = beginLocalOperation(
     client,
     'comment:created',
     'board',
     'card',
   )!;
-  const second = beginCommentOperation(
+  const second = beginLocalOperation(
     client,
     'comment:created',
     'board',
@@ -141,7 +141,7 @@ it('keeps simultaneous operations independent and never suppresses an uncorrelat
   )!;
   expect(first.id).not.toBe(second.id);
   const hint = (id?: string) =>
-    consumeCommentHint(
+    consumeLocalHint(
       client,
       'comment:created',
       { boardId: 'board', cardId: 'card', operationId: id },
@@ -154,5 +154,47 @@ it('keeps simultaneous operations independent and never suppresses an uncorrelat
   first.success();
   second.failure();
   expect(enqueue).toHaveBeenCalledTimes(1);
+  clearLocalOperations(client);
+});
+
+it('only consumes a matching attachment-scoped card event', () => {
+  const client = new QueryClient();
+  const otherTab = new QueryClient();
+  const enqueue = vi.fn();
+  const operation = beginLocalOperation(
+    client,
+    'card:updated',
+    'board',
+    'card',
+  )!;
+  const payload = {
+    boardId: 'board',
+    cardId: 'card',
+    operationId: operation.id,
+  };
+  const targets = [{ queryKey: ['attachments'] }];
+  expect(
+    consumeLocalHint(client, 'card:updated', payload, targets, enqueue),
+  ).toBe(false);
+  expect(
+    consumeLocalHint(
+      otherTab,
+      'card:updated',
+      { ...payload, changeScope: 'attachments' },
+      targets,
+      enqueue,
+    ),
+  ).toBe(false);
+  expect(
+    consumeLocalHint(
+      client,
+      'card:updated',
+      { ...payload, changeScope: 'attachments' },
+      targets,
+      enqueue,
+    ),
+  ).toBe(true);
+  operation.failure();
+  expect(enqueue).toHaveBeenCalledWith(targets);
   clearLocalOperations(client);
 });

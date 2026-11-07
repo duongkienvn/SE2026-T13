@@ -1,9 +1,10 @@
 import type { QueryClient } from '@tanstack/react-query';
 import type { InvalidationTarget } from './event-invalidation';
 
-type CommentEvent = 'comment:created' | 'comment:updated' | 'comment:deleted';
+type LocalEvent =
+  'comment:created' | 'comment:updated' | 'comment:deleted' | 'card:updated';
 interface Operation {
-  event: CommentEvent;
+  event: LocalEvent;
   boardId: string;
   cardId: string;
   state: 'pending' | 'succeeded';
@@ -18,9 +19,9 @@ const clients = new WeakMap<QueryClient, Map<string, Operation>>();
 const lifetimeMs = 30_000;
 
 /** A tab-local opaque ID only identifies one request, never a user or session. */
-export function beginCommentOperation(
+export function beginLocalOperation(
   client: QueryClient,
-  event: CommentEvent,
+  event: LocalEvent,
   boardId: string,
   cardId: string,
 ) {
@@ -73,16 +74,22 @@ export function beginCommentOperation(
 }
 
 /** Returns true only for this tab's first matching hint; all others pass through. */
-export function consumeCommentHint(
+export function consumeLocalHint(
   client: QueryClient,
   event: string,
-  payload: { boardId: string; cardId?: unknown; operationId?: unknown },
+  payload: {
+    boardId: string;
+    cardId?: unknown;
+    operationId?: unknown;
+    changeScope?: unknown;
+  },
   targets: InvalidationTarget[],
   enqueue: (targets: InvalidationTarget[]) => void,
 ): boolean {
   if (
     typeof payload.operationId !== 'string' ||
-    typeof payload.cardId !== 'string'
+    typeof payload.cardId !== 'string' ||
+    (event === 'card:updated' && payload.changeScope !== 'attachments')
   )
     return false;
   const map = clients.get(client);

@@ -40,6 +40,17 @@ server['column:deleted'](column);
 server['card:created'](card);
 server['card:updated'](card);
 server['card:updated']({ ...card, changeScope: 'card-fields' });
+server['card:updated']({
+  ...card,
+  changeScope: 'attachments',
+  operationId: 'opaque',
+});
+server['card:updated']({
+  ...card,
+  changeScope: 'attachments',
+  // @ts-expect-error operation identifiers are opaque strings
+  operationId: {},
+});
 // @ts-expect-error unknown scopes must not narrow client invalidations
 server['card:updated']({ ...card, changeScope: 'unknown' });
 server['card:archived'](card);

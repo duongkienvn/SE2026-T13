@@ -126,10 +126,11 @@ export class CardAttachmentUploadsController {
     @Param('uploadId', ParseUUIDPipe) id: string,
     @Body() input: AttachmentUploadEmptyDto,
     @Query() query: AttachmentUploadEmptyDto,
+    @Headers('x-kanvexa-operation-id') operationId?: string,
   ) {
     void input;
     void query;
-    return this.files.complete(actor, boardId, cardId, id);
+    return this.files.complete(actor, boardId, cardId, id, operationId);
   }
 
   @Delete(':uploadId')

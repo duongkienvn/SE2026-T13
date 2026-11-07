@@ -347,6 +347,23 @@ describe('Card Detail V2 section caches', () => {
     expect(await invalidated(targets)).toEqual(['cards', 'card']);
   });
 
+  it('attachment-only updates refresh only attachment pages and preview counts', async () => {
+    const summaries = [...boardKeys.cards(BOARD), 'preview-summaries', [CARD]];
+    const targets = invalidationTargets('card:updated', {
+      boardId: BOARD,
+      cardId: CARD,
+      columnId: 'column',
+      changeScope: 'attachments',
+    });
+    expect(await invalidatedKeys(targets, { ...sections, summaries })).toEqual([
+      'attachments',
+      'summaries',
+    ]);
+    expect(targets.map((target) => target.queryKey?.[0])).not.toContain(
+      'search',
+    );
+  });
+
   it('keeps the broad child fallback for an unrecognized future scope', async () => {
     const payload = {
       boardId: BOARD,

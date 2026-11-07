@@ -31,7 +31,12 @@ export interface BoardRealtimeOptions {
   invalidate: (targets: InvalidationTarget[]) => void;
   consumeHint?: (
     event: BoardEventName,
-    payload: { boardId: string; cardId?: unknown; operationId?: unknown },
+    payload: {
+      boardId: string;
+      cardId?: unknown;
+      operationId?: unknown;
+      changeScope?: unknown;
+    },
     targets: InvalidationTarget[],
   ) => boolean;
   /** Re-checks the session by REST; a 401 there ends it (and this client). */

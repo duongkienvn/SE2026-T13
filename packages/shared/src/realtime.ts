@@ -81,9 +81,11 @@ export interface CardChangedEvent {
   columnId: string;
 }
 
-/** Optional hint: a Card field update does not change its child collections. */
+/** Optional scope narrows which Card data must be reloaded. */
 export interface CardUpdatedEvent extends CardChangedEvent {
-  changeScope?: 'card-fields';
+  changeScope?: 'card-fields' | 'attachments';
+  /** Opaque, per-request correlation hint; absent on older servers. */
+  operationId?: string;
 }
 
 /** Catalog changes invalidate catalog and Card label caches across this Board. */

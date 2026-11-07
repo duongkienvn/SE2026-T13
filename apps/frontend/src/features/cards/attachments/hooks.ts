@@ -10,6 +10,7 @@ import { retryUnlessClientError } from '../../../lib/query-client';
 import { useAuth } from '../../auth/useAuth';
 import { boardKeys } from '../../boards/query-keys';
 import { previewSummaryFilters } from '../preview-summary-cache';
+import { beginLocalOperation } from '../../realtime/local-operation';
 import {
   addUrlAttachment,
   ATTACHMENT_POLICY,
@@ -45,17 +46,50 @@ export function useAttachments(boardId: string, cardId: string, page: number) {
 
 function useRefreshAttachments(boardId: string, cardId: string) {
   const client = useQueryClient();
-  return () => {
-    void client.invalidateQueries(previewSummaryFilters(boardId, cardId));
-    return client.invalidateQueries({
-      queryKey: attachmentKeys.all(boardId, cardId),
-    });
+  return (throwOnError = false) =>
+    Promise.all([
+      client.invalidateQueries(previewSummaryFilters(boardId, cardId), {
+        throwOnError,
+      }),
+      client.invalidateQueries(
+        { queryKey: attachmentKeys.all(boardId, cardId) },
+        { throwOnError },
+      ),
+    ]);
+}
+
+function useAttachmentMutation(boardId: string, cardId: string) {
+  const client = useQueryClient();
+  const refresh = useRefreshAttachments(boardId, cardId);
+  return async <T>(request: (operationId?: string) => Promise<T>) => {
+    const operation = beginLocalOperation(
+      client,
+      'card:updated',
+      boardId,
+      cardId,
+    );
+    let result: T;
+    try {
+      result = await request(operation?.id);
+    } catch (error) {
+      operation?.failure();
+      await refresh();
+      throw error;
+    }
+    try {
+      await refresh(true);
+      operation?.success();
+    } catch {
+      // The write committed; retry any buffered hint without failing the mutation.
+      operation?.failure();
+    }
+    return result;
   };
 }
 
 export function useAddUrlAttachment(boardId: string, cardId: string) {
   const { runAuthorized } = useAuth();
-  const refresh = useRefreshAttachments(boardId, cardId);
+  const run = useAttachmentMutation(boardId, cardId);
   return useMutation({
     mutationFn: ({
       idempotencyKey,
@@ -65,16 +99,24 @@ export function useAddUrlAttachment(boardId: string, cardId: string) {
       displayName?: string;
       idempotencyKey: string;
     }) =>
-      runAuthorized((token) =>
-        addUrlAttachment(token, boardId, cardId, input, idempotencyKey),
+      run((operationId) =>
+        runAuthorized((token) =>
+          addUrlAttachment(
+            token,
+            boardId,
+            cardId,
+            input,
+            idempotencyKey,
+            operationId,
+          ),
+        ),
       ),
-    onSettled: refresh,
   });
 }
 
 export function useUpdateAttachment(boardId: string, cardId: string) {
   const { runAuthorized } = useAuth();
-  const refresh = useRefreshAttachments(boardId, cardId);
+  const run = useAttachmentMutation(boardId, cardId);
   return useMutation({
     mutationFn: ({
       attachmentId,
@@ -85,16 +127,24 @@ export function useUpdateAttachment(boardId: string, cardId: string) {
       url?: string;
       displayName?: string;
     }) =>
-      runAuthorized((token) =>
-        updateAttachment(token, boardId, cardId, attachmentId, input),
+      run((operationId) =>
+        runAuthorized((token) =>
+          updateAttachment(
+            token,
+            boardId,
+            cardId,
+            attachmentId,
+            input,
+            operationId,
+          ),
+        ),
       ),
-    onSettled: refresh,
   });
 }
 
 export function useRemoveAttachment(boardId: string, cardId: string) {
   const { runAuthorized } = useAuth();
-  const refresh = useRefreshAttachments(boardId, cardId);
+  const run = useAttachmentMutation(boardId, cardId);
   return useMutation({
     mutationFn: ({
       attachmentId,
@@ -103,16 +153,18 @@ export function useRemoveAttachment(boardId: string, cardId: string) {
       attachmentId: string;
       expectedRevision: number;
     }) =>
-      runAuthorized((token) =>
-        removeAttachment(
-          token,
-          boardId,
-          cardId,
-          attachmentId,
-          expectedRevision,
+      run((operationId) =>
+        runAuthorized((token) =>
+          removeAttachment(
+            token,
+            boardId,
+            cardId,
+            attachmentId,
+            expectedRevision,
+            operationId,
+          ),
         ),
       ),
-    onSettled: refresh,
   });
 }
 
@@ -218,6 +270,7 @@ const wait = (ms: number, signal: AbortSignal) =>
  */
 export function useAttachmentUpload(boardId: string, cardId: string) {
   const { runAuthorized } = useAuth();
+  const client = useQueryClient();
   const refresh = useRefreshAttachments(boardId, cardId);
   const [state, setState] = useState<UploadState>({ phase: 'idle' });
   const run = useRef<{
@@ -257,6 +310,7 @@ export function useAttachmentUpload(boardId: string, cardId: string) {
       const update = (next: UploadState) => {
         if (run.current === current) setState(next);
       };
+      let operation: ReturnType<typeof beginLocalOperation>;
       try {
         update({ phase: 'preparing', fileName: file.name });
         const intent = await runAuthorized((token) =>
@@ -281,10 +335,23 @@ export function useAttachmentUpload(boardId: string, cardId: string) {
           );
         }
         update({ phase: 'verifying', fileName: file.name });
+        operation = beginLocalOperation(
+          client,
+          'card:updated',
+          boardId,
+          cardId,
+        );
         for (let attempt = 0; ; attempt++) {
           try {
             await runAuthorized((token) =>
-              completeUpload(token, boardId, cardId, intent.uploadId, signal),
+              completeUpload(
+                token,
+                boardId,
+                cardId,
+                intent.uploadId,
+                signal,
+                operation?.id,
+              ),
             );
             break;
           } catch (error) {
@@ -298,8 +365,14 @@ export function useAttachmentUpload(boardId: string, cardId: string) {
         }
         current.uploadId = undefined;
         update({ phase: 'done', fileName: file.name });
-        void refresh();
+        try {
+          await refresh(true);
+          operation?.success();
+        } catch {
+          operation?.failure();
+        }
       } catch (error) {
+        operation?.failure();
         if (signal.aborted) return;
         if (
           isApiError(error) &&
@@ -317,7 +390,7 @@ export function useAttachmentUpload(boardId: string, cardId: string) {
         });
       }
     },
-    [runAuthorized, boardId, cardId, refresh, forget],
+    [runAuthorized, boardId, cardId, refresh, forget, client],
   );
 
   const cancel = useCallback(() => {

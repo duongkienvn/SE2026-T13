@@ -53,7 +53,11 @@ Comment keys live under the Card detail prefix. Card events also refresh that Ca
 
 PERF-01 narrows the historical matrix above: `card:updated` with the optional
 `changeScope: 'card-fields'` hint refreshes the list, filters and exact Card
-detail, leaving preview counters and child collections intact. An event with no
+detail, leaving preview counters and child collections intact. The optional
+`changeScope: 'attachments'` refreshes only that Card's attachment pages and
+preview summaries; a matching per-tab operation ID can combine the originating
+mutation's refresh with its own hint. Other tabs and unrecognized IDs still
+refresh. An event with no
 recognized hint continues to refresh the affected Card's child queries and
 preview summary. See [PERF-01](perf-01-api-traffic.md) for current evidence.
 
