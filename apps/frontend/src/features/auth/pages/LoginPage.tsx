@@ -36,6 +36,7 @@ export function LoginPage() {
   const [passwordUpdated, setPasswordUpdated] = useState(
     state?.passwordUpdated,
   );
+  const [emailChanged, setEmailChanged] = useState(state?.emailChanged);
   const [email, setEmail] = useState(registeredEmail ?? '');
   const [password, setPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState<
@@ -45,10 +46,16 @@ export function LoginPage() {
   const [needsVerification, setNeedsVerification] = useState(false);
 
   useEffect(() => {
-    if (!state?.registeredEmail && !state?.passwordUpdated) return;
+    if (
+      !state?.registeredEmail &&
+      !state?.passwordUpdated &&
+      !state?.emailChanged
+    )
+      return;
     // The protected-route logout redirect may mount Login before the explicit
     // success navigation arrives. Capture that later state before clearing it.
     if (state.passwordUpdated) setPasswordUpdated(true);
+    if (state.emailChanged) setEmailChanged(true);
     const remaining: RedirectState = state.from ? { from: state.from } : {};
     const { pathname, search, hash } = location;
     navigate({ pathname, search, hash }, { replace: true, state: remaining });
@@ -121,6 +128,11 @@ export function LoginPage() {
         {passwordUpdated && (
           <Alert variant="success">
             Password updated. Log in with your new password.
+          </Alert>
+        )}
+        {emailChanged && (
+          <Alert variant="success">
+            Email updated. Log in with your new email address.
           </Alert>
         )}
         {formError && <Alert variant="error">{formError}</Alert>}
