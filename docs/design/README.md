@@ -1,60 +1,44 @@
-# Kanvexa UI Design — MVP & Post-MVP
+# Kanvexa Design Documentation
 
-Thư mục `screens/` tách hai loại ảnh có mục đích khác nhau:
+Kanvexa's interface covers Workspaces, Board and Card views, productivity, collaboration and account settings. The [project overview](../project-overview.md) describes implemented capabilities; this directory records design authority and visual evidence.
 
-- [`screens/reference/`](screens/reference/) chứa các visual target đã được
-  duyệt. Đây là baseline để triển khai giao diện, không phải ảnh chụp sản phẩm.
-- [`screens/implementation/`](screens/implementation/) chứa ảnh kiểm chứng từ
-  các task frontend đã hoàn thành. Các task tương ứng trong
-  [`../tasks/frontend/`](../tasks/frontend/) giải thích behavior và phạm vi.
+## Branding and implementation foundations
 
-Đọc [`design-guidelines.md`](design-guidelines.md) trước khi triển khai hoặc
-đánh giá frontend.
+Use the official `Brand` / `BrandLogo` components and Kanvexa artwork in `apps/frontend/public/branding/`. Reuse the semantic color, typography and spacing tokens in `apps/frontend/src/style.css` and the shared UI components. Preserve light, dark and system appearance, responsive navigation, visible focus and accessible controls.
 
-## Approved reference screens
+- [Base design guidelines](design-guidelines.md): branding, shared UI foundations and original screen baselines.
+- [Design addendum](design-guidelines.post-mvp.md): theme, layout and interaction extensions used by the current application.
+- [Product & UX Blueprint](product-ux-blueprint.md): access, navigation and interaction decisions.
+- [Visual reference register](post-mvp/visual-reference-register.md): the approved image/spec pairing for each application area and its text overrides.
 
-| File                                                                             | Purpose                                             |
-| -------------------------------------------------------------------------------- | --------------------------------------------------- |
-| [`screens/reference/login.png`](screens/reference/login.png)                     | Login screen                                        |
-| [`screens/reference/boards.png`](screens/reference/boards.png)                   | Boards list                                         |
-| [`screens/reference/kanban-board.png`](screens/reference/kanban-board.png)       | Board workspace                                     |
-| [`screens/reference/card-detail.png`](screens/reference/card-detail.png)         | Card detail modal                                   |
-| [`screens/reference/team-members.png`](screens/reference/team-members.png)       | Board-member management appearance                  |
-| [`screens/reference/landing-page-v1.png`](screens/reference/landing-page-v1.png) | Public landing page V1 ([spec](landing-page-v1.md)) |
+Some source documents retain their original MVP/Post-MVP names, dates and planning language. Those names describe design history, not a split between the currently available and future product. Follow later approved screen-specific decisions where a reference has been superseded; a mockup is never permission to add unsupported features.
 
-Reference screens có một số thành phần nằm ngoài MVP. Guidelines mô tả cách
-giữ visual fidelity mà không tự ý mở rộng product scope.
+## References and product captures
 
-## Implementation evidence
+| Location                                             | Purpose                                                                                   |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [`screens/reference/`](screens/reference/)           | Approved visual targets. These are design inputs, not screenshots of a deployed product.  |
+| [`post-mvp/`](post-mvp/)                             | Screen specifications and approved compositions for the expanded application.             |
+| [`screens/implementation/`](screens/implementation/) | Actual browser captures from implementation and verification, often using synthetic data. |
+| [`../tasks/frontend/`](../tasks/frontend/)           | Scope, approved deviations and verification context for those captures.                   |
 
-Mỗi thư mục con dưới `screens/implementation/` dùng cùng slug với tài liệu task
-frontend. Ảnh mới phải được đặt tại đây, không đặt trong `docs/tasks/`.
+Implementation captures remain evidence of the version and scenario that produced them. Older captures can show superseded layouts or controls that were unavailable at that time; do not present them as current production screenshots. The [account security and privacy captures](screens/implementation/p5-account-security-privacy-ui/) include the implemented Settings interface. The [root README preview](../../README.md#product-preview) uses an existing capture rather than an old Board layout.
 
-## Post-MVP Design
+## Original reference catalog
 
-Thiết kế Post-MVP mở rộng Kanvexa theo roadmap, bao gồm Workspace, Board/Card,
-Home Dashboard, My Tasks, Notifications và Account Settings.
+These references are retained for traceability. Later decisions recorded in the guidelines, register and task records govern screens that have since changed.
 
-Đây là thiết kế và phạm vi đã duyệt cho giai đoạn tiếp theo. Trạng thái chức năng
-đã triển khai được phân biệt riêng trong [project overview](../project-overview.md);
-mockup Post-MVP không phải ảnh kiểm chứng MVP.
+| Reference                                             | Original purpose                                                        |
+| ----------------------------------------------------- | ----------------------------------------------------------------------- |
+| [Login](screens/reference/login.png)                  | Original login screen; see the Auth V2 override in the base guidelines. |
+| [Boards](screens/reference/boards.png)                | Board discovery baseline.                                               |
+| [Kanban Board](screens/reference/kanban-board.png)    | Board work surface baseline.                                            |
+| [Card detail](screens/reference/card-detail.png)      | Card detail baseline.                                                   |
+| [Members](screens/reference/team-members.png)         | Board-member management appearance.                                     |
+| [Landing page](screens/reference/landing-page-v1.png) | Public landing page composition; [specification](landing-page-v1.md).   |
 
-- [Product & UX Blueprint](product-ux-blueprint.md) mô tả cấu trúc sản phẩm,
-  navigation và các quyết định tương tác đã duyệt.
-- [Post-MVP design guidelines](design-guidelines.post-mvp.md) bổ sung hướng dẫn
-  thiết kế cho các khu vực Post-MVP.
-- [Visual reference register](post-mvp/visual-reference-register.md) ghi nhận
-  các visual reference đã duyệt; mockup và UX spec tương ứng nằm trong
-  [thư mục `post-mvp/`](post-mvp/).
-- [Post-MVP roadmap](../roadmap/post-mvp.md) xác định phạm vi và các giai đoạn
-  triển khai.
+## Adding or changing UI documentation
 
-Các nguyên tắc áp dụng cho thiết kế và triển khai Post-MVP:
+Keep new implementation screenshots under `screens/implementation/<task-slug>/`, separate from approved design references. Link them from the relevant task record and state the data source, viewport and verification context. Capture new images only when needed to verify or explain a change.
 
-- Giữ nguyên branding và design system Kanvexa.
-- Mockup Post-MVP đã duyệt là visual reference; chi tiết trong mockup không tự
-  động bổ sung chức năng ngoài phạm vi đã duyệt.
-- Hỗ trợ desktop/mobile và các theme Light/Dark/System.
-- Không có Free Plan, Upgrade to Pro, pricing hay subscription.
-- Không tự mở rộng phạm vi ngoài roadmap.
-- Không làm ảnh hưởng chức năng MVP hiện tại.
+Document real capabilities and permission states. Do not turn sample people, counts or Board data into production content. Preserve the exclusions on pricing, subscriptions and unsupported controls. Historical roadmaps and task evidence remain available through the [task index](../tasks/README.md) and [planning archive](../roadmap/post-mvp.md).

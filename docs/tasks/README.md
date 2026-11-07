@@ -9,8 +9,9 @@ Tài liệu task được chia theo phần chịu trách nhiệm để dễ tìm
 
 Các task records ghi lại phạm vi, quyết định và kết quả tại thời điểm thực hiện;
 không phải danh sách trạng thái release hiện tại. Xem [project overview](../project-overview.md)
-cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho phạm vi
-đã duyệt tiếp theo. Mục lục dưới đây liệt kê toàn bộ task documents hiện có.
+cho khả năng hiện có của sản phẩm. [Roadmap gốc](../roadmap/post-mvp.md) được
+giữ lại như hồ sơ quy hoạch và phạm vi lịch sử, không phải danh sách tính năng
+chưa triển khai. Mục lục dưới đây liệt kê toàn bộ task documents hiện có.
 
 ## Quy tắc đặt tài liệu
 

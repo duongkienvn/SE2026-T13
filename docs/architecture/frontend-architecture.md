@@ -2,86 +2,47 @@
 
 ## 1. Tổng quan
 
-Frontend của project là ứng dụng React + TypeScript chạy trong trình duyệt, mục tiêu render board, column, card và interaction workflow cho team làm việc cùng lúc trên cùng một board. Frontend không phải nơi lưu trữ dữ liệu nghiệp vụ lâu dài; nó là client layer của hệ thống, phục vụ initial data loading, business command và realtime synchronization.
+Frontend Kanvexa là React + TypeScript trong trình duyệt, với Workspaces, Kanban/Calendar/Table, Cards, collaboration, Home/My Tasks, Search, Notifications và Account Settings. REST phục vụ command/query, Socket.IO cung cấp realtime hints và presence; backend/PostgreSQL quyết định persistent state và quyền truy cập. Xem [project overview](../project-overview.md) cho inventory sản phẩm hiện có.
 
-Hiện tại frontend đã có application foundation (Issue #11), Authentication (Issue #17), Boards + Board Members (Issue #22), Kanban board UI + drag-and-drop (Issue #35) và realtime board sync (Issue #43). Tài liệu này mô tả architecture direction đã thống nhất và phân biệt rõ phần hiện có và phần dự kiến cho MVP.
-
----
-
-## 2. Current vs Planned structure
-
-### Current state
-
-Các phần đã có trong `apps/frontend/src`:
+## 2. Cấu trúc hiện có
 
 ```text
 apps/frontend/src/
-├── app/
-│   ├── AppProviders.tsx      # QueryClientProvider + AuthProvider + ThemeSync
-│   ├── routes.tsx            # React Router routes, root errorElement
-│   ├── guards.tsx            # RequireAuth / PublicOnly
-│   ├── redirect.ts           # post-login redirect an toàn
-│   └── layout/               # AppShell, Sidebar, AppHeader, AuthenticatedLayout
+├── app/          # routes, guards, providers and session-aware layout
+├── components/   # shared primitives and official branding
 ├── features/
-│   ├── auth/                 # api, session, AuthProvider, pages, components
-│   ├── landing/              # public landing page at `/` (header, sections, coded previews)
-│   ├── boards/               # api, query keys + hooks, Boards list / Board detail pages
-│   └── board-members/        # api, hooks, membership rules, Board Members page
-├── pages/                    # NotFoundPage, RouteErrorPage
-├── components/               # UI primitives dùng chung (Button, TextField, Dialog, ActionMenu, Pagination, states, ...)
-├── hooks/                    # usePageTitle, useFocusFirstInvalid, useFitGrid, usePageParam, useMediaQuery
-├── lib/                      # env, api-client (REST envelope + pagination), query-client, form-errors, format, pagination
-├── test/                     # test setup và helpers
-├── App.tsx
-├── main.tsx
-└── style.css
-```
-
-- Routing dùng React Router; route config và guards nằm trong `app/` (theo Issue #17), chưa tách thư mục `routes/` riêng.
-- REST client dùng chung nằm ở `lib/api-client.ts`; API calls theo feature nằm trong `features/<feature>/api.ts`, chưa có thư mục `api/` riêng.
-- Auth, Board và BoardMember types hiện định nghĩa trong `features/<feature>/types.ts` cho đến khi backend bổ sung shared contracts vào `packages/shared`.
-- TanStack Query keys của board nằm dưới `['boards']` (`features/boards/query-keys.ts`) để mutation có thể invalidate list, detail và members cùng lúc.
-- Màn hình không được scroll (xem "Fit-to-viewport rule" trong `docs/design/design-guidelines.md`). Danh sách dài (boards, members) dùng phân trang đánh số: `useFitGrid` đo số hàng vừa với vùng còn trống, `lib/pagination.ts` cắt trang, số trang lưu ở `?page=` (`usePageParam`).
-- `GET /boards` (#20) và `GET /boards/:boardId/members` (#21) chưa có search phía server, nên `useBoards` và `useBoardMembers` tải tất cả các trang (`fetchAllPages`, `limit=100` = `MAX_PAGE_LIMIT`, mức tối đa của `PageQueryDto`) rồi search và phân trang ở client. Nếu số board/member tăng lớn, cần bổ sung search/paging phía server.
-
-- Realtime nằm ở `features/realtime/` (#43): `RealtimeProvider` (trong `AppProviders`) giữ một Socket.IO connection cho mỗi auth session; board page gọi `useBoardRealtime(boardId)` để join room và invalidate query keys khi có event. Chi tiết: `docs/tasks/frontend/realtime-frontend.md`.
-
-- Activity History nằm ở `features/activities/` (#61): dialog chỉ đọc mở từ header Board, REST phân trang `limit=8`, query keys dưới `boardKeys.detail(boardId)` nên realtime resync cũng làm mới lịch sử. Chi tiết: `docs/tasks/frontend/activity-history.md`.
-
-- Account Settings, theme và preferences nằm ở `features/settings/` (#92): section config `sections.ts`, `/settings/*` routes, `ThemeSync` trong `AppProviders` đặt `<html data-theme>` (boot script trong `index.html` tránh flash), dark tokens trong `style.css`. Chi tiết: `docs/tasks/frontend/account-settings-appearance.md`.
-
-- Workspace UI (`features/workspaces/`) có routes discovery, Overview và Boards, cùng selector trong App Shell/mobile drawer. Production gateways dùng REST Workspace API, mapping wire DTO sang presentation models; discovery tải đủ trang, Boards search/status/sort/pagination chạy trên server. Query keys scope theo user/session/Workspace; creation dựa trên `canCreateBoards`, Board archive/restore dựa trên Board OWNER. WORKSPACE_VISIBLE hỗ trợ quyền chỉ đọc với `currentUserRole: null`, dùng lại trạng thái readOnly của Board/Card; không tự tạo Board role. Members/Settings và các slot chưa có API giữ Soon. QA fixtures chỉ nằm ở entry Vite riêng hoặc test harness, không nằm trong production bundle. Xem [Workspace API integration](../tasks/frontend/workspace-api-integration.md) và [P2-04 access/cache contract](../tasks/backend/board-visibility-access-control.md).
-
-Hiện chưa có:
-
-- feature folder `comments`, `presence`.
-
-### Planned state for MVP
-
-Frontend dự kiến theo hướng feature-based structure, với các area rõ ràng:
-
-```text
-apps/frontend/src/
-├── app/
-├── features/
+│   ├── activities/
 │   ├── auth/
-│   ├── boards/
 │   ├── board-members/
+│   ├── boards/   # discovery, settings, Kanban/Calendar/Table
+│   ├── cards/    # detail, checklists, attachments, dates and filtering
 │   ├── columns/
-│   ├── cards/
 │   ├── comments/
-│   └── presence/
-├── pages/
-├── components/
+│   ├── labels/
+│   ├── landing/
+│   ├── notifications/
+│   ├── presence/
+│   ├── productivity/  # Home and My Tasks
+│   ├── realtime/
+│   ├── search/
+│   ├── settings/      # appearance, preferences, security, export/privacy
+│   ├── shortcuts/
+│   └── workspaces/    # discovery, overview, boards, members and settings
 ├── hooks/
-├── lib/
-├── types/
-├── routes/
-├── api/
-└── styles/
+├── lib/          # envelope/binary REST clients, query client and utilities
+├── pages/        # shared route error and not-found pages
+├── test/         # synthetic fixtures and setup
+└── style.css     # shared tokens, themes and styles
 ```
 
-Tuy nhiên, đây là hướng planning cho các feature tương lai, không phải là mô tả “đã tồn tại” trong source code hiện tại. Khi viết docs, cần phân biệt rõ `Current` và `Planned` để tránh nhầm lẫn.
+- Routing ở `app/routes.tsx`, guards/providers/layout ở `app/`. API adapters, query keys/hooks và presentation types nằm trong feature; shared wire contracts đến từ `packages/shared`.
+- TanStack Query quản lý server state. Optimistic rollback, cache và late responses tuân thủ session generation và Board access version; logout/access loss không giữ dữ liệu riêng tư của session cũ.
+- Board discovery và Workspace Boards dùng API search/filter/sort/pagination. Board views dùng chung dữ liệu được authorize, URL-backed filters và Card permalinks. Preview summaries được chia theo nhóm Card và invalidate theo Card bị ảnh hưởng.
+- `features/realtime/` giữ Socket.IO client theo auth session, theo dõi Board được phép đọc và nhận notification/access hints. Reconnect yêu cầu REST resync; mutation holds chỉ áp dụng cho query xung đột, không phải toàn bộ ứng dụng. Xem [realtime synchronization](../tasks/frontend/realtime-frontend.md).
+- Workspace UI tích hợp REST cho Overview, Boards, Members/Guests/Invitations và Settings. Workspace ADMIN không tự có quyền private Board; Workspace-visible readers dùng read-only capability thay vì role giả.
+- `settings/sections.ts` khai báo profile, appearance, notifications, preferences, security, connected accounts, data/privacy và keyboard shortcuts. Export dùng authenticated binary requests; email change/deletion chỉ hoàn tất sau server-confirmed success với đúng session boundary.
+- `ThemeSync`, boot script và semantic tokens hỗ trợ light/dark/system. Layout giữ vùng Kanban làm việc trong viewport và dùng pagination hoặc vùng scroll phù hợp; mobile/settings không chịu một quy tắc cấm scroll toàn trang máy móc.
+- QA entrypoints trong `apps/frontend/qa/` và test fixtures dùng synthetic data; chúng không phải production gateways hoặc bằng chứng provider đã được enable trên server.
 
 ---
 
@@ -121,9 +82,9 @@ React local state hoặc component state được dùng cho:
 
 Local UI state thích hợp cho trạng thái tạm thời, không phải dữ liệu nghiệp vụ bất biến. Các state có tính chất durable và business-backed nên đi qua backend và được query/cache lại từ server.
 
-### Không dùng Redux/Zustand trong MVP
+### Không dùng Redux/Zustand
 
-Project không sử dụng Redux hay bất kỳ global state library nào ở MVP. Điều này là yêu cầu rõ ràng trong `AGENTS.md` và là nguyên tắc cần được giữ trong tài liệu. Nếu sau này có requirement rõ ràng mới, có thể xem xét lại, nhưng hiện tại không ưu tiên thêm một state management library mới.
+Project không sử dụng Redux hay global state library thay thế TanStack Query và React state. Điều này là yêu cầu rõ ràng trong `AGENTS.md` và là nguyên tắc cần được giữ trong tài liệu. Nếu sau này có requirement rõ ràng mới, có thể xem xét lại, nhưng hiện tại không ưu tiên thêm một state management library mới.
 
 ---
 
@@ -232,17 +193,7 @@ Tuy nhiên, frontend không được import code backend-specific như:
 
 ## 9. Feature-based organization
 
-MVP frontend nên tổ chức theo feature thay vì một khối app lớn không có ranh giới rõ. Dự kiến:
-
-- `auth`: login/register/profile flow
-- `boards`: board listing, create, detail, archive
-- `board-members`: membership, role, access management
-- `columns`: column list, rename/delete/reorder
-- `cards`: card create/edit/archive/move/assign
-- `comments`: comment list/create/update/delete
-- `presence`: online user presence and board room state
-
-Từng feature nên có boundary rõ ràng về component, hooks, query, mutation và UI logic.
+Feature code được tổ chức theo domain như cây thư mục hiện có ở trên. Mỗi feature giữ API adapters, query keys/hooks, local UI và component riêng; primitives dùng chung ở `components/`, router/providers ở `app/`. Không mô tả thư mục chưa tồn tại như một phần của current implementation.
 
 ---
 
@@ -305,7 +256,7 @@ Khi thêm feature mới, nên tuân thủ các nguyên tắc sau:
 
 ## 13. Kết luận
 
-Frontend architecture của project đã có foundation và Authentication; các feature còn lại đi theo hướng đã thống nhất: React + TypeScript + Vite + Tailwind + TanStack Query + dnd-kit + Socket.IO Client; server state ở query cache, local UI state ở component/hook, realtime cập nhật chỉ đồng bộ event sau khi backend đã xử lý và persist thành công.
+Các feature hiện có dùng chung một nền tảng: React + TypeScript + Vite + Tailwind + TanStack Query + dnd-kit + Socket.IO Client; server state ở query cache, local UI state ở component/hook, realtime cập nhật chỉ đồng bộ event sau khi backend đã xử lý và persist thành công.
 
 Điểm then chốt là separation of concerns:
 

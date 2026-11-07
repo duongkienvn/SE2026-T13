@@ -2,11 +2,11 @@
 
 ## 1. Tổng quan hệ thống
 
-Realtime Collaborative Kanban là ứng dụng Kanban cho phép nhiều người cùng làm việc trên một `Board`. Thành viên có thể quản lý `Column` và `Card`, trao đổi qua `Comment`, theo dõi `Activity` và nhận các thay đổi quan trọng theo thời gian thực mà không cần tải lại trang.
+Kanvexa là ứng dụng Kanban cộng tác với Personal/team Workspaces, Board discovery, Kanban/Calendar/Table views, Card content, collaboration, productivity và account/privacy settings. Xem [project overview](../project-overview.md) cho inventory sản phẩm hiện có.
 
-Kiến trúc MVP là một modular monolith với PostgreSQL làm nơi lưu trữ persistent business state. Frontend chạy trong trình duyệt, backend cung cấp REST API và realtime layer, còn `packages/shared` chứa các contract hoặc kiểu dữ liệu thực sự dùng chung giữa frontend và backend.
+Kiến trúc là một modular monolith với PostgreSQL làm nơi lưu trữ persistent business state. Frontend chạy trong trình duyệt, backend cung cấp REST API và realtime layer, còn `packages/shared` chứa các contract hoặc kiểu dữ liệu thực sự dùng chung giữa frontend và backend.
 
-Tài liệu này mô tả architecture mục tiêu của MVP và đồng thời ghi rõ trạng thái triển khai hiện tại. Repository hiện vẫn ở giai đoạn Foundation / architecture preparation: frontend và backend mới là skeleton, chưa có business module, entity, migration, authentication hoặc realtime business logic.
+Đây là kiến trúc của ứng dụng đã triển khai, không phải skeleton hoặc đề xuất feature tương lai. [Entities](../../apps/backend/src/api/), [migrations](../../apps/backend/src/database/migrations/) và [frontend routes](../../apps/frontend/src/app/routes.tsx) thể hiện các boundary thực tế; task records giữ lịch sử triển khai của từng phần.
 
 ## 2. High-level component architecture
 
@@ -36,7 +36,7 @@ Frontend là ứng dụng React chạy local trong trình duyệt. Frontend ch�
 - sử dụng Socket.IO Client để nhận realtime updates, presence và collaboration events;
 - cập nhật hoặc invalidate cache sau khi nhận response REST hoặc realtime event.
 
-Frontend không phải source of truth cho persistent business state. Optimistic UI, nếu được dùng sau này, chỉ là cơ chế phản hồi giao diện tạm thời; kết quả cuối cùng phải do backend xác nhận.
+Frontend không phải source of truth cho persistent business state. Optimistic UI là cơ chế phản hồi tạm thời; kết quả cuối cùng phải do backend xác nhận. Cache và late responses được scope theo session và Board access để logout hoặc mất quyền không giữ dữ liệu riêng tư.
 
 ### Backend
 
@@ -49,7 +49,7 @@ Backend là NestJS modular monolith. Backend chịu trách nhiệm:
 - tạo `Activity` cho các business action phù hợp;
 - điều phối realtime layer sau khi business operation đã persist thành công.
 
-Các business module dự kiến gồm `auth`, `users`, `boards`, `board-members`, `columns`, `cards`, `comments` và `activities`. `realtime` là cross-cutting layer, không phải business domain module và không chứa core business logic.
+Các API area hiện có gồm `auth`, `users`, `workspaces`, `boards`, `board-members`, `columns`, `cards`, `labels`, `comments`, `activities`, `productivity`, `search`, `notifications`, `exports` và `health`. `realtime` là cross-cutting layer, không chứa core business logic. Private storage, mail, reminder/delivery workers và cleanup thuộc backend.
 
 ### PostgreSQL
 
@@ -61,7 +61,7 @@ Backend là nơi truy cập database và là authority cho các thay đổi nghi
 
 `packages/shared` chỉ chứa những thành phần thực sự dùng chung giữa frontend và backend, chẳng hạn shared types, contracts, enums và realtime event names.
 
-Package này không chứa TypeORM entities, repositories, services hoặc code chỉ thuộc backend. Ở trạng thái hiện tại, package mới có phần export nền tảng; các shared contract sẽ được bổ sung cùng những feature cần dùng chung.
+Package này xuất ESM và CommonJS cho các consumer hiện có; không chứa TypeORM entities, repositories, services, credentials hoặc code chỉ thuộc backend.
 
 ### Realtime layer
 
@@ -116,12 +116,12 @@ Presence là trạng thái realtime tạm thời, không phải persistent busin
 
 - Protected API yêu cầu user đã được authentication.
 - Backend luôn enforce authorization; frontend không được tự quyết định quyền truy cập cuối cùng.
-- Quyền truy cập board dựa trên `BoardMember`.
-- MVP có hai role: `OWNER` và `MEMBER`.
-- User không phải thành viên của board không được truy cập dữ liệu hoặc realtime room của board đó.
+- Board membership dùng `OWNER`/`MEMBER`; Workspace membership dùng `ADMIN`/`MEMBER` độc lập.
+- Workspace administration không tự cấp quyền vào private Board. Workspace-visible Boards có thể cho Workspace member đủ điều kiện quyền read-only mà không tạo Board membership.
+- `BoardAuthorizationService` kiểm tra resource relationships, read/write/owner capabilities và archived/read-only rules; Workspace services kiểm tra membership và policies của Workspace.
 - Backend phải xác nhận quyền trước khi client join hoặc listen room `board:{boardId}`.
 
-Chi tiết cơ chế JWT hoặc session không thuộc phạm vi của tài liệu high-level này. Dù cơ chế authentication cụ thể là gì, mọi protected REST request và socket connection có yêu cầu quyền đều phải được backend kiểm tra.
+REST và Socket.IO kiểm tra JWT/authVersion và quyền hiện tại. Credential changes và account deletion cũng revoke receive grants của socket cũ trong backend process hiện tại. Reconnect resync qua REST; hints không phải một durable replay log.
 
 ## 6. Development runtime hiện tại
 
@@ -131,9 +131,9 @@ Môi trường development hiện tại gồm:
 - **Backend:** chạy local bằng NestJS, mặc định tại `http://localhost:3000`.
 - **PostgreSQL:** chạy trong Docker container và được backend truy cập qua published host port.
 
-Repository hiện đã có cấu hình TypeORM cho PostgreSQL, đường dẫn entities và migrations, đồng thời tắt schema synchronization. Tuy nhiên, source hiện tại mới có health endpoint; chưa có entity, migration, authentication, business module hoặc realtime gateway được triển khai.
+Development Compose chỉ chạy PostgreSQL; mặc định localhost port `5433`. Vite và NestJS đọc root `.env`; TypeORM tắt schema synchronization và chỉ chạy migrations qua thao tác tường minh. Xem [Getting started](../../README.md#getting-started) cho lệnh setup.
 
-Production infrastructure cho một EC2 instance dùng Docker Compose và Caddy được mô tả trong [deployment runbook](../deployment/production.md). Development Compose giữ nguyên; AWS provisioning và automated delivery là các bước riêng.
+Production dùng Caddy phục vụ frontend và proxy REST/Socket.IO trên cùng HTTPS origin, NestJS và PostgreSQL trong Docker Compose trên EC2. GitHub Actions delivery có approval, image verification, backend configuration preflight trước downtime, explicit migrations và health checks. [Production](../deployment/production.md) và [CI/CD](../deployment/cicd.md) là hướng dẫn vận hành; sơ đồ trên không thay thế backup/recovery procedures.
 
 ## 7. Architectural principles
 
@@ -155,15 +155,15 @@ Business change phải được validate và persist thành công trước khi r
 
 ### Modular monolith
 
-MVP được tổ chức thành các module trong một backend NestJS. Core business logic nằm trong module/service, không nằm trong Socket.IO gateway.
+Ứng dụng được tổ chức thành các module trong một backend NestJS. Core business logic nằm trong module/service, không nằm trong Socket.IO gateway.
 
 ### Tránh premature infrastructure
 
-Chỉ thêm infrastructure mới khi có requirement và workload phù hợp. MVP ưu tiên kiến trúc đơn giản, có thể kiểm chứng và phù hợp với quy mô hiện tại.
+Chỉ thêm infrastructure mới khi có requirement và workload phù hợp. Room coordination, active session revocation và in-memory rate limiting hiện có boundary của một backend process, không phải distributed infrastructure.
 
-## 8. Ngoài phạm vi kiến trúc MVP
+## 8. Những thành phần không có trong kiến trúc hiện tại
 
-Các thành phần sau không thuộc current architecture của MVP:
+Các thành phần sau không thuộc current architecture:
 
 - Redis;
 - Kafka;
@@ -172,23 +172,20 @@ Các thành phần sau không thuộc current architecture của MVP:
 - CRDT;
 - offline-first architecture.
 
-Đây không phải các dependency cần thêm để hoàn thành MVP. Chúng chỉ có thể được xem xét lại khi xuất hiện requirement rõ ràng và có đánh giá phù hợp.
+Đây không phải các dependency cần thêm để chạy ứng dụng. Chúng chỉ được xem xét khi có requirement và đánh giá kiến trúc riêng.
 
-## 9. Future evolution
+## 9. Storage, workers và scaling
 
-Các hướng dưới đây là future consideration, không phải một phần của architecture hiện tại:
+Phân biệt các extension đã có với hạ tầng scaling chỉ được xem xét khi có yêu cầu:
 
 - **Redis Socket.IO adapter:** có thể xem xét khi backend chạy nhiều instance và cần chia sẻ realtime room giữa các instance.
-- **Object storage:** có thể xem xét nếu sản phẩm bổ sung file attachment hoặc media upload.
-- **Queue / background job:** có thể xem xét khi xuất hiện workload dài, bất đồng bộ hoặc cần retry độc lập với request lifecycle.
+- **Object storage đã có:** avatars và private Card files dùng storage drivers, với private S3 cho production khi được cấu hình. Memory drivers phục vụ development/tests, không phải production persistence.
+- **Background processing đã có:** backend xử lý reminder/delivery và cleanup với durable database state. Distributed queue infrastructure sẽ là quyết định riêng, không phải điều kiện để các worker hiện có hoạt động.
 
 Mỗi hướng mở rộng cần được chốt bằng requirement riêng, đánh giá về consistency, vận hành và chi phí trước khi triển khai.
 
 ## 10. Trạng thái source và assumption
 
-Tài liệu này phân biệt hai trạng thái:
+Các module nghiệp vụ và UI hiện có được mô tả trong [project overview](../project-overview.md). Provider-dependent capabilities như S3 uploads, invitation mail, reminder jobs và task email vẫn cần operator configuration/enablement; có code không tự chứng minh cấu hình của một deployment.
 
-1. **Current implementation:** repository đang ở giai đoạn skeleton. Frontend, backend, PostgreSQL development environment, shared package và tooling đã được chuẩn bị; business feature chưa được implement.
-2. **MVP architecture target:** các flow REST, Socket.IO, authorization, persistence before broadcast và các business module được mô tả là hướng kiến trúc đã thống nhất cho những task implement tiếp theo.
-
-Không có redesign hoặc technology stack mới nào được đưa vào tài liệu. Những thành phần chưa xuất hiện trong source hiện tại được ghi rõ là planned hoặc target architecture thay vì mô tả như feature đã hoàn thành.
+[Roadmap gốc](../roadmap/post-mvp.md), [foundation gap analysis](backend-foundation-gap-analysis.md) và [task records](../tasks/README.md) được giữ lại theo ngữ cảnh lịch sử. Chúng không phải inventory tính năng hiện tại hoặc chứng nhận production QA cho một release mới.

@@ -2,9 +2,9 @@
 
 ## 1. Tổng quan
 
-Backend của project là một NestJS modular monolith theo hướng MVP. Mục tiêu của layer này là làm nơi duy nhất xử lý business logic, xác thực quyền, giao tiếp với database và phát sự kiện realtime sau khi thay đổi đã được persist thành công.
+Backend Kanvexa là NestJS modular monolith, xử lý business logic, authentication/authorization, PostgreSQL và post-commit realtime publication. Xem [project overview](../project-overview.md) cho khả năng sản phẩm và [developer guide](backend-developer-guide.md) cho DTO/serialization conventions.
 
-Project hiện tại đã có Application Foundation, Authentication/User Profile MVP, Board/Board Member API, Column/Card Management APIs và realtime foundation F1. Tám domain entities cùng các auth entities `EmailVerificationToken` và `GoogleIdentity` được đặt theo feature trong `apps/backend/src/api/`; các feature nghiệp vụ còn lại sẽ được bổ sung theo từng issue sau.
+`AppModule` hiện tích hợp Auth, Users, Boards/BoardMembers, Columns, Cards, Labels, Comments, Activities, Workspace API, Productivity, Search, Notifications, Exports và Realtime. API/UI cho Workspace membership/invitations, Board visibility, Card children, account privacy và exports đã có; backend không còn là foundation skeleton. Entities nằm trong `src/api/<feature>/entities/`, migrations trong `src/database/`, mail/storage/worker concerns ở backend, và realtime là layer cross-cutting.
 
 Backend không phải là nơi lưu trữ UI state; backend là source of truth cho dữ liệu nghiệp vụ và các thay đổi trạng thái board.
 
@@ -12,9 +12,9 @@ Backend không phải là nơi lưu trữ UI state; backend là source of truth 
 
 ## 2. Feature-Based Modular Architecture
 
-### Current state
+### Historical foundation layout
 
-Business code được tổ chức theo domain. Cấu trúc hiện có của Database Foundation:
+Business code được tổ chức theo domain. Cây dưới đây giữ layout của Database Foundation ban đầu, không phải inventory đầy đủ hiện tại. Các API area đã bổ sung gồm `workspaces`, `labels`, `productivity`, `search`, `notifications` và `exports`; `cards`/`users` cũng có các subfeature riêng.
 
 ```text
 apps/backend/src/
@@ -69,7 +69,7 @@ Trong đó:
 - Response thành công REST được interceptor chuẩn hóa thành `{ success: true, statusCode, message, data }`; danh sách phân trang thêm `meta`. `@SkipResponseWrap()` dành cho health, stream hoặc contract ngoại lệ. HTTP status vẫn giữ nguyên; `204` không có body. Dùng `@SerializeResponse(ResponseDto)` hoặc `toResponseDto()` với `@Expose()` để giới hạn trường trả về, kể cả nested DTO.
 - Response lỗi có `{ success: false, statusCode, code, message, timestamp, path }`, thêm `details` cho validation và `requestId` khi có correlation ID. Auth bổ sung `EMAIL_ALREADY_EXISTS` và `INVALID_CREDENTIALS`; các mã nền tảng gồm `BAD_REQUEST`, `VALIDATION_FAILED`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `TOO_MANY_REQUESTS`, `INTERNAL_ERROR`. Validation từ global pipe dùng `forbidNonWhitelisted: true`; nested DTO dùng `@ValidateNested` và `@Type`.
 - SQLSTATE `23505` và `23503` được map thành HTTP 409; `EntityNotFoundError` thành 404; lỗi database khác và lỗi bất ngờ thành 500 với thông điệp an toàn. Response không chứa SQL, query parameters hay stack trace. Business errors được định nghĩa tại feature tương ứng khi có yêu cầu.
-- List APIs tương lai dùng `PageQueryDto` (`page=1`, `limit=20`, tối đa `100`) và `paginateQueryBuilder()` để lấy `data` và `meta` bằng TypeORM; feed theo thời gian dùng `CursorQueryDto` và `paginateCursor()` với timestamp cùng UUID tie breaker. Client nhận envelope chung. Chưa có business list endpoint trong foundation.
+- List APIs dùng `PageQueryDto` (`page=1`, `limit=20`, tối đa `100`) và `paginateQueryBuilder()` để lấy `data` và `meta` bằng TypeORM; feed theo thời gian dùng `CursorQueryDto` và `paginateCursor()` với timestamp cùng UUID tie breaker. Business list endpoints sử dụng query/DTO phù hợp với contract của từng feature.
 
 `DATABASE_POOL_SIZE` (mặc định 10), `DATABASE_CONNECT_TIMEOUT_MS` (5000) và `DATABASE_SSL` (`false`) dùng chung cho Nest runtime và TypeORM CLI. SSL khi bật xác minh certificate máy chủ; deployment cần cung cấp trust chain phù hợp. SQL query logging tắt để không ghi parameters nhạy cảm. Global HTTP rate limit mặc định 120 requests/60 giây/IP mỗi process; Auth giới hạn login 10 requests/60 giây và register 5 requests/300 giây bằng `@Throttle`. Mặc định `TRUST_PROXY_HOPS=0` không tin forwarded IP headers. Production đặt `TRUST_PROXY_HOPS=1` chỉ khi Caddy là ingress duy nhất và backend không publish port; xem [production deployment](../deployment/production.md). Nếu triển khai nhiều instance, rate limit cần shared storage hoặc enforcement tại ingress.
 
@@ -77,16 +77,16 @@ Request log có `reqId`, method, path, response status và thời gian. `X-Reque
 
 Reference implementation: [vndevteam/nestjs-boilerplate](https://github.com/vndevteam/nestjs-boilerplate). Bootstrap, config, filter, logging, Swagger và pagination được điều chỉnh cho NestJS 11 và Kanban; không đưa auth, Redis, cloud logging, Active Record hoặc các dependency nghiệp vụ từ boilerplate vào foundation.
 
-Card Management E2 implements REST create/list/detail/update/archive/move and
+The historical Card Management E2 record describes REST create/list/detail/update/archive/move and
 multi-assignee operations in `api/cards/`. It reuses E1's exact ordering helpers
 and the same Board row lock for every mutation, preserving Card–Column and
 assignee–membership invariants under concurrent requests. No new schema,
-transport or realtime business events were introduced. See the
+transport or realtime business events were introduced in that milestone. Current Card services also support restore, duplicate, dates, checklists and attachments, with post-commit publication. See the
 [E2 contract and verification](../tasks/backend/card-management-api.md).
 
-### Planned state for MVP
+### Original module layout proposal (historical)
 
-Theo hướng architecture đã thống nhất, từng feature sẽ bổ sung controller, service, module definition, DTO, repository/query code và các thành phần liên quan khi có feature issue. Column Management E1 đã có các thành phần này; các feature còn lại sẽ được bổ sung theo từng issue. Các feature dự kiến gồm:
+Layout sau ghi lại đề xuất ban đầu. Các domain hiện đã có controllers, services, DTOs và entities theo nhu cầu thực tế; không phải các feature còn chờ triển khai. Các thư mục con minh họa trong proposal không tự khẳng định cấu trúc source hiện tại.
 
 ```text
 apps/backend/src/
@@ -146,7 +146,7 @@ Controller xử lý HTTP concern:
 
 Controller chỉ nên tập trung vào request/response; không đặt business logic phức tạp trong controller.
 
-Ví dụ trong MVP, controller chịu trách nhiệm cho API endpoint như board create, card update, comment create, v.v. Nhưng không quyết định logic nghiệp vụ; logic phải nằm trong service.
+Controller chịu trách nhiệm cho API endpoint như board create, card update, comment create, v.v. Nhưng không quyết định logic nghiệp vụ; logic phải nằm trong service.
 
 ### Service
 
@@ -197,9 +197,9 @@ Gateway không chứa core business logic. Gateway chỉ tập trung vào transp
 
 ---
 
-## 4. Business module direction
+## 4. Business modules
 
-P2-01 adds `api/workspaces/` with three entities and `WorkspacesModule`, exporting
+Historically, P2-01 added `api/workspaces/` and `WorkspacesModule`, exporting
 `WorkspacesService` for trusted internal lookup/provisioning. `BoardsModule` imports
 it; Board creation includes Personal Workspace + ADMIN and Board + OWNER in one
 transaction. The PostgreSQL provisioning primitive is also used by the legacy
@@ -208,12 +208,11 @@ TypeORM and does not import AuthModule. Email registration creates User, Persona
 Workspace and ADMIN atomically before sending verification mail after commit.
 First-time Google signup provisions in the User/GoogleIdentity transaction;
 returning sign-in and account linking do not provision. Signup creates no sample
-Board/Column/Card. There are no Workspace controllers, invitation handlers or new
-realtime contracts. Authorization continues through `BoardAuthorizationService`;
-Workspace membership does not grant private Board access. See the
+Board/Column/Card in that foundation milestone. Current `WorkspaceApiModule` now provides discovery, Overview/activity, Members/Guests/invitations, settings/policies, leave and guarded deletion. New-account starter Board onboarding is separately implemented; existing accounts are not backfilled. See [starter onboarding](../tasks/backend/p5-starter-board-onboarding.md). Authorization continues through `BoardAuthorizationService`;
+Workspace membership does not grant private Board access, while eligible Workspace-visible readers use the read-only capability. See the
 [foundation record](../tasks/backend/workspace-data-foundation.md).
 
-MVP dự kiến có các business module sau:
+Core business modules gồm:
 
 - `auth`
 - `users`
@@ -223,6 +222,12 @@ MVP dự kiến có các business module sau:
 - `cards`
 - `comments`
 - `activities`
+- `workspaces`
+- `labels`
+- `productivity`
+- `search`
+- `notifications`
+- `exports`
 
 `realtime` không nằm trong nhóm trên vì đây là cross-cutting layer, không đại diện cho một domain Business riêng.
 
@@ -245,7 +250,7 @@ Authentication và authorization là hai concern khác nhau.
 
 ### Authentication
 
-Authentication MVP dùng JWT access token stateless với HS256, TTL 3600 giây, issuer `kanban-api`, audience `kanban-web` và secret từ `JWT_SECRET`. `JwtAuthGuard` kiểm tra Bearer header, signature, algorithm, expiration, issuer, audience và user còn tồn tại trong PostgreSQL; identity được đưa vào `CurrentUser` dưới dạng user ID.
+Authentication dùng JWT access token stateless với HS256, TTL mặc định 3600 giây, issuer `kanban-api`, audience `kanban-web` và secret từ `JWT_SECRET`. `JwtAuthGuard` kiểm tra Bearer header, signature, algorithm, expiration, issuer, audience, `authVersion` và user còn tồn tại trong PostgreSQL; identity được đưa vào `CurrentUser` dưới dạng user ID.
 
 P1-06 adds the persisted `users.auth_version` credential revocation marker. New
 JWTs carry `authVersion`; REST authentication and Socket.IO handshakes compare it
@@ -277,18 +282,18 @@ Các endpoint đã triển khai:
 - `POST /api/auth/logout` là protected stateless endpoint trả `204`; server không revoke hoặc blacklist token.
 - `GET /api/users/me` và `PATCH /api/users/me` là protected profile endpoints; chỉ cập nhật user lấy từ JWT context.
 
-Public user response luôn whitelist `id`, `email`, `displayName`, `avatarUrl`, `createdAt` và `updatedAt`; `passwordHash` không được trả về hoặc đưa vào JWT.
+Public user response dùng [UserResponseDto](../../apps/backend/src/api/users/dto/user-response.dto.ts) để allowlist identity, profile/avatar revision và timestamps, cùng deleted-author marker khi áp dụng; `passwordHash` không được trả về hoặc đưa vào JWT.
 
 ### Authorization
 
-Authorization dựa trên `BoardMember` và role của user trong board. Đây là nguyên tắc quan trọng của project.
+`BoardAuthorizationService` tập trung quyền truy cập Board. Board membership và role quyết định quyền sửa; Workspace visibility cho phép reader đủ điều kiện đọc mà không tạo Board membership.
 
-MVP role:
+Board roles:
 
 - `OWNER`
 - `MEMBER`
 
-Tất cả quyền của board phải được xác minh dựa trên board membership, không dựa trên UI state hoặc client-side giả định.
+Workspace roles `ADMIN`/`MEMBER` là boundary riêng, không tự cấp quyền vào private Board. Backend xác minh capability đọc/sửa/owner, archived/read-only state và resource-to-Board relationship; không dựa trên UI state hoặc client-side giả định.
 
 Các guard hoặc service authorization pattern có thể dùng như:
 
@@ -302,15 +307,16 @@ hoặc cách tương đương. Cách quan trọng là permission check phải t�
 
 ## 6. Realtime responsibilities
 
-F1 is implemented in `src/realtime/`: Nest-managed gateway, JWT handshake and
+Realtime is implemented in `src/realtime/`: Nest-managed gateway, JWT handshake and
 expiration, authorized join/leave, post-commit membership revocation and an
 injectable board broadcast service. Join, removal and broadcast share a per-board
 queue in the business-independent `RealtimeAccessModule`, closing the gap between
 removal commit and eviction without a circular module dependency. The transport
 path is `/socket.io`; CORS and WebSocket admission reuse `CORS_ORIGINS`. See the
 [F1 implementation guide](../tasks/backend/realtime-foundation.md) for the exact contracts,
-single-instance security boundary and tests. Presence and business events below
-remain planned for G1/G2 and F2.
+single-instance security boundary and tests. Presence, Board business events and
+user-scoped notification delivery are implemented; see the
+[realtime frontend contract](../tasks/frontend/realtime-frontend.md) for client invalidation and reconnect behavior.
 
 Realtime layer phải phục vụ các concern sau:
 
@@ -330,7 +336,7 @@ board:{boardId}
 
 Đây là room duy nhất để broadcast events liên quan đến board. User chỉ được join room nếu backend xác thực tài khoản và quyền truy cập board.
 
-Presence ở MVP có thể dùng in-memory state dạng:
+`BoardPresenceService` quản lý presence trong process, hỗ trợ nhiều socket cho cùng user:
 
 ```text
 boardId
@@ -338,7 +344,7 @@ boardId
 → socketIds
 ```
 
-Cách này đủ cho nhiều tab hoặc nhiều socket cùng một user. Không dùng Redis ở MVP.
+Cách này hỗ trợ nhiều tab hoặc nhiều socket cùng một user. Runtime hiện tại không dùng Redis hoặc distributed socket adapter; nhiều backend replicas cần coordination riêng trước khi mở rộng.
 
 ---
 
@@ -424,7 +430,7 @@ Khi tạo một business module mới, nên tuân thủ các nguyên tắc sau:
 
 ## 11. Kết luận
 
-Backend architecture của project đang trong giai đoạn khởi tạo nhưng hướng đi đã rõ: một modular monolith NestJS với PostgreSQL và TypeORM, REST dùng cho command/query, Socket.IO cho realtime, và logic nghiệp vụ được giữ ở service layer thay vì controller/gateway.
+Backend hiện có dùng modular monolith NestJS với PostgreSQL và TypeORM, REST cho command/query, Socket.IO cho realtime, và logic nghiệp vụ ở service layer thay vì controller/gateway.
 
 Điểm then chốt là sự tách biệt rõ ràng giữa:
 
@@ -436,7 +442,7 @@ Backend architecture của project đang trong giai đoạn khởi tạo nhưng 
 
 Đây là basis để các feature sau này được implement theo cùng convention và không làm lệch kiến trúc đã thống nhất.
 
-## Persistent user notifications (CX-01 foundation)
+## Persistent user notifications
 
 `NotificationsModule` exposes recipient-owned inbox/read-state and independent
 notification preference APIs. The transport-free `NotificationPersistenceModule`
@@ -444,8 +450,10 @@ exports transaction-bound persistence and invitation verifier hooks without
 importing business modules. `RealtimeDeliveryModule` owns post-commit user hints
 through the existing authenticated sockets: `notifications:changed` carries `{}`
 only. Current context resolution uses the canonical Board SQL ACL and returns
-unavailable retained history after access loss. No real domain producer or
-scheduler is connected by this foundation. See the
+unavailable retained history after access loss. Domain producers persist notifications
+within their business transactions and publish hints after commit. `DueReminderScanner`,
+`TaskNotificationWorker` and `TaskEmailDispatcher` support configurable reminder scanning
+and email outbox delivery; operator flags control polling and email independently. See the
 [implementation, privacy and downstream contracts](../tasks/backend/p4-notification-foundation.md).
 
 ## Private Card attachment extension (CD-03)
