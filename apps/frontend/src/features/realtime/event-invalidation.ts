@@ -5,7 +5,6 @@ import { commentKeys } from '../comments/query-keys';
 import { avatarKeys } from '../auth/avatar-query-keys';
 import { workspaceKeys } from '../workspaces/query-keys';
 import { productivityKey } from '../productivity/cache';
-import { searchKey } from '../search/cache';
 
 export type BoardEventName = Exclude<
   keyof RealtimeServerEvents,
@@ -63,8 +62,6 @@ export function invalidationTargets<E extends BoardEventName>(
   payload: BoardEventPayload<E>,
 ): InvalidationTarget[] {
   const targets = boardInvalidationTargets(event, payload);
-  if (/^(board:|member:|card:)/.test(event))
-    targets.push({ queryKey: searchKey });
   if (/^(board:|member:)/.test(event))
     targets.push({ queryKey: productivityKey });
   else if (/^(card:|labels:)/.test(event))

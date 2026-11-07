@@ -451,6 +451,27 @@ describe('global search palette', () => {
     await waitFor(() => expect(screen.queryByText('Guest board')).toBeNull());
   });
 
+  it('starts one Search refresh for a burst of Board and Workspace invalidations', async () => {
+    vi.mocked(globalSearch)
+      .mockResolvedValueOnce(grouped)
+      .mockImplementation(() => new Promise(() => {}));
+    const { client } = setup();
+    client.setQueryData(['boards', 'list'], []);
+    client.setQueryData(['boards', 'detail', 'b'], {});
+    client.setQueryData(['workspaces', 'list'], []);
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'plan' },
+    });
+    await screen.findByText('Guest board');
+    act(() => {
+      void client.invalidateQueries({ queryKey: ['boards'] });
+      void client.invalidateQueries({ queryKey: ['workspaces'] });
+    });
+    await waitFor(() => expect(screen.queryByText('Guest board')).toBeNull());
+    await waitFor(() => expect(globalSearch).toHaveBeenCalledTimes(2));
+  });
+
   it('traps keyboard focus and ignores shortcuts while another dialog is open', () => {
     setup();
     const trigger = screen.getByRole('button', { name: 'Search' });
