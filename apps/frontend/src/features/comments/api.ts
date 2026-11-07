@@ -31,10 +31,14 @@ export function createComment(
   boardId: string,
   cardId: string,
   input: CommentRequest,
+  operationId?: string,
 ): Promise<Comment> {
   return apiRequest(commentsPath(boardId, cardId), {
     method: 'POST',
     accessToken: token,
+    ...(operationId
+      ? { headers: { 'X-Kanvexa-Operation-Id': operationId } }
+      : {}),
     // Trim and rebase spans together so offsets match the sent content.
     body: finalizeMentions(input.content, input.mentions),
   });
@@ -46,10 +50,14 @@ export function updateComment(
   cardId: string,
   commentId: string,
   input: CommentRequest,
+  operationId?: string,
 ): Promise<Comment> {
   return apiRequest(commentsPath(boardId, cardId, commentId), {
     method: 'PATCH',
     accessToken: token,
+    ...(operationId
+      ? { headers: { 'X-Kanvexa-Operation-Id': operationId } }
+      : {}),
     // Trim and rebase spans together so offsets match the sent content.
     body: finalizeMentions(input.content, input.mentions),
   });
@@ -60,9 +68,13 @@ export function deleteComment(
   boardId: string,
   cardId: string,
   commentId: string,
+  operationId?: string,
 ): Promise<void> {
   return apiRequest(commentsPath(boardId, cardId, commentId), {
     method: 'DELETE',
     accessToken: token,
+    ...(operationId
+      ? { headers: { 'X-Kanvexa-Operation-Id': operationId } }
+      : {}),
   });
 }

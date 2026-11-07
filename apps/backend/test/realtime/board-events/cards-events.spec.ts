@@ -142,7 +142,14 @@ describe('Card post-commit events', () => {
                 fromColumnId: ID.column,
                 toColumnId: ID.secondColumn,
               }
-            : { boardId: ID.board, cardId: ID.card, columnId: ID.column },
+            : {
+                boardId: ID.board,
+                cardId: ID.card,
+                columnId: ID.column,
+                ...(operation === 'update'
+                  ? { changeScope: 'card-fields' }
+                  : {}),
+              },
         ],
       ]);
     },

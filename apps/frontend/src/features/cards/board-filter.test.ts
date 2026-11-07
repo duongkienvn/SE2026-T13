@@ -52,6 +52,7 @@ describe('preview invalidation', () => {
     expect(targets).toContainEqual({ queryKey: [...prefix, 'filtered'] });
     expect(targets).toContainEqual({
       queryKey: [...prefix, 'preview-summaries'],
+      previewCardId: 'card',
     });
     expect(
       invalidationTargets('comment:created', {
@@ -59,6 +60,9 @@ describe('preview invalidation', () => {
         cardId: 'card',
         commentId: 'comment',
       }),
-    ).toContainEqual({ queryKey: [...prefix, 'preview-summaries'] });
+    ).toContainEqual({
+      queryKey: [...prefix, 'preview-summaries'],
+      previewCardId: 'card',
+    });
   });
 });

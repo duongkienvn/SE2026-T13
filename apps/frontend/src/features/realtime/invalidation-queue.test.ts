@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { revokeBoardAccess } from '../boards/revoke-board-access';
 import { boardKeys } from '../boards/query-keys';
 import { createInvalidationQueue } from './invalidation-queue';
+import { invalidationTargets } from './event-invalidation';
 
 const BOARD = 'board-a';
 const cards = { queryKey: boardKeys.cards(BOARD), exact: true };
@@ -73,15 +74,25 @@ describe('createInvalidationQueue', () => {
     queue.add([cards]);
     await vi.advanceTimersByTimeAsync(1_000);
     const other = { queryKey: boardKeys.cards('board-b'), exact: true };
-    queue.add([columns, other]);
+    const detail = { queryKey: boardKeys.card(BOARD, 'card-1') };
+    queue.add([columns, other, detail]);
     await vi.advanceTimersByTimeAsync(1_000);
-    expect(invalidateQueries.mock.calls).toEqual([[columns], [other]]);
+    expect(invalidateQueries.mock.calls).toEqual([
+      [columns],
+      [other],
+      [detail],
+    ]);
 
     finish();
     await move;
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(invalidateQueries.mock.calls).toEqual([[columns], [other], [cards]]);
+    expect(invalidateQueries.mock.calls).toEqual([
+      [columns],
+      [other],
+      [detail],
+      [cards],
+    ]);
   });
 
   it('drops everything once disposed', async () => {
@@ -118,6 +129,32 @@ describe('createInvalidationQueue', () => {
     queue.dispose();
   });
 
+  it('waits until all overlapping mutations have settled', async () => {
+    const queue = createInvalidationQueue(queryClient, 10);
+    const finish: Array<() => void> = [];
+    const start = () =>
+      queryClient
+        .getMutationCache()
+        .build(queryClient, {
+          meta: { realtimeProtectedKey: boardKeys.cards(BOARD) },
+          mutationFn: () =>
+            new Promise<void>((resolve) => finish.push(resolve)),
+        })
+        .execute(undefined);
+    const first = start();
+    const second = start();
+    await vi.advanceTimersByTimeAsync(0);
+    queue.add([cards]);
+    await vi.advanceTimersByTimeAsync(10);
+    finish[0]();
+    await first;
+    expect(invalidateQueries).not.toHaveBeenCalled();
+    finish[1]();
+    await second;
+    expect(invalidateQueries).toHaveBeenCalledTimes(1);
+    queue.dispose();
+  });
+
   it('retains a later hint received while an earlier refresh is in flight', async () => {
     let finish!: (value: string) => void;
     const queryFn = vi
@@ -145,6 +182,79 @@ describe('createInvalidationQueue', () => {
     await vi.advanceTimersByTimeAsync(100);
     expect(queryFn).toHaveBeenCalledTimes(2);
     expect(queryClient.getQueryData(cards.queryKey)).toBe('latest');
+    unsubscribe();
+    queue.dispose();
+  });
+
+  it('coalesces affected preview batches without refetching unrelated cards', async () => {
+    const prefix = [...boardKeys.cards(BOARD), 'preview-summaries', 'user', 1];
+    const keys = [
+      [...prefix, ['card-a']],
+      [...prefix, ['card-a', 'card-b']],
+      [...prefix, ['card-b']],
+      [...prefix, ['card-c']],
+    ];
+    const fetches = keys.map(() => vi.fn().mockResolvedValue([]));
+    const observers = keys.map((queryKey, index) => {
+      queryClient.setQueryData(queryKey, []);
+      const observer = new QueryObserver(queryClient, {
+        queryKey,
+        queryFn: fetches[index],
+        staleTime: Infinity,
+      });
+      return observer.subscribe(() => undefined);
+    });
+    const queue = createInvalidationQueue(queryClient, 10);
+    for (const cardId of ['card-a', 'card-b'])
+      queue.add(
+        invalidationTargets('card:updated', {
+          boardId: BOARD,
+          cardId,
+          columnId: 'column',
+        }),
+      );
+    await vi.advanceTimersByTimeAsync(10);
+    expect(fetches.map((fetch) => fetch.mock.calls.length)).toEqual([
+      1, 1, 1, 0,
+    ]);
+    observers.forEach((unsubscribe) => unsubscribe());
+    queue.dispose();
+  });
+
+  it('retains a generic child-change hint alongside a field-only update', async () => {
+    const key = [
+      ...boardKeys.cards(BOARD),
+      'preview-summaries',
+      'user',
+      1,
+      ['card-a'],
+    ];
+    queryClient.setQueryData(key, []);
+    const queryFn = vi.fn().mockResolvedValue([]);
+    const observer = new QueryObserver(queryClient, {
+      queryKey: key,
+      queryFn,
+      staleTime: Infinity,
+    });
+    const unsubscribe = observer.subscribe(() => undefined);
+    const queue = createInvalidationQueue(queryClient, 10);
+    queue.add(
+      invalidationTargets('card:updated', {
+        boardId: BOARD,
+        cardId: 'card-a',
+        columnId: 'column',
+        changeScope: 'card-fields',
+      }),
+    );
+    queue.add(
+      invalidationTargets('card:updated', {
+        boardId: BOARD,
+        cardId: 'card-a',
+        columnId: 'column',
+      }),
+    );
+    await vi.advanceTimersByTimeAsync(10);
+    expect(queryFn).toHaveBeenCalledTimes(1);
     unsubscribe();
     queue.dispose();
   });

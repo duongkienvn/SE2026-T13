@@ -2,6 +2,7 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { NotificationKind, RealtimeServerEvent } from '@kanban/shared';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, In, Repository } from 'typeorm';
+import { isUUID } from 'class-validator';
 import { ApplicationException } from '../../exceptions/application.exception';
 import {
   ActivityActionType,
@@ -31,6 +32,11 @@ import { CommentMentionDto } from './dto/comment-mention.dto';
 import { NotificationService } from '../notifications/notification.service';
 import { enqueueTaskEmail } from '../notifications/task-email-outbox';
 import { NotificationEventPublisher } from '../../realtime/notification-event-publisher.service';
+
+const correlation = (id?: string) =>
+  typeof id === 'string' && isUUID(id, '4')
+    ? { operationId: id.toLowerCase() }
+    : {};
 
 @Injectable()
 export class CommentsService {
@@ -110,6 +116,7 @@ export class CommentsService {
     boardId: string,
     cardId: string,
     input: CreateCommentDto,
+    operationId?: string,
   ): Promise<CommentResponseDto> {
     const result = await this.mutate(userId, boardId, async (manager) => {
       const card = await this.requireCard(
@@ -153,6 +160,7 @@ export class CommentsService {
       boardId,
       cardId: result.comment.cardId,
       commentId: result.comment.id,
+      ...correlation(operationId),
     });
     return result.comment;
   }
@@ -163,6 +171,7 @@ export class CommentsService {
     cardId: string,
     commentId: string,
     input: UpdateCommentDto,
+    operationId?: string,
   ): Promise<CommentResponseDto> {
     const { result, changed, notified } = await this.mutate(
       userId,
@@ -223,6 +232,7 @@ export class CommentsService {
         boardId,
         cardId: result.cardId,
         commentId: result.id,
+        ...correlation(operationId),
       });
     return result;
   }
@@ -341,6 +351,7 @@ export class CommentsService {
     boardId: string,
     cardId: string,
     commentId: string,
+    operationId?: string,
   ): Promise<void> {
     const payload = await this.mutate(userId, boardId, async (manager) => {
       const card = await this.requireCard(
@@ -363,7 +374,10 @@ export class CommentsService {
       });
       return { boardId, cardId: card.id, commentId: comment.id };
     });
-    await this.events.publish(RealtimeServerEvent.COMMENT_DELETED, payload);
+    await this.events.publish(RealtimeServerEvent.COMMENT_DELETED, {
+      ...payload,
+      ...correlation(operationId),
+    });
   }
 
   private mutate<T>(

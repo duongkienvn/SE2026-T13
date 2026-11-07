@@ -39,6 +39,9 @@ server['column:moved'](column);
 server['column:deleted'](column);
 server['card:created'](card);
 server['card:updated'](card);
+server['card:updated']({ ...card, changeScope: 'card-fields' });
+// @ts-expect-error unknown scopes must not narrow client invalidations
+server['card:updated']({ ...card, changeScope: 'unknown' });
 server['card:archived'](card);
 server['card:restored'](card);
 // @ts-expect-error restoring a card requires its original column
@@ -54,6 +57,9 @@ server['member:added'](member);
 server['member:role-changed'](member);
 server['member:removed'](member);
 server['comment:created'](comment);
+server['comment:created']({ ...comment, operationId: 'opaque-request-id' });
+// @ts-expect-error operation identifiers are strings, not credentials or objects
+server['comment:created']({ ...comment, operationId: { token: 'secret' } });
 server['comment:updated'](comment);
 server['comment:deleted'](comment);
 type CommentPayload = Parameters<RealtimeServerEvents['comment:created']>[0];

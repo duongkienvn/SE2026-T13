@@ -5,6 +5,7 @@ import { useAuth } from '../auth/useAuth';
 import { useRefreshIfArchived } from '../boards/hooks';
 import { boardKeys } from '../boards/query-keys';
 import { boardAccessVersion } from '../boards/access-version';
+import { previewSummaryFilters } from './preview-summary-cache';
 import {
   archiveCard,
   assignCard,
@@ -99,6 +100,9 @@ export function useCard(boardId: string, cardId: string, placeholder?: Card) {
 function useSaveCard(boardId: string, refreshSummaries = true) {
   const queryClient = useQueryClient();
   return {
+    // The success handler patches this list before its authoritative read.
+    // Realtime reads of the same list must not race that write.
+    meta: { realtimeProtectedKey: boardKeys.cards(boardId) },
     onMutate: () => boardAccessVersion(queryClient, boardId),
     onSuccess: (card: Card, _input: unknown, version: number | undefined) => {
       if (version !== boardAccessVersion(queryClient, boardId)) return;
@@ -114,9 +118,9 @@ function useSaveCard(boardId: string, refreshSummaries = true) {
         queryKey: [...boardKeys.cards(boardId), 'filtered'],
       });
       if (refreshSummaries)
-        void queryClient.invalidateQueries({
-          queryKey: [...boardKeys.cards(boardId), 'preview-summaries'],
-        });
+        void queryClient.invalidateQueries(
+          previewSummaryFilters(boardId, card.id),
+        );
       return queryClient.invalidateQueries({
         queryKey: boardKeys.cards(boardId),
         exact: true,
@@ -198,6 +202,7 @@ export function useArchiveCard(boardId: string, cardId: string) {
   const client = useQueryClient();
   const onError = useRefreshAfterCardError(boardId);
   return useMutation({
+    meta: save.meta,
     mutationFn: () =>
       runAuthorized((token) => archiveCard(token, boardId, cardId)),
     onMutate: save.onMutate,
@@ -223,7 +228,6 @@ export function useMoveCard(boardId: string) {
   const save = useSaveCard(boardId, false);
   const refreshIfArchived = useRefreshIfArchived(boardId);
   return useMutation({
-    meta: { realtimeProtectedKey: boardKeys.cards(boardId) },
     mutationFn: ({ cardId, ...input }: MoveCardRequest & { cardId: string }) =>
       runAuthorized((token) => moveCard(token, boardId, cardId, input)),
     ...save,

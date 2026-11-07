@@ -6,6 +6,8 @@ The comments section is separate from the Card edit form. After a successful RES
 
 H1c adds ID-only Socket.IO hints after committed comment mutations. Another browser viewing the same Board/Card refetches its active comments page through REST without a reload; reconnecting resyncs mounted comment queries. A viewer on the last page follows a newly created last page, while an invalid page after deletion clamps to the last valid page.
 
+PERF-01 adds optional per-request correlation for comment events. Only a matching operation in the originating tab is coalesced with its authoritative REST refresh; other tabs, unknown IDs and old-server events retain normal invalidation. A failed request or refresh replays a buffered hint; session disposal clears it. Pending entries expire after 30 seconds and the registry is capped at 128 operations, falling back to normal invalidation when correlation is unavailable.
+
 ## UI evidence
 
 Captured from the running frontend at 1366×945 and 390×844 with a local PostgreSQL/backend. Two test accounts, a Board, a Card and three Comments were created through the actual REST API for the captures (not static mock responses). The Card Detail dialog is scrolled to the Comments section so the list and composer are visible.

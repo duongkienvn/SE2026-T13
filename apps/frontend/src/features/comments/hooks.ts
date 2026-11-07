@@ -12,6 +12,8 @@ import {
 } from './api';
 import type { CommentRequest } from './types';
 import { commentKeys } from './query-keys';
+import { previewSummaryFilters } from '../cards/preview-summary-cache';
+import { beginCommentOperation } from '../realtime/local-operation';
 
 export { commentKeys } from './query-keys';
 
@@ -28,17 +30,54 @@ export function useComments(boardId: string, cardId: string, page: number) {
   });
 }
 
-function useCommentMutation(boardId: string, cardId: string) {
+function useCommentMutation(
+  boardId: string,
+  cardId: string,
+  refreshCount = true,
+) {
   const queryClient = useQueryClient();
   const refreshIfArchived = useRefreshIfArchived(boardId);
+  const invalidate = () =>
+    Promise.all([
+      ...(refreshCount
+        ? [
+            queryClient.invalidateQueries(
+              previewSummaryFilters(boardId, cardId),
+              { throwOnError: true },
+            ),
+          ]
+        : []),
+      queryClient.invalidateQueries(
+        { queryKey: commentKeys.card(boardId, cardId) },
+        { throwOnError: true },
+      ),
+    ]);
   return {
-    invalidate: () => {
-      void queryClient.invalidateQueries({
-        queryKey: [...boardKeys.cards(boardId), 'preview-summaries'],
-      });
-      return queryClient.invalidateQueries({
-        queryKey: commentKeys.card(boardId, cardId),
-      });
+    run: async <T>(
+      event: 'comment:created' | 'comment:updated' | 'comment:deleted',
+      request: (operationId?: string) => Promise<T>,
+    ): Promise<T> => {
+      const operation = beginCommentOperation(
+        queryClient,
+        event,
+        boardId,
+        cardId,
+      );
+      let result: T;
+      try {
+        result = await request(operation?.id);
+      } catch (error) {
+        operation?.failure();
+        throw error;
+      }
+      try {
+        await invalidate();
+        operation?.success();
+      } catch {
+        // A committed write remains successful; replay a buffered hint for retry.
+        operation?.failure();
+      }
+      return result;
     },
     onError: (error: unknown) => {
       refreshIfArchived(error);
@@ -53,40 +92,45 @@ function useCommentMutation(boardId: string, cardId: string) {
 
 export function useCreateComment(boardId: string, cardId: string) {
   const { runAuthorized } = useAuth();
-  const { invalidate, onError } = useCommentMutation(boardId, cardId);
+  const { run, onError } = useCommentMutation(boardId, cardId);
   return useMutation({
     mutationFn: (input: CommentRequest) =>
-      runAuthorized((token) => createComment(token, boardId, cardId, input)),
-    onSuccess: invalidate,
+      run('comment:created', (id) =>
+        runAuthorized((token) =>
+          createComment(token, boardId, cardId, input, id),
+        ),
+      ),
     onError,
   });
 }
 
 export function useUpdateComment(boardId: string, cardId: string) {
   const { runAuthorized } = useAuth();
-  const { invalidate, onError } = useCommentMutation(boardId, cardId);
+  const { run, onError } = useCommentMutation(boardId, cardId, false);
   return useMutation({
     mutationFn: ({
       commentId,
       ...input
     }: CommentRequest & { commentId: string }) =>
-      runAuthorized((token) =>
-        updateComment(token, boardId, cardId, commentId, input),
+      run('comment:updated', (id) =>
+        runAuthorized((token) =>
+          updateComment(token, boardId, cardId, commentId, input, id),
+        ),
       ),
-    onSuccess: invalidate,
     onError,
   });
 }
 
 export function useDeleteComment(boardId: string, cardId: string) {
   const { runAuthorized } = useAuth();
-  const { invalidate, onError } = useCommentMutation(boardId, cardId);
+  const { run, onError } = useCommentMutation(boardId, cardId);
   return useMutation({
     mutationFn: (commentId: string) =>
-      runAuthorized((token) =>
-        deleteComment(token, boardId, cardId, commentId),
+      run('comment:deleted', (id) =>
+        runAuthorized((token) =>
+          deleteComment(token, boardId, cardId, commentId, id),
+        ),
       ),
-    onSuccess: invalidate,
     onError,
   });
 }

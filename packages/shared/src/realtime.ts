@@ -81,6 +81,11 @@ export interface CardChangedEvent {
   columnId: string;
 }
 
+/** Optional hint: a Card field update does not change its child collections. */
+export interface CardUpdatedEvent extends CardChangedEvent {
+  changeScope?: 'card-fields';
+}
+
 /** Catalog changes invalidate catalog and Card label caches across this Board. */
 export interface LabelsChangedEvent {
   boardId: string;
@@ -105,6 +110,8 @@ export interface CommentChangedEvent {
   boardId: string;
   cardId: string;
   commentId: string;
+  /** Opaque, per-request correlation hint; absent on older servers. */
+  operationId?: string;
 }
 
 /** Business events are invalidation hints; presence is an ephemeral full snapshot. */
@@ -123,7 +130,7 @@ export interface RealtimeServerEvents {
   'column:deleted': (payload: ColumnChangedEvent) => void;
   'card:created': (payload: CardChangedEvent) => void;
   /** Invalidate Card details and checklist detail/summary caches, including item-only changes and Card label associations. */
-  'card:updated': (payload: CardChangedEvent) => void;
+  'card:updated': (payload: CardUpdatedEvent) => void;
   'card:moved': (payload: CardMovedEvent) => void;
   'card:archived': (payload: CardChangedEvent) => void;
   'card:restored': (payload: CardChangedEvent) => void;

@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Header,
+  Headers,
   HttpCode,
   HttpStatus,
   Param,
@@ -87,8 +88,15 @@ export class CommentsController {
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Body() input: CreateCommentDto,
+    @Headers('x-kanvexa-operation-id') operationId?: string,
   ): Promise<CommentResponseDto> {
-    return this.comments.create(user.userId, boardId, cardId, input);
+    return this.comments.create(
+      user.userId,
+      boardId,
+      cardId,
+      input,
+      operationId,
+    );
   }
 
   @Patch(':commentId')
@@ -106,8 +114,16 @@ export class CommentsController {
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Param('commentId', ParseUUIDPipe) commentId: string,
     @Body() input: UpdateCommentDto,
+    @Headers('x-kanvexa-operation-id') operationId?: string,
   ): Promise<CommentResponseDto> {
-    return this.comments.update(user.userId, boardId, cardId, commentId, input);
+    return this.comments.update(
+      user.userId,
+      boardId,
+      cardId,
+      commentId,
+      input,
+      operationId,
+    );
   }
 
   @Delete(':commentId')
@@ -121,7 +137,14 @@ export class CommentsController {
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Param('commentId', ParseUUIDPipe) commentId: string,
+    @Headers('x-kanvexa-operation-id') operationId?: string,
   ): Promise<void> {
-    return this.comments.remove(user.userId, boardId, cardId, commentId);
+    return this.comments.remove(
+      user.userId,
+      boardId,
+      cardId,
+      commentId,
+      operationId,
+    );
   }
 }

@@ -19,6 +19,7 @@ import { refreshWorkspaceGuests } from '../workspaces/members/refresh-guests';
 import { refreshWorkspaceBoardSummaries } from '../workspaces/refresh-board-summaries';
 import { refreshProductivity } from '../productivity/cache';
 import { refreshSearch } from '../search/cache';
+import { clearLocalOperations, consumeCommentHint } from './local-operation';
 import { RealtimeNotificationEvent } from '@kanban/shared';
 import {
   createNotificationHint,
@@ -127,7 +128,12 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         }
         return socket;
       },
-      invalidate: queue.add,
+      invalidate: (targets) => {
+        if (isCurrent()) queue.add(targets);
+      },
+      consumeHint: (event, payload, targets) =>
+        isCurrent() &&
+        consumeCommentHint(queryClient, event, payload, targets, queue.add),
       accessRevoked: (boardId) => {
         if (isCurrent()) receiveBoardRevocation(queryClient, { boardId });
       },
@@ -173,6 +179,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('visibilitychange', wake);
       next.dispose();
       queue.dispose();
+      clearLocalOperations(queryClient);
       notificationHint.cancel();
       setConnection((current) => (current?.client === next ? null : current));
     };

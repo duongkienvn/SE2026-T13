@@ -9,6 +9,7 @@ import { isApiError } from '../../../lib/api-client';
 import { retryUnlessClientError } from '../../../lib/query-client';
 import { useAuth } from '../../auth/useAuth';
 import { boardKeys } from '../../boards/query-keys';
+import { previewSummaryFilters } from '../preview-summary-cache';
 import {
   addUrlAttachment,
   ATTACHMENT_POLICY,
@@ -45,9 +46,7 @@ export function useAttachments(boardId: string, cardId: string, page: number) {
 function useRefreshAttachments(boardId: string, cardId: string) {
   const client = useQueryClient();
   return () => {
-    void client.invalidateQueries({
-      queryKey: [...boardKeys.cards(boardId), 'preview-summaries'],
-    });
+    void client.invalidateQueries(previewSummaryFilters(boardId, cardId));
     return client.invalidateQueries({
       queryKey: attachmentKeys.all(boardId, cardId),
     });

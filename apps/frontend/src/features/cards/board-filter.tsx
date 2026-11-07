@@ -1,15 +1,11 @@
-import { useId, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useId, useMemo, useState } from 'react';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router';
-import {
-  isCardDateInstant,
-  type BoardCardFilters,
-  type CardPreviewSummary,
-} from '@kanban/shared';
+import { isCardDateInstant, type BoardCardFilters } from '@kanban/shared';
 import { CloseIcon, SlidersIcon } from '../../components/icons';
 import { Dialog } from '../../components/Dialog';
 import { retryUnlessClientError } from '../../lib/query-client';
-import { fetchAllPages } from '../../lib/api-client';
+import { fetchAllPages, isApiError } from '../../lib/api-client';
 import { useAuth } from '../auth/useAuth';
 import { useAuthSession } from '../auth/auth-session-context';
 import type { BoardMember } from '../board-members/types';
@@ -139,33 +135,62 @@ export function usePreviewSummaries(boardId: string, ids: string[]) {
   const { runAuthorized, user } = useAuth();
   const { generation } = useAuthSession();
   const sorted = [...ids].sort();
-  return useQuery({
-    queryKey: [
-      ...boardKeys.cards(boardId),
-      'preview-summaries',
-      user?.id,
-      generation,
-      sorted,
-    ],
-    queryFn: ({ signal }) =>
-      runAuthorized(async (token) => {
-        const all: CardPreviewSummary[] = [];
-        for (let i = 0; i < sorted.length; i += 100)
-          all.push(
-            ...(
-              await listPreviewSummaries(
-                token,
-                boardId,
-                sorted.slice(i, i + 100),
-                signal,
-              )
-            ).summaries,
-          );
-        return all;
-      }),
-    enabled: sorted.length > 0,
-    retry: retryUnlessClientError,
+  // Preserve the old one-request-at-a-time behavior for large Boards.
+  const serial = useMemo(() => {
+    let tail: Promise<unknown> = Promise.resolve();
+    return <T,>(task: () => Promise<T>, signal: AbortSignal) => {
+      const result = tail.then(() => {
+        if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+        return task();
+      });
+      tail = result.catch(() => undefined);
+      return result;
+    };
+  }, [boardId, user?.id, generation]);
+  const chunks: string[][] = [];
+  for (let i = 0; i < sorted.length; i += 100)
+    chunks.push(sorted.slice(i, i + 100));
+  const queries = useQueries({
+    queries: chunks.map((chunk) => ({
+      queryKey: [
+        ...boardKeys.cards(boardId),
+        'preview-summaries',
+        user?.id,
+        generation,
+        chunk,
+      ],
+      queryFn: ({ signal }: { signal: AbortSignal }) =>
+        serial(
+          () =>
+            runAuthorized(
+              async (token) =>
+                (await listPreviewSummaries(token, boardId, chunk, signal))
+                  .summaries,
+            ),
+          signal,
+        ),
+      enabled: !!user,
+      retry: retryUnlessClientError,
+    })),
   });
+  const denied = queries.find(
+    (query) =>
+      isApiError(query.error) && [401, 403, 404].includes(query.error.status),
+  )?.error;
+  const error = denied ?? queries.find((query) => query.isError)?.error;
+  const complete =
+    chunks.length > 0 && queries.every((query) => query.data !== undefined);
+  return {
+    data:
+      !denied && complete
+        ? queries.flatMap((query) => query.data ?? [])
+        : undefined,
+    error,
+    isError: queries.some((query) => query.isError),
+    isSuccess: chunks.length > 0 && queries.every((query) => query.isSuccess),
+    isFetching: queries.some((query) => query.isFetching),
+    refetch: () => Promise.all(queries.map((query) => query.refetch())),
+  };
 }
 
 export function BoardFilter({

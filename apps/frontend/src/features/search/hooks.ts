@@ -32,18 +32,24 @@ export function useSearch(
         return;
       const domain = event.query.queryKey[0];
       if (domain !== 'boards' && domain !== 'workspaces') return;
-      clearSearch(client);
-      if (timer === undefined)
+      if (timer === undefined || client.isFetching({ queryKey: searchKey }))
+        clearSearch(client);
+      if (timer === undefined) {
         timer = setTimeout(() => {
           timer = undefined;
-          void client.invalidateQueries({ queryKey: searchKey });
+          if (!scope.isCurrent()) return;
+          void client.invalidateQueries(
+            { queryKey: searchKey },
+            { cancelRefetch: false },
+          );
         }, 0);
+      }
     });
     return () => {
       unsubscribe();
       clearTimeout(timer);
     };
-  }, [client]);
+  }, [client, scope.generation, scope.isCurrent]);
   const valid = normalized.length > 0 && [...normalized].length <= 120;
   const ready = valid && normalized === debounced && !!user;
   const count = type === 'all' ? 1 : page;

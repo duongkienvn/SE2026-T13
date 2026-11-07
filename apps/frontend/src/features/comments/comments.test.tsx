@@ -22,8 +22,10 @@ import {
   storeSession,
   testUser,
   type MockResponse,
+  type MockRequest,
 } from '../../test/mock-api';
 import type { Comment } from './types';
+import { createdSockets, joined } from '../../test/fake-socket';
 
 const comment = (
   cardId: string,
@@ -52,14 +54,16 @@ function setup({
   extra?:
     | Record<
         string,
-        MockResponse | (() => MockResponse | Promise<MockResponse>)
+        | MockResponse
+        | ((request: MockRequest) => MockResponse | Promise<MockResponse>)
       >
     | ((
         path: string,
         cardId: string,
       ) => Record<
         string,
-        MockResponse | (() => MockResponse | Promise<MockResponse>)
+        | MockResponse
+        | ((request: MockRequest) => MockResponse | Promise<MockResponse>)
       >);
 }) {
   storeSession();
@@ -96,6 +100,123 @@ async function open() {
 }
 
 describe('card comments', () => {
+  it('coalesces its correlated socket hint with the successful comment refresh', async () => {
+    let finish!: (value: MockResponse) => void;
+    let sentId = '';
+    const pending = new Promise<MockResponse>((resolve) => {
+      finish = resolve;
+    });
+    const { card, path, calls } = setup({
+      list: okPage([]),
+      extra: (commentPath) => ({
+        [`POST ${commentPath}`]: (request) => {
+          sentId = request.headers['X-Kanvexa-Operation-Id'];
+          return pending;
+        },
+      }),
+    });
+    const dialog = await open();
+    await within(dialog).findByText('No comments yet');
+    await waitFor(() => expect(createdSockets.length).toBeGreaterThan(0));
+    const socket = createdSockets.at(-1)!.socket;
+    act(() => socket.open());
+    await waitFor(() => expect(socket.requests('board:join')).toHaveLength(1));
+    act(() => socket.lastJoin().reply(joined(card.boardId)));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
+    const countReads = () =>
+      calls.filter(
+        (call) =>
+          call.method === 'GET' &&
+          (call.path.startsWith(path) ||
+            call.path.includes('/card-preview-summaries?')),
+      ).length;
+    const before = countReads();
+    fireEvent.change(within(dialog).getByPlaceholderText('Write a comment…'), {
+      target: { value: 'New comment' },
+    });
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Post comment' }),
+    );
+    await waitFor(() => expect(sentId).toMatch(/^[0-9a-f-]{36}$/));
+    act(() =>
+      socket.push('comment:created', {
+        boardId: card.boardId,
+        cardId: card.id,
+        commentId: 'comment',
+        operationId: sentId,
+      }),
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 150)));
+    expect(countReads()).toBe(before);
+    await act(async () => {
+      finish(ok(comment(card.id), 201));
+      await pending;
+    });
+    await waitFor(() => expect(countReads()).toBe(before + 2));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 200)));
+    expect(countReads()).toBe(before + 2);
+  });
+
+  it('keeps a committed comment successful and retries a buffered hint after a failed refresh', async () => {
+    let finish!: (value: MockResponse) => void;
+    let sentId = '';
+    let failNext = false;
+    const pending = new Promise<MockResponse>((resolve) => {
+      finish = resolve;
+    });
+    const { card, path, calls } = setup({
+      list: () => {
+        if (failNext) {
+          failNext = false;
+          return fail(429, 'TOO_MANY_REQUESTS');
+        }
+        return okPage([]);
+      },
+      extra: (commentPath) => ({
+        [`POST ${commentPath}`]: (request) => {
+          sentId = request.headers['X-Kanvexa-Operation-Id'];
+          return pending;
+        },
+      }),
+    });
+    const dialog = await open();
+    await within(dialog).findByText('No comments yet');
+    await waitFor(() => expect(createdSockets.length).toBeGreaterThan(0));
+    const socket = createdSockets.at(-1)!.socket;
+    act(() => socket.open());
+    await waitFor(() => expect(socket.requests('board:join')).toHaveLength(1));
+    act(() => socket.lastJoin().reply(joined(card.boardId)));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
+    const commentReads = () =>
+      calls.filter(
+        (call) => call.method === 'GET' && call.path.startsWith(path),
+      ).length;
+    const before = commentReads();
+    const input = within(dialog).getByPlaceholderText('Write a comment…');
+    fireEvent.change(input, { target: { value: 'Committed' } });
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Post comment' }),
+    );
+    await waitFor(() => expect(sentId).toMatch(/^[0-9a-f-]{36}$/));
+    act(() =>
+      socket.push('comment:created', {
+        boardId: card.boardId,
+        cardId: card.id,
+        commentId: 'comment',
+        operationId: sentId,
+      }),
+    );
+    failNext = true;
+    await act(async () => {
+      finish(ok(comment(card.id), 201));
+      await pending;
+    });
+    await waitFor(() =>
+      expect(commentReads()).toBeGreaterThanOrEqual(before + 2),
+    );
+    await waitFor(() => expect((input as HTMLTextAreaElement).value).toBe(''));
+  });
+
   it('allows a MEMBER to write from an empty list', async () => {
     setup({
       role: 'MEMBER',

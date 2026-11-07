@@ -242,6 +242,21 @@ describe('invalidationTargets', () => {
     },
   );
 
+  it('does not refresh preview counts for a comment text edit', async () => {
+    const targets = invalidationTargets('comment:updated', {
+      boardId: BOARD,
+      cardId: CARD,
+      commentId: 'comment',
+    });
+    const client = new QueryClient();
+    const summary = [...boardKeys.cards(BOARD), 'preview-summaries', [CARD]];
+    client.setQueryData(summary, {});
+    await Promise.all(
+      targets.map((target) => client.invalidateQueries(target)),
+    );
+    expect(client.getQueryState(summary)?.isInvalidated).toBe(false);
+  });
+
   it('never touches another board', async () => {
     for (const event of BOARD_EVENTS) {
       const payload = {
@@ -313,6 +328,35 @@ describe('Card Detail V2 section caches', () => {
           cardId: CARD,
           columnId: 'column',
         }),
+        sections,
+      ),
+    ).toEqual(['checklists', 'cardLabels', 'attachments']);
+  });
+
+  it('field-only card updates leave child queries and preview summaries untouched', async () => {
+    const summaries = [...boardKeys.cards(BOARD), 'preview-summaries', [CARD]];
+    const targets = invalidationTargets('card:updated', {
+      boardId: BOARD,
+      cardId: CARD,
+      columnId: 'column',
+      changeScope: 'card-fields',
+    });
+    expect(await invalidatedKeys(targets, { ...sections, summaries })).toEqual(
+      [],
+    );
+    expect(await invalidated(targets)).toEqual(['cards', 'card']);
+  });
+
+  it('keeps the broad child fallback for an unrecognized future scope', async () => {
+    const payload = {
+      boardId: BOARD,
+      cardId: CARD,
+      columnId: 'column',
+      changeScope: 'future-scope',
+    } as unknown as BoardEventPayload<'card:updated'>;
+    expect(
+      await invalidatedKeys(
+        invalidationTargets('card:updated', payload),
         sections,
       ),
     ).toEqual(['checklists', 'cardLabels', 'attachments']);

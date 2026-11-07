@@ -8,7 +8,7 @@ dependency, frontend, Presence, Comment, Activity or Board CRUD event is added.
 ## Shared contract and REST integration
 
 `@kanban/shared` exports `RealtimeServerEvent`, `RealtimeServerEvents` and these
-four payload interfaces. F1 `RealtimeEvent`, `RealtimeClientEvents` and room
+original payload interfaces. F1 `RealtimeEvent`, `RealtimeClientEvents` and room
 acknowledgements remain unchanged.
 
 ```ts
@@ -20,6 +20,9 @@ export interface CardChangedEvent {
   boardId: string;
   cardId: string;
   columnId: string;
+}
+export interface CardUpdatedEvent extends CardChangedEvent {
+  changeScope?: 'card-fields';
 }
 export interface CardMovedEvent {
   boardId: string;
@@ -45,7 +48,7 @@ the query descriptions are suggestions, not invented query keys.
 | `column:moved`           | `PATCH /columns/:columnId/move`                                            | `ColumnChangedEvent` | Board columns/order                                   |
 | `column:deleted`         | `DELETE /columns/:columnId`                                                | `ColumnChangedEvent` | Board columns; remove deleted detail                  |
 | `card:created`           | `POST /cards`                                                              | `CardChangedEvent`   | Board/column card lists                               |
-| `card:updated`           | `PATCH /cards/:cardId`                                                     | `CardChangedEvent`   | Card detail and card lists                            |
+| `card:updated`           | `PATCH /cards/:cardId` and Card child mutations                            | `CardUpdatedEvent`   | Card detail and card lists                            |
 | `card:moved`             | `PATCH /cards/:cardId/move`                                                | `CardMovedEvent`     | Source/destination lists, board cards, detail         |
 | `card:archived`          | `POST /cards/:cardId/archive`                                              | `CardChangedEvent`   | Active card lists and detail                          |
 | `card:assignees-changed` | `POST /cards/:cardId/assignees`, `DELETE /cards/:cardId/assignees/:userId` | `CardChangedEvent`   | Card detail/assignees and relevant lists              |
@@ -53,11 +56,18 @@ the query descriptions are suggestions, not invented query keys.
 | `member:role-changed`    | `PATCH /members/:userId`                                                   | `MemberChangedEvent` | Board members and permission UI                       |
 | `member:removed`         | `DELETE /members/:userId`                                                  | `MemberChangedEvent` | Members, card assignments/detail/lists, permission UI |
 
-Payloads contain IDs only. They never contain title, description, deadline, email,
+Payloads contain IDs and, for Card field updates, an optional fixed scope hint. They never contain title, description, deadline, email,
 JWT, hashes, relations, ORM objects or transport errors. Board IDs are canonical
 lowercase. Card move captures `fromColumnId` from persisted state before changing
 the Card; its destination comes from the committed result. Other Card events use
 the Card's authoritative current column. Member events identify the target user.
+
+PERF-01 extends `card:updated` with optional `changeScope: 'card-fields'` for
+the Card PATCH service only. That PATCH changes title, description or dates,
+not checklist, attachment, label or comment data. Other producers omit the
+hint; clients must use the broad Card child-query fallback when it is absent
+or unrecognized. Old clients can ignore the extra field, and new clients
+remain compatible with old servers. Events are still published after commit.
 
 Example `card:moved` payload:
 

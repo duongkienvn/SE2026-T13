@@ -5,6 +5,7 @@ import { commentKeys } from '../comments/query-keys';
 import { avatarKeys } from '../auth/avatar-query-keys';
 import { workspaceKeys } from '../workspaces/query-keys';
 import { productivityKey } from '../productivity/cache';
+import { searchKey } from '../search/cache';
 
 export type BoardEventName = Exclude<
   keyof RealtimeServerEvents,
@@ -19,10 +20,11 @@ export const BOARD_EVENTS = Object.values(
   RealtimeServerEvent,
 ) as BoardEventName[];
 
+/** The queue merges previewCardId values before filtering summary query keys. */
 export type InvalidationTarget = Pick<
   InvalidateQueryFilters,
   'queryKey' | 'exact'
->;
+> & { previewCardId?: string };
 
 /*
  * `boardKeys.detail(id)` is also the prefix of the board's members, columns
@@ -50,6 +52,10 @@ const members = (boardId: string): InvalidationTarget => ({
   queryKey: boardKeys.members(boardId),
 });
 const boardList = (): InvalidationTarget => ({ queryKey: boardKeys.lists() });
+const preview = (boardId: string, cardId: string): InvalidationTarget => ({
+  queryKey: [...boardKeys.cards(boardId), 'preview-summaries'],
+  ...(typeof cardId === 'string' && cardId ? { previewCardId: cardId } : {}),
+});
 
 /**
  * Queries to refetch after a board event. Events are hints only: the payload
@@ -62,6 +68,8 @@ export function invalidationTargets<E extends BoardEventName>(
   payload: BoardEventPayload<E>,
 ): InvalidationTarget[] {
   const targets = boardInvalidationTargets(event, payload);
+  if (/^(board:|member:|card:)/.test(event))
+    targets.push({ queryKey: searchKey });
   if (/^(board:|member:)/.test(event))
     targets.push({ queryKey: productivityKey });
   else if (/^(card:|labels:)/.test(event))
@@ -93,13 +101,28 @@ function boardInvalidationTargets<E extends BoardEventName>(
       // Only empty columns can be deleted, so no card changes with them.
       return [columns(boardId)];
     case 'card:created':
-    case 'card:updated':
     case 'card:assignees-changed': {
       const { cardId } = payload as BoardEventPayload<'card:updated'>;
       return [
         cardList(boardId),
         { queryKey: [...boardKeys.cards(boardId), 'filtered'] },
-        { queryKey: [...boardKeys.cards(boardId), 'preview-summaries'] },
+        preview(boardId, cardId),
+        card(boardId, cardId),
+      ];
+    }
+    case 'card:updated': {
+      const { cardId, changeScope } =
+        payload as BoardEventPayload<'card:updated'>;
+      if (changeScope === 'card-fields')
+        return [
+          cardList(boardId),
+          { queryKey: [...boardKeys.cards(boardId), 'filtered'] },
+          { queryKey: boardKeys.card(boardId, cardId), exact: true },
+        ];
+      return [
+        cardList(boardId),
+        { queryKey: [...boardKeys.cards(boardId), 'filtered'] },
+        preview(boardId, cardId),
         card(boardId, cardId),
       ];
     }
@@ -117,7 +140,7 @@ function boardInvalidationTargets<E extends BoardEventName>(
       return [
         cardList(boardId),
         { queryKey: [...boardKeys.cards(boardId), 'filtered'] },
-        { queryKey: [...boardKeys.cards(boardId), 'preview-summaries'] },
+        preview(boardId, cardId),
         card(boardId, cardId),
         { queryKey: boardKeys.archivedCards(boardId) },
       ];
@@ -156,13 +179,16 @@ function boardInvalidationTargets<E extends BoardEventName>(
         { queryKey: workspaceKeys.all },
       ];
     case 'comment:created':
-    case 'comment:updated':
     case 'comment:deleted': {
       const { cardId } = payload as BoardEventPayload<'comment:created'>;
       return [
         { queryKey: commentKeys.card(boardId, cardId) },
-        { queryKey: [...boardKeys.cards(boardId), 'preview-summaries'] },
+        preview(boardId, cardId),
       ];
+    }
+    case 'comment:updated': {
+      const { cardId } = payload as BoardEventPayload<'comment:updated'>;
+      return [{ queryKey: commentKeys.card(boardId, cardId) }];
     }
     default:
       return [];

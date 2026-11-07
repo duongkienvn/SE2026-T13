@@ -10,6 +10,7 @@ import { useAuth } from '../../auth/useAuth';
 import { boardAccessVersion } from '../../boards/access-version';
 import { boardKeys } from '../../boards/query-keys';
 import { CARD_ARCHIVED } from '../hooks';
+import { previewSummaryFilters } from '../preview-summary-cache';
 import {
   listChecklists,
   runChecklistAction,
@@ -227,9 +228,7 @@ export function useChecklistAction(boardId: string, cardId: string) {
     onSettled: () => {
       if (pendingCount(client, boardId, cardId) <= 1) {
         void refresh();
-        void client.invalidateQueries({
-          queryKey: [...boardKeys.cards(boardId), 'preview-summaries'],
-        });
+        void client.invalidateQueries(previewSummaryFilters(boardId, cardId));
       }
     },
   });

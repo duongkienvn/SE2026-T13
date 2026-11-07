@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import { isApiError } from '../../lib/api-client';
 import { BOARD_ACCESS_REVOKED } from '../boards/revoke-board-access';
 import type { InvalidationTarget } from './event-invalidation';
+import { previewSummaryContains } from '../cards/preview-summary-cache';
 
 export interface InvalidationQueue {
   add: (targets: InvalidationTarget[]) => void;
@@ -10,15 +11,17 @@ export interface InvalidationQueue {
 
 /**
  * Collects invalidations for `delayMs`, so a burst of events refetches each
- * query once, and holds conflicting queries while an optimistic move is pending:
- * keeps its own preview until its request settles, and refetching after it
- * lands on the server's final order instead of racing it.
+ * query once. Conflicting queries wait for optimistic changes to settle so a
+ * drag or checklist preview is not overwritten by an earlier server state.
  */
 export function createInvalidationQueue(
   queryClient: QueryClient,
   delayMs = 100,
 ): InvalidationQueue {
-  const pending = new Map<string, InvalidationTarget>();
+  const pending = new Map<
+    string,
+    { target: InvalidationTarget; previewCardIds?: Set<string> }
+  >();
   const fetching = new Set<string>();
   const covered = new Set<string>();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -26,7 +29,7 @@ export function createInvalidationQueue(
   let disposed = false;
   const stopObserving = queryClient.getQueryCache().subscribe((event) => {
     if (event.type !== 'updated') return;
-    for (const [id, target] of pending) {
+    for (const [id, { target }] of pending) {
       if (
         !target.exact ||
         JSON.stringify(event.query.queryKey) !== JSON.stringify(target.queryKey)
@@ -49,19 +52,16 @@ export function createInvalidationQueue(
     clearTimeout(timer);
     timer = undefined;
     if (disposed || pending.size === 0) return;
-    for (const [id, target] of pending) {
+    for (const [id, { target, previewCardIds }] of pending) {
       const key = target.queryKey;
       const conflicts = queryClient.isMutating({
         predicate: (mutation) => {
           const protectedKey = mutation.options.meta?.realtimeProtectedKey;
           if (!Array.isArray(protectedKey) || !key) return false;
           return (
-            protectedKey
-              .slice(0, key.length)
-              .every((part, i) => part === key[i]) ||
-            key
-              .slice(0, protectedKey.length)
-              .every((part, i) => part === protectedKey[i])
+            key.length <= protectedKey.length &&
+            (!target.exact || key.length === protectedKey.length) &&
+            key.every((part, i) => part === protectedKey[i])
           );
         },
       });
@@ -75,7 +75,15 @@ export function createInvalidationQueue(
           : undefined;
       // A queued refresh must not undo a server-confirmed revocation.
       if (isApiError(error) && error.code === BOARD_ACCESS_REVOKED) continue;
-      void queryClient.invalidateQueries(target);
+      void queryClient.invalidateQueries(
+        previewCardIds
+          ? {
+              ...target,
+              predicate: (query) =>
+                previewSummaryContains(query.queryKey, previewCardIds),
+            }
+          : target,
+      );
     }
     if (pending.size) {
       stopWaiting ??= queryClient.getMutationCache().subscribe(() => flush());
@@ -88,9 +96,16 @@ export function createInvalidationQueue(
   return {
     add(targets) {
       if (disposed) return;
-      for (const target of targets) {
+      for (const { previewCardId, ...target } of targets) {
         const id = JSON.stringify([target.queryKey, target.exact]);
-        pending.set(id, target);
+        const existing = pending.get(id);
+        if (!previewCardId) pending.set(id, { target });
+        else if (!existing)
+          pending.set(id, {
+            target,
+            previewCardIds: new Set([previewCardId.toLowerCase()]),
+          });
+        else existing.previewCardIds?.add(previewCardId.toLowerCase());
         fetching.delete(id);
         covered.delete(id);
       }

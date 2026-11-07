@@ -51,6 +51,12 @@ Only empty columns can be deleted, so `column:deleted` never changes cards.
 the destination column.
 Comment keys live under the Card detail prefix. Card events also refresh that Card's comments; comment events do not refresh the Card list or another Card.
 
+PERF-01 narrows the historical matrix above: `card:updated` with the optional
+`changeScope: 'card-fields'` hint refreshes the list, filters and exact Card
+detail, leaving preview counters and child collections intact. An event with no
+recognized hint continues to refresh the affected Card's child queries and
+preview summary. See [PERF-01](perf-01-api-traffic.md) for current evidence.
+
 ## Decisions
 
 | Topic               | Decision                                                                                                                                                                                                                                                                                   |
