@@ -1,4 +1,5 @@
 import type {
+  AccountDeletionBlocker,
   ApiErrorResponse,
   ApiSuccessResponse,
   PaginationMeta,
@@ -14,23 +15,79 @@ export const ClientErrorCode = {
 /** Server code for changes to an archived board (409). */
 export const BOARD_ARCHIVED = 'BOARD_ARCHIVED';
 
+/** Server code for an account deletion refused by ownership rules (409). */
+export const ACCOUNT_DELETION_BLOCKED = 'ACCOUNT_DELETION_BLOCKED';
+
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
   readonly details: string[];
+  /** Validated blockers of a 409 `ACCOUNT_DELETION_BLOCKED`; empty otherwise. */
+  readonly blockers: AccountDeletionBlocker[];
 
   constructor(
     status: number,
     code: string,
     message: string,
     details: string[] = [],
+    blockers: AccountDeletionBlocker[] = [],
   ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
     this.details = details;
+    this.blockers = blockers;
   }
+}
+
+const BLOCKER_TYPES: ReadonlySet<string> = new Set([
+  'PERSONAL_WORKSPACE_HAS_BOARDS',
+  'BOARD_REQUIRES_ANOTHER_OWNER',
+  'TEAM_WORKSPACE_REQUIRES_ANOTHER_ADMIN',
+] satisfies AccountDeletionBlocker['type'][]);
+const MAX_BLOCKER_RESOURCES = 20;
+
+/**
+ * Rebuilds the documented blocker shape field by field (#218): unknown types,
+ * malformed entries and extra properties are dropped, never passed through.
+ */
+export function parseDeletionBlockers(
+  value: unknown,
+): AccountDeletionBlocker[] {
+  if (!Array.isArray(value)) return [];
+  const blockers: AccountDeletionBlocker[] = [];
+  const seen = new Set<string>();
+  for (const item of value) {
+    if (!item || typeof item !== 'object') continue;
+    const { type, totalCount, resources } = item as Record<string, unknown>;
+    if (typeof type !== 'string' || !BLOCKER_TYPES.has(type) || seen.has(type))
+      continue;
+    if (
+      typeof totalCount !== 'number' ||
+      !Number.isSafeInteger(totalCount) ||
+      totalCount < 1 ||
+      !Array.isArray(resources)
+    )
+      continue;
+    const safe = resources
+      .filter(
+        (resource): resource is { id: string; name: string } =>
+          !!resource &&
+          typeof resource === 'object' &&
+          typeof (resource as { id?: unknown }).id === 'string' &&
+          typeof (resource as { name?: unknown }).name === 'string',
+      )
+      .slice(0, MAX_BLOCKER_RESOURCES)
+      .map(({ id, name }) => ({ id, name }));
+    seen.add(type);
+    blockers.push({
+      type: type as AccountDeletionBlocker['type'],
+      totalCount: Math.max(totalCount, safe.length),
+      resources: safe,
+    });
+  }
+  return blockers;
 }
 
 export function isApiError(error: unknown): error is ApiError {
@@ -78,6 +135,39 @@ function invalidResponse(status: number): ApiError {
   );
 }
 
+/** The `ApiError` for a non-2xx response body; unknown bodies stay generic. */
+function errorFromPayload(status: number, payload: unknown): ApiError {
+  if (isErrorEnvelope(payload)) {
+    return new ApiError(
+      status,
+      payload.code,
+      payload.message,
+      payload.details ?? [],
+      status === 409 && payload.code === ACCOUNT_DELETION_BLOCKED
+        ? parseDeletionBlockers((payload as { blockers?: unknown }).blockers)
+        : [],
+    );
+  }
+  return invalidResponse(status);
+}
+
+async function sendRequest(
+  url: string,
+  init: RequestInit,
+  signal: AbortSignal | undefined,
+): Promise<Response> {
+  try {
+    return await fetch(url, { ...init, signal });
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    throw new ApiError(
+      0,
+      ClientErrorCode.NETWORK_ERROR,
+      'Could not reach the server. Check your connection and try again.',
+    );
+  }
+}
+
 /**
  * Sends a request and returns the validated success envelope, or `undefined`
  * for `204 No Content` / an empty 2xx body. Rejects with `ApiError` otherwise.
@@ -100,22 +190,15 @@ export async function requestEnvelope(
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
-  let response: Response;
-  try {
-    response = await fetch(`${env.apiBaseUrl}${path}`, {
+  const response = await sendRequest(
+    `${env.apiBaseUrl}${path}`,
+    {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
-      signal,
-    });
-  } catch (error) {
-    if (signal?.aborted) throw error;
-    throw new ApiError(
-      0,
-      ClientErrorCode.NETWORK_ERROR,
-      'Could not reach the server. Check your connection and try again.',
-    );
-  }
+    },
+    signal,
+  );
 
   if (
     response.ok &&
@@ -129,21 +212,12 @@ export async function requestEnvelope(
   try {
     const text = await response.text();
     payload = text ? JSON.parse(text) : undefined;
-  } catch {
-    payload = undefined;
-  }
-
-  if (!response.ok) {
-    if (isErrorEnvelope(payload)) {
-      throw new ApiError(
-        response.status,
-        payload.code,
-        payload.message,
-        payload.details ?? [],
-      );
-    }
+  } catch (error) {
+    if (signal?.aborted) throw error;
     throw invalidResponse(response.status);
   }
+
+  if (!response.ok) throw errorFromPayload(response.status, payload);
 
   // Void handlers may answer 200/201 with an empty body instead of 204.
   if (payload === undefined) return undefined;
@@ -163,6 +237,69 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const envelope = await requestEnvelope(path, options);
   return envelope?.data as T;
+}
+
+/** A file answered outside the JSON envelope, e.g. a data export. */
+export interface BinaryResponse {
+  blob: Blob;
+  /** Raw header when CORS exposes it; validate before using any part of it. */
+  contentDisposition: string | null;
+}
+
+/**
+ * Authenticated GET for attachment bytes. Only `200` yields a Blob; any other
+ * status rejects with the decoded `ApiError`, so an error body is never
+ * mistaken for a file.
+ */
+export async function requestBinary(
+  path: string,
+  {
+    accessToken,
+    signal,
+    accept,
+  }: { accessToken: string; signal?: AbortSignal; accept: string },
+): Promise<BinaryResponse> {
+  const response = await sendRequest(
+    `${env.apiBaseUrl}${path}`,
+    {
+      method: 'GET',
+      headers: {
+        Accept: `${accept}, application/json;q=0.5`,
+        Authorization: `Bearer ${accessToken}`,
+      },
+      // Exports are private snapshots; never answer from the HTTP cache.
+      cache: 'no-store',
+    },
+    signal,
+  );
+
+  if (!response.ok) {
+    let payload: unknown;
+    try {
+      const text = await response.text();
+      payload = text ? JSON.parse(text) : undefined;
+    } catch {
+      payload = undefined;
+    }
+    throw errorFromPayload(response.status, payload);
+  }
+  if (response.status !== 200) throw invalidResponse(response.status);
+
+  let blob: Blob;
+  try {
+    blob = await response.blob();
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    throw new ApiError(
+      0,
+      ClientErrorCode.NETWORK_ERROR,
+      'The download was interrupted. Check your connection and try again.',
+    );
+  }
+  return {
+    blob,
+    contentDisposition: response.headers.get('Content-Disposition'),
+  };
 }
 
 /** The backend's maximum page size (`PageQueryDto`). */

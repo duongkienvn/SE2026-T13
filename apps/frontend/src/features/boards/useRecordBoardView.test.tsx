@@ -43,7 +43,11 @@ function setup(response: () => MockResponse | Promise<MockResponse>) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  const scope = { generation: 1, isCurrent: () => true };
+  const scope = {
+    generation: 1,
+    isCurrent: () => true,
+    canFinishRevokingRequest: () => true,
+  };
   const auth: AuthContextValue = {
     status: 'authenticated',
     user: testUser,

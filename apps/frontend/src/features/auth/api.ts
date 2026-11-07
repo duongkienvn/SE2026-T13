@@ -1,4 +1,9 @@
-import { apiRequest } from '../../lib/api-client';
+import type {
+  DeleteAccountRequest,
+  EmailChangeRequest,
+  PendingEmailChangeSummary,
+} from '@kanban/shared';
+import { apiRequest, isApiError } from '../../lib/api-client';
 import type {
   LoginRequest,
   LoginResponse,
@@ -115,4 +120,102 @@ export function updateCurrentUser(
     body: input,
     accessToken,
   });
+}
+
+/**
+ * A rejected fresh Google proof answers `401 INVALID_GOOGLE_CREDENTIAL`.
+ * Unlike an expired JWT it must not end the session, so it is rethrown as
+ * this error, which `runAuthorized` does not treat as a sign-out.
+ */
+export class GoogleProofRejectedError extends Error {
+  constructor() {
+    super('Google could not confirm your identity.');
+    this.name = 'GoogleProofRejectedError';
+  }
+}
+
+async function keepSessionOnGoogleRejection<T>(
+  request: Promise<T>,
+): Promise<T> {
+  try {
+    return await request;
+  } catch (error) {
+    if (
+      isApiError(error) &&
+      error.status === 401 &&
+      error.code === 'INVALID_GOOGLE_CREDENTIAL'
+    )
+      throw new GoogleProofRejectedError();
+    throw error;
+  }
+}
+
+/** Generic 202 after fresh reauthentication: not a delivery or intent receipt. */
+export function requestEmailChange(
+  accessToken: string,
+  input: EmailChangeRequest,
+): Promise<void> {
+  return keepSessionOnGoogleRejection(
+    apiRequest<void>('/auth/email-change/request', {
+      method: 'POST',
+      accessToken,
+      body: input,
+      expectedStatus: 202,
+    }),
+  );
+}
+
+export function getPendingEmailChange(
+  accessToken: string,
+  signal?: AbortSignal,
+): Promise<PendingEmailChangeSummary | null> {
+  return apiRequest<unknown>('/auth/email-change/pending', {
+    accessToken,
+    signal,
+  }).then(toPendingSummary);
+}
+
+/** Keeps only the documented masked fields; anything else reads as none. */
+function toPendingSummary(data: unknown): PendingEmailChangeSummary | null {
+  if (!data || typeof data !== 'object') return null;
+  const { maskedNewEmail, issuedAt, expiresAt } = data as Record<
+    string,
+    unknown
+  >;
+  if (
+    typeof maskedNewEmail !== 'string' ||
+    typeof issuedAt !== 'string' ||
+    typeof expiresAt !== 'string' ||
+    Number.isNaN(Date.parse(expiresAt))
+  )
+    return null;
+  return { maskedNewEmail, issuedAt, expiresAt };
+}
+
+/** 204 only on a real confirmation; no JWT is returned. */
+export function confirmEmailChange(
+  accessToken: string,
+  token: string,
+): Promise<void> {
+  return apiRequest<void>('/auth/email-change/confirm', {
+    method: 'POST',
+    accessToken,
+    body: { token },
+    expectedStatus: 204,
+  });
+}
+
+/** 204 means the deletion has committed (#218). */
+export function deleteAccount(
+  accessToken: string,
+  input: DeleteAccountRequest,
+): Promise<void> {
+  return keepSessionOnGoogleRejection(
+    apiRequest<void>('/users/me', {
+      method: 'DELETE',
+      accessToken,
+      body: input,
+      expectedStatus: 204,
+    }),
+  );
 }

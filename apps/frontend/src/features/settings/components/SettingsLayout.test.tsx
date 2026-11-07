@@ -28,6 +28,7 @@ function signedIn() {
       googleLinked: false,
       hasPassword: true,
     }),
+    'GET /auth/email-change/pending': ok(null),
     'PATCH /users/me': ok({ ...testUser, displayName: 'Ada King' }),
     'POST /auth/logout': ok(null),
   });
@@ -79,27 +80,16 @@ describe('Settings on desktop', () => {
     ).toBe('page');
   });
 
-  it('shows future sections as unavailable, never as links', async () => {
+  it('links Data & Privacy to its real section (#224) and keeps no Soon items', async () => {
     stubViewport(true);
     signedIn();
     renderApp('/settings/profile');
     await screen.findByRole('heading', { name: 'Profile', level: 1 });
     const nav = within(settingsNav());
-    for (const label of ['Data & Privacy']) {
-      expect(nav.queryByRole('link', { name: new RegExp(label) })).toBeNull();
-      const item = nav.getByText(label).closest('li');
-      expect(item?.textContent).toContain('coming soon');
-      expect(item?.getAttribute('title')).toBe(`${label} — coming soon`);
-      expect(item?.querySelector('a, button, [tabindex]')).toBeNull();
-    }
-  });
-
-  it('has no fake page for a future section', async () => {
-    stubViewport(true);
-    signedIn();
-    renderApp('/settings/data-privacy');
-    expect(await screen.findByText(/page not found/i)).toBeTruthy();
-    expect(screen.queryByRole('navigation', { name: 'Settings' })).toBeNull();
+    expect(
+      nav.getByRole('link', { name: 'Data & Privacy' }).getAttribute('href'),
+    ).toBe('/settings/data-privacy');
+    expect(nav.queryByText(/coming soon/)).toBeNull();
   });
 
   it('links Notifications to its real section (#198)', async () => {
@@ -120,7 +110,7 @@ describe('Settings on desktop', () => {
     const { router } = renderApp('/settings/profile');
     await screen.findByRole('heading', { name: 'Profile', level: 1 });
     expect(
-      screen.queryByRole('heading', { name: 'Account security' }),
+      screen.queryByRole('heading', { name: 'Change password' }),
     ).toBeNull();
     expect(
       screen.queryByRole('heading', { name: 'Connected accounts' }),
@@ -130,11 +120,10 @@ describe('Settings on desktop', () => {
       within(settingsNav()).getByRole('link', { name: 'Security' }),
     );
     expect(
-      await screen.findByRole('heading', { name: 'Account security' }),
+      await screen.findByRole('heading', { name: 'Change password' }),
     ).toBeTruthy();
-    expect(await screen.findAllByLabelText(/current password/i)).toHaveLength(
-      1,
-    );
+    // Change password and Change email (#225) each confirm the password.
+    expect(await screen.findAllByLabelText('Current password')).toHaveLength(2);
     expect(router.state.location.pathname).toBe('/settings/security');
 
     fireEvent.click(
@@ -175,10 +164,10 @@ describe('Settings on phones', () => {
     expect(list.getByRole('link', { name: /Keyboard shortcuts/ })).toBeTruthy();
     expect(list.getByText('Password and account recovery')).toBeTruthy();
     expect(list.getByRole('link', { name: /Notifications/ })).toBeTruthy();
-    expect(list.queryByRole('link', { name: /Data & Privacy/ })).toBeNull();
+    expect(list.getByRole('link', { name: /Data & Privacy/ })).toBeTruthy();
 
     fireEvent.click(list.getByRole('link', { name: /Security/ }));
-    await screen.findByRole('heading', { name: 'Account security' });
+    await screen.findByRole('heading', { name: 'Change password' });
     expect(screen.queryByRole('navigation', { name: 'Settings' })).toBeNull();
 
     fireEvent.click(screen.getByRole('link', { name: 'Back to Settings' }));
@@ -224,7 +213,7 @@ describe('Unsaved profile edits', () => {
         name: 'Discard changes',
       }),
     );
-    await screen.findByRole('heading', { name: 'Account security' });
+    await screen.findByRole('heading', { name: 'Change password' });
     expect(router.state.location.pathname).toBe('/settings/security');
   });
 
@@ -239,7 +228,7 @@ describe('Unsaved profile edits', () => {
     fireEvent.click(
       within(settingsNav()).getByRole('link', { name: 'Security' }),
     );
-    await screen.findByRole('heading', { name: 'Account security' });
+    await screen.findByRole('heading', { name: 'Change password' });
     expect(router.state.location.pathname).toBe('/settings/security');
   });
 

@@ -70,7 +70,11 @@ it('measures the real preview hook after a Card event', async () => {
     retry: vi.fn(),
     runAuthorized: (request) => request('token'),
   };
-  const scope = { generation: 1, isCurrent: () => true };
+  const scope = {
+    generation: 1,
+    isCurrent: () => true,
+    canFinishRevokingRequest: () => true,
+  };
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>
       <AuthSessionContext.Provider value={scope}>

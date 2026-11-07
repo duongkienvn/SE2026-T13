@@ -7,6 +7,9 @@ const PUBLIC_ONLY_PATHS = [
   '/verify-email',
   '/forgot-password',
   '/reset-password',
+  // Mailbox-proof and post-deletion pages are never a return destination.
+  '/confirm-email-change',
+  '/account-deleted',
 ];
 
 /**
@@ -26,6 +29,8 @@ export function safeRedirectPath(value: unknown): string {
 /** Router `state` carried to the login page. */
 export interface RedirectState {
   passwordUpdated?: boolean;
+  /** One-time notice after a confirmed email change (#225). */
+  emailChanged?: boolean;
   /** Protected path the user tried to open before signing in. */
   from?: string;
   /** Set after a successful registration to show feedback and prefill the email. */

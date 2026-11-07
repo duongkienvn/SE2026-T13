@@ -2,10 +2,18 @@ import { useQuery } from '@tanstack/react-query';
 import { flushSync } from 'react-dom';
 import { useNavigate, Link } from 'react-router';
 import { Button } from '../../../components/Button';
+import { LockIcon } from '../../../components/icons';
+import {
+  securityCardClass,
+  SecurityCardHeader,
+} from '../../settings/security/SecurityCard';
 import { changePassword, getLinkedProviders } from '../api';
 import { useAuthSession } from '../auth-session-context';
 import { useAuth } from '../useAuth';
 import { NewPasswordForm } from './NewPasswordForm';
+
+const recoveryLinkClass =
+  'inline-block text-sm font-semibold text-primary underline focus-visible:outline-2 focus-visible:outline-primary';
 
 /** Mount inside an authenticated page; reusable by #92 /settings/security. */
 export function AccountSecurity() {
@@ -23,15 +31,13 @@ export function AccountSecurity() {
   return (
     <section
       aria-labelledby="account-security-heading"
-      className="mt-6 max-w-2xl rounded-xl border border-line bg-surface p-5 shadow-card md:p-6"
+      className={securityCardClass}
     >
-      <div className="min-w-0">
-        <h2
-          id="account-security-heading"
-          className="text-lg font-semibold text-ink"
-        >
-          Account security
-        </h2>
+      <SecurityCardHeader
+        id="account-security-heading"
+        title="Change password"
+        icon={LockIcon}
+      >
         {providers.isPending && (
           <p role="status" className="mt-3 text-sm text-muted">
             Loading password settings…
@@ -51,23 +57,29 @@ export function AccountSecurity() {
           </div>
         )}
         {hasPassword && (
-          <p className="mt-2 max-w-md text-sm text-muted">
-            Confirm your current password to choose a new one. You will need to
-            log in again after saving.
+          <p className="mt-0.5 text-sm text-muted">
+            Confirm your current password to choose a new one, then log in
+            again.
           </p>
         )}
         {providers.data && !providers.data.hasPassword && (
-          <p className="mt-3 max-w-lg text-sm text-muted">
+          <p className="mt-0.5 text-sm text-muted">
             You sign in with Google and have no local password. To set a
             password, request a recovery link and confirm it from your verified
             email. Your Google connection stays available.
           </p>
         )}
-      </div>
+      </SecurityCardHeader>
       {hasPassword && (
         <NewPasswordForm
           key={scope.generation}
           requireCurrent
+          density="compact"
+          footer={
+            <Link className={recoveryLinkClass} to="/forgot-password">
+              Recover a forgotten password
+            </Link>
+          }
           submit={(next, current) =>
             runAuthorized((token) => changePassword(token, current, next))
           }
@@ -83,14 +95,9 @@ export function AccountSecurity() {
           }}
         />
       )}
-      {providers.data && (
-        <Link
-          className="mt-5 inline-block text-sm font-semibold text-primary underline focus-visible:outline-2 focus-visible:outline-primary"
-          to="/forgot-password"
-        >
-          {providers.data.hasPassword
-            ? 'Recover a forgotten password'
-            : 'Set password via email'}
+      {providers.data && !providers.data.hasPassword && (
+        <Link className={`mt-4 ${recoveryLinkClass}`} to="/forgot-password">
+          Set password via email
         </Link>
       )}
     </section>

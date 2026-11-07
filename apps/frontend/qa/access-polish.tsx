@@ -282,7 +282,11 @@ if (import.meta.env.DEV)
   createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={client}>
       <AuthSessionContext.Provider
-        value={{ generation: 0, isCurrent: () => true }}
+        value={{
+          generation: 0,
+          isCurrent: () => true,
+          canFinishRevokingRequest: () => true,
+        }}
       >
         <AuthContext.Provider value={auth}>
           <RealtimeContext.Provider value={realtime}>

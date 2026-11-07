@@ -19,6 +19,8 @@ interface DialogProps {
   headerActions?: ReactNode;
   /** Optional Card Detail context below its heading, e.g. assigned labels. */
   headerContent?: ReactNode;
+  /** Decorative tile before the title, e.g. a destructive action's icon. */
+  icon?: ReactNode;
 }
 
 /**
@@ -38,6 +40,7 @@ export function Dialog({
   fullscreenOnMobile = false,
   headerActions,
   headerContent,
+  icon,
 }: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -102,6 +105,7 @@ export function Dialog({
           }
         >
           <div className="flex items-start gap-3">
+            {icon}
             <div className="min-w-0 flex-1">
               <h2
                 id={titleId}

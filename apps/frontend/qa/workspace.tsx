@@ -186,7 +186,11 @@ function Preview() {
   return (
     <QueryClientProvider client={client}>
       <AuthSessionContext.Provider
-        value={{ generation: 0, isCurrent: () => true }}
+        value={{
+          generation: 0,
+          isCurrent: () => true,
+          canFinishRevokingRequest: () => true,
+        }}
       >
         <AuthContext.Provider value={auth}>
           <ThemeSync />

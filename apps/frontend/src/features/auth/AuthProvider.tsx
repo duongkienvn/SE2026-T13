@@ -84,14 +84,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const runAuthorized = useCallback(
-    async <T,>(request: (token: string) => Promise<T>): Promise<T> => {
+    async <T,>(
+      request: (token: string) => Promise<T>,
+      options?: { allowSessionEndOnSuccess?: boolean },
+    ): Promise<T> => {
       // A retained callback must never use credentials from a different session.
       if (!accessToken || !isCurrent()) {
         throw new ApiError(401, 'UNAUTHORIZED', 'Your session has ended.');
       }
       try {
         const result = await request(accessToken);
-        if (!isCurrent()) throw new Error('Session changed during request.');
+        if (!isCurrent() && !options?.allowSessionEndOnSuccess)
+          throw new Error('Session changed during request.');
         return result;
       } catch (error) {
         if (isUnauthorized(error) && isCurrent()) endSession();
@@ -100,6 +104,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     [accessToken, isCurrent, endSession],
   );
+
+  // Only for confirmed 204 responses from endpoints that revoke their own
+  // session. A single transition to anonymous is expected; a newer login,
+  // including one in another tab, must never be replaced by late completion.
+  const canFinishRevokingRequest = useCallback(() => {
+    const latest = scopeRef.current;
+    return (
+      storageUnchanged(latest.storedValue) &&
+      (latest === scope ||
+        (latest.generation === scope.generation + 1 && latest.session === null))
+    );
+  }, [scope]);
 
   const currentUser = useQuery({
     queryKey: currentUserQueryKey,
@@ -206,8 +222,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const sessionScope = useMemo(
-    () => ({ generation, isCurrent }),
-    [generation, isCurrent],
+    () => ({ generation, isCurrent, canFinishRevokingRequest }),
+    [generation, isCurrent, canFinishRevokingRequest],
   );
 
   return (

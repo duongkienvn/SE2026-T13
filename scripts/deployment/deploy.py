@@ -28,7 +28,9 @@ class Deployment:
     def __init__(self, sha, env, run=command, update=release["update_release"]):
         self.values = release["release_values"](sha)
         self.sha = sha
-        self.env = env
+        # Use target coordinates for Compose interpolation before editing the file.
+        # Runtime settings retain the protected env file and Compose/image defaults.
+        self.env = {**env, **self.values}
         self.run_command = run
         self.update = update
         self.stage = "preflight"
@@ -47,6 +49,26 @@ class Deployment:
                               "-d", "dist/database/data-source.js")
         print(output, flush=True)  # Migration status/SQL stays in protected diagnostics.
         return output
+
+    def validate_backend_environment(self):
+        backend = json.loads(self.compose("config", "--format", "json"))["services"]["backend"]
+        image = f"{self.values['BACKEND_IMAGE']}:{self.sha}"
+        if backend["image"] != image:
+            raise RuntimeError("Backend preflight image does not match verified release")
+        # Compose run can create project volumes even with --no-deps. Resolve its
+        # environment without creating resources, then use a mount-free container.
+        args = ["docker", "run", "--rm", "--pull", "never", "--network", "none",
+                "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges:true",
+                "--entrypoint", "node"]
+        env = self.env.copy()
+        for key, value in backend["environment"].items():
+            # Pass names, not secret values, on argv. Preserve explicit unsets.
+            args.extend(["--env", key])
+            if value is None:
+                env.pop(key, None)
+            else:
+                env[key] = value
+        self.run_command(args + [image, "dist/config/validate-environment.js"], env)
 
     def execute(self):
         try:
@@ -84,7 +106,9 @@ class Deployment:
                     or labels.get("org.opencontainers.image.source") != SOURCE
                     or labels.get("org.opencontainers.image.revision") != self.sha):
                 raise RuntimeError("Image platform/source/revision mismatch")
-        print("Both release images pulled anonymously and verified; entering downtime", flush=True)
+        self.stage = "backend environment validation"
+        self.validate_backend_environment()
+        print("Both release images verified and backend environment validated; entering downtime", flush=True)
 
         self.stage = "stop application traffic"
         self.compose("stop", "frontend", "backend")
