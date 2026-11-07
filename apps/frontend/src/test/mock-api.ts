@@ -12,6 +12,9 @@ export interface MockRequest {
 export interface MockResponse {
   status: number;
   body?: unknown;
+  /** Sent as-is instead of JSON, e.g. CSV export bytes. */
+  raw?: string;
+  headers?: Record<string, string>;
 }
 
 type Handler =
@@ -112,12 +115,15 @@ export function mockApi(overrides: Record<string, Handler>): MockRequest[] {
         legacyBoardList ??
         defaultCardSection(method, path);
       if (!handler) throw new Error(`Unexpected request: ${method} ${path}`);
-      const { status, body } =
+      const { status, body, raw, headers } =
         typeof handler === 'function' ? await handler(request) : handler;
-      return new Response(body === undefined ? null : JSON.stringify(body), {
-        status,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        raw ?? (body === undefined ? null : JSON.stringify(body)),
+        {
+          status,
+          headers: { 'Content-Type': 'application/json', ...headers },
+        },
+      );
     }),
   );
 
