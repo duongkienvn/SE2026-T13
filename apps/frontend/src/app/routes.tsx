@@ -19,6 +19,7 @@ import { ConnectedAccountsPage } from '../features/settings/pages/ConnectedAccou
 import { PreferencesPage } from '../features/settings/pages/PreferencesPage';
 import { ProfileRedirect } from '../features/settings/pages/ProfileRedirect';
 import { SecuritySettingsPage } from '../features/settings/pages/SecuritySettingsPage';
+import { DataPrivacyPage } from '../features/settings/data-privacy/DataPrivacyPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { RouteErrorPage } from '../pages/RouteErrorPage';
 import { WorkspaceLayout } from '../features/workspaces/components/WorkspaceLayout';
@@ -123,6 +124,7 @@ export const routes: RouteObject[] = [
                     path: 'connected-accounts',
                     element: <ConnectedAccountsPage />,
                   },
+                  { path: 'data-privacy', element: <DataPrivacyPage /> },
                 ],
               },
               // Old bookmarks and links from before Settings (#92).

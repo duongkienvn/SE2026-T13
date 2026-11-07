@@ -95,7 +95,8 @@ export const settingsSections: SettingsSection[] = [
     label: 'Data & Privacy',
     summary: 'Data export and account controls',
     icon: LockIcon,
-    availability: 'soon',
+    availability: 'available',
+    path: 'data-privacy',
   },
   {
     id: 'keyboard-shortcuts',

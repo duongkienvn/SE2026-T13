@@ -78,6 +78,36 @@ function invalidResponse(status: number): ApiError {
   );
 }
 
+/** The `ApiError` for a non-2xx response body; unknown bodies stay generic. */
+function errorFromPayload(status: number, payload: unknown): ApiError {
+  if (isErrorEnvelope(payload)) {
+    return new ApiError(
+      status,
+      payload.code,
+      payload.message,
+      payload.details ?? [],
+    );
+  }
+  return invalidResponse(status);
+}
+
+async function sendRequest(
+  url: string,
+  init: RequestInit,
+  signal: AbortSignal | undefined,
+): Promise<Response> {
+  try {
+    return await fetch(url, { ...init, signal });
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    throw new ApiError(
+      0,
+      ClientErrorCode.NETWORK_ERROR,
+      'Could not reach the server. Check your connection and try again.',
+    );
+  }
+}
+
 /**
  * Sends a request and returns the validated success envelope, or `undefined`
  * for `204 No Content` / an empty 2xx body. Rejects with `ApiError` otherwise.
@@ -100,22 +130,15 @@ export async function requestEnvelope(
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
-  let response: Response;
-  try {
-    response = await fetch(`${env.apiBaseUrl}${path}`, {
+  const response = await sendRequest(
+    `${env.apiBaseUrl}${path}`,
+    {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
-      signal,
-    });
-  } catch (error) {
-    if (signal?.aborted) throw error;
-    throw new ApiError(
-      0,
-      ClientErrorCode.NETWORK_ERROR,
-      'Could not reach the server. Check your connection and try again.',
-    );
-  }
+    },
+    signal,
+  );
 
   if (
     response.ok &&
@@ -134,17 +157,7 @@ export async function requestEnvelope(
     throw invalidResponse(response.status);
   }
 
-  if (!response.ok) {
-    if (isErrorEnvelope(payload)) {
-      throw new ApiError(
-        response.status,
-        payload.code,
-        payload.message,
-        payload.details ?? [],
-      );
-    }
-    throw invalidResponse(response.status);
-  }
+  if (!response.ok) throw errorFromPayload(response.status, payload);
 
   // Void handlers may answer 200/201 with an empty body instead of 204.
   if (payload === undefined) return undefined;
@@ -164,6 +177,69 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const envelope = await requestEnvelope(path, options);
   return envelope?.data as T;
+}
+
+/** A file answered outside the JSON envelope, e.g. a data export. */
+export interface BinaryResponse {
+  blob: Blob;
+  /** Raw header when CORS exposes it; validate before using any part of it. */
+  contentDisposition: string | null;
+}
+
+/**
+ * Authenticated GET for attachment bytes. Only `200` yields a Blob; any other
+ * status rejects with the decoded `ApiError`, so an error body is never
+ * mistaken for a file.
+ */
+export async function requestBinary(
+  path: string,
+  {
+    accessToken,
+    signal,
+    accept,
+  }: { accessToken: string; signal?: AbortSignal; accept: string },
+): Promise<BinaryResponse> {
+  const response = await sendRequest(
+    `${env.apiBaseUrl}${path}`,
+    {
+      method: 'GET',
+      headers: {
+        Accept: `${accept}, application/json;q=0.5`,
+        Authorization: `Bearer ${accessToken}`,
+      },
+      // Exports are private snapshots; never answer from the HTTP cache.
+      cache: 'no-store',
+    },
+    signal,
+  );
+
+  if (!response.ok) {
+    let payload: unknown;
+    try {
+      const text = await response.text();
+      payload = text ? JSON.parse(text) : undefined;
+    } catch {
+      payload = undefined;
+    }
+    throw errorFromPayload(response.status, payload);
+  }
+  if (response.status !== 200) throw invalidResponse(response.status);
+
+  let blob: Blob;
+  try {
+    blob = await response.blob();
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    throw new ApiError(
+      0,
+      ClientErrorCode.NETWORK_ERROR,
+      'The download was interrupted. Check your connection and try again.',
+    );
+  }
+  return {
+    blob,
+    contentDisposition: response.headers.get('Content-Disposition'),
+  };
 }
 
 /** The backend's maximum page size (`PageQueryDto`). */
