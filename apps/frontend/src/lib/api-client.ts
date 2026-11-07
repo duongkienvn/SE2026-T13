@@ -1,4 +1,5 @@
 import type {
+  AccountDeletionBlocker,
   ApiErrorResponse,
   ApiSuccessResponse,
   PaginationMeta,
@@ -14,23 +15,79 @@ export const ClientErrorCode = {
 /** Server code for changes to an archived board (409). */
 export const BOARD_ARCHIVED = 'BOARD_ARCHIVED';
 
+/** Server code for an account deletion refused by ownership rules (409). */
+export const ACCOUNT_DELETION_BLOCKED = 'ACCOUNT_DELETION_BLOCKED';
+
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
   readonly details: string[];
+  /** Validated blockers of a 409 `ACCOUNT_DELETION_BLOCKED`; empty otherwise. */
+  readonly blockers: AccountDeletionBlocker[];
 
   constructor(
     status: number,
     code: string,
     message: string,
     details: string[] = [],
+    blockers: AccountDeletionBlocker[] = [],
   ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
     this.details = details;
+    this.blockers = blockers;
   }
+}
+
+const BLOCKER_TYPES: ReadonlySet<string> = new Set([
+  'PERSONAL_WORKSPACE_HAS_BOARDS',
+  'BOARD_REQUIRES_ANOTHER_OWNER',
+  'TEAM_WORKSPACE_REQUIRES_ANOTHER_ADMIN',
+] satisfies AccountDeletionBlocker['type'][]);
+const MAX_BLOCKER_RESOURCES = 20;
+
+/**
+ * Rebuilds the documented blocker shape field by field (#218): unknown types,
+ * malformed entries and extra properties are dropped, never passed through.
+ */
+export function parseDeletionBlockers(
+  value: unknown,
+): AccountDeletionBlocker[] {
+  if (!Array.isArray(value)) return [];
+  const blockers: AccountDeletionBlocker[] = [];
+  const seen = new Set<string>();
+  for (const item of value) {
+    if (!item || typeof item !== 'object') continue;
+    const { type, totalCount, resources } = item as Record<string, unknown>;
+    if (typeof type !== 'string' || !BLOCKER_TYPES.has(type) || seen.has(type))
+      continue;
+    if (
+      typeof totalCount !== 'number' ||
+      !Number.isSafeInteger(totalCount) ||
+      totalCount < 1 ||
+      !Array.isArray(resources)
+    )
+      continue;
+    const safe = resources
+      .filter(
+        (resource): resource is { id: string; name: string } =>
+          !!resource &&
+          typeof resource === 'object' &&
+          typeof (resource as { id?: unknown }).id === 'string' &&
+          typeof (resource as { name?: unknown }).name === 'string',
+      )
+      .slice(0, MAX_BLOCKER_RESOURCES)
+      .map(({ id, name }) => ({ id, name }));
+    seen.add(type);
+    blockers.push({
+      type: type as AccountDeletionBlocker['type'],
+      totalCount: Math.max(totalCount, safe.length),
+      resources: safe,
+    });
+  }
+  return blockers;
 }
 
 export function isApiError(error: unknown): error is ApiError {
@@ -86,6 +143,9 @@ function errorFromPayload(status: number, payload: unknown): ApiError {
       payload.code,
       payload.message,
       payload.details ?? [],
+      status === 409 && payload.code === ACCOUNT_DELETION_BLOCKED
+        ? parseDeletionBlockers((payload as { blockers?: unknown }).blockers)
+        : [],
     );
   }
   return invalidResponse(status);
