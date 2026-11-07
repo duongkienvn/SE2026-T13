@@ -2,7 +2,6 @@ import {
   ColumnsIcon,
   SettingsIcon,
   ArrowRightIcon,
-  KeyboardIcon,
 } from '../../components/icons';
 import { PageHeader } from '../../components/PageHeader';
 import { usePageTitle } from '../../hooks/usePageTitle';
@@ -16,15 +15,10 @@ export function KeyboardShortcutsPage() {
   const icons = [ArrowRightIcon, ColumnsIcon, SettingsIcon];
   return (
     <div>
-      <div className="flex items-center gap-4">
-        <span className="grid size-14 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
-          <KeyboardIcon className="size-7" />
-        </span>
-        <PageHeader
-          title="Keyboard shortcuts"
-          description="Work faster on Kanvexa with keyboard shortcuts."
-        />
-      </div>
+      <PageHeader
+        title="Keyboard shortcuts"
+        description="Work faster on Kanvexa with keyboard shortcuts."
+      />
       <div className="mt-7 space-y-3">
         {shortcutGroups.map((group, index) => {
           const Icon = icons[index];

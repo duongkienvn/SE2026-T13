@@ -2,13 +2,11 @@
 
 ## Tổng quan
 
-Tài liệu này chốt schema và các ràng buộc dữ liệu cho MVP, làm cơ sở cho task triển khai TypeORM entities và migration đầu tiên. PostgreSQL lưu persistent business state; TypeORM dùng migrations với `synchronize: false`. Tám bảng domain gồm `users`, `boards`, `board_members`, `board_columns`, `cards`, `card_assignees`, `comments` và `activities`; K2 và #79 bổ sung `email_verification_tokens` và `google_identities` thuộc auth.
+PostgreSQL lưu persistent business state của Kanvexa. TypeORM dùng explicit migrations với `synchronize: false` và `migrationsRun: false`; schema không được đồng bộ hoặc migrate ngầm khi ứng dụng khởi động.
 
-P2-01 bổ sung persistence foundation `workspaces`, `workspace_members`,
-`workspace_invitations`, cùng `boards.workspace_id` và `visibility`. Các extension
-preferences/password/avatar được mô tả bên dưới. Schema sau migration có 16 entity
-tables; Workspace API/UI và quyền Workspace-visible chưa được triển khai trong
-foundation này. Xem [migration, rollout và verification](../tasks/backend/workspace-data-foundation.md).
+Core relationships gồm accounts, Workspaces/memberships/invitations, Boards/members, Columns, Cards/assignees, Comments và Activities. Schema hiện có thêm preferences, identity/recovery/email-change proofs, avatar/file state, Board discovery state, checklists, labels, attachments, notifications/delivery outboxes và starter Board provisioning. Workspace API/UI và Workspace-visible access đã được triển khai; số bảng của một foundation milestone không mô tả schema hiện tại.
+
+Các ER/table sections dưới đây mô tả core và những extension theo feature, không phải một schema dump đầy đủ. [Entities](../../apps/backend/src/api/), [migration source](../../apps/backend/src/database/migrations/) và [database options](../../apps/backend/src/database/database-options.ts) là nguồn đối chiếu cho đầy đủ cột, index, constraints và thứ tự nâng cấp. Task records giữ migration/rollout evidence tại thời điểm thực hiện; xem [task index](../tasks/README.md).
 
 Mọi bảng dùng UUID primary key. Tên bảng/cột trong database dùng `snake_case`, property TypeScript dùng `camelCase`. Các timestamp dùng PostgreSQL `timestamptz` và lưu theo UTC.
 
