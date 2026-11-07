@@ -223,7 +223,8 @@ export function DeleteAccountDialog({
     setBlockers([]);
     try {
       await runAuthorized(
-        (token) => deleteAccount(token, { confirmation: CONFIRMATION, ...proof }),
+        (token) =>
+          deleteAccount(token, { confirmation: CONFIRMATION, ...proof }),
         { allowSessionEndOnSuccess: true },
       );
       // The committed 204 may follow an expected socket-driven sign-out.

@@ -192,7 +192,6 @@ describe('Data & Privacy → Danger Zone', () => {
     expect(calls.some((call) => call.path === '/auth/logout')).toBe(false);
   });
 
-
   it('shows committed deletion after the initiating session is revoked before 204', async () => {
     let release!: (value: MockResponse) => void;
     const pending = new Promise<MockResponse>((done) => {
@@ -231,7 +230,9 @@ describe('Data & Privacy → Danger Zone', () => {
     act(() => auth.signOut({ notifyServer: false }));
     await act(async () => release({ status: 204 }));
     expect(
-      await screen.findByRole('heading', { name: 'Your account has been deleted' }),
+      await screen.findByRole('heading', {
+        name: 'Your account has been deleted',
+      }),
     ).toBeTruthy();
     expect(router.state.location.pathname).toBe('/account-deleted');
     expect(localStorage.getItem('kanban.session')).toBeNull();

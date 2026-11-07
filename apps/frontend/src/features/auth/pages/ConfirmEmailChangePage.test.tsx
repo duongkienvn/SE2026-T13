@@ -176,7 +176,6 @@ describe('/confirm-email-change', () => {
     expect(localStorage.getItem('kanban.session')).toBeNull();
   });
 
-
   it('shows a committed 204 after the initiating session was revoked before the response', async () => {
     storeSession('old-session');
     let resolve!: (value: MockResponse) => void;
@@ -210,7 +209,9 @@ describe('/confirm-email-change', () => {
     act(() => auth.signOut({ notifyServer: false }));
     await act(async () => resolve({ status: 204 }));
     expect(
-      await screen.findByText('Email updated. Log in with your new email address.'),
+      await screen.findByText(
+        'Email updated. Log in with your new email address.',
+      ),
     ).toBeTruthy();
     expect(router.state.location.pathname).toBe('/login');
     expect(localStorage.getItem('kanban.session')).toBeNull();
