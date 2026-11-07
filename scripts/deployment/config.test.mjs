@@ -46,6 +46,22 @@ function config(local = false, overrides = {}) {
   );
 }
 
+test('backend preflight uses target release interpolation and effective runtime overrides without persistent volumes', () => {
+  const sha = 'a'.repeat(40);
+  const backend = config(false, {
+    IMAGE_TAG: sha,
+    BACKEND_IMAGE: 'ghcr.io/duongkienvn/kanvexa-backend',
+    TASK_NOTIFICATION_POLL_SECONDS: '120',
+  }).services.backend;
+  assert.equal(backend.image, `ghcr.io/duongkienvn/kanvexa-backend:${sha}`);
+  assert.equal(backend.environment.TASK_NOTIFICATION_POLL_SECONDS, '120');
+  assert.equal(backend.environment.JWT_SECRET, env.JWT_SECRET);
+  assert.equal(backend.environment.NODE_ENV, 'production');
+  assert.equal(backend.read_only, true);
+  assert.equal(backend.volumes, undefined);
+  assert.equal(backend.ports, undefined);
+});
+
 test('task email UI is default-off public build configuration, independent of backend runtime flags', () => {
   const example = readFileSync('.env.production.example', 'utf8');
   assert.match(example, /^VITE_TASK_EMAIL_ENABLED=false$/m);

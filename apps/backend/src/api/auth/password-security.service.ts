@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomBytes } from 'node:crypto';
 import * as argon2 from 'argon2';
@@ -10,6 +10,7 @@ import { PasswordRecoveryMailer } from '../../mail/password-recovery-mailer';
 import { User } from '../users/entities/user.entity';
 import { canDeliverToAccount } from '../users/live-account-delivery';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
+import { BoardRoomCoordinator } from '../../realtime/board-room-coordinator.service';
 
 export const RECOVERY_COOLDOWN_MS = 60_000;
 export const RECOVERY_WINDOW_MS = 60 * 60_000;
@@ -22,10 +23,13 @@ export function recoveryHash(token: string): string {
 
 @Injectable()
 export class PasswordSecurityService {
+  private readonly logger = new Logger(PasswordSecurityService.name);
+
   constructor(
     private readonly source: DataSource,
     private readonly mailer: PasswordRecoveryMailer,
     private readonly config: ConfigService<EnvironmentConfig, true>,
+    private readonly sessions: BoardRoomCoordinator,
   ) {}
 
   async send(email: string): Promise<void> {
@@ -113,7 +117,7 @@ export class PasswordSecurityService {
     const passwordHash = await argon2.hash(newPassword, {
       type: argon2.argon2id,
     });
-    await this.source.transaction(async (manager) => {
+    const committed = await this.source.transaction(async (manager) => {
       const users = manager.getRepository(User);
       const user = await users.findOne({
         where: { id: candidate.userId },
@@ -141,7 +145,9 @@ export class PasswordSecurityService {
         authVersion: user.authVersion + 1,
       });
       await tokens.update(token.id, { consumedAt: now });
+      return { userId: user.id, authVersion: user.authVersion + 1 };
     });
+    this.revokeSessions(committed.userId, committed.authVersion);
   }
 
   async change(
@@ -181,7 +187,7 @@ export class PasswordSecurityService {
     const passwordHash = await argon2.hash(newPassword, {
       type: argon2.argon2id,
     });
-    await this.source.transaction(async (manager) => {
+    const authVersion = await this.source.transaction(async (manager) => {
       const users = manager.getRepository(User);
       const user = await users.findOne({
         where: { id: userId },
@@ -205,7 +211,17 @@ export class PasswordSecurityService {
       await manager
         .getRepository(PasswordResetToken)
         .update({ userId, consumedAt: IsNull() }, { consumedAt: new Date() });
+      return user.authVersion + 1;
     });
+    this.revokeSessions(userId, authVersion);
+  }
+
+  private revokeSessions(userId: string, authVersion: number): void {
+    try {
+      this.sessions.revokeUserSessions(userId, authVersion);
+    } catch {
+      this.logger.warn('Password security socket reconciliation unavailable');
+    }
   }
 
   private invalidToken(): ApplicationException {

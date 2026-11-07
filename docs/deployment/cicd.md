@@ -221,20 +221,32 @@ then use an input-free main dispatch/re-run and a new environment approval.
    root previously logged in. Checks each local image's OS/architecture and OCI
    source/revision. Any failure leaves the app/env untouched. Cached images alone
    do not qualify: a registry pull must succeed for each tag.
-5. Stops only `frontend backend`, backs up the exact original env bytes to a
+5. Resolves the backend's effective environment with `compose config --format json`
+   in memory, then runs `node dist/config/validate-environment.js` in the verified
+   target backend image with `docker run --rm --pull never --network none`.
+   Compose receives the target release coordinates as explicit interpolation
+   overrides for every deployment command; other runtime values retain the
+   protected env file and Compose/image defaults used on subsequent startup. This
+   reuses the backend validator without Nest bootstrap, database connections, migrations, workers or
+   provider calls. Only variable names appear on argv; values remain in process
+   memory. The one-shot container has no mounts, no networking and a read-only
+   filesystem. Compose is not used to create containers or volumes during validation.
+   Failure emits a generic diagnostic without config values or an
+   exception stack and leaves app containers and the production env untouched.
+6. Stops only `frontend backend`, backs up the exact original env bytes to a
    unique `/etc/kanvexa/production.env.backup-<new-sha>.*` file, then writes/fsyncs a
    0600 temporary file and atomically replaces env. Only `IMAGE_TAG`,
    `BACKEND_IMAGE`, `FRONTEND_IMAGE` change; other lines remain byte-for-byte.
    Duplicate release keys, multiline/ambiguous dotenv syntax and unsafe permissions
    require operator correction. The file is never sourced or printed. The backup
    contains secrets and needs the same protections/retention as production.env.
-6. Runs `migration:show`, explicit `migration:run -d dist/database/data-source.js`,
+7. Runs `migration:show`, explicit `migration:run -d dist/database/data-source.js`,
    then `migration:show` through the existing one-shot `migrate` service. CLI output
    stays in protected host diagnostics. Pending migrations afterward fail delivery.
    The named `kanvexa-migrate` container prevents a blind retry over a leftover
    migration. Automatic migration execution remains disabled at backend startup;
    `synchronize: false` and `migrationsRun: false` stay unchanged.
-7. Starts only app services with `up --no-build --pull never --no-deps -d --wait
+8. Starts only app services with `up --no-build --pull never --no-deps -d --wait
 --wait-timeout 180 backend frontend`. Keeps project `kanvexa`, PostgreSQL and all
    named volumes. Runner smoke executes only after SSM returns Success **and**
    response code zero; smoke failure fails the job with no automatic rollback.
@@ -258,6 +270,7 @@ has released. Never infer database state from the workflow conclusion alone.
 | OIDC denied / SSM unavailable                                 | Check environment vars, trust subject/audience, region, target and SSM online state. No secrets needed in logs.                                         |
 | Dirty checkout / SHA not on main / env invalid / DB unhealthy | Preflight fails; app/env untouched. Operator inspects and resolves deliberately.                                                                        |
 | GHCR private/missing/network/platform/labels fail             | No stop/env mutation. Publish/fix public visibility and verify anonymous pulls.                                                                         |
+| Backend runtime environment validation fails                  | No stop/env mutation or migrations. Correct protected configuration before retry; the target image's existing validator is authoritative.               |
 | Env write fails after stop                                    | App stays stopped; env is original or atomically new. Inspect protected backups/state before proceeding.                                                |
 | Migration show/run/pending fails                              | No app startup; DB may already have changed. Keep traffic stopped, inspect transaction and migration history; review a forward fix or approved restore. |
 | Compose health fails                                          | Some app containers may be running/unhealthy. Inspect actual status; stop app traffic manually if needed. Do not stop PostgreSQL or delete volumes.     |

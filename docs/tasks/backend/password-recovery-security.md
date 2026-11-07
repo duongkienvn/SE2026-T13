@@ -52,7 +52,19 @@ New JWTs carry the database `authVersion`. Existing authentication verifies sign
 
 Socket.IO reuses `AuthService.authenticateAccessToken`: old credentials fail new handshake and reconnect. Existing board membership checks and room isolation remain intact.
 
-**Residual limit, explicitly tested:** already-connected sockets retain their existing grants until disconnect or their original JWT expiry (up to the remaining hour). They may receive board events and use their existing authorized connection during that interval. This feature does not claim instant active-device/socket logout, add a session registry, or cancel unrelated REST operations already authenticated before the change. Instant distributed socket revocation remains a separate implementation decision. The PostgreSQL integration test proves both the rejection on reconnect and continued delivery to a pre-existing socket.
+**SEC-01 active socket revocation:** after a successful reset/change transaction commits,
+`PasswordSecurityService` passes its committed `authVersion` to the existing
+`BoardRoomCoordinator.revokeUserSessions`. The coordinator synchronously clears
+old-version Board receive grants and disconnects those sockets, with queued
+presence cleanup. Its monotonic version watermark also rejects stale handshakes
+that overlap the revocation scan. Current/newer-version sessions and unrelated
+users are preserved. Failed validation and transaction rollback never revoke
+sessions. Reconciliation failures are logged without failing an already committed
+REST mutation, matching email change. This guarantee covers the current single
+backend process; it does not add distributed revocation or cancel REST operations
+already authenticated before the change. PostgreSQL/Socket.IO integration covers
+reset/change revocation, receive-grant/presence cleanup, rollback preservation,
+old-token reconnect rejection and current-session/other-user delivery.
 
 Frontend password change signs out only the submitting session after actual API success, clears protected query data and navigates to Login with one-time feedback. It skips a redundant logout API call because the credential-changing operation already revoked that JWT. Ordinary logout behavior is unchanged. An explicit UI flush settles RequireAuth's redirect before passing success feedback. Stale success/401/403 responses cannot end or redirect a newer session. Public reset never automatically logs in.
 
@@ -62,14 +74,14 @@ Primary real-database runner: `pnpm --filter @kanban/backend test:password-secur
 
 | Coverage                                                                                                      | Evidence                                                                                         |
 | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Policy, generation/hash/TTL, eligible/unknown/unverified accounts, cooldown/quota, provider failure           | 14 service unit tests; registration-policy regression tests; real issuance/rotation/quota checks |
+| Policy, generation/hash/TTL, eligible/unknown/unverified accounts, cooldown/quota, provider failure           | Service unit tests; registration-policy regression tests; real issuance/rotation/quota checks    |
 | Dedicated template, fake selection, Resend deadline/idempotency/error/no-retry                                | 7 recovery mail tests plus transport configuration tests                                         |
 | Validation, strict fields, JWT requirement, IP throttling and account bucket across IPs                       | 8 password-security HTTP tests                                                                   |
 | Invalid/malformed/expired/replayed/superseded proof; weak/reused password preserves proof                     | PostgreSQL + HTTP integration                                                                    |
 | Reset/reset, change/reset, change/change races                                                                | Real concurrent transactions; exactly one successful old-proof operation                         |
-| Rollback of password, consumption and version                                                                 | PostgreSQL trigger failure after password update, for both reset and change                      |
+| Rollback of password, consumption and version; no premature socket revocation                                 | PostgreSQL trigger failure after password update for reset/change; active delivery preserved     |
 | Old password rejected/new password accepted; version increment/legacy compatibility/isolation                 | Auth unit tests and real REST login/guard checks                                                 |
-| Socket handshake/reconnect, other-user room access/isolation and active-socket boundary                       | Real Socket.IO integration plus existing realtime regression suites                              |
+| Active socket revocation, current-session/other-user isolation, handshake/reconnect and receive-grant cleanup | Real PostgreSQL/Socket.IO integration plus coordinator and concurrent-handshake regression tests |
 | Migration on populated accounts/Google identities, empty down/up, unsafe-down guard and entity/schema drift   | PostgreSQL migration rehearsal                                                                   |
 | Google-only set-password preserves identity and supports local/Google login                                   | Real password/identity persistence and both HTTP login paths with fake Google verifier           |
 | Existing registration, verification, explicit Google linking                                                  | Real HTTP regression flow, separate token namespaces                                             |

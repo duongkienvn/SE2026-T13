@@ -1,7 +1,9 @@
 """Isolated fault injection: no Docker daemon, AWS, real env or production I/O."""
 
+import io
 import json
 import os
+from contextlib import redirect_stdout
 from pathlib import Path
 import tempfile
 import types
@@ -102,13 +104,39 @@ class EnvTests(ProtectedFixture):
 
 class DeployTests(ProtectedFixture):
     def scenario(self, failure=None):
+        self.path.write_bytes(ORIGINAL)
         calls = []
         shows = 0
 
-        def run(args, _env):
+        def run(args, command_env):
             nonlocal shows
             calls.append(args)
             text = " ".join(args)
+            self.assertEqual({key: command_env[key] for key in env_module.release_values(SHA)},
+                             env_module.release_values(SHA))
+            if args[-3:] == ["config", "--format", "json"]:
+                return json.dumps({"services": {"backend": {
+                    "image": "unverified" if failure == "preflight-image" else
+                    f"{command_env['BACKEND_IMAGE']}:{command_env['IMAGE_TAG']}",
+                    "environment": {"JWT_SECRET": "do-not-change", "DATABASE_PASSWORD": "keep $ # = private",
+                                    "TASK_NOTIFICATION_POLL_SECONDS": "120", "PREFLIGHT_UNSET": None}}}})
+            if "dist/config/validate-environment.js" in args:
+                self.assertEqual(self.path.read_bytes(), ORIGINAL)
+                self.assertFalse(any("stop" in c or "UPDATE_ENV" in c for c in calls))
+                self.assertEqual(len([c for c in calls if c[:3] == ["docker", "image", "inspect"]]), 2)
+                self.assertEqual(args[:14], ["docker", "run", "--rm", "--pull", "never", "--network", "none",
+                                            "--read-only", "--cap-drop", "ALL", "--security-opt",
+                                            "no-new-privileges:true", "--entrypoint", "node"])
+                self.assertEqual(args[-2], f"{env_module.IMAGES['BACKEND_IMAGE']}:{SHA}")
+                self.assertNotIn("--volume", args)
+                self.assertNotIn("--mount", args)
+                self.assertEqual(command_env["JWT_SECRET"], "do-not-change")
+                self.assertEqual(command_env["TASK_NOTIFICATION_POLL_SECONDS"], "120")
+                self.assertNotIn("PREFLIGHT_UNSET", command_env)
+                for secret in ["do-not-change", "keep $ # = private"]:
+                    self.assertNotIn(secret, text)
+                if failure == "backend-environment":
+                    raise RuntimeError("Backend environment validation failed")
             if failure == "dirty" and "status --porcelain" in text:
                 return " M compose.prod.yml"
             if failure == "ancestry" and "merge-base" in text:
@@ -153,7 +181,8 @@ class DeployTests(ProtectedFixture):
             return env_module.update_release(path, sha)
 
         with patch.object(deployment, "ENV_FILE", self.path):
-            deploy = deployment.Deployment(SHA, {}, run=run, update=update)
+            deploy = deployment.Deployment(SHA, {"IMAGE_TAG": "old", "BACKEND_IMAGE": "old-backend",
+                                                 "FRONTEND_IMAGE": "old-frontend", "PREFLIGHT_UNSET": "inherited"}, run=run, update=update)
             if failure:
                 with self.assertRaises((RuntimeError, OSError)):
                     deploy.execute()
@@ -161,11 +190,12 @@ class DeployTests(ProtectedFixture):
                 deploy.execute()
         return calls
 
-    def test_success_orders_pulls_stop_env_migrations_health(self):
+    def test_success_orders_pulls_validation_stop_env_migrations_health(self):
         calls = self.scenario()
         texts = [" ".join(c) for c in calls]
         positions = [next(i for i, text in enumerate(texts) if marker in text)
-                     for marker in ["kanvexa-frontend:" + SHA, "stop frontend backend",
+                     for marker in ["kanvexa-frontend:" + SHA, "dist/config/validate-environment.js",
+                                    "stop frontend backend",
                                     "UPDATE_ENV", "migration:show", "migration:run", "up --no-build"]]
         self.assertEqual(positions, sorted(positions))
         up = next(c for c in calls if "up" in c)
@@ -176,11 +206,23 @@ class DeployTests(ProtectedFixture):
     def test_all_preflight_and_image_failures_precede_downtime(self):
         for failure in ["dirty", "ancestry", "database", "stale-migration",
                         "kanvexa-backend:", "kanvexa-frontend:", "wrong-image",
-                        "wrong-source", "wrong-revision"]:
+                        "wrong-source", "wrong-revision", "preflight-image", "backend-environment"]:
             with self.subTest(failure=failure):
                 calls = self.scenario(failure)
                 self.assertFalse(any("stop" in c or "UPDATE_ENV" in c for c in calls))
+                self.assertFalse(any("migration:run" in c or "migration:show" in c for c in calls))
                 self.assertEqual(self.path.read_bytes(), ORIGINAL)
+                self.assertEqual(list(self.path.parent.glob("*.backup-*")), [])
+                if failure != "backend-environment":
+                    self.assertFalse(any("dist/config/validate-environment.js" in c for c in calls))
+
+    def test_failed_backend_validation_diagnostics_contain_no_env_values(self):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            self.scenario("backend-environment")
+        self.assertIn("FAILED stage=backend environment validation", output.getvalue())
+        for secret in ["do-not-change", "keep $ # = private"]:
+            self.assertNotIn(secret, output.getvalue())
 
     def test_env_or_migration_failure_never_starts_application_or_reverts(self):
         for failure in ["env", "show", "migrate", "pending"]:
