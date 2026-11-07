@@ -79,27 +79,16 @@ describe('Settings on desktop', () => {
     ).toBe('page');
   });
 
-  it('shows future sections as unavailable, never as links', async () => {
+  it('links Data & Privacy to its real section (#224) and keeps no Soon items', async () => {
     stubViewport(true);
     signedIn();
     renderApp('/settings/profile');
     await screen.findByRole('heading', { name: 'Profile', level: 1 });
     const nav = within(settingsNav());
-    for (const label of ['Data & Privacy']) {
-      expect(nav.queryByRole('link', { name: new RegExp(label) })).toBeNull();
-      const item = nav.getByText(label).closest('li');
-      expect(item?.textContent).toContain('coming soon');
-      expect(item?.getAttribute('title')).toBe(`${label} — coming soon`);
-      expect(item?.querySelector('a, button, [tabindex]')).toBeNull();
-    }
-  });
-
-  it('has no fake page for a future section', async () => {
-    stubViewport(true);
-    signedIn();
-    renderApp('/settings/data-privacy');
-    expect(await screen.findByText(/page not found/i)).toBeTruthy();
-    expect(screen.queryByRole('navigation', { name: 'Settings' })).toBeNull();
+    expect(
+      nav.getByRole('link', { name: 'Data & Privacy' }).getAttribute('href'),
+    ).toBe('/settings/data-privacy');
+    expect(nav.queryByText(/coming soon/)).toBeNull();
   });
 
   it('links Notifications to its real section (#198)', async () => {
@@ -175,7 +164,7 @@ describe('Settings on phones', () => {
     expect(list.getByRole('link', { name: /Keyboard shortcuts/ })).toBeTruthy();
     expect(list.getByText('Password and account recovery')).toBeTruthy();
     expect(list.getByRole('link', { name: /Notifications/ })).toBeTruthy();
-    expect(list.queryByRole('link', { name: /Data & Privacy/ })).toBeNull();
+    expect(list.getByRole('link', { name: /Data & Privacy/ })).toBeTruthy();
 
     fireEvent.click(list.getByRole('link', { name: /Security/ }));
     await screen.findByRole('heading', { name: 'Account security' });
