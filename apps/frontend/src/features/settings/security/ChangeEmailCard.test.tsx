@@ -131,7 +131,11 @@ describe('Security → Change email', () => {
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(true);
-    expect(card.getByText(/request another link in 1:00|0:59/)).toBeTruthy();
+    expect(
+      card.getByText(/^You can request another link in \d+:[0-5]\d\.$/),
+    ).toBeTruthy();
+    await fillPassword(card);
+    expect(requests(calls)).toHaveLength(1);
     // Pending state is asked again after the request.
     await waitFor(() =>
       expect(
