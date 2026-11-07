@@ -364,6 +364,23 @@ describe('Card Detail V2 section caches', () => {
     );
   });
 
+  it('checklist-only updates refresh the exact checklist and preview counts', async () => {
+    const summaries = [...boardKeys.cards(BOARD), 'preview-summaries', [CARD]];
+    const targets = invalidationTargets('card:updated', {
+      boardId: BOARD,
+      cardId: CARD,
+      columnId: 'column',
+      changeScope: 'checklists',
+    });
+    expect(await invalidatedKeys(targets, { ...sections, summaries })).toEqual([
+      'checklists',
+      'summaries',
+    ]);
+    expect(
+      targets.find((target) => target.queryKey?.at(-1) === 'checklists')?.exact,
+    ).toBe(true);
+  });
+
   it('keeps the broad child fallback for an unrecognized future scope', async () => {
     const payload = {
       boardId: BOARD,

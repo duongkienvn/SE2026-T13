@@ -22,7 +22,7 @@ export interface CardChangedEvent {
   columnId: string;
 }
 export interface CardUpdatedEvent extends CardChangedEvent {
-  changeScope?: 'card-fields' | 'attachments';
+  changeScope?: 'card-fields' | 'attachments' | 'checklists';
   operationId?: string;
 }
 export interface CardMovedEvent {
@@ -65,8 +65,9 @@ the Card's authoritative current column. Member events identify the target user.
 
 PERF-01 extends `card:updated` with optional `changeScope: 'card-fields'` for
 the Card PATCH service. That PATCH changes title, description or dates,
-not checklist, attachment, label or comment data. Attachment metadata mutations
-and verified file activation publish `changeScope: 'attachments'` and echo a valid optional UUID v4
+not checklist, attachment, label or comment data. Checklist mutations publish
+`changeScope: 'checklists'`. Attachment metadata mutations and verified file
+activation publish `changeScope: 'attachments'` and echo a valid optional UUID v4
 `X-Kanvexa-Operation-Id` as `operationId`; it identifies a request, grants no
 authority and must never be treated as a credential. Other producers omit the
 hint; clients must use the broad Card child-query fallback when it is absent

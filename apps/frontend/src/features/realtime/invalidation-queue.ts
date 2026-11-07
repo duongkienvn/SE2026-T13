@@ -28,14 +28,26 @@ export function createInvalidationQueue(
   let stopWaiting: (() => void) | undefined;
   let disposed = false;
   const stopObserving = queryClient.getQueryCache().subscribe((event) => {
-    if (event.type !== 'updated') return;
+    if (event.type !== 'updated' && event.type !== 'removed') return;
+    let settled = false;
     for (const [id, { target }] of pending) {
       if (
         !target.exact ||
         JSON.stringify(event.query.queryKey) !== JSON.stringify(target.queryKey)
       )
         continue;
+      if (event.type === 'removed') {
+        const wasFetching = fetching.delete(id);
+        const wasCovered = covered.delete(id);
+        settled = wasFetching || wasCovered || settled;
+        continue;
+      }
       if (event.action.type === 'fetch') fetching.add(id);
+      if (
+        event.action.type === 'setState' ||
+        (event.action.type === 'success' && event.action.manual)
+      )
+        covered.delete(id);
       if (
         event.action.type === 'success' &&
         !event.action.manual &&
@@ -43,9 +55,16 @@ export function createInvalidationQueue(
       ) {
         covered.add(id);
         fetching.delete(id);
+        settled = true;
       }
-      if (event.action.type === 'error') fetching.delete(id);
+      if (
+        event.action.type === 'error' ||
+        (event.action.type === 'setState' &&
+          event.query.state.fetchStatus === 'idle')
+      )
+        settled = fetching.delete(id) || settled;
     }
+    if (settled && timer === undefined) void Promise.resolve().then(flush);
   });
 
   const flush = () => {
@@ -65,7 +84,7 @@ export function createInvalidationQueue(
           );
         },
       });
-      if (conflicts) continue;
+      if (conflicts || fetching.has(id)) continue;
       pending.delete(id);
       fetching.delete(id);
       if (covered.delete(id)) continue;

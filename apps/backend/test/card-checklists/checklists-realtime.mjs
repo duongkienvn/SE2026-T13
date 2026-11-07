@@ -109,6 +109,7 @@ export async function verifyChecklistRealtime(ctx) {
         boardId: board.id,
         cardId: card.id,
         columnId: persisted.column_id,
+        changeScope: 'checklists',
       });
       await flush();
       assert.equal(

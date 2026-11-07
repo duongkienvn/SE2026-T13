@@ -186,6 +186,193 @@ describe('createInvalidationQueue', () => {
     queue.dispose();
   });
 
+  it('does not restart an authoritative read that began after the hint', async () => {
+    let finishMutation!: () => void;
+    const finishes: Array<(value: string) => void> = [];
+    let cancellations = 0;
+    queryClient.setQueryData(cards.queryKey, 'old');
+    const observer = new QueryObserver(queryClient, {
+      queryKey: cards.queryKey,
+      staleTime: Infinity,
+      queryFn: ({ signal }) => {
+        signal.addEventListener('abort', () => cancellations++, { once: true });
+        return new Promise<string>((resolve) => finishes.push(resolve));
+      },
+    });
+    const unsubscribe = observer.subscribe(() => undefined);
+    const queue = createInvalidationQueue(queryClient, 10);
+    const mutation = queryClient
+      .getMutationCache()
+      .build(queryClient, {
+        meta: { realtimeProtectedKey: cards.queryKey },
+        mutationFn: () =>
+          new Promise<void>((resolve) => {
+            finishMutation = resolve;
+          }),
+        onSettled: () => {
+          void queryClient.invalidateQueries(cards);
+        },
+      })
+      .execute(undefined);
+    await vi.advanceTimersByTimeAsync(0);
+    queue.add([cards]);
+    await vi.advanceTimersByTimeAsync(10);
+    finishMutation();
+    await mutation;
+    expect(finishes).toHaveLength(1);
+    expect(cancellations).toBe(0);
+    finishes[0]('fresh');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(queryClient.getQueryData(cards.queryKey)).toBe('fresh');
+    expect(invalidateQueries).toHaveBeenCalledTimes(1);
+    unsubscribe();
+    queue.dispose();
+  });
+
+  it.each(['error', 'cancel'] as const)(
+    'replays a hint when the covering read ends with %s',
+    async (outcome) => {
+      let rejectRead!: (error: Error) => void;
+      const queryFn = vi
+        .fn()
+        .mockImplementationOnce(
+          () =>
+            new Promise<string>((_resolve, reject) => {
+              rejectRead = reject;
+            }),
+        )
+        .mockResolvedValue('recovered');
+      queryClient.setQueryData(cards.queryKey, 'old');
+      const observer = new QueryObserver(queryClient, {
+        queryKey: cards.queryKey,
+        queryFn,
+        retry: false,
+        staleTime: Infinity,
+      });
+      const unsubscribe = observer.subscribe(() => undefined);
+      const queue = createInvalidationQueue(queryClient, 10);
+      queue.add([cards]);
+      const first = queryClient.invalidateQueries(cards);
+      await vi.advanceTimersByTimeAsync(10);
+      expect(queryFn).toHaveBeenCalledTimes(1);
+      if (outcome === 'error') rejectRead(new Error('read failed'));
+      else await queryClient.cancelQueries(cards);
+      await first;
+      await vi.advanceTimersByTimeAsync(0);
+      expect(queryFn).toHaveBeenCalledTimes(2);
+      expect(queryClient.getQueryData(cards.queryKey)).toBe('recovered');
+      unsubscribe();
+      queue.dispose();
+    },
+  );
+
+  it.each(['setQueryData', 'setState'] as const)(
+    'does not retain coverage after a %s cache overwrite',
+    async (method) => {
+      let finish!: () => void;
+      const queryFn = vi.fn().mockResolvedValue('server');
+      queryClient.setQueryData(cards.queryKey, 'old');
+      const observer = new QueryObserver(queryClient, {
+        queryKey: cards.queryKey,
+        queryFn,
+        staleTime: Infinity,
+      });
+      const unsubscribe = observer.subscribe(() => undefined);
+      const queue = createInvalidationQueue(queryClient, 10);
+      const mutation = queryClient
+        .getMutationCache()
+        .build(queryClient, {
+          meta: { realtimeProtectedKey: cards.queryKey },
+          mutationFn: () =>
+            new Promise<void>((resolve) => {
+              finish = resolve;
+            }),
+        })
+        .execute(undefined);
+      await vi.advanceTimersByTimeAsync(0);
+      queue.add([cards]);
+      await vi.advanceTimersByTimeAsync(10);
+      await queryClient.invalidateQueries(cards);
+      if (method === 'setQueryData')
+        queryClient.setQueryData(cards.queryKey, 'optimistic overwrite');
+      else
+        queryClient
+          .getQueryCache()
+          .find({ ...cards })
+          ?.setState({ data: 'optimistic overwrite' });
+      finish();
+      await mutation;
+      await vi.advanceTimersByTimeAsync(0);
+      expect(queryFn).toHaveBeenCalledTimes(2);
+      expect(queryClient.getQueryData(cards.queryKey)).toBe('server');
+      unsubscribe();
+      queue.dispose();
+    },
+  );
+
+  it('does not retain coverage after the fetched query is removed', async () => {
+    let finish!: () => void;
+    queryClient.setQueryData(cards.queryKey, 'old');
+    const observer = new QueryObserver(queryClient, {
+      queryKey: cards.queryKey,
+      queryFn: async () => 'fresh',
+      staleTime: Infinity,
+    });
+    const unsubscribe = observer.subscribe(() => undefined);
+    const queue = createInvalidationQueue(queryClient, 10);
+    const mutation = queryClient
+      .getMutationCache()
+      .build(queryClient, {
+        meta: { realtimeProtectedKey: cards.queryKey },
+        mutationFn: () =>
+          new Promise<void>((resolve) => {
+            finish = resolve;
+          }),
+      })
+      .execute(undefined);
+    await vi.advanceTimersByTimeAsync(0);
+    queue.add([cards]);
+    await vi.advanceTimersByTimeAsync(10);
+    await queryClient.invalidateQueries(cards);
+    queryClient.removeQueries(cards);
+    finish();
+    await mutation;
+    await vi.advanceTimersByTimeAsync(0);
+    expect(invalidateQueries).toHaveBeenCalledTimes(2);
+    unsubscribe();
+    queue.dispose();
+  });
+
+  it('does not replay an in-flight hint after board access is revoked', async () => {
+    let finish!: (value: string) => void;
+    const queryFn = vi.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    queryClient.setQueryData(boardKeys.detail(BOARD), { id: BOARD });
+    queryClient.setQueryData(cards.queryKey, 'old');
+    const observer = new QueryObserver(queryClient, {
+      queryKey: cards.queryKey,
+      queryFn,
+      staleTime: Infinity,
+    });
+    const unsubscribe = observer.subscribe(() => undefined);
+    const queue = createInvalidationQueue(queryClient, 10);
+    queue.add([cards]);
+    const refresh = queryClient.invalidateQueries(cards);
+    await vi.advanceTimersByTimeAsync(10);
+    revokeBoardAccess(queryClient, BOARD);
+    finish('old private data');
+    await refresh;
+    await vi.advanceTimersByTimeAsync(0);
+    expect(queryFn).toHaveBeenCalledTimes(1);
+    expect(queryClient.getQueryData(cards.queryKey)).toBeUndefined();
+    unsubscribe();
+    queue.dispose();
+  });
+
   it('coalesces affected preview batches without refetching unrelated cards', async () => {
     const prefix = [...boardKeys.cards(BOARD), 'preview-summaries', 'user', 1];
     const keys = [

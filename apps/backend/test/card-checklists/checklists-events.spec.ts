@@ -70,7 +70,12 @@ describe('Checklist post-commit invalidation', () => {
       [
         'board',
         'card:updated',
-        { boardId: 'board', cardId: 'card', columnId: 'column' },
+        {
+          boardId: 'board',
+          cardId: 'card',
+          columnId: 'column',
+          changeScope: 'checklists',
+        },
       ],
     ]);
   });

@@ -83,7 +83,7 @@ export interface CardChangedEvent {
 
 /** Optional scope narrows which Card data must be reloaded. */
 export interface CardUpdatedEvent extends CardChangedEvent {
-  changeScope?: 'card-fields' | 'attachments';
+  changeScope?: 'card-fields' | 'attachments' | 'checklists';
   /** Opaque, per-request correlation hint; absent on older servers. */
   operationId?: string;
 }

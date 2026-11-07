@@ -57,7 +57,8 @@ detail, leaving preview counters and child collections intact. The optional
 `changeScope: 'attachments'` refreshes only that Card's attachment pages and
 preview summaries; a matching per-tab operation ID can combine the originating
 mutation's refresh with its own hint. Other tabs and unrecognized IDs still
-refresh. An event with no
+refresh. `changeScope: 'checklists'` refreshes the exact checklist query and
+the affected preview summaries. An event with no
 recognized hint continues to refresh the affected Card's child queries and
 preview summary. See [PERF-01](perf-01-api-traffic.md) for current evidence.
 

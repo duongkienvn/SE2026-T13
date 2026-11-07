@@ -40,6 +40,7 @@ server['column:deleted'](column);
 server['card:created'](card);
 server['card:updated'](card);
 server['card:updated']({ ...card, changeScope: 'card-fields' });
+server['card:updated']({ ...card, changeScope: 'checklists' });
 server['card:updated']({
   ...card,
   changeScope: 'attachments',

@@ -1,4 +1,10 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import {
   openCardDetail,
@@ -6,6 +12,7 @@ import {
   type Handler,
 } from '../../../test/card-detail-fixtures';
 import { fail, ok, type MockResponse } from '../../../test/mock-api';
+import { createdSockets, joined } from '../../../test/fake-socket';
 import type { Card } from '../types';
 import type { CardChecklists, Checklist, ChecklistItem } from './api';
 import {
@@ -160,6 +167,61 @@ function withChecklistsApi(
 }
 
 describe('Card Detail checklists', () => {
+  it('keeps one in-flight checklist read after an early matching hint', async () => {
+    const initial = checklist('list-1', 'Release', [item('a', 'Ship')]);
+    const updated = checklist('list-1', 'Release', [item('a', 'Ship', true)]);
+    let finishWrite!: (value: MockResponse) => void;
+    let finishRead!: (value: MockResponse) => void;
+    let holdRead = false;
+    const api = withChecklistsApi([initial], (card, base) => ({
+      [`GET ${base}`]: () =>
+        holdRead
+          ? new Promise<MockResponse>((resolve) => {
+              finishRead = resolve;
+            })
+          : ok(detail([{ ...initial, cardId: card.id }])),
+      [`PATCH ${base}/list-1/items/a`]: () =>
+        new Promise<MockResponse>((resolve) => {
+          finishWrite = resolve;
+        }),
+    }));
+    const { card, calls, path, dialog } = openCardDetail({ extra: api.extra });
+    const view = await dialog();
+    const box = await within(view).findByRole('checkbox', { name: 'Ship' });
+    await waitFor(() => expect(createdSockets.length).toBeGreaterThan(0));
+    const socket = createdSockets.at(-1)!.socket;
+    act(() => socket.open());
+    await waitFor(() => expect(socket.requests('board:join')).toHaveLength(1));
+    act(() => socket.lastJoin().reply(joined(card.boardId)));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
+    const reads = () =>
+      calls.filter(
+        (call) => call.method === 'GET' && call.path === `${path}/checklists`,
+      ).length;
+    const before = reads();
+    fireEvent.click(box);
+    await waitFor(() => expect(finishWrite).toBeTypeOf('function'));
+    act(() =>
+      socket.push('card:updated', {
+        boardId: card.boardId,
+        cardId: card.id,
+        columnId: card.columnId,
+        changeScope: 'checklists',
+      }),
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 150)));
+    expect(reads()).toBe(before);
+    holdRead = true;
+    act(() => finishWrite(ok({ ...updated, cardId: card.id })));
+    await waitFor(() => expect(finishRead).toBeTypeOf('function'));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 150)));
+    expect(reads()).toBe(before + 1);
+    act(() => finishRead(ok(detail([{ ...updated, cardId: card.id }]))));
+    await waitFor(() => expect((box as HTMLInputElement).checked).toBe(true));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 150)));
+    expect(reads()).toBe(before + 1);
+  });
+
   it('shows progress and toggles an item at once, persisting it', async () => {
     const release = checklist('list-1', 'Release', [
       item('a', 'Write notes', true),
