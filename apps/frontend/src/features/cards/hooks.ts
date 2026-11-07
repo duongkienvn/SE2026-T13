@@ -222,6 +222,7 @@ export function useMoveCard(boardId: string) {
   const save = useSaveCard(boardId);
   const refreshIfArchived = useRefreshIfArchived(boardId);
   return useMutation({
+    meta: { realtimeProtectedKey: boardKeys.cards(boardId) },
     mutationFn: ({ cardId, ...input }: MoveCardRequest & { cardId: string }) =>
       runAuthorized((token) => moveCard(token, boardId, cardId, input)),
     ...save,

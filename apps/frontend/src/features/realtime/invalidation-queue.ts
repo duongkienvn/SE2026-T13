@@ -10,7 +10,7 @@ export interface InvalidationQueue {
 
 /**
  * Collects invalidations for `delayMs`, so a burst of events refetches each
- * query once, and holds them while any mutation is pending: a drag-and-drop
+ * query once, and holds conflicting queries while an optimistic move is pending:
  * keeps its own preview until its request settles, and refetching after it
  * lands on the server's final order instead of racing it.
  */
@@ -24,21 +24,27 @@ export function createInvalidationQueue(
   let disposed = false;
 
   const flush = () => {
+    clearTimeout(timer);
     timer = undefined;
     if (disposed || pending.size === 0) return;
-    if (queryClient.isMutating() > 0) {
-      stopWaiting ??= queryClient.getMutationCache().subscribe(() => {
-        if (queryClient.isMutating() > 0) return;
-        stopWaiting?.();
-        stopWaiting = undefined;
-        flush();
-      });
-      return;
-    }
-    const targets = [...pending.values()];
-    pending.clear();
-    for (const target of targets) {
+    for (const [id, target] of pending) {
       const key = target.queryKey;
+      const conflicts = queryClient.isMutating({
+        predicate: (mutation) => {
+          const protectedKey = mutation.options.meta?.realtimeProtectedKey;
+          if (!Array.isArray(protectedKey) || !key) return false;
+          return (
+            protectedKey
+              .slice(0, key.length)
+              .every((part, i) => part === key[i]) ||
+            key
+              .slice(0, protectedKey.length)
+              .every((part, i) => part === protectedKey[i])
+          );
+        },
+      });
+      if (conflicts) continue;
+      pending.delete(id);
       const error =
         key?.[0] === 'boards' && key[1] === 'detail'
           ? queryClient.getQueryState(key.slice(0, 3))?.error
@@ -46,6 +52,12 @@ export function createInvalidationQueue(
       // A queued refresh must not undo a server-confirmed revocation.
       if (isApiError(error) && error.code === BOARD_ACCESS_REVOKED) continue;
       void queryClient.invalidateQueries(target);
+    }
+    if (pending.size) {
+      stopWaiting ??= queryClient.getMutationCache().subscribe(() => flush());
+    } else {
+      stopWaiting?.();
+      stopWaiting = undefined;
     }
   };
 
@@ -55,8 +67,7 @@ export function createInvalidationQueue(
       for (const target of targets) {
         pending.set(JSON.stringify([target.queryKey, target.exact]), target);
       }
-      if (timer === undefined && !stopWaiting)
-        timer = setTimeout(flush, delayMs);
+      if (timer === undefined) timer = setTimeout(flush, delayMs);
     },
     dispose() {
       disposed = true;

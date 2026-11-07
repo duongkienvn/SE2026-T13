@@ -202,6 +202,7 @@ export function useChecklistAction(boardId: string, cardId: string) {
     client.invalidateQueries({ queryKey: key, exact: true });
   const mutation = useMutation({
     mutationKey: key,
+    meta: { realtimeProtectedKey: key },
     mutationFn: (action: ChecklistAction) =>
       enqueue(key.join(':'), () =>
         runAuthorized((token) =>

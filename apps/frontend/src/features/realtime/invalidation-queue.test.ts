@@ -59,27 +59,29 @@ describe('createInvalidationQueue', () => {
     expect(invalidateQueries).toHaveBeenCalledTimes(2);
   });
 
-  it('waits for pending mutations, then refetches once', async () => {
+  it('waits for conflicting mutations but refreshes another board', async () => {
     const queue = createInvalidationQueue(queryClient, 100);
     let finish!: () => void;
     const move = queryClient
       .getMutationCache()
       .build(queryClient, {
+        meta: { realtimeProtectedKey: boardKeys.cards(BOARD) },
         mutationFn: () => new Promise<void>((resolve) => (finish = resolve)),
       })
       .execute(undefined);
 
     queue.add([cards]);
     await vi.advanceTimersByTimeAsync(1_000);
-    queue.add([columns]);
+    const other = { queryKey: boardKeys.cards('board-b'), exact: true };
+    queue.add([columns, other]);
     await vi.advanceTimersByTimeAsync(1_000);
-    expect(invalidateQueries).not.toHaveBeenCalled();
+    expect(invalidateQueries.mock.calls).toEqual([[columns], [other]]);
 
     finish();
     await move;
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(invalidateQueries.mock.calls).toEqual([[cards], [columns]]);
+    expect(invalidateQueries.mock.calls).toEqual([[columns], [other], [cards]]);
   });
 
   it('drops everything once disposed', async () => {
@@ -91,5 +93,28 @@ describe('createInvalidationQueue', () => {
     await vi.advanceTimersByTimeAsync(1_000);
 
     expect(invalidateQueries).not.toHaveBeenCalled();
+  });
+
+  it('flushes after a failed conflicting mutation and stops after disposal', async () => {
+    const queue = createInvalidationQueue(queryClient, 10);
+    let fail!: () => void;
+    const mutation = queryClient
+      .getMutationCache()
+      .build(queryClient, {
+        meta: { realtimeProtectedKey: boardKeys.cards(BOARD) },
+        mutationFn: () =>
+          new Promise<void>((_resolve, reject) => {
+            fail = () => reject(new Error('failed'));
+          }),
+      })
+      .execute(undefined)
+      .catch(() => undefined);
+    queue.add([cards]);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(invalidateQueries).not.toHaveBeenCalled();
+    fail();
+    await mutation;
+    expect(invalidateQueries).toHaveBeenCalledTimes(1);
+    queue.dispose();
   });
 });

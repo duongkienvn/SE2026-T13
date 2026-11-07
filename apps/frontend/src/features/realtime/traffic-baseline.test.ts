@@ -41,6 +41,7 @@ it('measures mutation and socket hint traffic against a local HTTP server', asyn
     const mutation = client
       .getMutationCache()
       .build(client, {
+        meta: { realtimeProtectedKey: key },
         mutationFn: () =>
           new Promise<void>((resolve) => {
             finish = resolve;
