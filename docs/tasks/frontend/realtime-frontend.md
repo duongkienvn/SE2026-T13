@@ -20,9 +20,14 @@ affected data through REST, and PostgreSQL stays the source of truth.
   `success: true` for that board (10 s timeout). After every successful join,
   first or after a reconnect, the whole board is refetched, because events
   sent while the client was away are never replayed.
-- **Events → refetches.** The 12 F2a events and three H1c comment events invalidate the matching
-  TanStack Query keys (table below). Invalidations are coalesced for 100 ms
-  and held while any mutation is pending.
+- **Events → refetches.** Socket hints invalidate the matching TanStack Query
+  keys (table below), coalesced for 100 ms. A pending mutation holds a target
+  only when the target's exact key equals, or its non-exact prefix contains,
+  that mutation's `meta.realtimeProtectedKey`. Unrelated queries and other
+  boards continue refreshing. An exact target that starts fetching while queued
+  can finish without being cancelled; its successful non-manual read can satisfy
+  the queued refresh.
+  See [the invalidation queue](../../../apps/frontend/src/features/realtime/invalidation-queue.ts).
 - **Status pill.** Next to the role chip, shown only while live updates are
   interrupted: "Reconnecting…", or "Live updates paused" with **Retry** once
   retries give up. Hidden while connecting for the first time and while live.
@@ -36,31 +41,39 @@ under the board's detail key, so the board itself is always invalidated with
 `exact: true`. Column card counts are computed from the card list, which
 holds the whole board.
 
-| Event                                                                                   | Refetched                                                                  |
-| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `column:created`, `column:updated`, `column:moved`, `column:deleted`                    | columns                                                                    |
-| `card:created`, `card:updated`, `card:moved`, `card:archived`, `card:assignees-changed` | card list (exact) + that card's detail                                     |
-| `member:added`                                                                          | members                                                                    |
-| `member:role-changed`                                                                   | members, board (exact), board list (the signed-in user's role lives there) |
-| `member:removed`                                                                        | members, board (exact), board list, every card (assignments are removed)   |
-| `comment:created`, `comment:updated`, `comment:deleted`                                 | every cached comments page of that Card only                               |
-| successful `board:join` (initial or rejoin)                                             | everything under the board's key                                           |
+| Event                                                                | Refetched                                                                                                                      |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `column:created`, `column:updated`, `column:moved`, `column:deleted` | columns                                                                                                                        |
+| `card:created`, `card:assignees-changed`                             | card list (exact), filtered lists, affected preview summaries, Card detail prefix including child queries                      |
+| `card:moved`; `card:updated` with `changeScope: 'card-fields'`       | card list (exact), filtered lists, Card detail (exact); no child queries or preview summaries                                  |
+| `card:updated` with `changeScope: 'attachments'`                     | affected preview summaries and that Card's attachment query prefix only                                                        |
+| `card:updated` with `changeScope: 'checklists'`                      | affected preview summaries and that Card's checklist query (exact) only                                                        |
+| `card:updated` without a recognized `changeScope`                    | card list (exact), filtered lists, affected preview summaries, Card detail prefix including child queries                      |
+| `card:archived`, `card:restored`                                     | card list (exact), filtered lists, affected preview summaries, Card detail prefix including child queries, archived Card lists |
+| `member:added`                                                       | members                                                                                                                        |
+| `member:role-changed`                                                | members, board (exact), board list (the signed-in user's role lives there)                                                     |
+| `member:removed`                                                     | members, board (exact), board list, every card (assignments are removed)                                                       |
+| `comment:created`, `comment:updated`, `comment:deleted`              | every cached comments page of that Card only                                                                                   |
+| successful `board:join` (initial or rejoin)                          | everything under the board's key                                                                                               |
 
 Only empty columns can be deleted, so `column:deleted` never changes cards.
 `card:moved` refetches the full card list, which updates both the source and
 the destination column.
-Comment keys live under the Card detail prefix. Card events also refresh that Card's comments; comment events do not refresh the Card list or another Card.
+The Card rows follow [the event invalidation mapping](../../../apps/frontend/src/features/realtime/event-invalidation.ts).
+Filtered lists means every matching filtered Card-list variant. Affected preview
+summaries means the cached summary chunks containing that Card; malformed or
+legacy summary keys retain the broad fallback. Card detail prefixes include
+comments, checklists and attachments. Moves and `card-fields` updates use an
+exact Card detail target, so they leave those children and preview counters
+intact. Other broad Card detail targets in the table also invalidate that Card's
+comments; comment events do not refresh the Card list or another Card.
 
-PERF-01 narrows the historical matrix above: `card:updated` with the optional
-`changeScope: 'card-fields'` hint refreshes the list, filters and exact Card
-detail, leaving preview counters and child collections intact. The optional
-`changeScope: 'attachments'` refreshes only that Card's attachment pages and
-preview summaries; a matching per-tab operation ID can combine the originating
-mutation's refresh with its own hint. Other tabs and unrecognized IDs still
-refresh. `changeScope: 'checklists'` refreshes the exact checklist query and
-the affected preview summaries. An event with no
-recognized hint continues to refresh the affected Card's child queries and
-preview summary. See [PERF-01](perf-01-api-traffic.md) for current evidence.
+In `invalidationTargets`, Card events also invalidate Search and productivity
+task queries, except for the `attachments` and `checklists` scopes, which return
+only their narrow targets. For attachment updates, a matching per-tab operation
+ID can combine the originating mutation's refresh with its own hint. Other tabs
+and unrecognized IDs still refresh. See [PERF-01](perf-01-api-traffic.md) for
+current evidence.
 
 ## Decisions
 
@@ -75,7 +88,7 @@ preview summary. See [PERF-01](perf-01-api-traffic.md) for current evidence.
 | Retries             | Failed joins (timeout, `TOO_MANY_REQUESTS`, `INTERNAL_ERROR`, ACK for another board) retry after 1 s, 2 s, 4 s… up to 30 s, five times, then pause. Paused boards resume on `online`, on the tab becoming visible, or with Retry. Network errors are left to Socket.IO's own reconnection. |
 | `NOT_FOUND`         | No retry. The board is marked unavailable and its detail query refetched, so the page shows its usual "Board not found" state from REST.                                                                                                                                                   |
 | `UNAUTHORIZED`      | A refused handshake, an `UNAUTHORIZED` ACK or a server-side disconnect re-checks the session with `GET /users/me`. A 401 there ends the session (and the client); otherwise the socket reconnects with a freshly read token, with the same backoff.                                        |
-| Drag-and-drop       | E3 keeps a local preview until its move request settles. Event refetches wait until no mutation is pending, so they land after the move and show the server's order. No event ever patches the cache directly.                                                                             |
+| Drag-and-drop       | E3 keeps a local preview until its move request settles. Only invalidations conflicting with that mutation's protected Card-list or Column-list key wait; unrelated queries continue refreshing. No event ever patches the cache directly.                                                 |
 | Pill colors         | Existing tokens only (`line`, `muted`, `brand-soft`), so the palette in `design-guidelines.md` is unchanged.                                                                                                                                                                               |
 
 ## Known limitations
@@ -107,7 +120,8 @@ preview summary. See [PERF-01](perf-01-api-traffic.md) for current evidence.
   `UNAUTHORIZED`, StrictMode, A → B → A with stale ACKs, events before the
   ACK and of other boards, reconnect → rejoin → resync, refused handshakes,
   dispose.
-- `invalidation-queue.test.ts`: bursts, waiting for pending mutations.
+- `invalidation-queue.test.ts`: bursts, query-scoped mutation holds, other-board
+  independence and in-flight reads.
 - `useBoardRealtime.test.tsx`: no socket while signed out or disabled, token
   from the session, a REST refetch after an event, StrictMode, sign-out,
   server disconnect → session re-check.
