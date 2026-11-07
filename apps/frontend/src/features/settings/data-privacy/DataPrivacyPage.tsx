@@ -2,12 +2,13 @@ import { PageHeader } from '../../../components/PageHeader';
 import { usePageTitle } from '../../../hooks/usePageTitle';
 import { AccountExportCard } from './AccountExportCard';
 import { BoardExportCard } from './BoardExportCard';
+import { AccountDangerZone } from './DangerZone';
 import { InfoStrip } from './ExportCard';
 
 /**
- * Settings → Data & Privacy (#224). The export sections are self-contained;
- * account controls (P5-08 Danger Zone) are appended after `PrivacyNotice`
- * as their own section, without changing the export cards.
+ * Settings → Data & Privacy. The export sections (#224) are self-contained;
+ * the P5-08 Danger Zone (#225) is appended after `PrivacyNotice` as its own
+ * section, without changing the export cards.
  */
 export function DataPrivacyPage() {
   usePageTitle('Data & Privacy');
@@ -21,6 +22,7 @@ export function DataPrivacyPage() {
         <AccountExportCard />
         <BoardExportCard />
         <PrivacyNotice />
+        <AccountDangerZone />
       </div>
     </div>
   );
