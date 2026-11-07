@@ -129,8 +129,9 @@ export async function requestEnvelope(
   try {
     const text = await response.text();
     payload = text ? JSON.parse(text) : undefined;
-  } catch {
-    payload = undefined;
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    throw invalidResponse(response.status);
   }
 
   if (!response.ok) {

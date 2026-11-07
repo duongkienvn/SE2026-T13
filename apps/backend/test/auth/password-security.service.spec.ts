@@ -9,6 +9,7 @@ import {
   RECOVERY_TTL_MS,
 } from '../../src/api/auth/password-security.service';
 import { FakePasswordRecoveryMailer } from '../../src/mail/password-recovery-mailer';
+import { BoardRoomCoordinator } from '../../src/realtime/board-room-coordinator.service';
 
 describe('PasswordSecurityService decisions', () => {
   let user: User;
@@ -27,6 +28,8 @@ describe('PasswordSecurityService decisions', () => {
   };
   let mailer: FakePasswordRecoveryMailer;
   let service: PasswordSecurityService;
+  let transaction: jest.Mock;
+  let sessions: { revokeUserSessions: jest.Mock };
   beforeEach(() => {
     user = Object.assign(new User(), {
       id: 'user',
@@ -52,15 +55,18 @@ describe('PasswordSecurityService decisions', () => {
         entity === User ? userRepo : tokenRepo,
       query: jest.fn(),
     };
+    transaction = jest.fn((work) => work(manager));
     const source = {
       getRepository: manager.getRepository,
-      transaction: jest.fn((work) => work(manager)),
+      transaction,
     } as unknown as DataSource;
+    sessions = { revokeUserSessions: jest.fn() };
     mailer = new FakePasswordRecoveryMailer();
     service = new PasswordSecurityService(
       source,
       mailer,
       new ConfigService({ PUBLIC_APP_URL: 'http://localhost:5173' }),
+      sessions as unknown as BoardRoomCoordinator,
     );
   });
   it('issues separate random opaque proofs, stores only SHA-256 and uses the configured origin/TTL', async () => {
@@ -116,6 +122,7 @@ describe('PasswordSecurityService decisions', () => {
         response: { code: 'INVALID_PASSWORD_RESET_TOKEN' },
       });
       expect(tokenRepo.findOneBy).not.toHaveBeenCalled();
+      expect(sessions.revokeUserSessions).not.toHaveBeenCalled();
     },
   );
   it('rejects an unknown well-shaped proof', async () => {
@@ -137,6 +144,7 @@ describe('PasswordSecurityService decisions', () => {
       response: { code: 'PASSWORD_RECOVERY_REQUIRED' },
     });
     expect(userRepo.update).not.toHaveBeenCalled();
+    expect(sessions.revokeUserSessions).not.toHaveBeenCalled();
   });
   it('rejects old JWT version even if current password was supplied', async () => {
     user.authVersion = 1;
@@ -144,6 +152,7 @@ describe('PasswordSecurityService decisions', () => {
       service.change(user.id, 0, 'anything', 'NewPass123!'),
     ).rejects.toMatchObject({ status: 401 });
     expect(userRepo.update).not.toHaveBeenCalled();
+    expect(sessions.revokeUserSessions).not.toHaveBeenCalled();
   });
   it('maps wrong and reused passwords without updating any credential state', async () => {
     user.passwordHash = await argon2.hash('OldPass123!', {
@@ -162,5 +171,84 @@ describe('PasswordSecurityService decisions', () => {
       response: { code: 'PASSWORD_REUSED' },
     });
     expect(userRepo.update).not.toHaveBeenCalled();
+    expect(sessions.revokeUserSessions).not.toHaveBeenCalled();
   });
+
+  describe.each(['reset', 'change'] as const)(
+    '%s session revocation',
+    (flow) => {
+      const plaintext = 'A'.repeat(43);
+      const mutate = () =>
+        flow === 'reset'
+          ? service.reset(plaintext, 'NewPass123!')
+          : service.change(
+              user.id,
+              user.authVersion,
+              'OldPass123!',
+              'NewPass123!',
+            );
+
+      beforeEach(async () => {
+        user.authVersion = 4;
+        user.passwordHash = await argon2.hash('OldPass123!');
+        previous = {
+          id: 'proof',
+          userId: user.id,
+          tokenHash: recoveryHash(plaintext),
+          expiresAt: new Date(Date.now() + RECOVERY_TTL_MS),
+          consumedAt: null,
+        };
+      });
+
+      it('revokes only after transaction completion with the committed version', async () => {
+        const run = transaction.getMockImplementation()!;
+        transaction.mockImplementationOnce(async (work) => {
+          const result = await run(work);
+          expect(userRepo.update).toHaveBeenCalledWith(
+            user.id,
+            expect.objectContaining({ authVersion: 5 }),
+          );
+          expect(sessions.revokeUserSessions).not.toHaveBeenCalled();
+          return result;
+        });
+        await mutate();
+        expect(sessions.revokeUserSessions).toHaveBeenCalledTimes(1);
+        expect(sessions.revokeUserSessions).toHaveBeenCalledWith(user.id, 5);
+      });
+
+      it('never revokes if COMMIT fails after credential updates', async () => {
+        const run = transaction.getMockImplementation()!;
+        const failure = new Error('commit failed');
+        transaction.mockImplementationOnce(async (work) => {
+          await run(work);
+          throw failure;
+        });
+        await expect(mutate()).rejects.toBe(failure);
+        expect(userRepo.update).toHaveBeenCalled();
+        expect(sessions.revokeUserSessions).not.toHaveBeenCalled();
+      });
+
+      it('never revokes if proof consumption rolls back', async () => {
+        tokenRepo.update.mockRejectedValue(new Error('rollback'));
+        await expect(mutate()).rejects.toThrow('rollback');
+        expect(userRepo.update).toHaveBeenCalled();
+        expect(sessions.revokeUserSessions).not.toHaveBeenCalled();
+      });
+
+      it('does not fail a committed mutation on reconciliation failure', async () => {
+        sessions.revokeUserSessions.mockImplementation(() => {
+          throw new Error('adapter failed');
+        });
+        const warn = jest.spyOn(service['logger'], 'warn').mockImplementation();
+        try {
+          await expect(mutate()).resolves.toBeUndefined();
+          expect(warn).toHaveBeenCalledWith(
+            'Password security socket reconciliation unavailable',
+          );
+        } finally {
+          warn.mockRestore();
+        }
+      });
+    },
+  );
 });

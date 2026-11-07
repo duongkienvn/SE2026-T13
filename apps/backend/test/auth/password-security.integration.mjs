@@ -34,6 +34,9 @@ const {
   RealtimeBroadcastService,
 } = require('../../dist/realtime/realtime-broadcast.service.js');
 const {
+  BoardRoomCoordinator,
+} = require('../../dist/realtime/board-room-coordinator.service.js');
+const {
   GoogleTokenVerifier,
 } = require('../../dist/api/auth/google-token-verifier.service.js');
 const {
@@ -157,11 +160,12 @@ try {
   const recoveryMigration = source.migrations.find(
     (m) => m.name === 'PasswordRecoverySecurity1792922400093',
   );
-  const deletionMigration = source.migrations.find((m) =>
-    m.name.startsWith('AccountDeletion'),
+  // Starter Board's live-account trigger depends on AccountDeletion's function.
+  const accountMigrations = source.migrations.filter((m) =>
+    /^(AccountDeletion|StarterBoardOnboarding)/.test(m.name),
   );
   source.migrations = source.migrations.filter(
-    (m) => m !== recoveryMigration && m !== deletionMigration,
+    (m) => m !== recoveryMigration && !accountMigrations.includes(m),
   );
   await source.runMigrations();
   const oldPassword = 'OldPass123!';
@@ -201,8 +205,8 @@ try {
     await recoveryMigration.up(manager.queryRunner);
   });
   assert.equal((await source.runMigrations()).length, 0);
-  source.migrations.push(deletionMigration);
-  assert.equal((await source.runMigrations()).length, 1);
+  source.migrations.push(...accountMigrations);
+  assert.equal((await source.runMigrations()).length, accountMigrations.length);
   assert.deepEqual(
     (await source.driver.createSchemaBuilder().log()).upQueries.map(
       (q) => q.query,
@@ -269,6 +273,7 @@ try {
   const http = request(app.getHttpServer());
   const auth = app.get(AuthService);
   const security = app.get(PasswordSecurityService);
+  const sessions = app.get(BoardRoomCoordinator);
   // Observe completion only in the test harness. The controller must never wait
   // for this set; drain it before replacing test doubles or closing PostgreSQL.
   const sendRecovery = security.send.bind(security);
@@ -448,34 +453,6 @@ try {
     'malformed/unknown/expired/superseded proofs denied; weak/reused password does not consume proof',
   );
 
-  // Real PostgreSQL failure after the password update must roll back every field.
-  current = await issue(known);
-  await source.query(
-    `CREATE FUNCTION test_fail_consumption() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected rollback'; END $$`,
-  );
-  await source.query(
-    `CREATE TRIGGER test_fail_consumption BEFORE UPDATE ON password_reset_tokens FOR EACH ROW WHEN (NEW.consumed_at IS NOT NULL AND OLD.consumed_at IS NULL) EXECUTE FUNCTION test_fail_consumption()`,
-  );
-  await assert.rejects(security.reset(current, 'NextPass123!'));
-  assert.equal((await find(known.id)).passwordHash, oldHash);
-  assert.equal((await find(known.id)).authVersion, 0);
-  assert.equal(
-    (await tokens.findOneByOrFail({ userId: known.id })).consumedAt,
-    null,
-  );
-  await assert.rejects(
-    security.change(known.id, 0, oldPassword, 'ChangePass123!'),
-  );
-  assert.equal((await find(known.id)).passwordHash, oldHash);
-  assert.equal((await find(known.id)).authVersion, 0);
-  await source.query(
-    'DROP TRIGGER test_fail_consumption ON password_reset_tokens',
-  );
-  await source.query('DROP FUNCTION test_fail_consumption()');
-  check(
-    'injected DB failures roll back reset/change password, consumption and version atomically',
-  );
-
   const [board] = await source.query(
     'INSERT INTO boards(name,created_by_id) VALUES($1,$2) RETURNING id',
     ['Recovery room', known.id],
@@ -517,12 +494,84 @@ try {
   const roomAck = (socket, boardId) =>
     socket.timeout(3000).emitWithAck('board:join', { boardId });
   assert.equal((await roomAck(active, board.id)).success, true);
+  const activeServer = sessions.server.sockets.sockets.get(active.id);
+  const otherSocket = await socketAttempt(otherJwt, true);
+  assert.equal((await roomAck(otherSocket, board.id)).success, true);
+  async function assertDelivery(allowed, denied) {
+    let delivered = false,
+      leaked = false;
+    allowed.once('board:archived', () => {
+      delivered = true;
+    });
+    denied.once('board:archived', () => {
+      leaked = true;
+    });
+    await app
+      .get(RealtimeBroadcastService)
+      .emitToBoard(board.id, 'board:archived', { boardId: board.id });
+    await eventually(
+      () => delivered,
+      'Authorized socket did not receive event',
+    );
+    await delay(50);
+    assert.equal(leaked, false);
+    denied.removeAllListeners('board:archived');
+  }
+  async function assertRevoked(client, server) {
+    assert.equal(server.data.authorizedBoardIds.size, 0);
+    assert.equal(server.data.identity, undefined);
+    await eventually(
+      () => !client.connected,
+      'Old-version socket stayed connected',
+    );
+    await eventually(
+      () => sessions.presence.boardIds(server.id).length === 0,
+      'Revoked presence was not removed',
+    );
+    await assertDelivery(otherSocket, client);
+  }
   const unrelated = await local('unrelated@example.com');
   const unrelatedJwt = (
     await auth.login({ email: unrelated.email, password: oldPassword })
   ).accessToken;
   const unrelatedSocket = await socketAttempt(unrelatedJwt, true);
   assert.equal((await roomAck(unrelatedSocket, board.id)).success, false);
+  // Real PostgreSQL failure after the password update must roll back every field.
+  current = await issue(known);
+  await source.query(
+    `CREATE FUNCTION test_fail_consumption() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected rollback'; END $$`,
+  );
+  await source.query(
+    `CREATE TRIGGER test_fail_consumption BEFORE UPDATE ON password_reset_tokens FOR EACH ROW WHEN (NEW.consumed_at IS NOT NULL AND OLD.consumed_at IS NULL) EXECUTE FUNCTION test_fail_consumption()`,
+  );
+  await assert.rejects(security.reset(current, 'NextPass123!'));
+  assert.equal((await find(known.id)).passwordHash, oldHash);
+  assert.equal((await find(known.id)).authVersion, 0);
+  assert.equal(active.connected, true);
+  assert.equal(activeServer.data.authorizedBoardIds.has(board.id), true);
+  assert.equal(sessions.isSessionRevoked(activeServer.data.identity), false);
+  await assertDelivery(active, unrelatedSocket);
+  assert.equal(
+    (await tokens.findOneByOrFail({ userId: known.id })).consumedAt,
+    null,
+  );
+  await assert.rejects(
+    security.change(known.id, 0, oldPassword, 'ChangePass123!'),
+  );
+  assert.equal((await find(known.id)).passwordHash, oldHash);
+  assert.equal((await find(known.id)).authVersion, 0);
+  assert.equal(active.connected, true);
+  assert.equal(activeServer.data.authorizedBoardIds.has(board.id), true);
+  assert.equal(sessions.isSessionRevoked(activeServer.data.identity), false);
+  await assertDelivery(active, unrelatedSocket);
+  await source.query(
+    'DROP TRIGGER test_fail_consumption ON password_reset_tokens',
+  );
+  await source.query('DROP FUNCTION test_fail_consumption()');
+  check(
+    'injected DB failures roll back reset/change atomically without revoking active socket grants or delivery',
+  );
+
   const outcomes = await Promise.allSettled([
     security.reset(current, 'NextPass123!'),
     security.reset(current, 'NextPass123!'),
@@ -536,6 +585,7 @@ try {
     'INVALID_PASSWORD_RESET_TOKEN',
   );
   assert.equal((await find(known.id)).authVersion, 1);
+  await assertRevoked(active, activeServer);
   await code(
     auth.login({ email: known.email, password: oldPassword }),
     'INVALID_CREDENTIALS',
@@ -556,24 +606,13 @@ try {
     .set('Authorization', `Bearer ${otherJwt}`)
     .expect(200);
   await socketAttempt(legacyJwt, false);
-  const otherSocket = await socketAttempt(otherJwt, true);
-  assert.equal((await roomAck(otherSocket, board.id)).success, true);
-  // Explicitly measure the residual active-socket boundary; no instant-revoke claim.
-  assert.equal(active.connected, true);
-  let observed = false;
-  active.once('board:archived', () => {
-    observed = true;
-  });
-  await app
-    .get(RealtimeBroadcastService)
-    .emitToBoard(board.id, 'board:archived', { boardId: board.id });
-  await delay(50);
-  assert.equal(observed, true);
-  active.disconnect();
   await socketAttempt(legacyJwt, false, active);
-  await socketAttempt(newJwt, true);
+  const resetSocket = await socketAttempt(newJwt, true);
+  assert.equal((await roomAck(resetSocket, board.id)).success, true);
+  const resetServer = sessions.server.sockets.sockets.get(resetSocket.id);
+  await assertDelivery(resetSocket, active);
   check(
-    'exactly one concurrent reset succeeds; old/legacy JWT blocked in REST/handshake/reconnect; other users isolated; active sockets retain pre-existing access until disconnect/expiry',
+    'exactly one reset commits; old/legacy REST and reconnect denied; active grants/presence revoked; current sessions and other users retain delivery',
   );
 
   current = await issue(known);
@@ -585,11 +624,15 @@ try {
     security.change(known.id, 1, 'NextPass123!', 'NextPass123!'),
     'PASSWORD_REUSED',
   );
+  assert.equal(resetSocket.connected, true);
+  assert.equal(resetServer.data.authorizedBoardIds.has(board.id), true);
+  await assertDelivery(resetSocket, active);
   await http
     .post('/api/auth/change-password')
     .set('Authorization', `Bearer ${newJwt}`)
     .send({ currentPassword: 'NextPass123!', newPassword: 'ChangedPass123!' })
     .expect(204);
+  await assertRevoked(resetSocket, resetServer);
   await code(
     security.reset(current, 'ReplayPass123!'),
     'INVALID_PASSWORD_RESET_TOKEN',
@@ -598,12 +641,15 @@ try {
     .get('/api/users/me')
     .set('Authorization', `Bearer ${newJwt}`)
     .expect(401);
-  await socketAttempt(newJwt, false);
+  await socketAttempt(newJwt, false, resetSocket);
   assert.equal((await find(known.id)).authVersion, 2);
   const changedJwt = (
     await auth.login({ email: known.email, password: 'ChangedPass123!' })
   ).accessToken;
   assert.equal((await auth.authenticateAccessToken(changedJwt)).authVersion, 2);
+  const changedSocket = await socketAttempt(changedJwt, true);
+  assert.equal((await roomAck(changedSocket, board.id)).success, true);
+  await assertDelivery(changedSocket, resetSocket);
   await http
     .patch('/api/users/me')
     .set('Authorization', `Bearer ${changedJwt}`)
@@ -769,6 +815,7 @@ try {
       },
     },
     app.get(require('@nestjs/config').ConfigService),
+    sessions,
   );
   await failing.send(failed.email);
   await failing.send(failed.email);
@@ -925,6 +972,7 @@ try {
       },
     },
     app.get(require('@nestjs/config').ConfigService),
+    sessions,
   );
   const sending = sendingService.send(inFlight.email);
   await entered;
