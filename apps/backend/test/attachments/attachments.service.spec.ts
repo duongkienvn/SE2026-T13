@@ -25,6 +25,49 @@ describe('attachment mutations', () => {
   beforeEach(() => {
     h = attachmentHarness();
   });
+  it('emits only valid operation IDs on attachment-scoped hints', async () => {
+    const operationId = randomUUID();
+    const first = await h.service.create(
+      ID.owner,
+      ID.board,
+      ID.card,
+      { kind: 'URL', url: 'https://example.com/doc' },
+      undefined,
+      operationId,
+    );
+    expect(h.events.publish).toHaveBeenLastCalledWith(
+      'card:updated',
+      expect.objectContaining({
+        boardId: ID.board,
+        cardId: ID.card,
+        changeScope: 'attachments',
+        operationId,
+      }),
+    );
+    await h.service.update(
+      ID.owner,
+      ID.board,
+      ID.card,
+      first.id,
+      { expectedRevision: 1, displayName: 'Changed' },
+      'invalid',
+    );
+    expect(h.events.publish.mock.calls.at(-1)?.[1]).not.toHaveProperty(
+      'operationId',
+    );
+    await h.service.remove(
+      ID.owner,
+      ID.board,
+      ID.card,
+      first.id,
+      2,
+      operationId,
+    );
+    expect(h.events.publish.mock.calls.at(-1)?.[1]).toMatchObject({
+      changeScope: 'attachments',
+      operationId,
+    });
+  });
   it('normalizes, owns and idempotently replays while isolating the request key', async () => {
     const key = randomUUID();
     const first = await create(key);
@@ -210,6 +253,7 @@ describe('attachment mutations', () => {
         boardId: ID.board,
         cardId: ID.card,
         columnId: ID.column,
+        changeScope: 'attachments',
       });
     });
     await create();

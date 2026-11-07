@@ -271,6 +271,7 @@ export class CardsService {
         boardId: result.boardId,
         cardId: result.id,
         columnId: result.columnId,
+        changeScope: 'card-fields',
       });
     return result;
   }

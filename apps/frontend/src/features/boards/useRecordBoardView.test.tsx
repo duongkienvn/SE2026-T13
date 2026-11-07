@@ -14,8 +14,29 @@ import { AuthSessionContext } from '../auth/auth-session-context';
 import { boardKeys } from './query-keys';
 import { useRecordBoardView } from './useRecordBoardView';
 import { changeBoardAccessVersion } from './access-version';
+import { workspaceKeys } from '../workspaces/query-keys';
+import { productivityKey } from '../productivity/cache';
 
 afterEach(() => vi.restoreAllMocks());
+
+it('refreshes recency representations without invalidating the Workspace directory', async () => {
+  const { client, wrapper } = setup(() =>
+    ok({ isStarred: false, lastViewedAt: '2026-11-01T00:00:00Z' }),
+  );
+  const list = workspaceKeys.list(testUser.id, 1);
+  const boards = workspaceKeys.boards(testUser.id, 1, 'workspace');
+  const overview = workspaceKeys.overview(testUser.id, 1, 'workspace');
+  const home = [...productivityKey, 'home'];
+  for (const key of [list, boards, overview, home])
+    client.setQueryData(key, {});
+  renderHook(() => useRecordBoardView('board', true), { wrapper });
+  await waitFor(() =>
+    expect(client.getQueryState(home)?.isInvalidated).toBe(true),
+  );
+  expect(client.getQueryState(boards)?.isInvalidated).toBe(true);
+  expect(client.getQueryState(overview)?.isInvalidated).toBe(true);
+  expect(client.getQueryState(list)?.isInvalidated).toBe(false);
+});
 
 function setup(response: () => MockResponse | Promise<MockResponse>) {
   const calls = mockApi({ 'POST /boards/board/views': response });

@@ -82,6 +82,7 @@ export function useMoveColumn(boardId: string) {
   const invalidate = useInvalidateColumns(boardId);
   const refreshIfArchived = useRefreshIfArchived(boardId);
   return useMutation({
+    meta: { realtimeProtectedKey: boardKeys.columns(boardId) },
     mutationFn: ({
       columnId,
       ...input

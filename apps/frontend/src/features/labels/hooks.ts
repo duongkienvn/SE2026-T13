@@ -4,6 +4,7 @@ import { retryUnlessClientError } from '../../lib/query-client';
 import { useAuth } from '../auth/useAuth';
 import { boardAccessVersion } from '../boards/access-version';
 import { boardKeys } from '../boards/query-keys';
+import { previewSummaryFilters } from '../cards/preview-summary-cache';
 import {
   assignLabel,
   createLabel,
@@ -135,9 +136,7 @@ export function useToggleCardLabel(boardId: string, cardId: string) {
       void client.invalidateQueries({
         queryKey: [...boardKeys.cards(boardId), 'filtered'],
       });
-      void client.invalidateQueries({
-        queryKey: [...boardKeys.cards(boardId), 'preview-summaries'],
-      });
+      void client.invalidateQueries(previewSummaryFilters(boardId, cardId));
       return client.invalidateQueries({ queryKey: key, exact: true });
     },
   });

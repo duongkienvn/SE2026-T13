@@ -4,6 +4,7 @@ import { apiRequest, isApiError } from '../../lib/api-client';
 import { useAuth } from '../auth/useAuth';
 import { useAuthSession } from '../auth/auth-session-context';
 import { workspaceKeys } from '../workspaces/query-keys';
+import { productivityKey } from '../productivity/cache';
 import { boardKeys } from './query-keys';
 import { revokeBoardAccess } from './revoke-board-access';
 import { boardAccessVersion } from './access-version';
@@ -46,6 +47,12 @@ export function useRecordBoardView(boardId: string, enabled: boolean) {
           void client.invalidateQueries({ queryKey: boardKeys.lists() });
           void client.invalidateQueries({
             queryKey: workspaceKeys.session(user.id, scope.generation),
+            predicate: (query) =>
+              query.queryKey[3] === 'workspace' &&
+              ['boards', 'overview'].includes(String(query.queryKey[5])),
+          });
+          void client.invalidateQueries({
+            queryKey: [...productivityKey, 'home'],
           });
         })
         .catch((error: unknown) => {

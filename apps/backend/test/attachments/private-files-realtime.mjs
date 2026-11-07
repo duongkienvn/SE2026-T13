@@ -166,9 +166,10 @@ export async function verifyPrivateFileRealtime(ctx) {
     restoreRunner = () => {
       source.createQueryRunner = createRunner;
     };
+    const operationId = '12345678-1234-4234-8234-123456789abc';
     const event = next(owner, 'card:updated'),
       completion = files
-        .complete(actor(), board.id, card.id, intent.uploadId)
+        .complete(actor(), board.id, card.id, intent.uploadId, operationId)
         .then(
           (value) => ({ value }),
           (error) => ({ error }),
@@ -212,6 +213,8 @@ export async function verifyPrivateFileRealtime(ctx) {
       boardId: board.id,
       cardId: card.id,
       columnId: card.columnId,
+      changeScope: 'attachments',
+      operationId,
     });
     restoreRunner();
     restoreRunner = undefined;
@@ -235,6 +238,23 @@ export async function verifyPrivateFileRealtime(ctx) {
       .expect(400);
     await flush();
     assert.deepEqual(snapshot(), silent);
+    const httpIntent = await make();
+    const httpEvent = next(owner, 'card:updated');
+    await send(
+      'owner',
+      'post',
+      `${base}/uploads/${httpIntent.uploadId}/complete`,
+    )
+      .set('X-Kanvexa-Operation-Id', operationId)
+      .send({})
+      .expect(200);
+    assert.deepEqual(await httpEvent, {
+      boardId: board.id,
+      cardId: card.id,
+      columnId: card.columnId,
+      changeScope: 'attachments',
+      operationId,
+    });
     const removed = next(owner, 'card:updated');
     await service.remove(actors.guest, board.id, card.id, active.id);
     await removed;

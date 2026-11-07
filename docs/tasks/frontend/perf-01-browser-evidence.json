@@ -1,0 +1,1259 @@
+{
+  "before": {
+    "phase": "before",
+    "board": "<fixture-id>",
+    "actions": {
+      "board_idle": {
+        "network": [],
+        "queries": []
+      },
+      "card_detail_open": {
+        "network": [
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/labels",
+            "canceled": true,
+            "error": "net::ERR_ABORTED"
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/checklists",
+            "canceled": true,
+            "error": "net::ERR_ABORTED"
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/attachments?page=1&limit=5",
+            "canceled": true,
+            "error": "net::ERR_ABORTED"
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/comments?page=1&limit=20",
+            "canceled": true,
+            "error": "net::ERR_ABORTED"
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>",
+            "canceled": true,
+            "error": "net::ERR_ABORTED"
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/labels",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/checklists",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/attachments?page=1&limit=5",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/comments?page=1&limit=20",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>",
+            "canceled": false
+          }
+        ],
+        "queries": [
+          {
+            "time": 14778.799999952316,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "labels"
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 14781.899999976158,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "checklists"
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 14784.399999976158,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "attachments",
+              1
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 14788.799999952316,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "comments",
+              1
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 14809.899999976158,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>"
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 14823.899999976158,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "labels"
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 14826.199999928474,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "checklists"
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 14829.100000023842,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "attachments",
+              1
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 14832.299999952316,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "comments",
+              1
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 14836,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>"
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 15077.100000023842,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "checklists"
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 15099,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "attachments",
+              1
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 15111.399999976158,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "labels"
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 15122.799999952316,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>"
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 15170.799999952316,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "comments",
+              1
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          }
+        ]
+      },
+      "card_title_edit": {
+        "network": [
+          {
+            "method": "PATCH",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/card-preview-summaries?cardIds=<fixture-id>",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards?page=1&limit=100",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards?page=1&limit=100",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/card-preview-summaries?cardIds=<fixture-id>",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/labels",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/checklists",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/attachments?page=1&limit=5",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/comments?page=1&limit=20",
+            "canceled": false
+          }
+        ],
+        "queries": [
+          {
+            "time": 16574.299999952316,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>"
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 16575,
+            "key": ["boards", "detail", "<fixture-id>", "cards"],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 16575.600000023842,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "preview-summaries",
+              "<fixture-id>",
+              0,
+              ["<fixture-id>"]
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 16578,
+            "key": ["boards", "detail", "<fixture-id>", "cards"],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 16743.399999976158,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "preview-summaries",
+              "<fixture-id>",
+              0,
+              ["<fixture-id>"]
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 16743.899999976158,
+            "key": ["boards", "detail", "<fixture-id>", "cards"],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 16744.699999928474,
+            "key": ["boards", "detail", "<fixture-id>", "cards"],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 16747.299999952316,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "preview-summaries",
+              "<fixture-id>",
+              0,
+              ["<fixture-id>"]
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 16748.600000023842,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>"
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 16749.199999928474,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "labels"
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 16749.600000023842,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "checklists"
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 16750.100000023842,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "attachments",
+              1
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 16750.699999928474,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "comments",
+              1
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 16859.199999928474,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>"
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 16865.600000023842,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "labels"
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 16873.899999976158,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "checklists"
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 16883.899999976158,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "preview-summaries",
+              "<fixture-id>",
+              0,
+              ["<fixture-id>"]
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 16889.799999952316,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "attachments",
+              1
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 16909.899999976158,
+            "key": ["boards", "detail", "<fixture-id>", "cards"],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 16980.399999976158,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "comments",
+              1
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          }
+        ]
+      },
+      "comment_create": {
+        "network": [
+          {
+            "method": "POST",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/comments",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/card-preview-summaries?cardIds=<fixture-id>",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/comments?page=1&limit=20",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/comments?page=1&limit=20",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/card-preview-summaries?cardIds=<fixture-id>",
+            "canceled": false
+          }
+        ],
+        "queries": [
+          {
+            "time": 19085.399999976158,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "preview-summaries",
+              "<fixture-id>",
+              0,
+              ["<fixture-id>"]
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 19087.100000023842,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "comments",
+              1
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 19161.299999952316,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "preview-summaries",
+              "<fixture-id>",
+              0,
+              ["<fixture-id>"]
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 19257.199999928474,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "comments",
+              1
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 19257.799999952316,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "comments",
+              1
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 19259.699999928474,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "preview-summaries",
+              "<fixture-id>",
+              0,
+              ["<fixture-id>"]
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 19348.799999952316,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "preview-summaries",
+              "<fixture-id>",
+              0,
+              ["<fixture-id>"]
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 19390.100000023842,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "comments",
+              1
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          }
+        ]
+      },
+      "card_detail_close": {
+        "network": [
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/card-preview-summaries?cardIds=<fixture-id>",
+            "canceled": false
+          }
+        ],
+        "queries": [
+          {
+            "time": 21499.699999928474,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "preview-summaries",
+              "<fixture-id>",
+              0,
+              ["<fixture-id>"]
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 21636.899999976158,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "preview-summaries",
+              "<fixture-id>",
+              0,
+              ["<fixture-id>"]
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          }
+        ]
+      },
+      "search_open": {
+        "network": [
+          {
+            "method": "GET",
+            "path": "/search?q=Fixture&type=all&limit=5",
+            "canceled": false
+          }
+        ],
+        "queries": [
+          {
+            "time": 23470.699999928474,
+            "key": ["search", "<fixture-id>", 0, "Fixture", "all", 1, 5],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 23596,
+            "key": ["search", "<fixture-id>", 0, "Fixture", "all", 1, 5],
+            "action": "success",
+            "fetchStatus": "idle"
+          }
+        ]
+      }
+    }
+  },
+  "after": {
+    "phase": "after",
+    "board": "<fixture-id>",
+    "actions": {
+      "board_idle": {
+        "network": [],
+        "queries": []
+      },
+      "card_detail_open": {
+        "network": [
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/labels",
+            "canceled": true,
+            "error": "net::ERR_ABORTED"
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/checklists",
+            "canceled": true,
+            "error": "net::ERR_ABORTED"
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/attachments?page=1&limit=5",
+            "canceled": true,
+            "error": "net::ERR_ABORTED"
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/comments?page=1&limit=20",
+            "canceled": true,
+            "error": "net::ERR_ABORTED"
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>",
+            "canceled": true,
+            "error": "net::ERR_ABORTED"
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/labels",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/checklists",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/attachments?page=1&limit=5",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/comments?page=1&limit=20",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>",
+            "canceled": false
+          }
+        ],
+        "queries": [
+          {
+            "time": 14785.299999952316,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "labels"
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 14788,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "checklists"
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 14790.399999976158,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "attachments",
+              1
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 14793.899999976158,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "comments",
+              1
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 14820.5,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>"
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 14841.899999976158,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "labels"
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 14844.899999976158,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "checklists"
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 14847.5,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "attachments",
+              1
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 14850.5,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "comments",
+              1
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 14854.100000023842,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>"
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 15158.100000023842,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>"
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 15191.5,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "attachments",
+              1
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 15191.799999952316,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "checklists"
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 15192.100000023842,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "labels"
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 15206.699999928474,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "comments",
+              1
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          }
+        ]
+      },
+      "card_title_edit": {
+        "network": [
+          {
+            "method": "PATCH",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards?page=1&limit=100",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>",
+            "canceled": false
+          }
+        ],
+        "queries": [
+          {
+            "time": 16470.100000023842,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>"
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 16470.5,
+            "key": ["boards", "detail", "<fixture-id>", "cards"],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 16471.100000023842,
+            "key": ["boards", "detail", "<fixture-id>", "cards"],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 16554.399999976158,
+            "key": ["boards", "detail", "<fixture-id>", "cards"],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 16572.5,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>"
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 16595.699999928474,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>"
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          }
+        ]
+      },
+      "comment_create": {
+        "network": [
+          {
+            "method": "POST",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/comments",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/cards/<fixture-id>/comments?page=1&limit=20",
+            "canceled": false
+          },
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/card-preview-summaries?cardIds=<fixture-id>",
+            "canceled": false
+          }
+        ],
+        "queries": [
+          {
+            "time": 18992.399999976158,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "preview-summaries",
+              "<fixture-id>",
+              0,
+              ["<fixture-id>"]
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 18992.600000023842,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "comments",
+              1
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 19079.399999976158,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "preview-summaries",
+              "<fixture-id>",
+              0,
+              ["<fixture-id>"]
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          },
+          {
+            "time": 19144.899999976158,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "<fixture-id>",
+              "comments",
+              1
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          }
+        ]
+      },
+      "card_detail_close": {
+        "network": [
+          {
+            "method": "GET",
+            "path": "/boards/<fixture-id>/card-preview-summaries?cardIds=<fixture-id>",
+            "canceled": false
+          }
+        ],
+        "queries": [
+          {
+            "time": 21437.600000023842,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "preview-summaries",
+              "<fixture-id>",
+              0,
+              ["<fixture-id>"]
+            ],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 21632.5,
+            "key": [
+              "boards",
+              "detail",
+              "<fixture-id>",
+              "cards",
+              "preview-summaries",
+              "<fixture-id>",
+              0,
+              ["<fixture-id>"]
+            ],
+            "action": "success",
+            "fetchStatus": "idle"
+          }
+        ]
+      },
+      "search_open": {
+        "network": [
+          {
+            "method": "GET",
+            "path": "/search?q=Fixture&type=all&limit=5",
+            "canceled": false
+          }
+        ],
+        "queries": [
+          {
+            "time": 23337.799999952316,
+            "key": ["search", "<fixture-id>", 0, "Fixture", "all", 1, 5],
+            "action": "fetch",
+            "fetchStatus": "fetching"
+          },
+          {
+            "time": 23453.899999976158,
+            "key": ["search", "<fixture-id>", 0, "Fixture", "all", 1, 5],
+            "action": "success",
+            "fetchStatus": "idle"
+          }
+        ]
+      }
+    }
+  }
+}

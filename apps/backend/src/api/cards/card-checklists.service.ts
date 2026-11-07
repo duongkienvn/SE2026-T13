@@ -347,6 +347,7 @@ export class CardChecklistsService {
           boardId: card.boardId,
           cardId: card.id,
           columnId: card.columnId,
+          changeScope: 'checklists' as const,
         },
       };
     });

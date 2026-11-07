@@ -29,6 +29,16 @@ export type BoardRealtimeStatus =
 export interface BoardRealtimeOptions {
   createSocket: () => RealtimeSocket;
   invalidate: (targets: InvalidationTarget[]) => void;
+  consumeHint?: (
+    event: BoardEventName,
+    payload: {
+      boardId: string;
+      cardId?: unknown;
+      operationId?: unknown;
+      changeScope?: unknown;
+    },
+    targets: InvalidationTarget[],
+  ) => boolean;
   /** Re-checks the session by REST; a 401 there ends it (and this client). */
   verifySession: () => void;
   accessRevoked?: (boardId: string) => void;
@@ -431,12 +441,13 @@ export class BoardRealtimeClient {
       // Events before the join ACK are covered by the resync that follows it.
       if (room.status !== 'live' || room.boardId.toLowerCase() !== id) continue;
       // Query keys use the board id as the page has it, which may differ in case.
-      this.options.invalidate(
-        invalidationTargets(event, {
-          ...(payload as BoardEventPayload<typeof event>),
-          boardId: room.boardId,
-        }),
-      );
+      const hint = {
+        ...(payload as BoardEventPayload<typeof event>),
+        boardId: room.boardId,
+      };
+      const targets = invalidationTargets(event, hint);
+      if (!this.options.consumeHint?.(event, hint, targets))
+        this.options.invalidate(targets);
     }
   }
 

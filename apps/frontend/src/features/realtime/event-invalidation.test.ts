@@ -166,12 +166,7 @@ describe('invalidationTargets', () => {
       toColumnId: 'column-2',
     };
 
-    expect(await hit('card:moved', moved)).toEqual([
-      'cards',
-      'card',
-      'commentsPage1',
-      'commentsPage2',
-    ]);
+    expect(await hit('card:moved', moved)).toEqual(['cards', 'card']);
   });
 
   it('labels:changed refreshes all Card queries and archived pages of its Board', async () => {
@@ -247,6 +242,21 @@ describe('invalidationTargets', () => {
     },
   );
 
+  it('does not refresh preview counts for a comment text edit', async () => {
+    const targets = invalidationTargets('comment:updated', {
+      boardId: BOARD,
+      cardId: CARD,
+      commentId: 'comment',
+    });
+    const client = new QueryClient();
+    const summary = [...boardKeys.cards(BOARD), 'preview-summaries', [CARD]];
+    client.setQueryData(summary, {});
+    await Promise.all(
+      targets.map((target) => client.invalidateQueries(target)),
+    );
+    expect(client.getQueryState(summary)?.isInvalidated).toBe(false);
+  });
+
   it('never touches another board', async () => {
     for (const event of BOARD_EVENTS) {
       const payload = {
@@ -321,6 +331,84 @@ describe('Card Detail V2 section caches', () => {
         sections,
       ),
     ).toEqual(['checklists', 'cardLabels', 'attachments']);
+  });
+
+  it('field-only card updates leave child queries and preview summaries untouched', async () => {
+    const summaries = [...boardKeys.cards(BOARD), 'preview-summaries', [CARD]];
+    const targets = invalidationTargets('card:updated', {
+      boardId: BOARD,
+      cardId: CARD,
+      columnId: 'column',
+      changeScope: 'card-fields',
+    });
+    expect(await invalidatedKeys(targets, { ...sections, summaries })).toEqual(
+      [],
+    );
+    expect(await invalidated(targets)).toEqual(['cards', 'card']);
+  });
+
+  it('attachment-only updates refresh only attachment pages and preview counts', async () => {
+    const summaries = [...boardKeys.cards(BOARD), 'preview-summaries', [CARD]];
+    const targets = invalidationTargets('card:updated', {
+      boardId: BOARD,
+      cardId: CARD,
+      columnId: 'column',
+      changeScope: 'attachments',
+    });
+    expect(await invalidatedKeys(targets, { ...sections, summaries })).toEqual([
+      'attachments',
+      'summaries',
+    ]);
+    expect(targets.map((target) => target.queryKey?.[0])).not.toContain(
+      'search',
+    );
+  });
+
+  it('checklist-only updates refresh the exact checklist and preview counts', async () => {
+    const summaries = [...boardKeys.cards(BOARD), 'preview-summaries', [CARD]];
+    const targets = invalidationTargets('card:updated', {
+      boardId: BOARD,
+      cardId: CARD,
+      columnId: 'column',
+      changeScope: 'checklists',
+    });
+    expect(await invalidatedKeys(targets, { ...sections, summaries })).toEqual([
+      'checklists',
+      'summaries',
+    ]);
+    expect(
+      targets.find((target) => target.queryKey?.at(-1) === 'checklists')?.exact,
+    ).toBe(true);
+  });
+
+  it('keeps the broad child fallback for an unrecognized future scope', async () => {
+    const payload = {
+      boardId: BOARD,
+      cardId: CARD,
+      columnId: 'column',
+      changeScope: 'future-scope',
+    } as unknown as BoardEventPayload<'card:updated'>;
+    expect(
+      await invalidatedKeys(
+        invalidationTargets('card:updated', payload),
+        sections,
+      ),
+    ).toEqual(['checklists', 'cardLabels', 'attachments']);
+  });
+
+  it('card:moved leaves unchanged child sections and preview summaries alone', async () => {
+    const summaries = [...boardKeys.cards(BOARD), 'preview-summaries', [CARD]];
+    expect(
+      await invalidatedKeys(
+        invalidationTargets('card:moved', {
+          boardId: BOARD,
+          cardId: CARD,
+          fromColumnId: 'column-1',
+          toColumnId: 'column-2',
+        }),
+        { ...sections, summaries },
+      ),
+    ).toEqual([]);
   });
 
   it('labels:changed refreshes the board catalog and every card label list', async () => {

@@ -1,9 +1,17 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 import { AppProviders } from '../../app/AppProviders';
 import { makeCard, okPage } from '../../test/board-fixtures';
-import { fail, mockApi, ok, storeSession, testUser } from '../../test/mock-api';
+import {
+  fail,
+  mockApi,
+  ok,
+  storeSession,
+  testUser,
+  type MockResponse,
+} from '../../test/mock-api';
 import {
   useArchiveCard,
   useAssignCard,
@@ -20,6 +28,9 @@ import {
   useFilteredCards,
   usePreviewSummaries,
 } from './board-filter';
+import { previewSummaryFilters } from './preview-summary-cache';
+import { createInvalidationQueue } from '../realtime/invalidation-queue';
+import { boardKeys } from '../boards/query-keys';
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <AppProviders>{children}</AppProviders>
@@ -28,6 +39,138 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 const BOARD = '00000000-0000-4000-9000-000000000000';
 const CARDS = `/boards/${BOARD}/cards`;
 const page = (path: string, n: number) => `GET ${path}?page=${n}&limit=100`;
+
+it('coalesces an update hint with its authoritative Card-list refresh', async () => {
+  storeSession();
+  const card = makeCard({ title: 'Before' });
+  const saved = { ...card, title: 'After' };
+  let finish!: (response: MockResponse) => void;
+  const pending = new Promise<MockResponse>((resolve) => {
+    finish = resolve;
+  });
+  let gets = 0;
+  const calls = mockApi({
+    'GET /users/me': ok(testUser),
+    [page(CARDS, 1)]: () => okPage(++gets === 1 ? [card] : [saved]),
+    [`PATCH ${CARDS}/${card.id}`]: () => pending,
+  });
+  const { result } = renderHook(
+    () => ({
+      cards: useCards(BOARD),
+      update: useUpdateCard(BOARD, card.id),
+      client: useQueryClient(),
+    }),
+    { wrapper },
+  );
+  await waitFor(() => expect(result.current.cards.isSuccess).toBe(true));
+  const queue = createInvalidationQueue(result.current.client, 10);
+  let mutation!: Promise<unknown>;
+  try {
+    act(() => {
+      mutation = result.current.update.mutateAsync({ title: 'After' });
+    });
+    await waitFor(() =>
+      expect(calls.some((call) => call.method === 'PATCH')).toBe(true),
+    );
+    queue.add([{ queryKey: boardKeys.cards(BOARD), exact: true }]);
+    await act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+    expect(gets).toBe(1);
+    await act(async () => {
+      finish(ok(saved));
+      await mutation;
+    });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+    expect(gets).toBe(2);
+    expect(result.current.cards.data).toEqual([saved]);
+  } finally {
+    queue.dispose();
+  }
+});
+
+it('refreshes only the affected 100-Card preview chunk', async () => {
+  storeSession();
+  const ids = Array.from(
+    { length: 201 },
+    (_, index) => `card-${String(index).padStart(3, '0')}`,
+  );
+  const calls = mockApi({ 'GET /users/me': ok(testUser) });
+  const { result } = renderHook(
+    () => ({
+      preview: usePreviewSummaries(BOARD, ids),
+      client: useQueryClient(),
+    }),
+    { wrapper },
+  );
+  await waitFor(() => expect(result.current.preview.isSuccess).toBe(true));
+  expect(result.current.preview.data).toHaveLength(201);
+  const summaryCalls = () =>
+    calls.filter((call) => call.path.includes('/card-preview-summaries?'));
+  expect(summaryCalls()).toHaveLength(3);
+  await act(() =>
+    result.current.client.invalidateQueries(
+      previewSummaryFilters(BOARD, ids[150]),
+    ),
+  );
+  expect(summaryCalls()).toHaveLength(4);
+  const refreshed = new URLSearchParams(summaryCalls()[3].path.split('?')[1])
+    .get('cardIds')
+    ?.split(',');
+  expect(refreshed).toHaveLength(100);
+  expect(refreshed).toContain(ids[150]);
+  expect(refreshed).not.toContain(ids[0]);
+});
+
+it('does not expose other preview chunks if one is denied', async () => {
+  storeSession();
+  const ids = Array.from(
+    { length: 101 },
+    (_, index) => `card-${String(index).padStart(3, '0')}`,
+  );
+  const query = new URLSearchParams({ cardIds: ids.slice(100).join(',') });
+  mockApi({
+    'GET /users/me': ok(testUser),
+    [`GET /boards/${BOARD}/card-preview-summaries?${query}`]: fail(
+      403,
+      'FORBIDDEN',
+    ),
+  });
+  const { result } = renderHook(() => usePreviewSummaries(BOARD, ids), {
+    wrapper,
+  });
+  await waitFor(() => expect(result.current.isError).toBe(true));
+  expect(result.current.data).toBeUndefined();
+});
+
+it('loads preview chunks one at a time and skips queued work after unmount', async () => {
+  storeSession();
+  const ids = Array.from(
+    { length: 201 },
+    (_, index) => `card-${String(index).padStart(3, '0')}`,
+  );
+  const query = new URLSearchParams({ cardIds: ids.slice(0, 100).join(',') });
+  let finish!: (response: MockResponse) => void;
+  const pending = new Promise<MockResponse>((resolve) => {
+    finish = resolve;
+  });
+  const calls = mockApi({
+    'GET /users/me': ok(testUser),
+    [`GET /boards/${BOARD}/card-preview-summaries?${query}`]: () => pending,
+  });
+  const hook = renderHook(() => usePreviewSummaries(BOARD, ids), { wrapper });
+  await waitFor(() =>
+    expect(
+      calls.filter((call) => call.path.includes('/card-preview-summaries?')),
+    ).toHaveLength(1),
+  );
+  hook.unmount();
+  await act(async () => {
+    finish(ok({ summaries: [] }));
+    await pending;
+  });
+  expect(
+    calls.filter((call) => call.path.includes('/card-preview-summaries?')),
+  ).toHaveLength(1);
+});
 
 describe('card hooks', () => {
   it('loads all pages of filtered cards for additional views', async () => {
@@ -389,21 +532,19 @@ describe('card hooks', () => {
   });
 });
 
-it('finishes saving after the required card refresh while preview refetch remains pending', async () => {
+it('does not reload preview summaries when only a card title changes', async () => {
   storeSession();
   const card = makeCard({ boardId: BOARD, title: 'Saved' });
   let summaryCalls = 0;
   let saving = false;
-  let finish!: () => void;
-  const pending = new Promise<ReturnType<typeof ok>>((resolve) => {
-    finish = () => resolve(ok({ summaries: [] }));
-  });
   mockApi({
     'GET /users/me': ok(testUser),
     [page(CARDS, 1)]: okPage([card]),
     [`PATCH ${CARDS}/${card.id}`]: ok(card),
-    [`GET /boards/${BOARD}/card-preview-summaries?cardIds=${card.id}`]: () =>
-      saving ? (++summaryCalls, pending) : ok({ summaries: [] }),
+    [`GET /boards/${BOARD}/card-preview-summaries?cardIds=${card.id}`]: () => {
+      if (saving) summaryCalls++;
+      return ok({ summaries: [] });
+    },
   });
   const { result } = renderHook(
     () => ({
@@ -421,11 +562,5 @@ it('finishes saving after the required card refresh while preview refetch remain
   saving = true;
   await act(() => result.current.update.mutateAsync({ title: 'Saved' }));
   expect(result.current.update.isPending).toBe(false);
-  await waitFor(() => expect(result.current.preview.isFetching).toBe(true));
-  expect(summaryCalls).toBe(1);
-  await act(async () => {
-    finish();
-    await pending;
-  });
-  await waitFor(() => expect(result.current.preview.isFetching).toBe(false));
+  expect(summaryCalls).toBe(0);
 });

@@ -129,18 +129,42 @@ export async function runBoardEventChecks(app, source) {
     await ready;
     return socket;
   };
-  const http = (method, path, body, status = 200, token = tokens.owner) => {
+  const http = (
+    method,
+    path,
+    body,
+    status = 200,
+    token = tokens.owner,
+    operationId,
+  ) => {
     const agent = request(app.getHttpServer());
     const req = agent[method](`/api/boards/${path}`).auth(token, {
       type: 'bearer',
     });
+    if (operationId !== undefined)
+      req.set('X-Kanvexa-Operation-Id', operationId);
     return (body === undefined ? req : req.send(body)).expect(status);
   };
   let recipients;
-  const mutation = async (event, method, path, body, status, expected) => {
+  const mutation = async (
+    event,
+    method,
+    path,
+    body,
+    status,
+    expected,
+    operationId,
+  ) => {
     const before = new Map(clients.map((s) => [s, received.get(s).length]));
     const pending = recipients.map((s) => nextBoardEvent(s, event));
-    const response = await http(method, path, body, status);
+    const response = await http(
+      method,
+      path,
+      body,
+      status,
+      tokens.owner,
+      operationId,
+    );
     const payload =
       typeof expected === 'function' ? expected(response.body.data) : expected;
     const payloads = await Promise.all(pending);
@@ -270,7 +294,7 @@ export async function runBoardEventChecks(app, source) {
       `${ids.a}/cards/${card.id}`,
       { title: 'Changed' },
       200,
-      cardPayload,
+      (value) => ({ ...cardPayload(value), changeScope: 'card-fields' }),
     );
     assert.equal(
       (await source.getRepository('Card').findOne({ where: { id: card.id } }))
@@ -330,13 +354,15 @@ export async function runBoardEventChecks(app, source) {
       cardId: card.id,
       commentId: value.id,
     });
+    const correlationId = '12345678-1234-4234-8234-123456789abc';
     const comment = await mutation(
       'comment:created',
       'post',
       commentPath,
       { content: 'Private comment' },
       201,
-      commentPayload,
+      (value) => ({ ...commentPayload(value), operationId: correlationId }),
+      correlationId,
     );
     await mutation(
       'comment:updated',
@@ -345,6 +371,7 @@ export async function runBoardEventChecks(app, source) {
       { content: 'Updated comment' },
       200,
       commentPayload,
+      'not-a-uuid',
     );
     await silent(async () => {
       await http('patch', `${commentPath}/${comment.id}`, {
@@ -364,7 +391,13 @@ export async function runBoardEventChecks(app, source) {
       `${commentPath}/${comment.id}`,
       undefined,
       204,
-      { boardId: ids.a, cardId: card.id, commentId: comment.id },
+      {
+        boardId: ids.a,
+        cardId: card.id,
+        commentId: comment.id,
+        operationId: correlationId,
+      },
+      correlationId,
     );
     assert.ok(
       (
@@ -463,7 +496,7 @@ export async function runBoardEventChecks(app, source) {
       'all six Card events, both assignment operations, persisted move source and no-op suppression',
     );
     pass(
-      'all three Comment events are ID-only, isolated and suppress no-ops and denied writes',
+      'Comment events carry only IDs and optional correlation, remain isolated and suppress no-ops and denied writes',
     );
 
     await silent(async () => {

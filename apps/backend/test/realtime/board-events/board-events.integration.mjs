@@ -576,7 +576,12 @@ try {
       ? ['column:updated', { boardId, columnId: column.id }]
       : [
           'card:updated',
-          { boardId, cardId: card.id, columnId: destination.id },
+          {
+            boardId,
+            cardId: card.id,
+            columnId: destination.id,
+            changeScope: 'card-fields',
+          },
         ],
   );
   for (const [i, socket] of clients.entries())

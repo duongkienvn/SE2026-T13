@@ -55,12 +55,16 @@ export function addUrlAttachment(
   cardId: string,
   input: { url: string; displayName?: string },
   idempotencyKey: string,
+  operationId?: string,
 ) {
   return apiRequest<Attachment>(attachmentsPath(boardId, cardId), {
     method: 'POST',
     body: { kind: 'URL', ...input },
     accessToken: token,
-    headers: { 'Idempotency-Key': idempotencyKey },
+    headers: {
+      'Idempotency-Key': idempotencyKey,
+      ...(operationId ? { 'X-Kanvexa-Operation-Id': operationId } : {}),
+    },
   });
 }
 
@@ -70,10 +74,18 @@ export function updateAttachment(
   cardId: string,
   attachmentId: string,
   input: UpdateUrlAttachment,
+  operationId?: string,
 ) {
   return apiRequest<Attachment>(
     `${attachmentsPath(boardId, cardId)}/${id(attachmentId)}`,
-    { method: 'PATCH', body: input, accessToken: token },
+    {
+      method: 'PATCH',
+      body: input,
+      accessToken: token,
+      ...(operationId
+        ? { headers: { 'X-Kanvexa-Operation-Id': operationId } }
+        : {}),
+    },
   );
 }
 
@@ -83,13 +95,20 @@ export function removeAttachment(
   cardId: string,
   attachmentId: string,
   expectedRevision: number,
+  operationId?: string,
 ) {
   const query = new URLSearchParams({
     expectedRevision: String(expectedRevision),
   });
   return apiRequest<void>(
     `${attachmentsPath(boardId, cardId)}/${id(attachmentId)}?${query}`,
-    { method: 'DELETE', accessToken: token },
+    {
+      method: 'DELETE',
+      accessToken: token,
+      ...(operationId
+        ? { headers: { 'X-Kanvexa-Operation-Id': operationId } }
+        : {}),
+    },
   );
 }
 
@@ -119,10 +138,19 @@ export function completeUpload(
   cardId: string,
   uploadId: string,
   signal?: AbortSignal,
+  operationId?: string,
 ) {
   return apiRequest<Attachment>(
     `${attachmentsPath(boardId, cardId)}/uploads/${id(uploadId)}/complete`,
-    { method: 'POST', body: {}, accessToken: token, signal },
+    {
+      method: 'POST',
+      body: {},
+      accessToken: token,
+      signal,
+      ...(operationId
+        ? { headers: { 'X-Kanvexa-Operation-Id': operationId } }
+        : {}),
+    },
   );
 }
 

@@ -8,6 +8,7 @@ import { useBoardMembers } from '../../board-members/hooks';
 import type { MemberUser } from '../../board-members/types';
 import { CardDetailDialog } from '../../cards/components/CardDetailDialog';
 import { useCards } from '../../cards/hooks';
+import { previewSummaryFilters } from '../../cards/preview-summary-cache';
 import {
   BoardFilter,
   useBoardFilters,
@@ -393,9 +394,9 @@ export function KanbanBoard({
             void queryClient.invalidateQueries({
               queryKey: [...boardKeys.cards(boardId), 'filtered'],
             });
-            void queryClient.invalidateQueries({
-              queryKey: [...boardKeys.cards(boardId), 'preview-summaries'],
-            });
+            void queryClient.invalidateQueries(
+              previewSummaryFilters(boardId, cardId),
+            );
           }}
           onOpenCard={openCard}
         />

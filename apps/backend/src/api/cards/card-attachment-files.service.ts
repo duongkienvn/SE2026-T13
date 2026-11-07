@@ -223,6 +223,7 @@ export class CardAttachmentFilesService {
     boardId: string,
     cardId: string,
     id: string,
+    operationId?: string,
   ): Promise<AttachmentResponseDto> {
     let acquired = false,
       ticket: CardAttachment | undefined;
@@ -425,6 +426,10 @@ export class CardAttachmentFilesService {
           boardId: result.card.boardId,
           cardId: result.card.id,
           columnId: result.card.columnId,
+          changeScope: 'attachments',
+          ...(typeof operationId === 'string' && isUUID(operationId, '4')
+            ? { operationId: operationId.toLowerCase() }
+            : {}),
         });
       return result.value;
     } catch (error) {

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/useAuth';
 import { useAuthSession } from '../auth/auth-session-context';
 import { globalSearch, type SearchView } from './api';
-import { refreshSearch, searchKey } from './cache';
+import { clearSearch, searchKey } from './cache';
 import { isApiError } from '../../lib/api-client';
 
 export function useSearch(
@@ -25,17 +25,31 @@ export function useSearch(
       void client.cancelQueries({ queryKey: searchKey });
     };
   }, [client, normalized, type]);
-  useEffect(
-    () =>
-      client.getQueryCache().subscribe((event) => {
-        if (event.type !== 'updated' || event.action.type !== 'invalidate')
-          return;
-        const domain = event.query.queryKey[0];
-        if (domain === 'boards' || domain === 'workspaces')
-          refreshSearch(client);
-      }),
-    [client],
-  );
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const unsubscribe = client.getQueryCache().subscribe((event) => {
+      if (event.type !== 'updated' || event.action.type !== 'invalidate')
+        return;
+      const domain = event.query.queryKey[0];
+      if (domain !== 'boards' && domain !== 'workspaces') return;
+      if (timer === undefined || client.isFetching({ queryKey: searchKey }))
+        clearSearch(client);
+      if (timer === undefined) {
+        timer = setTimeout(() => {
+          timer = undefined;
+          if (!scope.isCurrent()) return;
+          void client.invalidateQueries(
+            { queryKey: searchKey },
+            { cancelRefetch: false },
+          );
+        }, 0);
+      }
+    });
+    return () => {
+      unsubscribe();
+      clearTimeout(timer);
+    };
+  }, [client, scope.generation, scope.isCurrent]);
   const valid = normalized.length > 0 && [...normalized].length <= 120;
   const ready = valid && normalized === debounced && !!user;
   const count = type === 'all' ? 1 : page;

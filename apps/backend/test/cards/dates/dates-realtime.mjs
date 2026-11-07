@@ -160,6 +160,7 @@ export async function verifyDateRealtime(ctx) {
       boardId: board.id,
       cardId: card.id,
       columnId: card.columnId,
+      changeScope: 'card-fields',
     });
     assert.equal(
       (await state())[0].start_date.toISOString(),

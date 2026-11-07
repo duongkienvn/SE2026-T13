@@ -114,8 +114,16 @@ export class CardAttachmentsController {
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Body() input: CreateAttachmentDto,
     @Headers('Idempotency-Key') key?: string,
+    @Headers('x-kanvexa-operation-id') operationId?: string,
   ) {
-    return this.attachments.create(user.userId, boardId, cardId, input, key);
+    return this.attachments.create(
+      user.userId,
+      boardId,
+      cardId,
+      input,
+      key,
+      operationId,
+    );
   }
 
   @Get(':attachmentId')
@@ -156,8 +164,16 @@ export class CardAttachmentsController {
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Param('attachmentId', ParseUUIDPipe) id: string,
     @Body() input: UpdateAttachmentDto,
+    @Headers('x-kanvexa-operation-id') operationId?: string,
   ) {
-    return this.attachments.update(user.userId, boardId, cardId, id, input);
+    return this.attachments.update(
+      user.userId,
+      boardId,
+      cardId,
+      id,
+      input,
+      operationId,
+    );
   }
 
   @Delete(':attachmentId')
@@ -180,6 +196,7 @@ export class CardAttachmentsController {
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Param('attachmentId', ParseUUIDPipe) id: string,
     @Query() query: DeleteAttachmentQueryDto,
+    @Headers('x-kanvexa-operation-id') operationId?: string,
   ) {
     return this.attachments.remove(
       user.userId,
@@ -187,6 +204,7 @@ export class CardAttachmentsController {
       cardId,
       id,
       query.expectedRevision,
+      operationId,
     );
   }
 

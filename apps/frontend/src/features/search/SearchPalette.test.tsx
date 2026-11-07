@@ -455,6 +455,78 @@ describe('global search palette', () => {
     await waitFor(() => expect(screen.queryByText('Guest board')).toBeNull());
   });
 
+  it('starts one Search refresh for a burst of Board and Workspace invalidations', async () => {
+    vi.mocked(globalSearch)
+      .mockResolvedValueOnce(grouped)
+      .mockImplementation(() => new Promise(() => {}));
+    const { client } = setup();
+    client.setQueryData(['boards', 'list'], []);
+    client.setQueryData(['boards', 'detail', 'b'], {});
+    client.setQueryData(['workspaces', 'list'], []);
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'plan' },
+    });
+    await screen.findByText('Guest board');
+    act(() => {
+      void client.invalidateQueries({ queryKey: ['boards'] });
+      void client.invalidateQueries({ queryKey: ['workspaces'] });
+    });
+    await waitFor(() => expect(screen.queryByText('Guest board')).toBeNull());
+    await waitFor(() => expect(globalSearch).toHaveBeenCalledTimes(2));
+  });
+
+  it('cancels a Search started between two linked invalidations', async () => {
+    let oldSignal: AbortSignal | undefined;
+    vi.mocked(globalSearch)
+      .mockResolvedValueOnce(grouped)
+      .mockImplementationOnce((_token, _request, signal) => {
+        oldSignal = signal;
+        return new Promise(() => {});
+      })
+      .mockResolvedValue(grouped);
+    const { client } = setup();
+    client.setQueryData(['boards', 'list'], []);
+    client.setQueryData(['workspaces', 'list'], []);
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'plan' },
+    });
+    await screen.findByText('Guest board');
+    act(() => {
+      void client.invalidateQueries({ queryKey: ['boards'] });
+      void client.invalidateQueries({ queryKey: ['search'] });
+      void client.invalidateQueries({ queryKey: ['workspaces'] });
+    });
+    expect(oldSignal?.aborted).toBe(true);
+    await waitFor(() => expect(globalSearch).toHaveBeenCalledTimes(3));
+  });
+
+  it('does not restart an in-flight Search for the matching direct hint', async () => {
+    let signal: AbortSignal | undefined;
+    vi.mocked(globalSearch)
+      .mockResolvedValueOnce(grouped)
+      .mockImplementationOnce((_token, _request, abortSignal) => {
+        signal = abortSignal;
+        return new Promise(() => {});
+      });
+    const { client } = setup();
+    client.setQueryData(['boards', 'list'], []);
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'plan' },
+    });
+    await screen.findByText('Guest board');
+    act(() => {
+      void client.invalidateQueries({ queryKey: ['boards'] });
+      void client.invalidateQueries({ queryKey: ['search'] });
+    });
+    await waitFor(() => expect(globalSearch).toHaveBeenCalledTimes(2));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+    expect(globalSearch).toHaveBeenCalledTimes(2);
+    expect(signal?.aborted).toBe(false);
+  });
+
   it('traps keyboard focus and ignores shortcuts while another dialog is open', () => {
     setup();
     const trigger = screen.getByRole('button', { name: 'Search' });

@@ -1,4 +1,4 @@
-import { fireEvent, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { okPage } from '../../../test/board-fixtures';
 import {
@@ -11,6 +11,7 @@ import type { Card } from '../types';
 import { env } from '../../../lib/env';
 import { transferFile, type Attachment } from './api';
 import { safeHttpsUrl } from './CardAttachments';
+import { createdSockets, joined } from '../../../test/fake-socket';
 
 const stamp = '2026-10-31T00:00:00.000Z';
 function attachment(card: Card, overrides: Partial<Attachment>): Attachment {
@@ -92,6 +93,137 @@ describe('attachment link safety', () => {
 });
 
 describe('Card Detail attachments', () => {
+  it('coalesces its own early attachment hint and keeps another actor hint', async () => {
+    let finish!: (response: MockResponse) => void;
+    let operationId = '';
+    const pending = new Promise<MockResponse>((resolve) => {
+      finish = resolve;
+    });
+    const api = attachmentsApi(
+      () => [],
+      (_card, base) => ({
+        [`POST ${base}`]: (request) => {
+          operationId = request.headers['X-Kanvexa-Operation-Id'];
+          return pending;
+        },
+      }),
+    );
+    const { card, path, calls, dialog } = openCardDetail({ extra: api.extra });
+    const view = await dialog();
+    await within(view).findByRole('button', { name: 'Add attachment' });
+    await waitFor(() => expect(createdSockets.length).toBeGreaterThan(0));
+    const socket = createdSockets.at(-1)!.socket;
+    act(() => socket.open());
+    await waitFor(() => expect(socket.requests('board:join')).toHaveLength(1));
+    act(() => socket.lastJoin().reply(joined(card.boardId)));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
+    const reads = () =>
+      calls.filter(
+        (call) =>
+          call.method === 'GET' && call.path.startsWith(`${path}/attachments`),
+      ).length;
+    const before = reads();
+    fireEvent.click(
+      within(view).getByRole('button', { name: 'Add attachment' }),
+    );
+    fireEvent.click(within(view).getByRole('button', { name: 'Add link' }));
+    fireEvent.change(within(view).getByLabelText('Link'), {
+      target: { value: 'https://example.com/doc' },
+    });
+    fireEvent.click(within(view).getByRole('button', { name: 'Add link' }));
+    await waitFor(() => expect(operationId).toMatch(/^[0-9a-f-]{36}$/));
+    const hint = {
+      boardId: card.boardId,
+      cardId: card.id,
+      columnId: card.columnId,
+      changeScope: 'attachments',
+    };
+    act(() => socket.push('card:updated', { ...hint, operationId }));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 150)));
+    expect(reads()).toBe(before);
+    act(() =>
+      socket.push('card:updated', {
+        ...hint,
+        operationId: '11111111-1111-4111-8111-111111111111',
+      }),
+    );
+    await waitFor(() => expect(reads()).toBe(before + 1));
+    await act(async () => {
+      finish(ok(attachment(card, {}), 201));
+      await pending;
+    });
+    await waitFor(() => expect(reads()).toBe(before + 2));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 200)));
+    expect(reads()).toBe(before + 2);
+  });
+
+  it('replays its buffered hint if a post-commit attachment read fails', async () => {
+    let finish!: (response: MockResponse) => void;
+    let operationId = '';
+    let failNextRead = false;
+    const pending = new Promise<MockResponse>((resolve) => {
+      finish = resolve;
+    });
+    const api = attachmentsApi(
+      () => [],
+      (card, base) => ({
+        [`GET ${base}?page=1&limit=5`]: () => {
+          if (failNextRead) {
+            failNextRead = false;
+            return fail(429, 'TOO_MANY_REQUESTS');
+          }
+          return okPage([attachment(card, {})], { limit: 5 });
+        },
+        [`POST ${base}`]: (request) => {
+          operationId = request.headers['X-Kanvexa-Operation-Id'];
+          return pending;
+        },
+      }),
+    );
+    const { card, path, calls, dialog } = openCardDetail({ extra: api.extra });
+    const view = await dialog();
+    await within(view).findByRole('link', { name: /Spec/ });
+    await waitFor(() => expect(createdSockets.length).toBeGreaterThan(0));
+    const socket = createdSockets.at(-1)!.socket;
+    act(() => socket.open());
+    await waitFor(() => expect(socket.requests('board:join')).toHaveLength(1));
+    act(() => socket.lastJoin().reply(joined(card.boardId)));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
+    const reads = () =>
+      calls.filter(
+        (call) =>
+          call.method === 'GET' && call.path.startsWith(`${path}/attachments`),
+      ).length;
+    const before = reads();
+    fireEvent.click(
+      within(view).getByRole('button', { name: 'Add attachment' }),
+    );
+    fireEvent.click(within(view).getByRole('button', { name: 'Add link' }));
+    fireEvent.change(within(view).getByLabelText('Link'), {
+      target: { value: 'https://example.com/doc' },
+    });
+    fireEvent.click(within(view).getByRole('button', { name: 'Add link' }));
+    await waitFor(() => expect(operationId).toMatch(/^[0-9a-f-]{36}$/));
+    act(() =>
+      socket.push('card:updated', {
+        boardId: card.boardId,
+        cardId: card.id,
+        columnId: card.columnId,
+        changeScope: 'attachments',
+        operationId,
+      }),
+    );
+    failNextRead = true;
+    await act(async () => {
+      finish(ok(attachment(card, {}), 201));
+      await pending;
+    });
+    await waitFor(() => expect(reads()).toBeGreaterThanOrEqual(before + 2));
+    expect(
+      within(view).queryByText('Something went wrong. Try again.'),
+    ).toBeNull();
+  });
+
   it('lists links and files with safe external links and file details', async () => {
     const api = attachmentsApi((card) => [
       attachment(card, {}),
@@ -225,9 +357,15 @@ describe('Card Detail attachments', () => {
           }),
       }),
     );
-    const { calls, path, dialog } = openCardDetail({ extra: api.extra });
+    const { card, calls, path, dialog } = openCardDetail({ extra: api.extra });
     const view = await dialog();
     await within(view).findByText('No attachments yet.');
+    await waitFor(() => expect(createdSockets.length).toBeGreaterThan(0));
+    const socket = createdSockets.at(-1)!.socket;
+    act(() => socket.open());
+    await waitFor(() => expect(socket.requests('board:join')).toHaveLength(1));
+    act(() => socket.lastJoin().reply(joined(card.boardId)));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
     pickFile(view, file('shot.png', 'image/png'));
     expect(
       await within(view).findByText(/Checking the file on the server…/),
@@ -248,11 +386,30 @@ describe('Card Detail attachments', () => {
     expect(intent.headers['Idempotency-Key']).toMatch(/^[0-9a-f-]{36}$/);
     expect(transfer.headers.Authorization).toMatch(/^Bearer /);
     expect(completion.body).toEqual({});
+    const operationId = completion.headers['X-Kanvexa-Operation-Id'];
+    expect(operationId).toMatch(/^[0-9a-f-]{36}$/);
+    const reads = () =>
+      calls.filter(
+        (call) => call.method === 'GET' && call.path.startsWith(`${base}?`),
+      ).length;
+    const before = reads();
+    act(() =>
+      socket.push('card:updated', {
+        boardId: card.boardId,
+        cardId: card.id,
+        columnId: card.columnId,
+        changeScope: 'attachments',
+        operationId,
+      }),
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 150)));
+    expect(reads()).toBe(before);
     complete(ok(attachment({ boardId: 'b', id: 'c' } as Card, {})));
     expect(await within(view).findByText(/Attached\./)).toBeTruthy();
     expect(
       await within(view).findByRole('button', { name: 'Preview shot.png' }),
     ).toBeTruthy();
+    await waitFor(() => expect(reads()).toBe(before + 1));
   });
 
   it('refuses unsupported or oversized files before asking the server', async () => {

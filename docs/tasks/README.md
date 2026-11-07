@@ -96,6 +96,8 @@ cho MVP đã triển khai và [Post-MVP roadmap](../roadmap/post-mvp.md) cho ph�
 
 ## Frontend tasks
 
+- [PERF-01 API traffic and realtime working record](frontend/perf-01-api-traffic.md)
+
 - [P5-08 Verified email change and safe account deletion UI](frontend/p5-account-security-privacy-ui.md)
 - [P5-07 Data & Privacy export UI](frontend/p5-data-export-ui.md)
 - [Phase 5 Board views and global UI polish](frontend/p5-board-views-ui-polish.md)

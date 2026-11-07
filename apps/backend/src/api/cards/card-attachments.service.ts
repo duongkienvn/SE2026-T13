@@ -100,80 +100,91 @@ export class CardAttachmentsService {
     cardId: string,
     input: CreateAttachmentDto,
     idempotencyKey?: string,
+    operationId?: string,
   ): Promise<AttachmentResponseDto> {
-    return this.mutate(userId, boardId, cardId, async (manager, card) => {
-      if (input.kind === 'FILE') {
-        if (!this.fileStorage?.available) return attachmentFilesUnavailable();
-        return attachmentValidation(
-          'Use attachment /uploads with filename, contentType and fileSize',
-        );
-      }
-      if (input.kind !== 'URL')
-        return attachmentValidation('Unsupported attachment kind');
-      const url = normalizeAttachmentUrl(input.url);
-      const displayName = attachmentDisplayName(input.displayName, url);
-      const key = this.idempotencyKey(idempotencyKey);
-      const requestHash = key
-        ? createHash('sha256')
-            .update(JSON.stringify({ kind: 'URL', url, displayName }))
-            .digest('hex')
-        : null;
-      const repository = manager.getRepository(CardAttachment);
-      if (key) {
-        const prior = await repository
-          .createQueryBuilder('asset')
-          .addSelect('asset.requestHash')
-          .where({ cardId: card.id, uploaderId: userId, idempotencyKey: key })
-          .getOne();
-        if (prior) {
-          if (prior.requestHash !== requestHash)
-            throw new ApplicationException(
-              409,
-              'ATTACHMENT_IDEMPOTENCY_CONFLICT',
-              'Idempotency key was used for another request',
-            );
-          if (prior.state !== 'ACTIVE')
-            throw new ApplicationException(
-              409,
-              'ATTACHMENT_REMOVED',
-              'The attachment was removed',
-            );
-          return { value: toAttachmentResponse(prior), changed: false };
+    return this.mutate(
+      userId,
+      boardId,
+      cardId,
+      operationId,
+      async (manager, card) => {
+        if (input.kind === 'FILE') {
+          if (!this.fileStorage?.available) return attachmentFilesUnavailable();
+          return attachmentValidation(
+            'Use attachment /uploads with filename, contentType and fileSize',
+          );
         }
-      }
-      const usage = await attachmentQuotaUsage(manager, card.boardId, card.id);
-      if (usage.cardSlots >= BigInt(ATTACHMENT_CARD_SLOT_LIMIT))
-        throw new ApplicationException(
-          409,
-          'ATTACHMENT_LIMIT_REACHED',
-          'Card attachment limit reached',
+        if (input.kind !== 'URL')
+          return attachmentValidation('Unsupported attachment kind');
+        const url = normalizeAttachmentUrl(input.url);
+        const displayName = attachmentDisplayName(input.displayName, url);
+        const key = this.idempotencyKey(idempotencyKey);
+        const requestHash = key
+          ? createHash('sha256')
+              .update(JSON.stringify({ kind: 'URL', url, displayName }))
+              .digest('hex')
+          : null;
+        const repository = manager.getRepository(CardAttachment);
+        if (key) {
+          const prior = await repository
+            .createQueryBuilder('asset')
+            .addSelect('asset.requestHash')
+            .where({ cardId: card.id, uploaderId: userId, idempotencyKey: key })
+            .getOne();
+          if (prior) {
+            if (prior.requestHash !== requestHash)
+              throw new ApplicationException(
+                409,
+                'ATTACHMENT_IDEMPOTENCY_CONFLICT',
+                'Idempotency key was used for another request',
+              );
+            if (prior.state !== 'ACTIVE')
+              throw new ApplicationException(
+                409,
+                'ATTACHMENT_REMOVED',
+                'The attachment was removed',
+              );
+            return { value: toAttachmentResponse(prior), changed: false };
+          }
+        }
+        const usage = await attachmentQuotaUsage(
+          manager,
+          card.boardId,
+          card.id,
         );
-      const row = repository.create({
-        boardId: card.boardId,
-        cardId: card.id,
-        uploaderId: userId,
-        kind: 'URL',
-        state: 'ACTIVE',
-        displayName,
-        url,
-        originalFilename: null,
-        pendingKey: null,
-        storageKey: null,
-        requestedMimeType: null,
-        reservedBytes: null,
-        mimeType: null,
-        byteSize: null,
-        expiresAt: null,
-        verifiedAt: null,
-        idempotencyKey: key,
-        requestHash,
-        revision: 1,
-      });
-      return {
-        value: toAttachmentResponse(await repository.save(row)),
-        changed: true,
-      };
-    });
+        if (usage.cardSlots >= BigInt(ATTACHMENT_CARD_SLOT_LIMIT))
+          throw new ApplicationException(
+            409,
+            'ATTACHMENT_LIMIT_REACHED',
+            'Card attachment limit reached',
+          );
+        const row = repository.create({
+          boardId: card.boardId,
+          cardId: card.id,
+          uploaderId: userId,
+          kind: 'URL',
+          state: 'ACTIVE',
+          displayName,
+          url,
+          originalFilename: null,
+          pendingKey: null,
+          storageKey: null,
+          requestedMimeType: null,
+          reservedBytes: null,
+          mimeType: null,
+          byteSize: null,
+          expiresAt: null,
+          verifiedAt: null,
+          idempotencyKey: key,
+          requestHash,
+          revision: 1,
+        });
+        return {
+          value: toAttachmentResponse(await repository.save(row)),
+          changed: true,
+        };
+      },
+    );
   }
 
   update(
@@ -182,41 +193,52 @@ export class CardAttachmentsService {
     cardId: string,
     attachmentId: string,
     input: UpdateAttachmentDto,
+    operationId?: string,
   ): Promise<AttachmentResponseDto> {
-    return this.mutate(userId, boardId, cardId, async (manager) => {
-      const row = await this.requireAttachment(
-        manager,
-        boardId,
-        cardId,
-        attachmentId,
-      );
-      if (row.state !== 'ACTIVE') return this.notFound();
-      if (row.kind === 'FILE') {
-        if (!this.fileStorage?.available) return attachmentFilesUnavailable();
-        if (input.url !== undefined)
-          return attachmentValidation('File URL cannot be edited');
-      }
-      this.checkRevision(row, input.expectedRevision);
-      if (input.url === undefined && input.displayName === undefined)
-        return attachmentValidation('At least one editable field is required');
-      const url =
-        input.url === undefined ? row.url! : normalizeAttachmentUrl(input.url);
-      const displayName =
-        input.displayName === undefined
-          ? row.displayName
-          : attachmentDisplayName(
-              input.displayName,
-              url ?? 'https://attachment.invalid',
-            );
-      const changed = url !== row.url || displayName !== row.displayName;
-      if (changed) {
-        row.url = url;
-        row.displayName = displayName;
-        row.revision++;
-        await manager.getRepository(CardAttachment).save(row);
-      }
-      return { value: toAttachmentResponse(row), changed };
-    });
+    return this.mutate(
+      userId,
+      boardId,
+      cardId,
+      operationId,
+      async (manager) => {
+        const row = await this.requireAttachment(
+          manager,
+          boardId,
+          cardId,
+          attachmentId,
+        );
+        if (row.state !== 'ACTIVE') return this.notFound();
+        if (row.kind === 'FILE') {
+          if (!this.fileStorage?.available) return attachmentFilesUnavailable();
+          if (input.url !== undefined)
+            return attachmentValidation('File URL cannot be edited');
+        }
+        this.checkRevision(row, input.expectedRevision);
+        if (input.url === undefined && input.displayName === undefined)
+          return attachmentValidation(
+            'At least one editable field is required',
+          );
+        const url =
+          input.url === undefined
+            ? row.url!
+            : normalizeAttachmentUrl(input.url);
+        const displayName =
+          input.displayName === undefined
+            ? row.displayName
+            : attachmentDisplayName(
+                input.displayName,
+                url ?? 'https://attachment.invalid',
+              );
+        const changed = url !== row.url || displayName !== row.displayName;
+        if (changed) {
+          row.url = url;
+          row.displayName = displayName;
+          row.revision++;
+          await manager.getRepository(CardAttachment).save(row);
+        }
+        return { value: toAttachmentResponse(row), changed };
+      },
+    );
   }
 
   remove(
@@ -225,32 +247,42 @@ export class CardAttachmentsService {
     cardId: string,
     attachmentId: string,
     expectedRevision?: number,
+    operationId?: string,
   ): Promise<void> {
-    return this.mutate(userId, boardId, cardId, async (manager) => {
-      const row = await this.requireAttachment(
-        manager,
-        boardId,
-        cardId,
-        attachmentId,
-      );
-      if (row.kind === 'FILE') {
-        if (!['ACTIVE', 'REMOVED'].includes(row.state)) return this.notFound();
-        if (!this.fileStorage?.available) return attachmentFilesUnavailable();
-      }
-      if (row.state === 'REMOVED') return { value: undefined, changed: false };
-      if (expectedRevision !== undefined)
-        this.checkRevision(row, expectedRevision);
-      row.state = 'REMOVED';
-      row.revision++;
-      await manager.getRepository(CardAttachment).save(row);
-      return { value: undefined, changed: true };
-    });
+    return this.mutate(
+      userId,
+      boardId,
+      cardId,
+      operationId,
+      async (manager) => {
+        const row = await this.requireAttachment(
+          manager,
+          boardId,
+          cardId,
+          attachmentId,
+        );
+        if (row.kind === 'FILE') {
+          if (!['ACTIVE', 'REMOVED'].includes(row.state))
+            return this.notFound();
+          if (!this.fileStorage?.available) return attachmentFilesUnavailable();
+        }
+        if (row.state === 'REMOVED')
+          return { value: undefined, changed: false };
+        if (expectedRevision !== undefined)
+          this.checkRevision(row, expectedRevision);
+        row.state = 'REMOVED';
+        row.revision++;
+        await manager.getRepository(CardAttachment).save(row);
+        return { value: undefined, changed: true };
+      },
+    );
   }
 
   private async mutate<T>(
     userId: string,
     boardId: string,
     cardId: string,
+    operationId: string | undefined,
     operation: (
       manager: EntityManager,
       card: Card,
@@ -270,6 +302,10 @@ export class CardAttachmentsService {
           boardId: card.boardId,
           cardId: card.id,
           columnId: card.columnId,
+          changeScope: 'attachments' as const,
+          ...(typeof operationId === 'string' && isUUID(operationId, '4')
+            ? { operationId: operationId.toLowerCase() }
+            : {}),
         },
       };
     });
