@@ -251,8 +251,10 @@ P1-06 adds the persisted `users.auth_version` credential revocation marker. New
 JWTs carry `authVersion`; REST authentication and Socket.IO handshakes compare it
 with the current database value. Versionless JWTs remain compatible only at
 version zero. Password reset/change increments this marker atomically with the
-password update. Existing live sockets retain their grants until expiration or
-disconnect; reconnect with old credentials is rejected. See the
+password update. After commit, `BoardRoomCoordinator.revokeUserSessions` clears
+old-version live socket receive grants and disconnects them in this process;
+current-version sessions and other users are preserved. Reconnect with old
+credentials is rejected. See the
 [password security contract, tests and rollout notes](../tasks/backend/password-recovery-security.md).
 
 Các endpoint đã triển khai:
