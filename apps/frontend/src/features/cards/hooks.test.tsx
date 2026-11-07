@@ -389,21 +389,19 @@ describe('card hooks', () => {
   });
 });
 
-it('finishes saving after the required card refresh while preview refetch remains pending', async () => {
+it('does not reload preview summaries when only a card title changes', async () => {
   storeSession();
   const card = makeCard({ boardId: BOARD, title: 'Saved' });
   let summaryCalls = 0;
   let saving = false;
-  let finish!: () => void;
-  const pending = new Promise<ReturnType<typeof ok>>((resolve) => {
-    finish = () => resolve(ok({ summaries: [] }));
-  });
   mockApi({
     'GET /users/me': ok(testUser),
     [page(CARDS, 1)]: okPage([card]),
     [`PATCH ${CARDS}/${card.id}`]: ok(card),
-    [`GET /boards/${BOARD}/card-preview-summaries?cardIds=${card.id}`]: () =>
-      saving ? (++summaryCalls, pending) : ok({ summaries: [] }),
+    [`GET /boards/${BOARD}/card-preview-summaries?cardIds=${card.id}`]: () => {
+      if (saving) summaryCalls++;
+      return ok({ summaries: [] });
+    },
   });
   const { result } = renderHook(
     () => ({
@@ -421,11 +419,5 @@ it('finishes saving after the required card refresh while preview refetch remain
   saving = true;
   await act(() => result.current.update.mutateAsync({ title: 'Saved' }));
   expect(result.current.update.isPending).toBe(false);
-  await waitFor(() => expect(result.current.preview.isFetching).toBe(true));
-  expect(summaryCalls).toBe(1);
-  await act(async () => {
-    finish();
-    await pending;
-  });
-  await waitFor(() => expect(result.current.preview.isFetching).toBe(false));
+  expect(summaryCalls).toBe(0);
 });

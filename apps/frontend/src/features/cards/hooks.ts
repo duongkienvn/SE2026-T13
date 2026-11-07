@@ -96,7 +96,7 @@ export function useCard(boardId: string, cardId: string, placeholder?: Card) {
  * Stores the card the server returned, in its own cache and in the active card
  * list (an archived card drops out of it), then refetches that list.
  */
-function useSaveCard(boardId: string) {
+function useSaveCard(boardId: string, refreshSummaries = true) {
   const queryClient = useQueryClient();
   return {
     onMutate: () => boardAccessVersion(queryClient, boardId),
@@ -113,9 +113,10 @@ function useSaveCard(boardId: string) {
       void queryClient.invalidateQueries({
         queryKey: [...boardKeys.cards(boardId), 'filtered'],
       });
-      void queryClient.invalidateQueries({
-        queryKey: [...boardKeys.cards(boardId), 'preview-summaries'],
-      });
+      if (refreshSummaries)
+        void queryClient.invalidateQueries({
+          queryKey: [...boardKeys.cards(boardId), 'preview-summaries'],
+        });
       return queryClient.invalidateQueries({
         queryKey: boardKeys.cards(boardId),
         exact: true,
@@ -165,7 +166,7 @@ export function useCreateCard(boardId: string) {
 
 export function useUpdateCard(boardId: string, cardId: string) {
   const { runAuthorized } = useAuth();
-  const save = useSaveCard(boardId);
+  const save = useSaveCard(boardId, false);
   const onError = useRefreshAfterCardError(boardId);
   return useMutation({
     mutationFn: (input: UpdateCardRequest) =>
@@ -219,7 +220,7 @@ export function useArchiveCard(boardId: string, cardId: string) {
 export function useMoveCard(boardId: string) {
   const { runAuthorized } = useAuth();
   const queryClient = useQueryClient();
-  const save = useSaveCard(boardId);
+  const save = useSaveCard(boardId, false);
   const refreshIfArchived = useRefreshIfArchived(boardId);
   return useMutation({
     meta: { realtimeProtectedKey: boardKeys.cards(boardId) },
