@@ -22,6 +22,8 @@ export interface AuthContextValue {
    */
   runAuthorized: <T>(
     request: (accessToken: string) => Promise<T>,
+    /** Only for endpoints whose verified 204 commits and revokes this session. */
+    options?: { allowSessionEndOnSuccess?: boolean },
   ) => Promise<T>;
 }
 

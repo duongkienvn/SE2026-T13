@@ -1,11 +1,17 @@
 import {
   act,
   fireEvent,
+  render,
   screen,
   waitFor,
   within,
 } from '@testing-library/react';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
+import { AppProviders } from '../../../app/AppProviders';
+import { routes } from '../../../app/routes';
+import type { AuthContextValue } from '../../auth/auth-context';
+import { useAuth } from '../../auth/useAuth';
 import { okPage } from '../../../test/board-fixtures';
 import { installGoogle } from '../../../test/fake-google';
 import {
@@ -184,6 +190,51 @@ describe('Data & Privacy → Danger Zone', () => {
       'currentPassword',
     ]);
     expect(calls.some((call) => call.path === '/auth/logout')).toBe(false);
+  });
+
+
+  it('shows committed deletion after the initiating session is revoked before 204', async () => {
+    let release!: (value: MockResponse) => void;
+    const pending = new Promise<MockResponse>((done) => {
+      release = done;
+    });
+    signedIn(undefined, { 'DELETE /users/me': () => pending });
+    const router = createMemoryRouter(routes, {
+      initialEntries: ['/settings/data-privacy'],
+    });
+    let auth!: AuthContextValue;
+    function Probe() {
+      auth = useAuth();
+      return null;
+    }
+    render(
+      <AppProviders>
+        <Probe />
+        <RouterProvider router={router} />
+      </AppProviders>,
+    );
+    const zone = within(
+      await screen.findByRole('region', { name: 'Danger Zone' }),
+    );
+    fireEvent.click(zone.getByRole('button', { name: 'Delete account' }));
+    const dialog = within(
+      await screen.findByRole('dialog', { name: 'Delete account' }),
+    );
+    fireEvent.change(dialog.getByLabelText('Type DELETE to confirm'), {
+      target: { value: 'DELETE' },
+    });
+    fireEvent.change(await dialog.findByLabelText('Current password'), {
+      target: { value: 'Current1!' },
+    });
+    fireEvent.click(dialog.getByRole('button', { name: 'Delete account' }));
+    // A real revocation is discovered through the realtime 401 recheck.
+    act(() => auth.signOut({ notifyServer: false }));
+    await act(async () => release({ status: 204 }));
+    expect(
+      await screen.findByRole('heading', { name: 'Your account has been deleted' }),
+    ).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/account-deleted');
+    expect(localStorage.getItem('kanban.session')).toBeNull();
   });
 
   it('409 blockers are grouped with counts, safe names and links; the user stays signed in', async () => {

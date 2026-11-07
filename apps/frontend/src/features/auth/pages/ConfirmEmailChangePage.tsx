@@ -88,12 +88,14 @@ export function ConfirmEmailChangePage() {
     setConfirming(true);
     setError(undefined);
     try {
-      await runAuthorized((accessToken) =>
-        confirmEmailChange(accessToken, proof),
+      await runAuthorized(
+        (accessToken) => confirmEmailChange(accessToken, proof),
+        { allowSessionEndOnSuccess: true },
       );
       token.current = null;
-      // A late success must not sign out a newer session.
-      if (!scope.isCurrent()) return;
+      // The confirmed 204 may arrive after the backend revoked this socket.
+      // The old signOut is safe only if no replacement login has occurred.
+      if (!scope.canFinishRevokingRequest()) return;
       flushSync(() => signOut({ notifyServer: false }));
       navigate('/login', { replace: true, state: { emailChanged: true } });
     } catch (failure) {

@@ -222,12 +222,13 @@ export function DeleteAccountDialog({
     setPasswordError(undefined);
     setBlockers([]);
     try {
-      await runAuthorized((token) =>
-        deleteAccount(token, { confirmation: CONFIRMATION, ...proof }),
+      await runAuthorized(
+        (token) => deleteAccount(token, { confirmation: CONFIRMATION, ...proof }),
+        { allowSessionEndOnSuccess: true },
       );
-      // Committed. A completion for an older session must not sign out a
-      // newer one; that session's own guard handles the deleted identity.
-      if (!scope.isCurrent()) return;
+      // The committed 204 may follow an expected socket-driven sign-out.
+      // Never replace a newer login or session in another tab.
+      if (!scope.canFinishRevokingRequest()) return;
       flushSync(() => signOut({ notifyServer: false }));
       navigate('/account-deleted', {
         replace: true,

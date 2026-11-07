@@ -176,6 +176,46 @@ describe('/confirm-email-change', () => {
     expect(localStorage.getItem('kanban.session')).toBeNull();
   });
 
+
+  it('shows a committed 204 after the initiating session was revoked before the response', async () => {
+    storeSession('old-session');
+    let resolve!: (value: MockResponse) => void;
+    const pending = new Promise<MockResponse>((done) => {
+      resolve = done;
+    });
+    mockApi({
+      'GET /users/me': ok(testUser),
+      'POST /auth/email-change/confirm': () => pending,
+    });
+    const router = createMemoryRouter(routes, {
+      initialEntries: [`/confirm-email-change?token=${TOKEN}`],
+    });
+    let auth!: AuthContextValue;
+    function Probe() {
+      auth = useAuth();
+      return null;
+    }
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <AuthProvider>
+          <Probe />
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </QueryClientProvider>,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Confirm email change' }),
+    );
+    // Same auth transition produced by the socket-driven 401 verification.
+    act(() => auth.signOut({ notifyServer: false }));
+    await act(async () => resolve({ status: 204 }));
+    expect(
+      await screen.findByText('Email updated. Log in with your new email address.'),
+    ).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/login');
+    expect(localStorage.getItem('kanban.session')).toBeNull();
+  });
+
   it('a late 204 does not sign out a newer session', async () => {
     storeSession('old-session');
     let resolve!: (value: MockResponse) => void;
