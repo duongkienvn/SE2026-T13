@@ -97,7 +97,6 @@ function boardInvalidationTargets<E extends BoardEventName>(
       return [columns(boardId)];
     case 'card:created':
     case 'card:updated':
-    case 'card:moved':
     case 'card:assignees-changed': {
       const { cardId } = payload as BoardEventPayload<'card:updated'>;
       return [
@@ -105,6 +104,14 @@ function boardInvalidationTargets<E extends BoardEventName>(
         { queryKey: [...boardKeys.cards(boardId), 'filtered'] },
         { queryKey: [...boardKeys.cards(boardId), 'preview-summaries'] },
         card(boardId, cardId),
+      ];
+    }
+    case 'card:moved': {
+      const { cardId } = payload as BoardEventPayload<'card:moved'>;
+      return [
+        cardList(boardId),
+        { queryKey: [...boardKeys.cards(boardId), 'filtered'] },
+        { queryKey: boardKeys.card(boardId, cardId), exact: true },
       ];
     }
     case 'card:archived':

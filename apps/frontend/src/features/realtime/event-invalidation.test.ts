@@ -166,12 +166,7 @@ describe('invalidationTargets', () => {
       toColumnId: 'column-2',
     };
 
-    expect(await hit('card:moved', moved)).toEqual([
-      'cards',
-      'card',
-      'commentsPage1',
-      'commentsPage2',
-    ]);
+    expect(await hit('card:moved', moved)).toEqual(['cards', 'card']);
   });
 
   it('labels:changed refreshes all Card queries and archived pages of its Board', async () => {
@@ -321,6 +316,21 @@ describe('Card Detail V2 section caches', () => {
         sections,
       ),
     ).toEqual(['checklists', 'cardLabels', 'attachments']);
+  });
+
+  it('card:moved leaves unchanged child sections and preview summaries alone', async () => {
+    const summaries = [...boardKeys.cards(BOARD), 'preview-summaries', [CARD]];
+    expect(
+      await invalidatedKeys(
+        invalidationTargets('card:moved', {
+          boardId: BOARD,
+          cardId: CARD,
+          fromColumnId: 'column-1',
+          toColumnId: 'column-2',
+        }),
+        { ...sections, summaries },
+      ),
+    ).toEqual([]);
   });
 
   it('labels:changed refreshes the board catalog and every card label list', async () => {
