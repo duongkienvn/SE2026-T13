@@ -13,6 +13,8 @@ export interface TextFieldProps extends Omit<
   trailing?: ReactNode;
   /** Opt-in entry-page presentation; other forms keep their existing styling. */
   appearance?: 'default' | 'auth';
+  /** `compact` is the dense Settings → Security form (#225); default elsewhere. */
+  density?: 'default' | 'compact';
 }
 
 export function TextField({
@@ -22,6 +24,7 @@ export function TextField({
   icon,
   trailing,
   appearance = 'default',
+  density = 'default',
   'aria-describedby': externalDescription,
   className = '',
   ...inputProps
@@ -37,10 +40,15 @@ export function TextField({
     <div
       className={`${appearance === 'auth' ? 'auth-entry-field' : ''} ${className}`}
     >
-      <label htmlFor={id} className="block text-sm font-medium text-ink">
+      <label
+        htmlFor={id}
+        className={`block font-medium text-ink ${density === 'compact' ? 'text-[13px]' : 'text-sm'}`}
+      >
         {label}
       </label>
-      <div className="relative mt-1.5">
+      <div
+        className={`relative ${density === 'compact' ? 'mt-0.5' : 'mt-1.5'}`}
+      >
         {icon && (
           <span
             aria-hidden="true"
@@ -53,7 +61,7 @@ export function TextField({
           id={id}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
-          className={`h-11 w-full rounded-lg border bg-surface text-sm text-ink transition-colors placeholder:text-muted/80 focus:ring-3 focus:ring-primary/15 focus:outline-none disabled:bg-app disabled:text-muted ${
+          className={`${density === 'compact' ? 'h-8.5' : 'h-11'} w-full rounded-lg border bg-surface text-sm text-ink transition-colors placeholder:text-muted/80 focus:ring-3 focus:ring-primary/15 focus:outline-none disabled:bg-app disabled:text-muted ${
             error
               ? 'border-danger focus:border-danger'
               : 'border-line focus:border-primary'

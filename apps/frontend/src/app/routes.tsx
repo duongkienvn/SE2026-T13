@@ -6,6 +6,8 @@ import { CheckEmailPage } from '../features/auth/pages/CheckEmailPage';
 import { VerifyEmailPage } from '../features/auth/pages/VerifyEmailPage';
 import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage';
+import { ConfirmEmailChangePage } from '../features/auth/pages/ConfirmEmailChangePage';
+import { AccountDeletedPage } from '../features/auth/pages/AccountDeletedPage';
 import { BoardMembersPage } from '../features/board-members/pages/BoardMembersPage';
 import { BoardDetailPage } from '../features/boards/pages/BoardDetailPage';
 import { BoardsPage } from '../features/boards/pages/BoardsPage';
@@ -52,6 +54,10 @@ export const routes: RouteObject[] = [
       { path: 'verify-email', element: <VerifyEmailPage /> },
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
       { path: 'reset-password', element: <ResetPasswordPage /> },
+      // Email-change mail link (#225); needs the same signed-in account.
+      { path: 'confirm-email-change', element: <ConfirmEmailChangePage /> },
+      // One-time signed-out confirmation after a committed deletion.
+      { path: 'account-deleted', element: <AccountDeletedPage /> },
       // Invitation email link; works signed in or out (#117, P2-10).
       { path: 'invitations/workspace', element: <AcceptInvitationPage /> },
       {

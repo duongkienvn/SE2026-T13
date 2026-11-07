@@ -5,6 +5,7 @@ import {
   apiRequest,
   ApiError,
   ClientErrorCode,
+  parseDeletionBlockers,
   requestBinary,
 } from './api-client';
 import { createQueryClient } from './query-client';
@@ -296,5 +297,108 @@ describe('requestBinary', () => {
         signal: controller.signal,
       }),
     ).rejects.toBe(abort);
+  });
+});
+
+describe('account deletion blockers', () => {
+  const blocked = (blockers: unknown, code = 'ACCOUNT_DELETION_BLOCKED') => ({
+    status: 409,
+    body: {
+      success: false,
+      statusCode: 409,
+      code,
+      message: 'Resolve ownership requirements',
+      timestamp: '2026-11-05T00:00:00.000Z',
+      path: '/api/users/me',
+      blockers,
+      stack: 'never exposed',
+    },
+  });
+
+  it('keeps the validated top-level blockers of a 409 ACCOUNT_DELETION_BLOCKED', async () => {
+    mockApi({
+      'DELETE /users/me': blocked([
+        {
+          type: 'BOARD_REQUIRES_ANOTHER_OWNER',
+          totalCount: 24,
+          resources: [{ id: 'b1', name: 'Project', email: 'x@y.z' }],
+          extra: true,
+        },
+        {
+          type: 'TEAM_WORKSPACE_REQUIRES_ANOTHER_ADMIN',
+          totalCount: 1,
+          resources: [],
+        },
+      ]),
+    });
+    const error = await apiRequest('/users/me', { method: 'DELETE' }).catch(
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).blockers).toEqual([
+      {
+        type: 'BOARD_REQUIRES_ANOTHER_OWNER',
+        totalCount: 24,
+        resources: [{ id: 'b1', name: 'Project' }],
+      },
+      {
+        type: 'TEAM_WORKSPACE_REQUIRES_ANOTHER_ADMIN',
+        totalCount: 1,
+        resources: [],
+      },
+    ]);
+    expect(error).not.toHaveProperty('stack', 'never exposed');
+  });
+
+  it('ignores blockers on any other error code', async () => {
+    mockApi({
+      'DELETE /users/me': blocked(
+        [
+          {
+            type: 'BOARD_REQUIRES_ANOTHER_OWNER',
+            totalCount: 1,
+            resources: [],
+          },
+        ],
+        'CONFLICT',
+      ),
+    });
+    const error = (await apiRequest('/users/me', { method: 'DELETE' }).catch(
+      (e: unknown) => e,
+    )) as ApiError;
+    expect(error.code).toBe('CONFLICT');
+    expect(error.blockers).toEqual([]);
+  });
+
+  it('drops unknown types, bad counts, duplicates and malformed resources; caps at 20', () => {
+    const many = Array.from({ length: 25 }, (_, i) => ({
+      id: `b${i}`,
+      name: `B${i}`,
+    }));
+    expect(
+      parseDeletionBlockers([
+        { type: 'EVERYTHING', totalCount: 1, resources: [] },
+        { type: 'BOARD_REQUIRES_ANOTHER_OWNER', totalCount: -1, resources: [] },
+        {
+          type: 'BOARD_REQUIRES_ANOTHER_OWNER',
+          totalCount: 1.5,
+          resources: [],
+        },
+        {
+          type: 'PERSONAL_WORKSPACE_HAS_BOARDS',
+          totalCount: 30,
+          resources: [...many, { id: 1 }, null],
+        },
+        { type: 'PERSONAL_WORKSPACE_HAS_BOARDS', totalCount: 2, resources: [] },
+        'junk',
+      ]),
+    ).toEqual([
+      {
+        type: 'PERSONAL_WORKSPACE_HAS_BOARDS',
+        totalCount: 30,
+        resources: many.slice(0, 20),
+      },
+    ]);
+    expect(parseDeletionBlockers({ not: 'an array' })).toEqual([]);
   });
 });

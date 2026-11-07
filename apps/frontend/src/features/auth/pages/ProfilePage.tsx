@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
+import { Link } from 'react-router';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
 import { UnsavedChangesGuard } from '../../../components/UnsavedChangesGuard';
@@ -140,8 +141,18 @@ function ProfileForm({ user }: { user: User }) {
                 value={user.email}
                 readOnly
                 disabled
-                hint="Email cannot be changed."
+                aria-describedby="profile-email-change"
               />
+              <p id="profile-email-change" className="-mt-2 text-sm text-muted">
+                To change your email, go to{' '}
+                <Link
+                  to="/settings/security"
+                  className="font-semibold text-primary underline focus-visible:outline-2 focus-visible:outline-primary"
+                >
+                  Security → Change email
+                </Link>
+                .
+              </p>
               <TextField
                 label="Display name"
                 name="displayName"

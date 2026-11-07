@@ -23,7 +23,11 @@ vi.mock('../auth/useAuth', () => ({
   }),
 }));
 vi.mock('../auth/auth-session-context', () => ({
-  useAuthSession: () => ({ isCurrent: () => true, generation: 1 }),
+  useAuthSession: () => ({
+    isCurrent: () => true,
+    canFinishRevokingRequest: () => true,
+    generation: 1,
+  }),
 }));
 vi.mock('./api', async (original) => ({
   ...(await original<typeof import('./api')>()),
