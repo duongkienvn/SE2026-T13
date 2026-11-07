@@ -1,4 +1,4 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryObserver } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { revokeBoardAccess } from '../boards/revoke-board-access';
 import { boardKeys } from '../boards/query-keys';
@@ -115,6 +115,37 @@ describe('createInvalidationQueue', () => {
     fail();
     await mutation;
     expect(invalidateQueries).toHaveBeenCalledTimes(1);
+    queue.dispose();
+  });
+
+  it('retains a later hint received while an earlier refresh is in flight', async () => {
+    let finish!: (value: string) => void;
+    const queryFn = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<string>((resolve) => {
+            finish = resolve;
+          }),
+      )
+      .mockResolvedValue('latest');
+    queryClient.setQueryData(cards.queryKey, 'old');
+    const observer = new QueryObserver(queryClient, {
+      queryKey: cards.queryKey,
+      queryFn,
+      staleTime: Infinity,
+    });
+    const unsubscribe = observer.subscribe(() => undefined);
+    const queue = createInvalidationQueue(queryClient, 100);
+    queue.add([cards]);
+    const first = queryClient.invalidateQueries(cards);
+    queue.add([cards]);
+    finish('earlier');
+    await first;
+    await vi.advanceTimersByTimeAsync(100);
+    expect(queryFn).toHaveBeenCalledTimes(2);
+    expect(queryClient.getQueryData(cards.queryKey)).toBe('latest');
+    unsubscribe();
     queue.dispose();
   });
 });

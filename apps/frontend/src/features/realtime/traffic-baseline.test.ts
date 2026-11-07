@@ -57,9 +57,9 @@ it('measures mutation and socket hint traffic against a local HTTP server', asyn
     await mutation;
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect({ starts, cancellations, requests }).toEqual({
-      starts: 2,
+      starts: 1,
       cancellations: 0,
-      requests: 2,
+      requests: 1,
     });
     queue.dispose();
   } finally {

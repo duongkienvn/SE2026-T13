@@ -19,9 +19,31 @@ export function createInvalidationQueue(
   delayMs = 100,
 ): InvalidationQueue {
   const pending = new Map<string, InvalidationTarget>();
+  const fetching = new Set<string>();
+  const covered = new Set<string>();
   let timer: ReturnType<typeof setTimeout> | undefined;
   let stopWaiting: (() => void) | undefined;
   let disposed = false;
+  const stopObserving = queryClient.getQueryCache().subscribe((event) => {
+    if (event.type !== 'updated') return;
+    for (const [id, target] of pending) {
+      if (
+        !target.exact ||
+        JSON.stringify(event.query.queryKey) !== JSON.stringify(target.queryKey)
+      )
+        continue;
+      if (event.action.type === 'fetch') fetching.add(id);
+      if (
+        event.action.type === 'success' &&
+        !event.action.manual &&
+        fetching.has(id)
+      ) {
+        covered.add(id);
+        fetching.delete(id);
+      }
+      if (event.action.type === 'error') fetching.delete(id);
+    }
+  });
 
   const flush = () => {
     clearTimeout(timer);
@@ -45,6 +67,8 @@ export function createInvalidationQueue(
       });
       if (conflicts) continue;
       pending.delete(id);
+      fetching.delete(id);
+      if (covered.delete(id)) continue;
       const error =
         key?.[0] === 'boards' && key[1] === 'detail'
           ? queryClient.getQueryState(key.slice(0, 3))?.error
@@ -65,7 +89,10 @@ export function createInvalidationQueue(
     add(targets) {
       if (disposed) return;
       for (const target of targets) {
-        pending.set(JSON.stringify([target.queryKey, target.exact]), target);
+        const id = JSON.stringify([target.queryKey, target.exact]);
+        pending.set(id, target);
+        fetching.delete(id);
+        covered.delete(id);
       }
       if (timer === undefined) timer = setTimeout(flush, delayMs);
     },
@@ -73,6 +100,7 @@ export function createInvalidationQueue(
       disposed = true;
       clearTimeout(timer);
       stopWaiting?.();
+      stopObserving();
       pending.clear();
     },
   };
