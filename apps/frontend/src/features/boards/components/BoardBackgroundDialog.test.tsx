@@ -61,7 +61,11 @@ it('does not save after access changes while the permission check is pending', a
   render(
     <QueryClientProvider client={client}>
       <AuthSessionContext.Provider
-        value={{ generation: 1, isCurrent: () => true }}
+        value={{
+          generation: 1,
+          isCurrent: () => true,
+          canFinishRevokingRequest: () => true,
+        }}
       >
         <AuthContext.Provider value={auth}>
           <BoardBackgroundDialog board={board} canManage onClose={vi.fn()} />
@@ -134,7 +138,11 @@ it('preserves a photo preview after a conflicting save and sends the original ve
       }
     >
       <AuthSessionContext.Provider
-        value={{ generation: 1, isCurrent: () => true }}
+        value={{
+          generation: 1,
+          isCurrent: () => true,
+          canFinishRevokingRequest: () => true,
+        }}
       >
         <AuthContext.Provider value={auth}>
           <BoardBackgroundDialog board={board} canManage onClose={close} />
@@ -194,7 +202,11 @@ it('rechecks rather than evicting a readable board when management is denied', a
   render(
     <QueryClientProvider client={client}>
       <AuthSessionContext.Provider
-        value={{ generation: 1, isCurrent: () => true }}
+        value={{
+          generation: 1,
+          isCurrent: () => true,
+          canFinishRevokingRequest: () => true,
+        }}
       >
         <AuthContext.Provider value={auth}>
           <BoardBackgroundDialog board={board} canManage onClose={vi.fn()} />
@@ -246,7 +258,11 @@ it('does not send a background mutation after preflight detects role loss', asyn
   render(
     <QueryClientProvider client={client}>
       <AuthSessionContext.Provider
-        value={{ generation: 1, isCurrent: () => true }}
+        value={{
+          generation: 1,
+          isCurrent: () => true,
+          canFinishRevokingRequest: () => true,
+        }}
       >
         <AuthContext.Provider value={auth}>
           <BoardBackgroundDialog board={board} canManage onClose={vi.fn()} />
@@ -330,7 +346,11 @@ it('previews every catalog color and packaged photo and saves the selected prese
       }
     >
       <AuthSessionContext.Provider
-        value={{ generation: 1, isCurrent: () => true }}
+        value={{
+          generation: 1,
+          isCurrent: () => true,
+          canFinishRevokingRequest: () => true,
+        }}
       >
         <AuthContext.Provider value={auth}>
           <BoardBackgroundDialog board={board} canManage onClose={close} />

@@ -47,7 +47,11 @@ it('does not replace a successful star with an older in-flight state response', 
   render(
     <QueryClientProvider client={client}>
       <AuthSessionContext.Provider
-        value={{ generation: 1, isCurrent: () => true }}
+        value={{
+          generation: 1,
+          isCurrent: () => true,
+          canFinishRevokingRequest: () => true,
+        }}
       >
         <AuthContext.Provider value={auth}>
           <BoardStar boardId="board" boardName="Board" />
@@ -93,7 +97,11 @@ it('rejects a successful state response from an earlier access grant', async () 
   render(
     <QueryClientProvider client={client}>
       <AuthSessionContext.Provider
-        value={{ generation: 1, isCurrent: () => true }}
+        value={{
+          generation: 1,
+          isCurrent: () => true,
+          canFinishRevokingRequest: () => true,
+        }}
       >
         <AuthContext.Provider value={auth}>
           <BoardStar boardId="board" boardName="Board" />
@@ -130,7 +138,11 @@ it('reuses authorized list snapshots and reconciles a new snapshot even when its
     retry: vi.fn(),
     runAuthorized: (request) => request('token'),
   };
-  const scope = { generation: 1, isCurrent: () => true };
+  const scope = {
+    generation: 1,
+    isCurrent: () => true,
+    canFinishRevokingRequest: () => true,
+  };
   const timestamp = Date.now();
   const ui = (updatedAt: number) => (
     <QueryClientProvider client={client}>

@@ -87,7 +87,11 @@ const setup = () => {
     <QueryClientProvider client={client}>
       <AuthContext.Provider value={auth}>
         <AuthSessionContext.Provider
-          value={{ generation: 1, isCurrent: () => true }}
+          value={{
+            generation: 1,
+            isCurrent: () => true,
+            canFinishRevokingRequest: () => true,
+          }}
         >
           <MemoryRouter initialEntries={['/']}>
             <Routes>

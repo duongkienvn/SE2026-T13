@@ -18,7 +18,13 @@ function mount(
 ) {
   return render(
     <StrictMode>
-      <AuthSessionContext value={{ generation: 0, isCurrent: current }}>
+      <AuthSessionContext
+        value={{
+          generation: 0,
+          isCurrent: current,
+          canFinishRevokingRequest: current,
+        }}
+      >
         <GoogleSignInButton fitContainer onStart={onStart} />
       </AuthSessionContext>
     </StrictMode>,

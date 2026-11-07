@@ -580,7 +580,11 @@ if (import.meta.env.DEV)
   createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={client}>
       <AuthSessionContext.Provider
-        value={{ generation: 0, isCurrent: () => true }}
+        value={{
+          generation: 0,
+          isCurrent: () => true,
+          canFinishRevokingRequest: () => true,
+        }}
       >
         <AuthContext.Provider value={auth}>
           <div className="fixed right-1 bottom-1 z-30 rounded border border-line bg-surface px-2 py-1 text-[10px] text-muted">
