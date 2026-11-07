@@ -597,6 +597,15 @@ export function ImageIcon(props: IconProps) {
   );
 }
 
+export function InfoIcon(props: IconProps) {
+  return (
+    <StrokeSvg {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5.5M12 7.5h.01" />
+    </StrokeSvg>
+  );
+}
+
 export function DownloadIcon(props: IconProps) {
   return (
     <StrokeSvg {...props}>
