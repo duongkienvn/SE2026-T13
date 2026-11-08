@@ -22,7 +22,7 @@ Some source documents retain their original MVP/Post-MVP names, dates and planni
 | [`screens/implementation/`](screens/implementation/) | Actual browser captures from implementation and verification, often using synthetic data. |
 | [`../tasks/frontend/`](../tasks/frontend/)           | Scope, approved deviations and verification context for those captures.                   |
 
-Implementation captures remain evidence of the version and scenario that produced them. Older captures can show superseded layouts or controls that were unavailable at that time; do not present them as current production screenshots. The [account security and privacy captures](screens/implementation/p5-account-security-privacy-ui/) include the implemented Settings interface. The [root README preview](../../README.md#product-preview) uses an existing capture rather than an old Board layout.
+Implementation captures remain evidence of the version and scenario that produced them. Older captures can show superseded layouts or controls that were unavailable at that time; do not present them as current production screenshots. The [account security and privacy captures](screens/implementation/p5-account-security-privacy-ui/) include the implemented Settings interface. The [root README preview](../../README.md#product-preview) uses project-owner screenshots stored separately in [product screenshots](../assets/screenshots/).
 
 ## Original reference catalog
 

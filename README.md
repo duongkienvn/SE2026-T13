@@ -54,9 +54,29 @@ File storage, Google sign-in and email delivery depend on the self-hosted instan
 
 ## Product preview
 
-Data & Privacy in the current Settings interface, shown with synthetic account data:
+<p align="center">
+  <img src="docs/assets/screenshots/kanban-board.png" alt="Kanvexa Kanban Board with columns, cards, labels, checklist progress and due dates" width="100%">
+  <br>
+  <strong>Kanban Board</strong><br>
+  Organize work across columns with labels, checklists and due dates.
+</p>
 
-![Kanvexa Data & Privacy settings in dark mode, with account export, Board export and account deletion](docs/design/screens/implementation/p5-account-security-privacy-ui/data-privacy-danger-zone-1448.png)
+<table>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <img src="docs/assets/screenshots/home-dashboard.png" alt="Kanvexa Home Dashboard with summary metrics, Up Next, Starred Boards and Recently Viewed" width="100%">
+      <br>
+      <strong>Home Dashboard</strong><br>
+      See summary metrics, upcoming work and your go-to Boards.
+    </td>
+    <td width="50%" align="center" valign="top">
+      <img src="docs/assets/screenshots/card-detail.png" alt="Kanvexa Card Detail with description, checklist, assignee, label and dates" width="100%">
+      <br>
+      <strong>Card Detail</strong><br>
+      Keep descriptions, checklists, assignments, labels and dates together.
+    </td>
+  </tr>
+</table>
 
 See the [design and implementation evidence index](docs/design/README.md) for screen references and captures. Older captures retain their original context and may show superseded layouts.
 
