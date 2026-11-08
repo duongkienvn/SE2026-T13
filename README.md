@@ -107,13 +107,15 @@ Read the [system architecture](docs/architecture/system-architecture.md), [front
 ```text
 apps/
 ├── frontend/       React app, browser fixtures and frontend tests
-└── backend/        NestJS API, realtime, migrations and integration tests
+├── backend/        NestJS API, realtime, migrations and integration tests
+└── mobile/         Expo/React Native branded bootstrap (MOB-01)
 packages/
 └── shared/         Shared contracts, types, enums and event names
 docs/
 ├── architecture/   System architecture and developer guides
 ├── deployment/     Production, storage, CI/CD and recovery runbooks
 ├── design/         Design references and implementation evidence
+├── mobile/         Approved mobile specs, roadmap and development setup
 ├── roadmap/        Historical planning and scope records
 └── tasks/          Backend and frontend implementation records
 scripts/           Deployment validation and development verification tools
@@ -162,6 +164,15 @@ Development Compose runs PostgreSQL only; Node runs the frontend and backend on 
 | REST API                      | <http://localhost:3000/api>                                           |
 | API documentation             | <http://localhost:3000/api-docs> when Swagger is enabled              |
 | Liveness / database readiness | <http://localhost:3000/health> / <http://localhost:3000/health/ready> |
+
+### Mobile foundation
+
+The separate Expo app in `apps/mobile` currently renders a branded bootstrap
+screen. From the repository root, run `pnpm dev:mobile` or
+`pnpm dev:mobile:android`. See the [Windows/Android setup guide](docs/mobile/development.md)
+for Expo Go, native tooling, shared-package builds and the dependency matrix.
+Root `pnpm dev` continues to start only Web and backend; root `pnpm build` checks
+mobile types without compiling a native binary.
 
 ### Environment configuration
 
