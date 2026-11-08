@@ -3,6 +3,13 @@ name: CD
 on:
   push:
     branches: [main]
+    # Skip automatic Web releases only when every changed file is mobile-owned.
+    # Mixed changes, root dependencies, shared contracts and workflows still run.
+    paths-ignore:
+      - 'apps/mobile/**'
+      - 'docs/mobile/**'
+      - 'docs/tasks/frontend/mob-*.md'
+      - 'docs/design/screens/implementation/mob-*/**'
   workflow_dispatch:
 
 permissions:

@@ -11,12 +11,39 @@ const id = '00000000-0000-0000-0000-000000000068';
 
 const ci = readFileSync('.github/workflows/ci.yml', 'utf8');
 const cd = readFileSync('.github/workflows/cd.yml', 'utf8');
-const [ciHeader, quality] = ci.split(/^  quality:\r?$/m);
+const [ciHeader, quality] = ci.split(/^ {2}quality:\r?$/m);
 const [cdHeader, reusable, publish, deployJob] = cd.split(
-  /^  (?:quality|publish|deploy):\r?$/m,
+  /^ {2}(?:quality|publish|deploy):\r?$/m,
 );
 const mainOnly =
   /if: github.ref == 'refs\/heads\/main' && \(github.event_name == 'push' \|\| github.event_name == 'workflow_dispatch'\)/;
+const cdPush =
+  cdHeader.match(/^ {2}push:\r?\n([\s\S]*?)(?=^ {2}\w)/m)?.[1] ?? '';
+const cdIgnoredPaths = [
+  ...(
+    cdPush.match(/^ {4}paths-ignore:\r?\n((?: {6}- '[^']+'\r?\n)+)/m)?.[1] ?? ''
+  ).matchAll(/- '([^']+)'/g),
+].map((match) => match[1]);
+
+function pushNeedsCd(files) {
+  // Model GitHub's all-paths-must-be-ignored rule using the workflow's patterns.
+  // Only * (one segment) and ** (including slashes) are used by these patterns.
+  return files.some(
+    (file) =>
+      !cdIgnoredPaths.some((pattern) => {
+        const expression = pattern
+          .split('**')
+          .map((part) =>
+            part
+              .split('*')
+              .map((literal) => literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+              .join('[^/]*'),
+          )
+          .join('.*');
+        return new RegExp(`^${expression}$`).test(file);
+      }),
+  );
+}
 
 test('CI runs only PR checks or reusable quality with read-only permissions', () => {
   assert.match(ciHeader, /^name: CI\r?$/m);
@@ -25,6 +52,7 @@ test('CI runs only PR checks or reusable quality with read-only permissions', ()
     /on:\s+pull_request:\s+branches: \[main\]\s+workflow_call:\s+permissions:/,
   );
   assert.match(ciHeader, /permissions:\s+contents: read/);
+  assert.doesNotMatch(ciHeader, /\bpaths(?:-ignore)?:/);
   // This is the required status context in the main branch ruleset.
   assert.match(quality, /name: Quality checks/);
   assert.deepEqual(
@@ -39,7 +67,7 @@ test('CI runs only PR checks or reusable quality with read-only permissions', ()
     ],
   );
   assert.deepEqual(
-    [...ci.matchAll(/^  (\w+):\r?$/gm)].map((m) => m[1]),
+    [...ci.matchAll(/^ {2}(\w+):\r?$/gm)].map((m) => m[1]),
     ['pull_request', 'workflow_call', 'quality'],
   );
   assert.doesNotMatch(
@@ -48,15 +76,96 @@ test('CI runs only PR checks or reusable quality with read-only permissions', ()
   );
 });
 
+test('CD push ignore patterns are restricted to mobile-owned paths', () => {
+  assert.deepEqual(cdIgnoredPaths, [
+    'apps/mobile/**',
+    'docs/mobile/**',
+    'docs/tasks/frontend/mob-*.md',
+    'docs/design/screens/implementation/mob-*/**',
+  ]);
+  assert.doesNotMatch(cdPush, /^ {4}(?:paths|branches-ignore|tags):/m);
+});
+
+test('mobile-only source, dependencies, assets and documentation skip automatic CD', () => {
+  const mobileFiles = [
+    'apps/mobile/src/app/index.tsx',
+    'apps/mobile/src/app/(auth)/sign-in.tsx',
+    'apps/mobile/package.json',
+    'apps/mobile/app.config.ts',
+    'apps/mobile/metro.config.cjs',
+    'apps/mobile/.env.example',
+    'apps/mobile/assets/brand/kanvexa-logo-v1.png',
+    'apps/mobile/README.md',
+    'docs/mobile/KANVEXA_MOBILE_ARCHITECTURE.md',
+    'docs/mobile/assets/01-home-dashboard.png',
+    'docs/tasks/frontend/mob-01-expo-foundation.md',
+    'docs/design/screens/implementation/mob-01-expo-foundation/android/boot.png',
+  ];
+  for (const file of mobileFiles)
+    assert.equal(pushNeedsCd([file]), false, file);
+  assert.equal(pushNeedsCd(mobileFiles), false);
+  assert.equal(pushNeedsCd([]), false, 'An empty diff does not trigger CD');
+});
+
+test('Web-impacting and mixed changes always remain eligible for automatic CD', () => {
+  const webFiles = [
+    'apps/backend/src/main.ts',
+    'apps/backend/package.json',
+    'apps/backend/Dockerfile',
+    'apps/frontend/src/app/routes.tsx',
+    'apps/frontend/package.json',
+    'apps/frontend/Dockerfile',
+    'packages/shared/src/index.ts',
+    'packages/shared/package.json',
+    'package.json',
+    'pnpm-lock.yaml',
+    'pnpm-workspace.yaml',
+    '.npmrc',
+    '.dockerignore',
+    '.env.production.example',
+    'eslint.config.mjs',
+    'infra/caddy/Caddyfile',
+    'compose.prod.yml',
+    'compose.local.yml',
+    'docker-compose.yml',
+    'scripts/deployment/ssm-deploy.mjs',
+    'scripts/deployment/cicd.test.mjs',
+    '.github/workflows/ci.yml',
+    '.github/workflows/cd.yml',
+    '.github/workflows/mobile-ci.yml',
+    'docs/deployment/cicd.md',
+    'docs/deployment/production.md',
+    'README.md',
+    'docs/tasks/README.md',
+    'docs/tasks/backend/mob-04-api.md',
+    'apps/mobile-web/src/index.ts',
+    'docs/mobile-notes.md',
+    'docs/tasks/frontend/mob-example/nested.md',
+    'docs/design/screens/implementation/mobility/boot.png',
+  ];
+  const mobileFiles = [
+    'apps/mobile/src/app/index.tsx',
+    'docs/mobile/development.md',
+  ];
+  for (const file of webFiles) {
+    assert.equal(pushNeedsCd([file]), true, file);
+    assert.equal(pushNeedsCd([...mobileFiles, file]), true, `Mixed: ${file}`);
+    assert.equal(
+      pushNeedsCd([file, ...mobileFiles]),
+      true,
+      `Reversed: ${file}`,
+    );
+  }
+});
+
 test('CD calls CI on main and gates publishing and deployment on success', () => {
   assert.match(cdHeader, /^name: CD\r?$/m);
-  assert.match(
-    cdHeader,
-    /on:\s+push:\s+branches: \[main\]\s+workflow_dispatch:\s+permissions:/,
-  );
+  assert.match(cdHeader, /on:\s+push:\s+branches: \[main\]/);
+  // Push-only path filtering must not gate manual dispatch, even for mobile SHAs.
+  assert.match(cdHeader, /^ {2}workflow_dispatch:\r?\n\r?\npermissions:/m);
   assert.match(cdHeader, /permissions:\s+contents: read/);
   assert.deepEqual(
-    [...cd.matchAll(/^  (\w+):\r?$/gm)].map((m) => m[1]),
+    [...cd.matchAll(/^ {2}(\w+):\r?$/gm)].map((m) => m[1]),
     ['push', 'workflow_dispatch', 'quality', 'publish', 'deploy'],
   );
   assert.match(reusable, /uses: \.\/\.github\/workflows\/ci\.yml/);
@@ -103,6 +212,7 @@ test('caller and reusable concurrency never collide or interrupt production', ()
 });
 
 test('production delivery retains SHA images, pinned actions and OIDC without new secrets', () => {
+  assert.match(publish, /service: \[backend, frontend\]/);
   for (const job of [publish, deployJob]) {
     assert.match(job, /ref: \$\{\{ github.sha \}\}/);
   }
