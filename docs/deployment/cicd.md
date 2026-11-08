@@ -11,8 +11,11 @@ operator smoke details. No business, schema, Compose topology or Dockerfile chan
 
 ```mermaid
 flowchart TD
-  PR[PR targeting main] --> CI[CI: ci.yml / Quality checks]
-  MAIN[Push main or input-free dispatch on main] --> CD[CD: cd.yml]
+  PR[Web or Mobile PR targeting main] --> CI[CI: ci.yml / Quality checks]
+  MAIN[Push main] --> FILTER{Only ignored mobile paths?}
+  FILTER -->|Yes| SKIP[Skip automatic Web CD]
+  FILTER -->|No| CD[CD: cd.yml]
+  MANUAL[Input-free dispatch on main] --> CD
   CD --> Q[quality: reusable ci.yml / Quality checks]
   CI --> CHECKS[lint, test, build, infra, format]
   Q --> CHECKS
@@ -34,10 +37,12 @@ flowchart TD
 `Quality checks`. It installs dependencies with the frozen lockfile and runs lint,
 test, build, infrastructure tests and formatting. It grants only `contents: read`
 and has no package publishing, OIDC or production environment access. It has no
-independent push or manual trigger, so a main push runs quality once through CD.
+independent push or manual trigger. PR CI has no path filter: Web, Mobile and
+documentation PRs all retain the required checks. A main push that triggers CD
+runs quality once through its reusable workflow call.
 
 `.github/workflows/cd.yml` is named **CD**. Its only events are `push` to `main`
-and `workflow_dispatch`. GitHub does not offer a branch filter for dispatch, so
+with the mobile exclusions below, and `workflow_dispatch`. GitHub does not offer a branch filter for dispatch, so
 `quality`, `publish` and `deploy` each require `refs/heads/main` and a push/dispatch
 event. An off-main dispatch skips all jobs, including quality. There are no
 dispatch inputs for a SHA, shell command, host or env path. Job `quality` calls
@@ -47,6 +52,41 @@ A main dispatch reruns quality and publishes its exact event SHA before approval
 success condition and alone uses `environment: production`. Failed or cancelled
 quality cannot publish or deploy. The reviewer/branch restriction is the existing
 GitHub Environment setting, not a protection that YAML can create itself.
+
+### Mobile-only push filtering
+
+Only the CD **push** event uses `paths-ignore`:
+
+- `apps/mobile/**` — mobile source, local package/configuration, assets and help.
+- `docs/mobile/**` — mobile specifications, guides and reference assets.
+- `docs/tasks/frontend/mob-*.md` — mobile implementation records.
+- `docs/design/screens/implementation/mob-*/**` — mobile screenshot evidence.
+
+GitHub skips the entire automatic CD workflow only when **every changed path**
+matches one of these patterns. Any path outside them keeps the main push eligible
+for quality → Docker publishing → production approval → OIDC/SSM deployment.
+This includes backend/frontend code, shared contracts, root `package.json`,
+`pnpm-lock.yaml`, `pnpm-workspace.yaml`, infrastructure, deployment scripts/docs
+and every workflow file. A mobile dependency change that also updates the root
+lockfile therefore still triggers CD. Root README and documentation indexes also
+remain eligible; there is no broad documentation or Markdown exclusion.
+
+| Change or event                                                                      | Web CD behavior                                  |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| Push to `main`: only mobile app files and/or the mobile documentation paths above    | Skipped                                          |
+| Push to `main`: mobile app plus root lockfile, shared contract or Web/backend change | Runs                                             |
+| Push to `main`: infrastructure, deployment documentation or workflow changes         | Runs                                             |
+| `workflow_dispatch` on `main`, even at a mobile-only commit                          | Runs through all existing quality/approval gates |
+| Push or manual dispatch off `main`                                                   | No production jobs                               |
+
+The manual trigger has no path filter and no new inputs. PR CI remains unfiltered
+and is still the required merge check; CD must not become a required PR status.
+See [GitHub's path-filter semantics and diff limits](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onpushpull_requestpull_request_targetpathspaths-ignore).
+For very large pushes, GitHub's diff limits can affect filtering; use the existing
+manual dispatch on `main` if a required release was skipped. This changes automatic
+release selection only, without changing deployment authorization or recovery.
+
+### Release concurrency
 
 CI uses `ci-quality-${{ github.ref }}` and cancels superseded PR checks only.
 CD uses `cd-${{ github.ref }}` with `cancel-in-progress: false`, serializing main
@@ -357,6 +397,12 @@ tests cover separate triggers, reusable CI, job dependencies, least-privilege
 permissions, exclusive production environment access, distinct concurrency groups,
 SHA image tags/action pins, single-target SSM request, actual status waiting,
 eventual consistency, terminal failures and unknown-state timeouts.
+Path-filter regression cases use the actual CD ignore patterns and cover mobile
+source/config/assets, documentation and screenshots, mixed pushes in either file
+order, Web/backend/shared changes, root dependencies, infrastructure/workflows,
+similarly named paths outside the ignore list, unfiltered PR CI and manual main
+dispatch. These local cases verify configuration and selection semantics; they
+do not trigger GitHub Actions or validate GitHub's diff generation remotely.
 
 On Windows, `core.autocrlf=true` can make the unchanged checkout fail the default
 LF formatting check. `pnpm exec prettier --check . --end-of-line auto` can diagnose

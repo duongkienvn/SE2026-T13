@@ -9,10 +9,18 @@ first-publication steps, failure handling and manual release controls. Server
 commands below use an authorized Bash administrator session from the repo root.
 
 PRs targeting `main` run **CI** (`.github/workflows/ci.yml`), retaining the required
-`Quality checks` status. A push to `main` or manual **Actions → CD → Run workflow →
-main** runs **CD** (`.github/workflows/cd.yml`): reusable CI → publish both SHA-tagged
+`Quality checks` status for Web, Mobile and documentation changes, without PR path
+filters. A push to `main` with any path outside CD's mobile-only ignore list, or
+manual **Actions → CD → Run workflow → main**, runs **CD**
+(`.github/workflows/cd.yml`): reusable CI → publish both SHA-tagged
 GHCR images → production approval → OIDC/SSM delivery → production smoke. A failed
 quality check blocks publishing and deployment; off-main dispatch skips every job.
+Automatic CD skips pushes containing only `apps/mobile/**`, `docs/mobile/**`,
+`docs/tasks/frontend/mob-*.md` and/or
+`docs/design/screens/implementation/mob-*/**`. Mixed changes and root dependencies,
+shared contracts, infrastructure and workflows still trigger CD. The manual main
+dispatch remains available regardless of changed paths. See the
+[path-filter rules and examples](cicd.md#mobile-only-push-filtering).
 Only `deploy` uses the protected `production` environment. CI/CD concurrency groups
 are distinct; main CD runs and the existing `kanvexa-production` deploy group do
 not cancel active runs. Deployments remain serialized, including migration work;
