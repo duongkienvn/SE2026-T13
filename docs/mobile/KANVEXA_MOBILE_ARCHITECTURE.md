@@ -13,7 +13,7 @@
 
 ## 0. Executive decision
 
-**Recommended architecture:** Add **`apps/mobile`** as a **React Native + Expo + TypeScript** application in the existing **pnpm monorepo**, using **Expo Router**, **TanStack Query**, **Socket.IO client**, **Expo SecureStore**, and a **native UI implementation of the approved mockups**. Reuse the existing NestJS API, PostgreSQL, Redis, attachment storage, access-control rules and TypeScript contracts; **do not** create a parallel backend, database or independently synchronized Card model.
+**Recommended architecture:** Add **`apps/mobile`** as a **React Native + Expo + TypeScript** application in the existing **pnpm monorepo**, using **Expo Router**, **TanStack Query**, **Socket.IO client**, **Expo SecureStore**, and a **native UI implementation of the approved mockups**. Reuse the existing NestJS API, PostgreSQL, attachment storage, access-control rules and TypeScript contracts; **do not** create a parallel backend, database or independently synchronized Card model.
 
 **Critical technical decisions:**
 
@@ -88,7 +88,6 @@ flowchart TB
   M -.imports.-> S
   G --> B[NestJS backend\nJWT • ACL • transactions • services]
   B --> P[(PostgreSQL)]
-  B --> R[(Redis / queues)]
   B --> O[(Private attachment storage)]
   B -.existing emails.-> E[Email provider]
   B -.new, separately scoped if required.-> N[FCM / APNs or Expo Push Service]
@@ -265,17 +264,39 @@ Implement **one mobile API adapter** (conceptually `infrastructure/api/client.ts
 Suggested hierarchy:
 
 ```ts
-['mobile', userId, sessionGeneration, 'home'][
-  ('mobile', userId, sessionGeneration, 'tasks', normalizedFilters)
-][('mobile', userId, sessionGeneration, 'workspaces', scope)][
-  ('mobile', userId, sessionGeneration, 'boards', workspaceId, filters)
-][('mobile', userId, sessionGeneration, 'board', boardId, 'columns')][
-  ('mobile', userId, sessionGeneration, 'board', boardId, 'cards', query)
-][('mobile', userId, sessionGeneration, 'card', boardId, cardId)][
-  ('mobile', userId, sessionGeneration, 'notifications', 'unreadCount')
-][('mobile', userId, sessionGeneration, 'notifications', filter, page)][
-  ('mobile', userId, sessionGeneration, 'search', query, type, page)
-];
+const queryKeys = {
+  home: ['mobile', userId, sessionGeneration, 'home'],
+  tasks: ['mobile', userId, sessionGeneration, 'tasks', normalizedFilters],
+  workspaces: ['mobile', userId, sessionGeneration, 'workspaces', scope],
+  boards: ['mobile', userId, sessionGeneration, 'boards', workspaceId, filters],
+  columns: ['mobile', userId, sessionGeneration, 'board', boardId, 'columns'],
+  cards: [
+    'mobile',
+    userId,
+    sessionGeneration,
+    'board',
+    boardId,
+    'cards',
+    query,
+  ],
+  card: ['mobile', userId, sessionGeneration, 'card', boardId, cardId],
+  unreadCount: [
+    'mobile',
+    userId,
+    sessionGeneration,
+    'notifications',
+    'unreadCount',
+  ],
+  notifications: [
+    'mobile',
+    userId,
+    sessionGeneration,
+    'notifications',
+    filter,
+    page,
+  ],
+  search: ['mobile', userId, sessionGeneration, 'search', query, type, page],
+} as const;
 ```
 
 - Scope every private query by user/session and resource ID. Destroy protected data synchronously on session change; don't carry it into another account.
@@ -424,17 +445,17 @@ Verified [`exports.controller.ts`](https://github.com/duongkienvn/SE2026-T13/blo
 
 ### 9.2 02 — Boards & Workspace switcher
 
-| UI function                            | Current source/endpoint                                                            | Assessment | Native action                                                                |
-| -------------------------------------- | ---------------------------------------------------------------------------------- | ---------- | ---------------------------------------------------------------------------- |
-| List/switch Workspaces                 | `GET /api/workspaces`; `GET /api/workspaces/personal`                              | R          | Personal/team labels and permission-aware selector.                          |
-| Workspace details, Board lists         | `GET /api/workspaces/:workspaceId`, `GET /api/workspaces/:workspaceId/boards`      | R          | Paginate/empty states based on real response.                                |
-| Create/edit Workspace                  | `POST /api/workspaces`, `PATCH /api/workspaces/:workspaceId`                       | R          | Role-gated native form.                                                      |
-| Workspace members/invitations/activity | `/api/workspaces/:id/members`, `/invitations`, `/activity`, `/guests`, `/policies` | R/V        | Check each role and invitation proof/cancel semantics.                       |
-| Create/list/update Board               | `POST/GET /api/boards`, `PATCH /api/boards/:boardId`                               | R          | Keep Workspace and visibility defaults from server.                          |
-| Star Board and background              | `/api/boards/:boardId/star`, `/background`, `/background-presets`                  | R          | Native star/preset picker, real user state.                                  |
-| Archive/restore Board                  | `POST /api/boards/:boardId/archive`, `/restore`                                    | R          | Preserve existing data and safety warnings.                                  |
-| Workspace move/visibility              | `/api/boards/:boardId/move-workspace`, `PATCH /api/boards/:boardId/visibility`     | R/V        | Only enable per capabilities and policy.                                     |
-| Remove starter/sample Board            | `/api/boards/:boardId/sample-removal`                                              | R/V        | Verify special safeguards and confirmation; do not expose as generic delete. |
+| UI function                            | Current source/endpoint                                                                                       | Assessment | Native action                                                                |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------- | ---------------------------------------------------------------------------- |
+| List/switch Workspaces                 | `GET /api/workspaces`; `GET /api/workspaces/personal`                                                         | R          | Personal/team labels and permission-aware selector.                          |
+| Workspace details, Board lists         | `GET /api/workspaces/:workspaceId`, `GET /api/workspaces/:workspaceId/boards`                                 | R          | Paginate/empty states based on real response.                                |
+| Create/edit Workspace                  | `POST /api/workspaces`, `PATCH /api/workspaces/:workspaceId`                                                  | R          | Role-gated native form.                                                      |
+| Workspace members/invitations/activity | `/api/workspaces/:id/members`, `/invitations`, `/activity`, `/guests`, `/policies`                            | R/V        | Check each role and invitation proof/cancel semantics.                       |
+| Create/list/update Board               | `POST/GET /api/boards`, `PATCH /api/boards/:boardId`                                                          | R          | Keep Workspace and visibility defaults from server.                          |
+| Star Board and background              | `/api/boards/:boardId/star`, `/api/boards/:boardId/background`; catalog: `GET /api/boards/background-presets` | R          | Native star/preset picker, real user state.                                  |
+| Archive/restore Board                  | `POST /api/boards/:boardId/archive`, `/restore`                                                               | R          | Preserve existing data and safety warnings.                                  |
+| Workspace move/visibility              | `/api/boards/:boardId/move-workspace`, `PATCH /api/boards/:boardId/visibility`                                | R/V        | Only enable per capabilities and policy.                                     |
+| Remove starter/sample Board            | `/api/boards/:boardId/sample-removal`                                                                         | R/V        | Verify special safeguards and confirmation; do not expose as generic delete. |
 
 ### 9.3 03 — Board Detail / Kanban / Table
 
@@ -468,28 +489,28 @@ Verified [`exports.controller.ts`](https://github.com/duongkienvn/SE2026-T13/blo
 
 ### 9.5 05 — My Tasks
 
-| UI function                        | Current source/endpoint                                             | Assessment | Native action                                                                                                                               |
-| ---------------------------------- | ------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cross-Board assigned task list     | `GET /api/users/me/tasks`                                           | R          | Server pagination; no full local Board aggregation.                                                                                         |
-| Groups and counts                  | `group=ALL                                                          | OVERDUE    | NEXT_7_DAYS                                                                                                                                 | LATER | NO_DUE_DATE`; `groupCounts`          | R   | Map display “Due soon” to next-seven-days semantics **only when copy makes that clear**. |
-| Workspace/Board/label/date filters | Documented `workspaceId`, `boardId`, `labelIds`, `dueFrom`, `dueTo` | R          | Fetch filtered authoritative data.                                                                                                          |
-| Sort                               | `dueDate                                                            | updatedAt  | board`                                                                                                                                      | R     | Preserve server deterministic order. |
-| Completed tab/filter (in mockup)   | Endpoint only returns **active assigned Cards**, no Completed group | **G**      | Do not fabricate Completed. Clarify explicit parity requirement; if needed, write new server contract or adjust mockup with owner approval. |
-| Group by Board display             | API supports `sort=board`, returns `boardName`                      | A          | Client section headings only over _currently loaded authorized rows_, not pretend global Board aggregates.                                  |
-| Tap task                           | `permalink` + Board/Card ID in response                             | R          | Convert to native Card route; new permission check.                                                                                         |
+| UI function                        | Current source/endpoint                                              | Assessment | Native action                                                                                                                               |
+| ---------------------------------- | -------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cross-Board assigned task list     | `GET /api/users/me/tasks`                                            | R          | Server pagination; no full local Board aggregation.                                                                                         |
+| Groups and counts                  | `group=ALL\|OVERDUE\|NEXT_7_DAYS\|LATER\|NO_DUE_DATE`; `groupCounts` | R          | Map display “Due soon” to next-seven-days semantics **only when copy makes that clear**.                                                    |
+| Workspace/Board/label/date filters | Documented `workspaceId`, `boardId`, `labelIds`, `dueFrom`, `dueTo`  | R          | Fetch filtered authoritative data.                                                                                                          |
+| Sort                               | `dueDate\|updatedAt\|board`                                          | R          | Preserve server deterministic order.                                                                                                        |
+| Completed tab/filter (in mockup)   | Endpoint only returns **active assigned Cards**, no Completed group  | **G**      | Do not fabricate Completed. Clarify explicit parity requirement; if needed, write new server contract or adjust mockup with owner approval. |
+| Group by Board display             | API supports `sort=board`, returns `boardName`                       | A          | Client section headings only over _currently loaded authorized rows_, not pretend global Board aggregates.                                  |
+| Tap task                           | `permalink` + Board/Card ID in response                              | R          | Convert to native Card route; new permission check.                                                                                         |
 
 ### 9.6 06 — Inbox & Notification Preferences
 
-| UI function                                         | Current source/endpoint                                                             | Assessment               | Native action                                                                         |
-| --------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------- |
-| List All/Unread                                     | `GET /api/notifications?filter=all                                                  | unread&page=N&limit=...` | R                                                                                     | Paginated grouping by day; unread styling. |
-| Unread count                                        | `GET /api/notifications/unread-count`                                               | R                        | Use server count, not loaded-page length.                                             |
-| Mark one/read all                                   | `PATCH /api/notifications/:notificationId/read`, `POST /api/notifications/read-all` | R                        | Optimistic readAt only if safe; refetch.                                              |
-| Preferences in-app/email                            | `GET/PATCH /api/users/me/notification-preferences`                                  | R                        | Render **6 in-app + 3 email** leaves; account/security mail isn't optional.           |
-| Push toggle, device tokens                          | No verified device-token registry or push dispatch                                  | **G**                    | Add scoped backend/device management only if actually shipping push; no inert toggle. |
-| Quiet hours                                         | No verified preference or scheduled push behavior                                   | **G**                    | Needs backend policy/timezone or explicit removal with owner approval.                |
-| “Comments” or “Board activity” general push toggles | Not matching current typed preference leaf list                                     | **G/V**                  | Avoid inventing broader notification kinds.                                           |
-| Background alert while app suspended                | Socket.IO alone insufficient                                                        | **G**                    | Requires FCM/APNs push path and notifications permission.                             |
+| UI function                                         | Current source/endpoint                                                             | Assessment | Native action                                                                         |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------- |
+| List All/Unread                                     | `GET /api/notifications?filter=all\|unread&page=N&limit=...`                        | R          | Paginated grouping by day; unread styling.                                            |
+| Unread count                                        | `GET /api/notifications/unread-count`                                               | R          | Use server count, not loaded-page length.                                             |
+| Mark one/read all                                   | `PATCH /api/notifications/:notificationId/read`, `POST /api/notifications/read-all` | R          | Optimistic readAt only if safe; refetch.                                              |
+| Preferences in-app/email                            | `GET/PATCH /api/users/me/notification-preferences`                                  | R          | Render **6 in-app + 3 email** leaves; account/security mail isn't optional.           |
+| Push toggle, device tokens                          | No verified device-token registry or push dispatch                                  | **G**      | Add scoped backend/device management only if actually shipping push; no inert toggle. |
+| Quiet hours                                         | No verified preference or scheduled push behavior                                   | **G**      | Needs backend policy/timezone or explicit removal with owner approval.                |
+| “Comments” or “Board activity” general push toggles | Not matching current typed preference leaf list                                     | **G/V**    | Avoid inventing broader notification kinds.                                           |
+| Background alert while app suspended                | Socket.IO alone insufficient                                                        | **G**      | Requires FCM/APNs push path and notifications permission.                             |
 
 **Currently verified preference kinds:** `cardAssigned`, `commentMentioned`, `workspaceInvited`, `boardInvited`, `membershipChanged`, `dueReminder` (in-app); `cardAssigned`, `commentMentioned`, `dueReminder` (email). Some reserved kinds may not currently be emitted. Confirm server feature flags for optional email dispatch.
 
@@ -498,7 +519,7 @@ Verified [`exports.controller.ts`](https://github.com/duongkienvn/SE2026-T13/blo
 | UI function                         | Current source/endpoint                                                | Assessment | Native action                                                                                                                                               |
 | ----------------------------------- | ---------------------------------------------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Grouped results                     | `GET /api/search?q=...&type=all&limit=1..10`                           | R          | Groups of Workspaces/Boards/Cards; no external search service.                                                                                              |
-| Type-specific pagination            | `type=workspaces                                                       | boards     | cards&page=N&limit=1..50`                                                                                                                                   | R   | Only specific-type mode supports `page`. |
+| Type-specific pagination            | `type=workspaces\|boards\|cards&page=N&limit=1..50`                    | R          | Only specific-type mode supports `page`.                                                                                                                    |
 | Search query                        | Literal case-insensitive substring, `q` max 120 Unicode code points    | R          | Debounce, trim, encode with `URLSearchParams`, cancel superseded calls.                                                                                     |
 | Search Workspace/Board filter sheet | **No `workspaceId` or `boardId` query support**, unknown keys rejected | **G**      | Do not silently filter a truncated page and call result exhaustive. Either design adjustment or **additive ACL-safe API filter** with owner-approved scope. |
 | Recent searches                     | No backend per-user recent-query API                                   | A          | Optional on-device, short-lived, non-sensitive; clear on logout. Query text may be sensitive; avoid persistent history by default.                          |
@@ -532,13 +553,13 @@ Verified [`exports.controller.ts`](https://github.com/duongkienvn/SE2026-T13/blo
 | -------------------------------------- | ---------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------- |
 | Profile update                         | `GET/PATCH /api/users/me`                                                    | R          | Exact allowed fields; dirty draft guard.                                                                      |
 | Avatar upload/delete                   | `/api/users/me/avatar/uploads` flow; `DELETE /api/users/me/avatar`           | A          | Native image picker, crop/quality, verification.                                                              |
-| Theme/timezone/date format/week starts | `GET/PATCH /api/users/me/preferences`                                        | R          | Use `light                                                                                                    | dark                                                        | system`, IANA timezones, current accepted formats. |
+| Theme/timezone/date format/week starts | `GET/PATCH /api/users/me/preferences`                                        | R          | Use `light\|dark\|system`, IANA timezones, current accepted formats.                                          |
 | Notification preferences               | `/api/users/me/notification-preferences`                                     | R          | Use real backend leaves.                                                                                      |
 | Linked Google account                  | `GET /api/auth/linked-providers`, `POST /api/auth/google/link`               | A          | Native OAuth and current-password reauthentication.                                                           |
 | Password change                        | `POST /api/auth/change-password`                                             | R          | Secure text inputs; handle session invalidation.                                                              |
 | Change email                           | Current P5 account/email-change feature needs latest controller verification | **V**      | Verify exact new/confirm email route, confirmation token, post-change login semantics at implementation time. |
 | Export account data                    | `GET /api/users/me/export`                                                   | A          | Secure binary download/share.                                                                                 |
-| Export Board                           | `GET /api/boards/:boardId/export?format=json                                 | csv`       | A                                                                                                             | OWNER-only in Board settings, not a generic account export. |
+| Export Board                           | `GET /api/boards/:boardId/export?format=json\|csv`                           | A          | OWNER-only in Board settings, not a generic account export.                                                   |
 | Delete account                         | `DELETE /api/users/me` + reauthentication and blocking resources             | R/A        | Exact confirmation, current password or fresh linked Google proof, blockers workflow; 204 clear session.      |
 | Bio/Language in mockup                 | No verified matching profile Bio/locale business contract                    | **G/V**    | Do not display editable field as persisted unless supported.                                                  |
 | Device sessions, 2FA, login activity   | No verified supporting registry/2FA/audit endpoints                          | **G**      | No fake security toggle, active sessions list or history.                                                     |
