@@ -97,6 +97,8 @@ chưa triển khai. Mục lục dưới đây liệt kê toàn bộ task documen
 
 ## Frontend tasks
 
+- [MOB-01 Expo bootstrap and pnpm/Metro compatibility](frontend/mob-01-expo-foundation.md)
+
 - [PERF-01 API traffic and realtime working record](frontend/perf-01-api-traffic.md)
 
 - [P5-08 Verified email change and safe account deletion UI](frontend/p5-account-security-privacy-ui.md)

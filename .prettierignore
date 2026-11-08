@@ -4,3 +4,7 @@ coverage
 pnpm-lock.yaml
 .env
 .idea
+apps/mobile/.expo
+apps/mobile/expo-env.d.ts
+apps/mobile/android
+apps/mobile/ios
