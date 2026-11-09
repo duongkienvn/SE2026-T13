@@ -10,7 +10,7 @@ Branch nộp bài: https://github.com/duongkienvn/SE2026-T13/tree/feat/bt3-23001
 
 ## Prompt và kế hoạch ban đầu của AI
 
-Prompt: yêu cầu người dùng trong `Pasted text.txt`, mục 3–6: khảo sát export và notification, chọn vertical slice, lập specification và plan trước code, review bằng repository, rồi viết test trước patch.
+Prompt chính là [prompt-original.txt](prompt-original.txt), bản sao nguyên văn của yêu cầu người dùng; mục 3–6 yêu cầu khảo sát export và notification, chọn vertical slice, lập specification và plan trước code, review bằng repository, rồi viết test trước patch.
 
 Đề xuất ban đầu để review: thêm job export mới, trả ID và trạng thái ngay; xử lý export ở background, cung cấp endpoint theo dõi và tải kết quả; tái sử dụng `BoardExportService`; dùng idempotency key để retry không tạo job trùng. Viết test unit/API trước, kiểm tra RED, sau đó bổ sung implementation; kiểm tra quyền khi tạo và lấy kết quả; chạy focused Jest, regression và các gate của repository. Các giả định còn chưa xác nhận: lưu trữ job và lifecycle có thể triển khai đủ nhỏ; môi trường có PostgreSQL test được chỉ định; client có thể quan sát trạng thái.
 
@@ -31,15 +31,17 @@ Các lệnh Jest chạy thử ban đầu bị ngắt thủ công; exit code 1 do
 
 - Chốt phương án dự phòng: model job export cách ly, không kết nối ứng dụng, database hay UI. Chi tiết và 12 test case: [specification.md](specification.md).
 - Bổ sung [export-characterization.test.mjs](export-characterization.test.mjs): model gọi trực tiếp `csvRow` từ source export hiện có với dữ liệu tổng hợp, retry cùng key chỉ gọi một lần và output CSV đúng; [export-characterization.txt](export-characterization.txt) ghi 1 test pass. Test này chỉ kết nối serializer, không chạy `BoardExportService`, API, database hoặc xác thực thật.
+- [export-service-characterization.test.mjs](export-service-characterization.test.mjs) gọi `BoardExportService.create` thật với repository/snapshot giả: CSV rỗng cho OWNER, một lần gọi sau retry và FAILED với MEMBER. [export-service-characterization.txt](export-service-characterization.txt) ghi 2 test pass; không phải PostgreSQL, HTTP hoặc kiểm tra session trước khi phát hành file.
 - [order-isolation.test.mjs](order-isolation.test.mjs) chạy hai kịch bản thành công/thất bại theo cả hai thứ tự trong một process, dùng lại cùng user/key trên các instance model riêng. [order-isolation.txt](order-isolation.txt) ghi kết quả pass; phép thử không hoán đổi thứ tự toàn suite.
 - Test-first: [red.txt](red.txt) ghi T01 fail đúng assertion trước patch; [green.txt](green.txt) ghi 9 test pass sau patch. [coverage.txt](coverage.txt) chỉ đo file model. [repeat.txt](repeat.txt) ghi ba lần lặp pass.
-- Mutation: [mutation.txt](mutation.txt) ghi `status: job.status` đổi thành `status: job.board` trên nhánh tạm `feat/bt3-23001908-vt054-mutation`, test phát hiện và mapping đã khôi phục trước khi trở về nhánh chính. Do file chưa được commit, nhánh tạm không lưu diff mutation trong Git.
+- Mutation ban đầu được ghi trong [mutation.txt](mutation.txt). Sau review, thí nghiệm được lặp và lưu commit cục bộ `9eb2be3cbe0f51e3b4a03327e44e6c8664d8cb3a` trên nhánh `feat/bt3-23001908-vt054-mutation-evidence`: chỉ đổi `status: job.status` thành `status: job.board`; T01 fail. [mutation-commit-diff.txt](mutation-commit-diff.txt) và [mutation-commit-run.txt](mutation-commit-run.txt) cho phép xem diff và kết quả. Nhánh mutation chỉ có cục bộ, chưa push; nhánh nộp đã quay lại mapping đúng.
 - Performance: [performance.txt](performance.txt) đo 120 job giả; không có bằng chứng production. Báo cáo và các giới hạn: [report.md](report.md) và [BT3_23001908_VT-054.pdf](BT3_23001908_VT-054.pdf).
 - Lệnh chạy từ repository root (Node >= 22.13; workspace dependencies đã cài theo lockfile vì characterization dùng `ts-node` sẵn có):
 
 ```powershell
 node --test evidence/bt3-23001908-vt054/job-model.test.mjs
 node --test evidence/bt3-23001908-vt054/export-characterization.test.mjs
+node --test evidence/bt3-23001908-vt054/export-service-characterization.test.mjs
 node --test evidence/bt3-23001908-vt054/order-isolation.test.mjs
 node --test --experimental-test-coverage '--test-coverage-include=**/job-model.mjs' evidence/bt3-23001908-vt054/job-model.test.mjs
 node evidence/bt3-23001908-vt054/performance.mjs
@@ -56,6 +58,8 @@ Các log ban đầu bị `.gitignore` loại trừ theo `*.log`. Các bản `.tx
 Lần kiểm tra kết hợp sau khi thêm characterization: [verification-update.txt](verification-update.txt), 10 test pass, exit 0.
 
 Lần kiểm tra kết hợp sau khi thêm order/isolation: [verification-order.txt](verification-order.txt), 11 test pass, exit 0.
+
+Lần kiểm tra sau khi thêm service characterization: [verification-service.txt](verification-service.txt), 13 test pass, exit 0.
 
 [completion-audit.md](completion-audit.md) đối chiếu từng mục rubric với evidence và nêu rõ baseline test pass được ghi sau patch model, cùng những phần chưa được chứng minh hoặc chưa thể nộp.
 

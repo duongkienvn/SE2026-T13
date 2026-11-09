@@ -60,3 +60,5 @@ These are representatives of classes, not an exhaustive input proof. Empty strin
 Integration/API and end-to-end production cases are planned but not asserted by model tests: real authentication, revocation at publication, concurrent PostgreSQL uniqueness and crash recovery require an actual implementation and designated disposable PostgreSQL. The harness tests are not a substitute for these levels.
 
 The additional `export-characterization.test.mjs` invokes the existing `csvRow` source through the model with synthetic data. It checks one serialization after a duplicate request and the actual CSV output, but does not run the real Board export service or its authorization boundary.
+
+`export-service-characterization.test.mjs` additionally invokes the real `BoardExportService.create` CSV path and owner check with synthetic repository and snapshot doubles. It is not a real database, HTTP, transaction, session or final-publication authorization test.

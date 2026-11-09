@@ -38,7 +38,9 @@ T01 được viết trước patch, với scaffold trả `NOT_IMPLEMENTED`: RED 
 
 Characterization bổ sung chạy model với `csvRow` thật từ `apps/backend/src/api/exports/export-csv.ts`: một job và retry cùng key tạo đúng một dòng CSV, bao gồm xử lý chuỗi bắt đầu bằng dấu bằng; 1 test pass (`export-characterization.txt`). Chỉ serializer được gọi trực tiếp, không đi qua service, HTTP hay database.
 
-Mutation trên nhánh tạm `feat/bt3-23001908-vt054-mutation`: tại `job-model.mjs`, đổi `status: job.status` thành `status: job.board`. T01 fail với actual `board-1`, expected `QUEUED`; mapping đã khôi phục và nhánh bài tập đã được checkout lại. Vì test và code lúc này chưa được commit, nhánh tạm không lưu mutation thành commit; `mutation.txt` ghi kết quả thực thi. Lưu ý này giới hạn khả năng truy vết lại từ Git.
+Sau review, test bổ sung gọi `BoardExportService.create` thật theo đường CSV với snapshot/repository giả. OWNER tạo header CSV, retry chỉ gọi service một lần; MEMBER đưa job về FAILED. Hai test pass (`export-service-characterization.txt`). Đây không phải xác minh PostgreSQL, HTTP hoặc kiểm tra session khi phát hành file.
+
+Mutation được lặp trên nhánh tạm `feat/bt3-23001908-vt054-mutation-evidence`, commit cục bộ `9eb2be3cbe0f51e3b4a03327e44e6c8664d8cb3a`: tại `job-model.mjs`, đổi `status: job.status` thành `status: job.board`. T01 fail với actual `board-1`, expected `QUEUED`; nhánh bài tập đã trở lại mapping đúng. `mutation-commit-diff.txt` và `mutation-commit-run.txt` ghi diff và kết quả. Commit mutation chỉ nằm trên nhánh local, chưa được push.
 
 ## 4. Coverage, flaky và performance
 
@@ -56,7 +58,7 @@ Performance: Windows x64, Node v22.23.4; host i5-1340P, 16 logical CPU, 15,7 GiB
 | AC4 isolation/input | T09–T11      | `job-model.test.mjs`, `green.txt`            | pass model, không chứng minh auth thật |
 | response mapping    | T01          | `mutation.txt`                               | phát hiện mutation                     |
 
-Tại lúc lập báo cáo chưa có commit hoặc PR; lần thử trước, bộ kiểm duyệt từ chối ghi commit cục bộ. Người dùng sau đó xác nhận quyền commit; xem lịch sử Git để xác định commit thực tế. Hai điều cần challenge: (1) Map và Promise.all có vẻ chứng minh idempotency nhưng tất cả thao tác cùng process, không kiểm chứng database, restart hay worker khác. (2) Kiểm tra trạng thái và giả lập timer có vẻ cho thấy tiến độ và hiệu năng, nhưng không đi qua HTTP/JWT hoặc export thật; coverage cao không bù các khoảng trống này.
+Các file model, T01–T12 và evidence gốc trong bảng nằm ở commit `14c4367113d005019c9171a6c6a231aa3a497e92` trên nhánh nộp; mutation lặp lại nằm ở commit cục bộ `9eb2be3cbe0f51e3b4a03327e44e6c8664d8cb3a` trên nhánh thử nghiệm. Hai điều cần challenge: (1) Map và Promise.all có vẻ chứng minh idempotency nhưng tất cả thao tác cùng process, không kiểm chứng database, restart hay worker khác. (2) Kiểm tra trạng thái và giả lập timer có vẻ cho thấy tiến độ và hiệu năng, nhưng không đi qua HTTP/JWT hoặc export thật; coverage cao không bù các khoảng trống này.
 
 ## 6. Reflection
 
@@ -68,7 +70,7 @@ Test có giá trị tiếp theo là một integration test trên PostgreSQL test
 
 ## Phụ lục: AI Usage Log
 
-- Công cụ: OpenAI Codex. Prompt chính là yêu cầu BT3 VT-054 của người dùng, nhấn mạnh khảo sát repo, test trước code, mutation response và bằng chứng thực.
+- Công cụ: OpenAI Codex. Prompt chính được lưu nguyên văn trong `prompt-original.txt`; trích change request: “Cho phép tác vụ dài chạy bất đồng bộ và hiển thị trạng thái tiến trình cho người dùng.” Prompt cũng yêu cầu test trước implementation, mutation response và bằng chứng thực.
 - Output dùng: plan ban đầu, test Node, model cách ly, bảng EP và tài liệu. Evidence: `README.md`, `specification.md`, test và các log trong thư mục này.
 - Output điều chỉnh sau review: kế hoạch lưu job/response export phải bảo vệ kiểm tra quyền lúc phát hành; ý tưởng map không đủ để tuyên bố chống trùng qua process. Hai quyết định có đường dẫn source trong README.
 - Giới hạn: người dùng phải tự review và chịu trách nhiệm về nội dung; không có bằng chứng đã có human review, PR hoặc CI.
@@ -78,6 +80,8 @@ Test có giá trị tiếp theo là một integration test trên PostgreSQL test
 - RED `node --test --test-name-pattern=T01 .../job-model.test.mjs`: exit 1, `actual: NOT_IMPLEMENTED`, `expected: QUEUED` ([red.txt](red.txt)).
 - GREEN `node --test .../job-model.test.mjs`: exit 0, 9 pass, 0 fail ([green.txt](green.txt)). Sau khi hoàn nguyên mutation và format, chạy lại 9 pass, 0 fail ([final-checks.txt](final-checks.txt)).
 - Mutation `status: job.board`: T01 exit 1, `actual: board-1`, `expected: QUEUED` ([mutation.txt](mutation.txt)).
+- Mutation lặp lại sau commit: `9eb2be3`, T01 exit 1; diff và log trong `mutation-commit-diff.txt`, `mutation-commit-run.txt`.
+- BoardExportService với repository giả: 2 test pass (`export-service-characterization.txt`).
 - Regression export: 33 pass, 0 fail, exit 0 ([export-regression.txt](export-regression.txt)); coverage model và ba lần lặp ở [coverage.txt](coverage.txt), [repeat.txt](repeat.txt).
 - Thứ tự/isolation: chạy hai kịch bản theo cả hai thứ tự, 1 test pass ([order-isolation.txt](order-isolation.txt)); không kiểm tra mọi hoán vị của toàn bộ suite.
 - Mô phỏng 120 job: p50 11,7235 ms, p95 11,8558 ms, 0 lỗi, Node v22.23.4, Windows ([performance.txt](performance.txt)).

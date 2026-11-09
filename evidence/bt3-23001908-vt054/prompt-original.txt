@@ -1,0 +1,570 @@
+# NHIỆM VỤ: THỰC HIỆN BÀI TẬP CÁ NHÂN 3 — APP-02 — VT-054
+
+## 1. Bối cảnh và mục tiêu
+
+Tôi cần hoàn thành Bài tập cá nhân 3 của môn Software Engineering trên repository GitHub chính thức của nhóm.
+
+**Thông tin:**
+- Sinh viên: Vũ Quang Nam
+- MSSV: 23001908
+- Nhóm: SE2026-T13
+- Vai trò: Thành viên
+- Dự án: APP-02 — Realtime Collaborative Kanban (Kanvexa)
+- Repository: https://github.com/duongkienvn/SE2026-T13
+- Base branch: `main`
+- Branch cá nhân dự kiến: `feat/bt3-23001908-vt054-async-progress`
+- Biến thể: VT-054
+
+**Change request bắt buộc:**
+
+Cho phép tác vụ dài chạy bất đồng bộ và hiển thị trạng thái tiến trình cho người dùng.
+
+**Các ràng buộc riêng:**
+- Risk trọng tâm: retry gây trùng bản ghi, giao dịch hoặc thông báo.
+- Kỹ thuật thiết kế test: Equivalence Partitioning.
+- Mutation bắt buộc: đổi mapping của một response field.
+- Performance: 120 tác vụ/người dùng đồng thời theo cách diễn giải được làm rõ từ đề; mục tiêu p95 ≤ 3.5 giây.
+- Quy trình AI bắt buộc: AI viết test trước implementation; phải xác nhận test fail đúng lý do trước khi sửa code.
+
+Tôi đính kèm:
+1. `yêu cầu.txt`: đề bài chính thức, bao gồm rubric và yêu cầu nộp bài.
+2. Lecture 6: tài liệu lý thuyết.
+3. Lecture 7: tài liệu lý thuyết.
+
+Đọc đầy đủ các tài liệu này trước khi thực hiện.
+
+**Thứ tự ưu tiên:** Đề bài chính thức → repository và code thực tế → lecture → các giả định cần được kiểm chứng.
+
+Không tự diễn giải thêm yêu cầu ngoài đề.
+
+## 2. Nguyên tắc làm việc bắt buộc
+
+### 2.1. Bám sát phạm vi
+
+Đây là bài tập cá nhân, không phải nhiệm vụ hoàn thiện toàn bộ hệ thống bất đồng bộ của Kanvexa.
+
+Chỉ triển khai một vertical slice nhỏ, có thể chạy và kiểm thử được, đủ để chứng minh các yêu cầu của bài.
+
+Không được:
+- Tự bổ sung feature không được yêu cầu.
+- Tự mở rộng thành nhiều workstream.
+- Tự thiết kế lại backend/frontend.
+- Tự tạo roadmap, issue hoặc task phụ không cần thiết.
+- Tự bổ sung Redis, Kafka, RabbitMQ, microservice hoặc các dependency lớn nếu chưa chứng minh sự cần thiết.
+- Refactor module không liên quan.
+- Thay đổi CI/CD, deployment hoặc production configuration ngoài phạm vi.
+- Đưa deliberate bug vào branch nộp bài.
+- Tạo kết quả test, log, coverage hoặc benchmark giả.
+
+Không được tạo ra công việc chỉ nhằm làm bài có vẻ phức tạp hơn.
+
+### 2.2. Repository workflow
+
+Trước khi làm việc:
+
+1. Kiểm tra repository root, branch hiện tại, worktree và `git status`.
+2. Đọc `AGENTS.md`, `docs/WORKFLOW.md` và tài liệu liên quan.
+3. Đọc các skill phù hợp:
+   - `.agents/skills/kanvexa-feature/SKILL.md`
+   - `.agents/skills/kanvexa-verification/SKILL.md`
+   - `.agents/skills/kanvexa-review/SKILL.md`
+4. Không tự tạo hidden worktree.
+5. Không ghi đè hoặc xóa thay đổi có sẵn.
+6. Tạo branch cá nhân từ `main` sau khi xác minh base chính xác.
+7. Ghi lại baseline commit SHA thực tế trước khi thay đổi.
+8. Chỉ thay đổi file thực sự cần thiết.
+
+Tôi cho phép tạo branch và các commit cục bộ cần thiết để tạo bằng chứng cho bài tập. Tuy nhiên, trước khi push branch hoặc tạo PR, hãy báo cáo trạng thái và chờ tôi xác nhận.
+
+Không merge vào `main`.
+
+### 2.3. Evidence-first
+
+Mọi khẳng định về code, test, performance, coverage và correctness phải có bằng chứng thực tế.
+
+Phân biệt rõ:
+- Đã kiểm chứng.
+- Chỉ được mô phỏng.
+- Chưa kiểm chứng.
+- Không thể thực hiện do giới hạn môi trường.
+
+Không được dùng kết luận của AI thay cho bằng chứng.
+
+## 3. Khảo sát repository và lựa chọn vertical slice
+
+Trước khi viết code, phải khảo sát repository hiện tại.
+
+Tôi đã kiểm tra sơ bộ repository và xác định các khu vực đáng chú ý:
+
+### 3.1. Existing export functionality
+
+`apps/backend/src/api/exports/`
+
+Các file nên khảo sát:
+- `exports.controller.ts`
+- `exports.module.ts`
+- `board-export.service.ts`
+- `account-export.service.ts`
+- `export-snapshot.ts`
+- `exports.spec.ts`
+- `apps/backend/test/exports/exports.integration.mjs`
+
+Hệ thống hiện có API xuất dữ liệu đồng bộ.
+
+Đây là ứng viên cho một vertical slice xử lý tác vụ dài bất đồng bộ, có trạng thái và khả năng theo dõi tiến trình.
+
+### 3.2. Existing notification/background worker
+
+`apps/backend/src/api/notifications/`
+
+Các file nên khảo sát:
+- `task-notification-worker.service.ts`
+- `task-email-dispatcher.service.ts`
+- `task-email-outbox.ts`
+- `notification.service.ts`
+- `entities/task-notification-email-outbox.entity.ts`
+- Các test tương ứng.
+
+Khu vực này có sẵn cơ chế worker, outbox, retry và chống trùng. Có thể tham khảo pattern phù hợp, nhưng không sao chép hoặc mở rộng tùy tiện.
+
+### 3.3. Các contract liên quan
+
+Đọc khi cần:
+- `apps/backend/src/common/dto/`
+- `apps/backend/src/interceptors/`
+- `packages/shared/src/`
+- `docs/architecture/backend-developer-guide.md`
+- `docs/architecture/database-design.md`
+- `docs/tasks/backend/p5-authorized-data-export.md`
+- `docs/tasks/backend/p4-notification-foundation.md`
+
+Đặc biệt lưu ý các invariant hiện có về authorization, transaction, idempotency, response DTO và bảo mật dữ liệu.
+
+### 3.4. Quyết định lựa chọn
+
+So sánh ngắn gọn tối đa 2 phương án vertical slice khả thi, ưu tiên phương án:
+
+1. Phù hợp trực tiếp với change request.
+2. Có thể kiểm thử thực sự.
+3. Thay đổi ít file và ít logic nhất.
+4. Có thể chứng minh retry/idempotency.
+5. Có response field phù hợp để mutation testing.
+6. Có thể tạo harness cho 120 concurrent operations.
+7. Không làm thay đổi hoặc phá vỡ API đang phục vụ người dùng.
+
+Ưu tiên xem xét export nhưng không mặc định phải chọn export.
+
+Nếu chuyển export sang asynchronous sẽ đòi hỏi kiến trúc quá lớn, hãy chọn phương án nhỏ hơn có căn cứ hoặc executable characterization/test harness trên module gần nhất, đúng điều khoản dự phòng của đề.
+
+Không tự thay toàn bộ API export đồng bộ đang tồn tại.
+
+Giải thích ngắn gọn vì sao phương án được chọn là tối ưu cho bài tập cá nhân.
+
+## 4. Giai đoạn 1 — Specification và AI-assisted implementation plan
+
+**Tuyệt đối chưa sửa implementation ở giai đoạn này.**
+
+### 4.1. Specification
+
+Dựa trên change request, xây dựng:
+- 01 problem statement.
+- 3–5 acceptance criteria có thể kiểm thử.
+- Ít nhất 2 non-functional constraints.
+- Invariant/contract quan trọng nhất cần bảo vệ.
+- In-scope và out-of-scope.
+
+Acceptance criteria phải cụ thể, đo lường hoặc kiểm chứng được.
+
+Tập trung vào:
+- Async execution.
+- Progress/status visibility.
+- Retry/idempotency.
+- Failure handling.
+- Data isolation/authorization.
+
+Đối với tiến trình, phải phân biệt trạng thái công việc với tỷ lệ hoàn thành. Không hiển thị phần trăm giả nếu không có căn cứ đo tiến độ.
+
+### 4.2. AI-generated plan
+
+Trước khi code, hãy tạo implementation plan bao gồm:
+- Kiến trúc hiện tại.
+- Vertical slice đã chọn.
+- Luồng request → xử lý → response/status.
+- Các file dự kiến thay đổi.
+- Test strategy dự kiến.
+- Lệnh verification.
+- Assumptions.
+- Rủi ro và giới hạn.
+
+Lưu lại prompt và phiên bản plan ban đầu để phục vụ AI Usage Log.
+
+### 4.3. Review plan
+
+Bắt buộc review plan bằng repository thực tế.
+
+Tìm ít nhất 2 điểm trong AI-generated plan cần sửa hoặc bác bỏ dựa trên evidence.
+
+Với mỗi điểm, ghi rõ:
+- AI ban đầu đề xuất gì.
+- File hoặc đoạn code nào chứng minh điều đó chưa phù hợp.
+- Quyết định sửa/bác bỏ.
+- Plan sau review.
+
+Không tạo hai điểm phản biện giả chỉ để đáp ứng rubric.
+
+Chỉ hoàn tất giai đoạn này khi plan đã được review và chỉnh sửa.
+
+## 5. Giai đoạn 2 — Risk-based test strategy
+
+Xây dựng test strategy với:
+- Unit tests.
+- Integration/API tests.
+- E2E tests.
+- Những test không cần thiết và lý do loại bỏ.
+
+Ưu tiên risk-based testing, không chạy hoặc tạo test chỉ để tăng số lượng.
+
+### 5.1. Test cases
+
+Tạo bảng ít nhất 10 test cases với các cột:
+
+`ID | Risk/Requirement | Test level | Preconditions/Input | Expected result | Priority`
+
+Phải có:
+- Ít nhất 2 negative tests.
+- Ít nhất 1 failure-path test liên quan trực tiếp đến retry, duplicate record/transaction/notification.
+- Test trạng thái tiến trình.
+- Test response contract.
+- Test idempotency.
+- Test authorization hoặc data isolation nếu vertical slice có user-scoped data.
+
+### 5.2. Equivalence Partitioning
+
+Bắt buộc sử dụng Equivalence Partitioning thật sự.
+
+Xác định:
+- Các input dimensions liên quan.
+- Valid equivalence classes.
+- Invalid equivalence classes.
+- Representative values.
+- Cơ sở chọn dữ liệu kiểm thử.
+- Những boundary cases cần kiểm tra thêm nếu có.
+
+Không chỉ ghi tên kỹ thuật.
+
+Phân biệt rõ Equivalence Partitioning và Boundary Value Analysis. Có thể dùng bổ trợ, nhưng EP là kỹ thuật bắt buộc chính.
+
+## 6. Giai đoạn 3 — Test-first implementation
+
+Đây là yêu cầu quan trọng nhất của quy trình.
+
+**Bắt buộc tuân thủ thứ tự:**
+
+Test → Fail đúng lý do → Implementation patch → Pass.
+
+### 6.1. Baseline
+
+Trước khi chỉnh sửa:
+- Ghi baseline commit SHA.
+- Ghi trạng thái Git.
+- Ghi các test baseline liên quan và kết quả thực chạy.
+- Ghi lại môi trường và dependency quan trọng.
+
+Nếu baseline test đã fail, phải phân biệt lỗi có sẵn với lỗi do test mới.
+
+### 6.2. Viết test trước
+
+AI viết hoặc hỗ trợ viết các test cho behavior chưa tồn tại.
+
+Sau khi viết:
+- Chạy targeted tests.
+- Kiểm tra chúng thất bại đúng vì chức năng chưa được triển khai.
+- Không chấp nhận fail do lỗi import, syntax, dependency hoặc test setup.
+- Lưu lệnh, exit code, log và thời điểm chạy.
+- Ghi test file và commit liên quan nếu đã commit.
+
+Nếu test fail sai lý do, sửa test/setup trước khi viết implementation.
+
+Không được đảo thứ tự thực hiện.
+
+### 6.3. Implementation patch
+
+Chỉ sau khi đã xác nhận RED evidence:
+
+- Tạo patch nhỏ nhất đáp ứng test.
+- Tái sử dụng kiến trúc và component đang có.
+- Không sửa nhiều module không liên quan.
+- Bảo vệ invariant.
+- Không tạo side effect trùng khi retry.
+- Không thay đổi API contract ngoài phạm vi đã review.
+- Review toàn bộ diff của AI trước khi chấp nhận.
+
+Nếu phát hiện AI-generated code có vấn đề, phải chỉnh sửa và ghi vào AI Usage Log.
+
+### 6.4. Verification
+
+Sau patch:
+- Chạy lại targeted tests.
+- Chạy các regression tests liên quan.
+- Thực hiện integration/API test nếu có đủ môi trường.
+- Chạy các lệnh lint, build, format phù hợp.
+- Ghi kết quả thực tế.
+
+Ghi rõ test nào RED trước patch và GREEN sau patch.
+
+Không tuyên bố triển khai hoàn tất khi test chưa thực sự chạy được.
+
+## 7. Giai đoạn 4 — Mutation testing: Who tests the tests?
+
+Mutation bắt buộc của VT-054:
+
+**Đổi mapping của một response field.**
+
+Chọn một response field thực tế thuộc vertical slice, tốt nhất liên quan trực tiếp đến job status/progress hoặc contract đầu ra.
+
+Thực hiện:
+
+1. Chạy test với implementation đúng và ghi kết quả.
+2. Tạo branch hoặc commit mutation tạm thời riêng biệt.
+3. Chỉ cố ý thay đổi mapping của một response field.
+4. Chạy lại đúng test liên quan.
+5. Xác định mutation bị phát hiện hay sống sót.
+6. Nếu sống sót, tăng cường test rồi chạy lại.
+7. Hoàn nguyên deliberate bug.
+8. Xác minh lại branch nộp bài không chứa mutation.
+
+Phải lưu bằng chứng gồm:
+- File và dòng code bị mutation.
+- Mapping trước và sau.
+- Test thực thi.
+- Kết quả.
+- Lý do test phát hiện hoặc bỏ sót bug.
+
+Không tạo một mutation khác không đúng loại đề yêu cầu để thay thế.
+
+## 8. Giai đoạn 5 — Coverage, flaky tests và performance
+
+### 8.1. Coverage
+
+Nếu công cụ hỗ trợ, thu thập:
+- Line coverage.
+- Branch coverage.
+- Risk coverage theo acceptance criteria.
+
+Không sử dụng tỷ lệ coverage cao làm bằng chứng duy nhất cho chất lượng test.
+
+Chỉ rõ các risk còn chưa được bao phủ.
+
+### 8.2. Flaky test review
+
+Phân tích và kiểm tra tối thiểu 2 nguy cơ, chọn từ:
+- Time/timer.
+- Shared state/test order.
+- Network.
+- Concurrency.
+- Random test data.
+
+Ưu tiên các nguy cơ phù hợp với vertical slice thực tế.
+
+Sử dụng deterministic inputs, test isolation và kiểm soát timer/mock phù hợp.
+
+Nếu có thể, chạy lại test nhiều lần và thay đổi thứ tự để kiểm chứng.
+
+Ghi lại những gì thực sự được kiểm tra.
+
+### 8.3. Performance experiment
+
+Yêu cầu bắt buộc:
+- Kiểm chứng 120 tác vụ đồng thời theo diễn giải hợp lý, nêu rõ mô hình người dùng/tác vụ.
+- Tính p95.
+- So sánh với mục tiêu ≤ 3.5 giây.
+
+Trước khi chạy, phải xác định loại latency đo: thời gian API tiếp nhận, phản hồi trạng thái hay hoàn thành toàn bộ job. Không đánh tráo các đại lượng này.
+
+Ưu tiên một executable performance harness có thể tái chạy.
+
+Báo cáo:
+- Môi trường.
+- Dataset.
+- Số lượng concurrent operations.
+- Request/task model.
+- Cách đo latency.
+- p50/p95 nếu có.
+- Tỷ lệ lỗi.
+- Kết luận và giới hạn.
+
+Không sử dụng dữ liệu giả lập rồi tuyên bố đạt hiệu năng thực tế.
+
+Nếu không có database/service phù hợp để chạy tải thực:
+- Tạo harness chạy được với dữ liệu giả lập có kiểm soát.
+- Ghi rõ giả định.
+- Báo cáo latency trong môi trường mô phỏng.
+- Kết luận rằng production p95 chưa được xác nhận.
+
+Không tự chạy benchmark lên môi trường production hoặc máy chủ nhóm.
+
+## 9. Giai đoạn 6 — Engineering evidence và AI Usage Log
+
+### 9.1. Traceability
+
+Tạo bảng:
+
+`Acceptance criterion / Risk → Test case → Test file → Commit/PR → Result`
+
+Từng đường dẫn file phải tồn tại thực tế.
+
+Không tham chiếu commit hoặc PR chưa được tạo như thể đã tồn tại.
+
+### 9.2. AI Usage Log
+
+Ghi:
+- AI tool được sử dụng.
+- Prompt chính.
+- Output được sử dụng.
+- Output bị sửa hoặc bác bỏ.
+- Lý do sửa/bác bỏ.
+- Evidence liên quan.
+
+Log phải phản ánh quá trình làm bài thật.
+
+Không tự sáng tác lịch sử tương tác với AI.
+
+### 9.3. AI trust review
+
+Nêu ít nhất 2 điểm AI-generated code/tests ban đầu có vẻ hợp lý nhưng chưa thể tin ngay.
+
+Ví dụ cần đánh giá theo code thực tế:
+- Mock idempotency không chứng minh được database uniqueness/concurrency.
+- Test kiểm tra HTTP 200 nhưng không xác nhận response field mapping.
+- Test chạy tuần tự không chứng minh an toàn khi retry đồng thời.
+- Mock timer không chứng minh hiệu năng runtime.
+
+Chỉ dùng ví dụ có liên hệ thực tế với bài đã làm.
+
+### 9.4. Reflection
+
+Viết reflection 250–350 từ, có bằng chứng cụ thể.
+
+Phải trả lời:
+1. Những kiểm chứng nào làm tăng confidence?
+2. Những điều gì vẫn chưa được chứng minh?
+3. Test tiếp theo nào mang lại giá trị cao nhất?
+4. AI hỗ trợ những gì và người thực hiện phải kiểm tra lại những gì?
+
+Không viết reflection chung chung.
+
+## 10. Chuẩn bị đầu ra nộp bài
+
+### 10.1. GitHub branch
+
+Tập trung toàn bộ code và test của bài cá nhân vào branch:
+
+`feat/bt3-23001908-vt054-async-progress`
+
+Có thể dùng tên khác nếu branch này đã tồn tại, nhưng phải giải thích.
+
+Code/test đặt đúng vị trí theo kiến trúc repository.
+
+Tổ chức evidence cá nhân gọn gàng trong một thư mục riêng, không làm rối tài liệu chung của nhóm.
+
+Tạo README ngắn hướng dẫn:
+- Mục tiêu vertical slice.
+- Baseline.
+- Danh sách file chính.
+- Cách setup.
+- Cách chạy test.
+- Cách chạy mutation experiment.
+- Cách chạy performance harness.
+- Giới hạn đã biết.
+
+Không commit các file bí mật, database dump, node_modules hoặc log quá lớn.
+
+### 10.2. PDF
+
+Tạo báo cáo:
+
+`BT3_23001908_VT-054.pdf`
+
+Tối đa 8 trang nội dung chính. Phụ lục AI Usage Log và ảnh/log thực thi không tính vào giới hạn.
+
+Trang đầu bắt buộc:
+- Vũ Quang Nam.
+- MSSV: 23001908.
+- Team ID: SE2026-T13.
+- Project: APP-02.
+- Variant: VT-054.
+- Repository.
+- Baseline commit hash.
+- Branch/PR link nếu đã có.
+- Cam kết nguyên văn:
+
+“Tôi chịu trách nhiệm về toàn bộ code, test và nội dung bài làm; tôi đã khai báo việc sử dụng AI.”
+
+Nội dung báo cáo:
+1. Specification và invariant.
+2. Implementation plan và review.
+3. Test strategy, equivalence partitioning và test cases.
+4. RED → patch → GREEN evidence.
+5. Mutation experiment.
+6. Coverage và flaky-test review.
+7. Performance experiment.
+8. Traceability và reflection.
+
+Đưa AI Usage Log và log/ảnh bằng chứng chi tiết vào phụ lục.
+
+Ưu tiên bảng gọn, dễ đọc, có liên kết đến file/commit thực tế. Không dành nhiều trang cho mô tả lý thuyết chung.
+
+Nếu Lecture 6–7 có kiến thức liên quan, vận dụng để giải thích lựa chọn kỹ thuật. Không chép lại lý thuyết dài dòng.
+
+Không ghi kết quả giả trong PDF.
+
+## 11. Kiểm tra cuối cùng
+
+Trước khi bàn giao, tự kiểm tra toàn bộ rubric của `yêu cầu.txt`.
+
+Xác nhận:
+- Đúng repository APP-02 và VT-054.
+- Đủ số lượng acceptance criteria và test cases.
+- Có Equivalence Partitioning đúng nghĩa.
+- Có ít nhất 2 negative tests và 1 failure-path test.
+- Có evidence AI-generated plan và 2 điểm review.
+- Có bằng chứng test fail trước patch.
+- Có bằng chứng test pass sau patch.
+- Có mutation đổi response field và test phát hiện.
+- Mutation không tồn tại trong code cuối.
+- Có coverage và risk coverage.
+- Có ít nhất 2 flaky risks được kiểm tra.
+- Có performance harness 120 concurrent operations và đối chiếu p95.
+- Có traceability.
+- Có AI Usage Log và reflection 250–350 từ.
+- Có README hướng dẫn chạy test.
+- PDF đúng tên, đúng giới hạn trang.
+- Không có thay đổi ngoài scope.
+- Không ảnh hưởng branch `main`.
+
+## 12. Cách thực hiện và báo cáo
+
+Thực hiện theo đúng thứ tự các giai đoạn.
+
+Tại mỗi giai đoạn, lưu evidence ngay khi phát sinh, không tái tạo evidence từ trí nhớ vào cuối bài.
+
+Không được bỏ qua bước xác minh RED trước khi tạo implementation.
+
+Không dừng chỉ vì đã tạo được plan hoặc test cases; mục tiêu là hoàn thành toàn bộ bài tập trong phạm vi khả thi.
+
+Nếu gặp blocker kỹ thuật, xác định nguyên nhân và áp dụng phương án dự phòng được đề bài cho phép. Không tự mở rộng scope để xử lý blocker.
+
+Chỉ dừng hỏi tôi khi có quyết định thật sự ảnh hưởng đến tính tương thích của hệ thống, dữ liệu hiện có, bảo mật, môi trường hoặc quyền thực hiện.
+
+Khi hoàn tất, báo cáo:
+1. Branch và baseline SHA.
+2. Vertical slice đã thực hiện.
+3. Những file thay đổi.
+4. Kết quả RED → GREEN.
+5. Kết quả mutation.
+6. Kết quả coverage/performance.
+7. Đường dẫn PDF và README.
+8. Các giới hạn và risk còn lại.
+9. Trạng thái Git và các bước còn cần tôi phê duyệt.
+
+**Nguyên tắc cuối cùng: Làm vừa đủ để đáp ứng đề, nhưng mọi yêu cầu quan trọng phải có bằng chứng kỹ thuật thực sự. Không làm thừa, không làm giả và không thay thế việc kiểm chứng bằng nhận định của AI.**

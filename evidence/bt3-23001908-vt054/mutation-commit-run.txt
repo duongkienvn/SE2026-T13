@@ -1,0 +1,81 @@
+Time: 2026-11-09T20:07:49.5359339+07:00
+Branch: feat/bt3-23001908-vt054-mutation-evidence
+Command: node --test --test-name-pattern=T01 evidence/bt3-23001908-vt054/job-model.test.mjs
+TAP version 13
+# Subtest: T01 accepts before operation finishes with QUEUED status
+not ok 1 - T01 accepts before operation finishes with QUEUED status
+  ---
+  duration_ms: 3.7549
+  type: 'test'
+  location: 'D:\\TAI LIEU DAI HOC\\NAM BON\\SEM_1\\SE\\SE2026-T13\\evidence\\bt3-23001908-vt054\\job-model.test.mjs:15:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + 'board-1'
+    - 'QUEUED'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'QUEUED'
+  actual: 'board-1'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///D:/TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/evidence/bt3-23001908-vt054/job-model.test.mjs:19:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.start (node:internal/test_runner/test:944:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 0
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 172.4357
+Exit code: 1
+
+Committed mutation: 9eb2be3cbe0f51e3b4a03327e44e6c8664d8cb3a
+Time: 2026-11-09T20:08:23.1424002+07:00
+Command: node --test --test-name-pattern=T01 evidence/bt3-23001908-vt054/job-model.test.mjs
+TAP version 13
+# Subtest: T01 accepts before operation finishes with QUEUED status
+not ok 1 - T01 accepts before operation finishes with QUEUED status
+  ---
+  duration_ms: 2.6071
+  type: 'test'
+  location: 'D:\\TAI LIEU DAI HOC\\NAM BON\\SEM_1\\SE\\SE2026-T13\\evidence\\bt3-23001908-vt054\\job-model.test.mjs:15:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + 'board-1'
+    - 'QUEUED'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'QUEUED'
+  actual: 'board-1'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///D:/TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/evidence/bt3-23001908-vt054/job-model.test.mjs:19:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.start (node:internal/test_runner/test:944:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 0
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 157.2573
+Exit code: 1

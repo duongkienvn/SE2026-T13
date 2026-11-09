@@ -1,0 +1,21 @@
+commit 9eb2be3cbe0f51e3b4a03327e44e6c8664d8cb3a
+Date: 2026-11-09T20:08:14+07:00
+
+    test: record response mapping mutation experiment
+---
+ evidence/bt3-23001908-vt054/job-model.mjs | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/evidence/bt3-23001908-vt054/job-model.mjs b/evidence/bt3-23001908-vt054/job-model.mjs
+index a514234..8b7c40d 100644
+--- a/evidence/bt3-23001908-vt054/job-model.mjs
++++ b/evidence/bt3-23001908-vt054/job-model.mjs
+@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
+ export function createJobModel(exportBoard) {
+   const jobs = new Map();
+   const keys = new Map();
+-  const response = (job) => ({ id: job.id, status: job.status });
++  const response = (job) => ({ id: job.id, status: job.board });
+   return {
+     submit(user, key, board) {
+       if (
