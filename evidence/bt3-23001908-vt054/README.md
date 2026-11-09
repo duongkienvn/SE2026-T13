@@ -36,7 +36,14 @@ Các lệnh Jest chạy thử ban đầu bị ngắt thủ công; exit code 1 do
 - Test-first: [red.txt](red.txt) ghi T01 fail đúng assertion trước patch; [green.txt](green.txt) ghi 9 test pass sau patch. [coverage.txt](coverage.txt) chỉ đo file model. [repeat.txt](repeat.txt) ghi ba lần lặp pass.
 - Mutation ban đầu được ghi trong [mutation.txt](mutation.txt). Sau review, thí nghiệm được lặp và lưu commit cục bộ `9eb2be3cbe0f51e3b4a03327e44e6c8664d8cb3a` trên nhánh `feat/bt3-23001908-vt054-mutation-evidence`: chỉ đổi `status: job.status` thành `status: job.board`; T01 fail. [mutation-commit-diff.txt](mutation-commit-diff.txt) và [mutation-commit-run.txt](mutation-commit-run.txt) cho phép xem diff và kết quả. Nhánh mutation chỉ có cục bộ, chưa push; nhánh nộp đã quay lại mapping đúng.
 - Performance: [performance.txt](performance.txt) đo 120 job giả; không có bằng chứng production. Báo cáo và các giới hạn: [report.md](report.md) và [BT3_23001908_VT-054.pdf](BT3_23001908_VT-054.pdf).
-- Lệnh chạy từ repository root (Node >= 22.13; workspace dependencies đã cài theo lockfile vì characterization dùng `ts-node` sẵn có):
+- Chuẩn bị từ repository root (Node >= 22.13, pnpm 10.18.3): cài dependencies theo lockfile nếu checkout chưa có, sau đó build shared package. Test service cần `@kanban/shared/dist`, không được Git theo dõi.
+
+```powershell
+pnpm install --frozen-lockfile
+pnpm --filter @kanban/shared build
+```
+
+- Các lệnh kiểm thử từ repository root:
 
 ```powershell
 node --test evidence/bt3-23001908-vt054/job-model.test.mjs
