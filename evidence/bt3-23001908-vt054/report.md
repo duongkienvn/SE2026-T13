@@ -40,7 +40,9 @@ Characterization bổ sung chạy model với `csvRow` thật từ `apps/backend
 
 Sau review, test bổ sung gọi `BoardExportService.create` thật theo đường CSV với snapshot/repository giả. OWNER tạo header CSV, retry chỉ gọi service một lần; MEMBER đưa job về FAILED. Hai test pass (`export-service-characterization.txt`). Đây không phải xác minh PostgreSQL, HTTP hoặc kiểm tra session khi phát hành file.
 
-Mutation được lặp trên nhánh tạm `feat/bt3-23001908-vt054-mutation-evidence`, commit cục bộ `9eb2be3cbe0f51e3b4a03327e44e6c8664d8cb3a`: tại `job-model.mjs`, đổi `status: job.status` thành `status: job.board`. T01 fail với actual `board-1`, expected `QUEUED`; nhánh bài tập đã trở lại mapping đúng. `mutation-commit-diff.txt` và `mutation-commit-run.txt` ghi diff và kết quả. Commit mutation chỉ nằm trên nhánh local, chưa được push.
+Mutation được lặp trên nhánh tạm `feat/bt3-23001908-vt054-mutation-evidence`, commit `9eb2be3cbe0f51e3b4a03327e44e6c8664d8cb3a`: tại `job-model.mjs`, đổi `status: job.status` thành `status: job.board`. T01 fail với actual `board-1`, expected `QUEUED`; nhánh bài tập đã trở lại mapping đúng. `mutation-commit-diff.txt` và `mutation-commit-run.txt` ghi diff và kết quả. Commit mutation đã push lên nhánh thử nghiệm riêng.
+
+Diff mutation: https://github.com/duongkienvn/SE2026-T13/commit/9eb2be3cbe0f51e3b4a03327e44e6c8664d8cb3a
 
 ## 4. Coverage, flaky và performance
 
@@ -58,7 +60,7 @@ Performance: Windows x64, Node v22.23.4; host i5-1340P, 16 logical CPU, 15,7 GiB
 | AC4 isolation/input | T09–T11      | `job-model.test.mjs`, `green.txt`            | pass model, không chứng minh auth thật |
 | response mapping    | T01          | `mutation.txt`                               | phát hiện mutation                     |
 
-Các file model, T01–T12 và evidence gốc trong bảng nằm ở commit `14c4367113d005019c9171a6c6a231aa3a497e92` trên nhánh nộp; mutation lặp lại nằm ở commit cục bộ `9eb2be3cbe0f51e3b4a03327e44e6c8664d8cb3a` trên nhánh thử nghiệm. Hai điều cần challenge: (1) Map và Promise.all có vẻ chứng minh idempotency nhưng tất cả thao tác cùng process, không kiểm chứng database, restart hay worker khác. (2) Kiểm tra trạng thái và giả lập timer có vẻ cho thấy tiến độ và hiệu năng, nhưng không đi qua HTTP/JWT hoặc export thật; coverage cao không bù các khoảng trống này.
+Các file model, T01–T12 và evidence gốc trong bảng nằm ở commit `14c4367113d005019c9171a6c6a231aa3a497e92` trên nhánh nộp; mutation lặp lại nằm ở commit `9eb2be3cbe0f51e3b4a03327e44e6c8664d8cb3a` trên nhánh thử nghiệm. Hai điều cần challenge: (1) Map và Promise.all có vẻ chứng minh idempotency nhưng tất cả thao tác cùng process, không kiểm chứng database, restart hay worker khác. (2) Kiểm tra trạng thái và giả lập timer có vẻ cho thấy tiến độ và hiệu năng, nhưng không đi qua HTTP/JWT hoặc export thật; coverage cao không bù các khoảng trống này.
 
 ## 6. Reflection
 
