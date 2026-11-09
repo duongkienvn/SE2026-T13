@@ -72,7 +72,7 @@ Test có giá trị tiếp theo là một integration test trên PostgreSQL test
 
 - Công cụ: OpenAI Codex. Prompt chính được lưu nguyên văn trong `prompt-original.txt`; trích change request: “Cho phép tác vụ dài chạy bất đồng bộ và hiển thị trạng thái tiến trình cho người dùng.” Prompt cũng yêu cầu test trước implementation, mutation response và bằng chứng thực.
 - Output dùng: plan ban đầu, test Node, model cách ly, bảng EP và tài liệu. Evidence: `README.md`, `specification.md`, test và các log trong thư mục này.
-- Output điều chỉnh sau review: kế hoạch lưu job/response export phải bảo vệ kiểm tra quyền lúc phát hành; ý tưởng map không đủ để tuyên bố chống trùng qua process. Hai quyết định có đường dẫn source trong README.
+- Output điều chỉnh sau review: plan ban đầu cần chỉ rõ kiểm tra lại phiên lúc phát hành; idempotency key chưa có cơ chế bền vững. Sau đó model dùng map có giới hạn một process. Plan ban đầu không đề xuất map; hai điểm review và source nằm trong README.
 - Giới hạn: người dùng phải tự review và chịu trách nhiệm về nội dung; không có bằng chứng đã có human review, PR hoặc CI.
 
 ## Phụ lục: trích evidence thực thi
