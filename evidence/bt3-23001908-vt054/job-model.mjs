@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 export function createJobModel(exportBoard) {
   const jobs = new Map();
   const keys = new Map();
-  const response = (job) => ({ id: job.id, status: job.status });
+  const response = (job) => ({ id: job.id, status: job.board });
   return {
     submit(user, key, board) {
       if (
