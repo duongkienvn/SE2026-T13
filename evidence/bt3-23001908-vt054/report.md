@@ -3,7 +3,7 @@
 Vũ Quang Nam — MSSV 23001908 — Team SE2026-T13  
 Repository: https://github.com/duongkienvn/SE2026-T13  
 Baseline: `c062cf1c2e2306be6cda68930f6bd509b2d80c68`  
-Branch local: `feat/bt3-23001908-vt054-async-progress`. Chưa push, chưa có link branch/PR nộp được.
+Branch: https://github.com/duongkienvn/SE2026-T13/tree/feat/bt3-23001908-vt054-async-progress
 
 “Tôi chịu trách nhiệm về toàn bộ code, test và nội dung bài làm; tôi đã khai báo việc sử dụng AI.”
 

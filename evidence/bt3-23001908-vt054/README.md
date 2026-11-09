@@ -1,6 +1,6 @@
 # BT3 VT-054 — khảo sát ban đầu
 
-Trạng thái tại lúc lập báo cáo: model, test-first, mutation, benchmark mô phỏng và PDF đã được tạo; chưa có link GitHub để nộp.
+Branch nộp bài: https://github.com/duongkienvn/SE2026-T13/tree/feat/bt3-23001908-vt054-async-progress. Model, test-first, mutation, benchmark mô phỏng và PDF đã được tạo.
 
 - Repository: https://github.com/duongkienvn/SE2026-T13
 - Branch: `feat/bt3-23001908-vt054-async-progress`
