@@ -1,0 +1,197 @@
+Time: 2026-11-09T17:45:41.8147162+07:00
+Command: repeat node --test three times
+TAP version 13
+# Subtest: T01 accepts before operation finishes with QUEUED status
+ok 1 - T01 accepts before operation finishes with QUEUED status
+  ---
+  duration_ms: 1.6103
+  type: 'test'
+  ...
+# Subtest: T02 and T03 report RUNNING then COMPLETED through the response contract
+ok 2 - T02 and T03 report RUNNING then COMPLETED through the response contract
+  ---
+  duration_ms: 7.5722
+  type: 'test'
+  ...
+# Subtest: T04 and T05 duplicate submissions before and after completion execute once
+ok 3 - T04 and T05 duplicate submissions before and after completion execute once
+  ---
+  duration_ms: 1.0635
+  type: 'test'
+  ...
+# Subtest: T06 rejects the same user and key with a different board
+ok 4 - T06 rejects the same user and key with a different board
+  ---
+  duration_ms: 1.3604
+  type: 'test'
+  ...
+# Subtest: T07 scopes the same key to each user
+ok 5 - T07 scopes the same key to each user
+  ---
+  duration_ms: 1.0374
+  type: 'test'
+  ...
+# Subtest: T08 failure and retry do not repeat the side effect or expose the error
+ok 6 - T08 failure and retry do not repeat the side effect or expose the error
+  ---
+  duration_ms: 1.2796
+  type: 'test'
+  ...
+# Subtest: T09 and T10 hide other users and missing jobs
+ok 7 - T09 and T10 hide other users and missing jobs
+  ---
+  duration_ms: 0.5107
+  type: 'test'
+  ...
+# Subtest: T11 rejects empty and non-string request dimensions
+ok 8 - T11 rejects empty and non-string request dimensions
+  ---
+  duration_ms: 0.5866
+  type: 'test'
+  ...
+# Subtest: T12 concurrent same-key requests share one execution
+ok 9 - T12 concurrent same-key requests share one execution
+  ---
+  duration_ms: 4.6507
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 131.5209
+Run 1 exit code: 0
+TAP version 13
+# Subtest: T01 accepts before operation finishes with QUEUED status
+ok 1 - T01 accepts before operation finishes with QUEUED status
+  ---
+  duration_ms: 1.373
+  type: 'test'
+  ...
+# Subtest: T02 and T03 report RUNNING then COMPLETED through the response contract
+ok 2 - T02 and T03 report RUNNING then COMPLETED through the response contract
+  ---
+  duration_ms: 4.6786
+  type: 'test'
+  ...
+# Subtest: T04 and T05 duplicate submissions before and after completion execute once
+ok 3 - T04 and T05 duplicate submissions before and after completion execute once
+  ---
+  duration_ms: 0.7739
+  type: 'test'
+  ...
+# Subtest: T06 rejects the same user and key with a different board
+ok 4 - T06 rejects the same user and key with a different board
+  ---
+  duration_ms: 0.9925
+  type: 'test'
+  ...
+# Subtest: T07 scopes the same key to each user
+ok 5 - T07 scopes the same key to each user
+  ---
+  duration_ms: 0.3111
+  type: 'test'
+  ...
+# Subtest: T08 failure and retry do not repeat the side effect or expose the error
+ok 6 - T08 failure and retry do not repeat the side effect or expose the error
+  ---
+  duration_ms: 0.9802
+  type: 'test'
+  ...
+# Subtest: T09 and T10 hide other users and missing jobs
+ok 7 - T09 and T10 hide other users and missing jobs
+  ---
+  duration_ms: 0.3787
+  type: 'test'
+  ...
+# Subtest: T11 rejects empty and non-string request dimensions
+ok 8 - T11 rejects empty and non-string request dimensions
+  ---
+  duration_ms: 0.3208
+  type: 'test'
+  ...
+# Subtest: T12 concurrent same-key requests share one execution
+ok 9 - T12 concurrent same-key requests share one execution
+  ---
+  duration_ms: 2.871
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 126.2494
+Run 2 exit code: 0
+TAP version 13
+# Subtest: T01 accepts before operation finishes with QUEUED status
+ok 1 - T01 accepts before operation finishes with QUEUED status
+  ---
+  duration_ms: 2.9359
+  type: 'test'
+  ...
+# Subtest: T02 and T03 report RUNNING then COMPLETED through the response contract
+ok 2 - T02 and T03 report RUNNING then COMPLETED through the response contract
+  ---
+  duration_ms: 16.0454
+  type: 'test'
+  ...
+# Subtest: T04 and T05 duplicate submissions before and after completion execute once
+ok 3 - T04 and T05 duplicate submissions before and after completion execute once
+  ---
+  duration_ms: 2.5983
+  type: 'test'
+  ...
+# Subtest: T06 rejects the same user and key with a different board
+ok 4 - T06 rejects the same user and key with a different board
+  ---
+  duration_ms: 1.6381
+  type: 'test'
+  ...
+# Subtest: T07 scopes the same key to each user
+ok 5 - T07 scopes the same key to each user
+  ---
+  duration_ms: 0.5002
+  type: 'test'
+  ...
+# Subtest: T08 failure and retry do not repeat the side effect or expose the error
+ok 6 - T08 failure and retry do not repeat the side effect or expose the error
+  ---
+  duration_ms: 1.146
+  type: 'test'
+  ...
+# Subtest: T09 and T10 hide other users and missing jobs
+ok 7 - T09 and T10 hide other users and missing jobs
+  ---
+  duration_ms: 1.5255
+  type: 'test'
+  ...
+# Subtest: T11 rejects empty and non-string request dimensions
+ok 8 - T11 rejects empty and non-string request dimensions
+  ---
+  duration_ms: 1.3042
+  type: 'test'
+  ...
+# Subtest: T12 concurrent same-key requests share one execution
+ok 9 - T12 concurrent same-key requests share one execution
+  ---
+  duration_ms: 7.4004
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 265.6295
+Run 3 exit code: 0

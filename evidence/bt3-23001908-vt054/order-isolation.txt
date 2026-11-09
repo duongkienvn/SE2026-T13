@@ -1,0 +1,19 @@
+Time: 2026-11-09T17:55:47.6073244+07:00
+Command: node --test evidence/bt3-23001908-vt054/order-isolation.test.mjs
+TAP version 13
+# Subtest: success/failure scenarios remain isolated in both orders
+ok 1 - success/failure scenarios remain isolated in both orders
+  ---
+  duration_ms: 7.5018
+  type: 'test'
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 180.0704
+Exit code: 0

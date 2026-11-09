@@ -1,0 +1,73 @@
+Time: 2026-11-09T17:54:17.5889345+07:00
+Command: node --test evidence/bt3-23001908-vt054/job-model.test.mjs evidence/bt3-23001908-vt054/export-characterization.test.mjs
+TAP version 13
+# Subtest: a simulated export job invokes the real CSV serializer only once on retry
+ok 1 - a simulated export job invokes the real CSV serializer only once on retry
+  ---
+  duration_ms: 5.0901
+  type: 'test'
+  ...
+# Subtest: T01 accepts before operation finishes with QUEUED status
+ok 2 - T01 accepts before operation finishes with QUEUED status
+  ---
+  duration_ms: 1.6269
+  type: 'test'
+  ...
+# Subtest: T02 and T03 report RUNNING then COMPLETED through the response contract
+ok 3 - T02 and T03 report RUNNING then COMPLETED through the response contract
+  ---
+  duration_ms: 5.3954
+  type: 'test'
+  ...
+# Subtest: T04 and T05 duplicate submissions before and after completion execute once
+ok 4 - T04 and T05 duplicate submissions before and after completion execute once
+  ---
+  duration_ms: 0.8596
+  type: 'test'
+  ...
+# Subtest: T06 rejects the same user and key with a different board
+ok 5 - T06 rejects the same user and key with a different board
+  ---
+  duration_ms: 0.7852
+  type: 'test'
+  ...
+# Subtest: T07 scopes the same key to each user
+ok 6 - T07 scopes the same key to each user
+  ---
+  duration_ms: 0.3347
+  type: 'test'
+  ...
+# Subtest: T08 failure and retry do not repeat the side effect or expose the error
+ok 7 - T08 failure and retry do not repeat the side effect or expose the error
+  ---
+  duration_ms: 1.041
+  type: 'test'
+  ...
+# Subtest: T09 and T10 hide other users and missing jobs
+ok 8 - T09 and T10 hide other users and missing jobs
+  ---
+  duration_ms: 0.3911
+  type: 'test'
+  ...
+# Subtest: T11 rejects empty and non-string request dimensions
+ok 9 - T11 rejects empty and non-string request dimensions
+  ---
+  duration_ms: 0.3278
+  type: 'test'
+  ...
+# Subtest: T12 concurrent same-key requests share one execution
+ok 10 - T12 concurrent same-key requests share one execution
+  ---
+  duration_ms: 2.837
+  type: 'test'
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 628.5115
+Exit code: 0

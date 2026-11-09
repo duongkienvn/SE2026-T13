@@ -1,0 +1,11 @@
+Time: 2026-11-09T17:57:42.2560930+07:00
+Command: node -e <os metadata>; captured after benchmark on the same workspace host
+{
+  "node": "v22.23.4",
+  "platform": "win32",
+  "arch": "x64",
+  "release": "10.0.26200",
+  "cpu": "13th Gen Intel(R) Core(TM) i5-1340P",
+  "logicalCpus": 16,
+  "totalMemoryGiB": 15.7
+}

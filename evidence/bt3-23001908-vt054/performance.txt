@@ -1,0 +1,15 @@
+Time: 2026-11-09T17:45:41.8022145+07:00
+Command: node evidence/bt3-23001908-vt054/performance.mjs
+{
+  "node": "v22.23.4",
+  "platform": "win32",
+  "workload": "one synthetic user, 120 distinct jobs, each fake exporter waits 10 ms",
+  "latency": "submit through observed terminal status",
+  "operations": 120,
+  "errors": 0,
+  "p50_ms": 11.723500000000001,
+  "p95_ms": 11.855799999999995,
+  "target_ms": 3500,
+  "production_verified": false
+}
+Exit code: 0

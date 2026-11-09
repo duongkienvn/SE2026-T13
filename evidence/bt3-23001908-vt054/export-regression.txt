@@ -1,0 +1,47 @@
+Time: 2026-11-09T17:46:36.9592437+07:00
+Command: pnpm --filter @kanban/backend exec jest --runInBand --runTestsByPath src/api/exports/exports.spec.ts --cacheDirectory ../../evidence/bt3-23001908-vt054/jest-cache
+Source unchanged from baseline.
+PASS src/api/exports/exports.spec.ts (12.348 s)
+  export representation security
+    √ neutralizes "=SUM(A1:A2)" (4 ms)
+    √ neutralizes "+cmd" (1 ms)
+    √ neutralizes "-1+2" (1 ms)
+    √ neutralizes "@SUM(1)"
+    √ neutralizes " \t\r\n=1"
+    √ neutralizes " +1" (1 ms)
+    √ neutralizes "​@cmd"
+    √ neutralizes "﻿-1"
+    √ neutralizes "=1"
+    √ neutralizes "⁦=1" (1 ms)
+    √ neutralizes "̀=1"
+    √ neutralizes "＝1"
+    √ neutralizes " ＋1"
+    √ quotes delimiters, UTF-8, quotes and embedded newlines; uses CRLF without BOM (1 ms)
+    √ counts UTF-8 bytes exactly and rejects before buffering oversized output (110 ms)
+    √ rejects invalid account format "csv" (3 ms)
+    √ rejects invalid account format "zip"
+    √ rejects invalid account format null (1 ms)
+    √ rejects invalid account format ["json"]
+    √ rejects invalid account format "JSON"
+    √ defaults downloads to JSON and rejects invalid Board format (1 ms)
+    √ omits nonpublic or signed avatar null
+    √ omits nonpublic or signed avatar "private/key"
+    √ omits nonpublic or signed avatar "http://example.com/a"
+    √ omits nonpublic or signed avatar "https://user:pass@example.com/a"
+    √ omits nonpublic or signed avatar "https://example.com/a?X-Amz-Signature=secret"
+    √ omits nonpublic or signed avatar "https://example.com/a#secret" (1 ms)
+    √ keeps a public HTTPS avatar (1 ms)
+  bounded export queries and sessions
+    √ uses bounded stable pages through the terminal empty page (4 ms)
+    √ opens a bounded read-only repeatable-read snapshot and propagates failure (12 ms)
+    √ shares the snapshot deadline across nested collections (4 ms)
+    √ rejects expired, invalidated and unverified identities on final check (6 ms)
+  publication failures
+    √ never writes attachment headers or bytes when final access fails (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       33 passed, 33 total
+Snapshots:   0 total
+Time:        13.19 s
+Ran all test suites within paths "src/api/exports/exports.spec.ts".
+Exit code: 0

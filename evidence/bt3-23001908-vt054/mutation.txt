@@ -1,0 +1,41 @@
+Time: 2026-11-09T17:44:58.0032541+07:00
+Branch: feat/bt3-23001908-vt054-mutation
+Mutation: response status maps job.board instead of job.status
+Command: node --test --test-name-pattern=T01 evidence/bt3-23001908-vt054/job-model.test.mjs
+TAP version 13
+# Subtest: T01 accepts before operation finishes with QUEUED status
+not ok 1 - T01 accepts before operation finishes with QUEUED status
+  ---
+  duration_ms: 4.8521
+  type: 'test'
+  location: 'D:\\TAI LIEU DAI HOC\\NAM BON\\SEM_1\\SE\\SE2026-T13\\evidence\\bt3-23001908-vt054\\job-model.test.mjs:12:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + 'board-1'
+    - 'QUEUED'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'QUEUED'
+  actual: 'board-1'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///D:/TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/evidence/bt3-23001908-vt054/job-model.test.mjs:16:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.start (node:internal/test_runner/test:944:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 0
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 207.6932
+Exit code: 1
