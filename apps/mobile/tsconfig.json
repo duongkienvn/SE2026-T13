@@ -9,6 +9,7 @@
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
+    "gallery/**/*.tsx",
     "app.config.ts",
     "test/fixtures/**/*.ts"
   ]
