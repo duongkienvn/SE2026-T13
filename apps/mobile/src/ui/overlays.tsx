@@ -19,6 +19,7 @@ export function Overlay({
   children,
   placement = 'center',
   dismissible = true,
+  dismissLabel = 'Dismiss',
 }: {
   visible: boolean;
   onDismiss: () => void;
@@ -26,6 +27,7 @@ export function Overlay({
   children: ReactNode;
   placement?: 'center' | 'bottom';
   dismissible?: boolean;
+  dismissLabel?: string;
 }) {
   const c = useTheme();
   return (
@@ -38,21 +40,19 @@ export function Overlay({
       }}
       statusBarTranslucent
     >
-      <View
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1, backgroundColor: c.overlay }}
         accessibilityViewIsModal
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Dismiss"
+          accessibilityLabel={dismissLabel}
           disabled={!dismissible}
           onPress={dismissible ? onDismiss : undefined}
           style={{ flex: 1 }}
         />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={{ maxHeight: '85%', justifyContent: 'flex-end' }}
-        >
+        <View style={{ maxHeight: '85%', justifyContent: 'flex-end' }}>
           <SafeAreaView
             edges={['bottom']}
             style={{
@@ -81,7 +81,7 @@ export function Overlay({
               {children}
             </ScrollView>
           </SafeAreaView>
-        </KeyboardAvoidingView>
+        </View>
         {placement === 'center' && (
           <Pressable
             accessible={false}
@@ -90,7 +90,7 @@ export function Overlay({
             style={{ flex: 1 }}
           />
         )}
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -114,6 +114,7 @@ export function ConfirmDialog({
   onCancel,
   destructive,
   loading,
+  dismissLabel,
 }: {
   visible: boolean;
   title: string;
@@ -124,6 +125,7 @@ export function ConfirmDialog({
   onCancel: () => void;
   destructive?: boolean;
   loading?: boolean;
+  dismissLabel?: string;
 }) {
   const c = useTheme();
   return (
@@ -132,6 +134,7 @@ export function ConfirmDialog({
       title={title}
       onDismiss={onCancel}
       dismissible={!loading}
+      dismissLabel={dismissLabel}
     >
       <Text style={[typography.body, { color: c.textSecondary }]}>
         {message}
@@ -155,18 +158,29 @@ export function UnsavedChangesPrompt({
   visible,
   onDiscard,
   onKeepEditing,
+  title = 'Discard changes?',
+  message = 'Your unsaved changes will be lost.',
+  discardLabel = 'Discard',
+  keepEditingLabel = 'Keep editing',
+  dismissLabel,
 }: {
   visible: boolean;
   onDiscard: () => void;
   onKeepEditing: () => void;
+  title?: string;
+  message?: string;
+  discardLabel?: string;
+  keepEditingLabel?: string;
+  dismissLabel?: string;
 }) {
   return (
     <ConfirmDialog
       visible={visible}
-      title="Discard changes?"
-      message="Your unsaved changes will be lost."
-      confirmLabel="Discard"
-      cancelLabel="Keep editing"
+      title={title}
+      message={message}
+      confirmLabel={discardLabel}
+      cancelLabel={keepEditingLabel}
+      dismissLabel={dismissLabel}
       destructive
       onConfirm={onDiscard}
       onCancel={onKeepEditing}

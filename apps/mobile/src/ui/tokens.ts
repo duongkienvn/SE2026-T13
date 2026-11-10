@@ -1,4 +1,4 @@
-import type { ColorSchemeName } from 'react-native';
+import type { ColorSchemeName, TextStyle } from 'react-native';
 
 export const spacing = {
   xs: 4,
@@ -24,6 +24,15 @@ export const sizes = {
   touch: 48,
   contentMax: 640,
 } as const;
+export const elevation = {
+  surface: {
+    shadowColor: '#171A35',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+} as const;
 export const typography = {
   display: { fontSize: 28, lineHeight: 35, fontWeight: '700' },
   title: { fontSize: 24, lineHeight: 31, fontWeight: '700' },
@@ -32,6 +41,7 @@ export const typography = {
   strong: { fontSize: 15, lineHeight: 22, fontWeight: '600' },
   supporting: { fontSize: 13, lineHeight: 19, fontWeight: '400' },
   caption: { fontSize: 12, lineHeight: 17, fontWeight: '600' },
+  numeric: { fontVariant: ['tabular-nums'] as TextStyle['fontVariant'] },
 } as const;
 
 export const palettes = {
@@ -47,6 +57,9 @@ export const palettes = {
     textSecondary: '#515A78',
     textMuted: '#626B89',
     border: '#D5D9E8',
+    controlBorder: '#7E849E',
+    progressTrack: '#D5D9E8',
+    progressEnd: '#087762',
     success: '#087762',
     warning: '#865100',
     danger: '#B42332',
@@ -67,6 +80,9 @@ export const palettes = {
     textSecondary: '#C1C5DE',
     textMuted: '#AEB4D0',
     border: '#656B88',
+    controlBorder: '#8C93B0',
+    progressTrack: '#40445F',
+    progressEnd: '#73DDC4',
     success: '#73DDC4',
     warning: '#FFD083',
     danger: '#FFABB2',

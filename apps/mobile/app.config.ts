@@ -6,7 +6,7 @@ const config: ExpoConfig = {
   version: '0.1.0',
   scheme: 'kanvexa-dev',
   platforms: ['android', 'ios'],
-  userInterfaceStyle: 'light',
+  userInterfaceStyle: 'automatic',
   icon: './assets/brand/kanvexa-logo-v1.png',
   android: {
     package: 'tech.kanvexa.mobile.dev',

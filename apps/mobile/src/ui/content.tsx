@@ -6,9 +6,17 @@ import {
   Switch as NativeSwitch,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { Button } from './controls';
-import { radius, sizes, spacing, typography, useTheme } from './theme';
+import {
+  elevation,
+  radius,
+  sizes,
+  spacing,
+  typography,
+  useTheme,
+} from './theme';
 
 export function Surface({ children }: { children: ReactNode }) {
   const c = useTheme();
@@ -16,6 +24,7 @@ export function Surface({ children }: { children: ReactNode }) {
     <View
       style={[
         styles.surface,
+        elevation.surface,
         { backgroundColor: c.surface, borderColor: c.border },
       ]}
     >
@@ -40,6 +49,7 @@ export function ListRow({
   trailing,
   onPress,
   disabled,
+  accessibilityLabel,
 }: {
   title: string;
   subtitle?: string;
@@ -47,9 +57,16 @@ export function ListRow({
   trailing?: ReactNode;
   onPress?: () => void;
   disabled?: boolean;
+  accessibilityLabel?: string;
 }) {
   const c = useTheme();
   const [focused, setFocused] = useState(false);
+  const [rowWidth, setRowWidth] = useState(0);
+  const { fontScale } = useWindowDimensions();
+  const stacked =
+    Boolean(trailing) &&
+    rowWidth > 0 &&
+    rowWidth / Math.max(fontScale, 1) < 250;
   const content = (
     <>
       {leading}
@@ -61,33 +78,54 @@ export function ListRow({
           </Text>
         )}
       </View>
-      {trailing}
     </>
   );
   const style = [styles.row, { opacity: disabled ? 0.55 : 1 }];
-  return onPress ? (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-      style={({ pressed }) => [
-        style,
-        {
-          borderWidth: 2,
-          borderRadius: radius.control,
-          borderColor: focused ? c.focus : 'transparent',
-          opacity: disabled ? 0.55 : pressed ? 0.75 : 1,
-        },
-      ]}
+  return (
+    <View
+      onLayout={(event) => setRowWidth(event.nativeEvent.layout.width)}
+      style={{
+        flexDirection: stacked ? 'column' : 'row',
+        alignItems: stacked ? 'stretch' : 'center',
+        gap: spacing.sm,
+      }}
     >
-      {content}
-    </Pressable>
-  ) : (
-    <View style={style}>{content}</View>
+      {onPress ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            accessibilityLabel ?? (subtitle ? `${title}, ${subtitle}` : title)
+          }
+          accessibilityState={{ disabled }}
+          disabled={disabled}
+          onPress={onPress}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={({ pressed }) => [
+            style,
+            {
+              flex: stacked ? undefined : 1,
+              minWidth: 0,
+              borderWidth: 2,
+              borderRadius: radius.control,
+              borderColor: focused ? c.focus : 'transparent',
+              opacity: disabled ? 0.55 : pressed ? 0.75 : 1,
+            },
+          ]}
+        >
+          {content}
+        </Pressable>
+      ) : (
+        <View style={[style, { flex: stacked ? undefined : 1, minWidth: 0 }]}>
+          {content}
+        </View>
+      )}
+      {trailing && (
+        <View style={stacked ? { alignSelf: 'flex-end' } : undefined}>
+          {trailing}
+        </View>
+      )}
+    </View>
   );
 }
 export function StatTile({
@@ -103,7 +141,9 @@ export function StatTile({
   return (
     <Surface>
       {icon}
-      <Text style={[typography.display, { color: c.text }]}>{value}</Text>
+      <Text style={[typography.display, typography.numeric, { color: c.text }]}>
+        {value}
+      </Text>
       <Text style={[typography.body, { color: c.textSecondary }]}>{label}</Text>
     </Surface>
   );
@@ -154,14 +194,17 @@ export function CardPreview({
 export function Skeleton({
   width = '100%',
   height = 16,
+  label = 'Loading',
 }: {
   width?: number | `${number}%`;
   height?: number;
+  label?: string;
 }) {
   const c = useTheme();
   return (
     <View
-      accessibilityLabel="Loading"
+      accessible
+      accessibilityLabel={label}
       accessibilityRole="progressbar"
       style={{
         width,
@@ -176,6 +219,7 @@ export function LoadingState({ label = 'Loading' }: { label?: string }) {
   const c = useTheme();
   return (
     <View
+      accessible
       accessibilityRole="progressbar"
       accessibilityLabel={label}
       style={styles.state}
@@ -243,6 +287,7 @@ export function SegmentedControl({
         <Pressable
           key={option.value}
           accessibilityRole="radio"
+          accessibilityLabel={option.label}
           accessibilityState={{
             checked: value === option.value,
             disabled: option.disabled,
@@ -268,10 +313,108 @@ export function SegmentedControl({
               { color: value === option.value ? c.onPrimary : c.text },
             ]}
           >
-            {option.label}
+            {value === option.value ? `✓ ${option.label}` : option.label}
           </Text>
         </Pressable>
       ))}
+    </View>
+  );
+}
+export function Checkbox({
+  label,
+  checked,
+  onValueChange,
+  disabled = false,
+}: {
+  label: string;
+  checked: boolean;
+  onValueChange: (value: boolean) => void;
+  disabled?: boolean;
+}) {
+  const c = useTheme();
+  const [focused, setFocused] = useState(false);
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityLabel={label}
+      accessibilityState={{ checked, disabled }}
+      disabled={disabled}
+      onPress={() => onValueChange(!checked)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      style={({ pressed }) => [
+        styles.row,
+        {
+          borderWidth: 2,
+          borderRadius: radius.control,
+          borderColor: focused ? c.focus : 'transparent',
+          opacity: disabled ? 0.55 : pressed ? 0.75 : 1,
+        },
+      ]}
+    >
+      <View
+        style={{
+          width: sizes.iconLarge,
+          height: sizes.iconLarge,
+          borderWidth: 1,
+          borderRadius: radius.small,
+          borderColor: checked ? c.primary : c.controlBorder,
+          backgroundColor: checked ? c.primary : c.surface,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {checked && (
+          <Text
+            allowFontScaling={false}
+            style={{ color: c.onPrimary, fontSize: 16, fontWeight: '700' }}
+          >
+            ✓
+          </Text>
+        )}
+      </View>
+      <Text style={[typography.body, { color: c.text, flex: 1 }]}>{label}</Text>
+    </Pressable>
+  );
+}
+export function ProgressBar({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  const c = useTheme();
+  const progress = Number.isFinite(value)
+    ? Math.max(0, Math.min(100, value))
+    : 0;
+  return (
+    <View
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel={label}
+      accessibilityValue={{ min: 0, max: 100, now: progress }}
+      style={{
+        height: spacing.sm,
+        backgroundColor: c.progressTrack,
+        borderRadius: radius.pill,
+        overflow: 'hidden',
+      }}
+    >
+      <View
+        style={{
+          width: `${progress}%`,
+          height: '100%',
+          backgroundColor: c.primary,
+          backgroundImage: [
+            {
+              type: 'linear-gradient',
+              direction: '90deg',
+              colorStops: [{ color: c.primary }, { color: c.progressEnd }],
+            },
+          ],
+        }}
+      />
     </View>
   );
 }
@@ -293,9 +436,11 @@ export function PreferenceSwitch({
       <NativeSwitch
         accessibilityLabel={label}
         value={value}
-        onValueChange={onValueChange}
+        onValueChange={(nextValue) => {
+          if (!disabled) onValueChange(nextValue);
+        }}
         disabled={disabled}
-        trackColor={{ false: c.border, true: c.primary }}
+        trackColor={{ false: c.controlBorder, true: c.primary }}
       />
     </View>
   );

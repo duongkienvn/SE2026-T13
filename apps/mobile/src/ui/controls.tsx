@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type ReactElement, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -14,6 +14,16 @@ import {
 import logo from '../../assets/brand/kanvexa-logo-v1.png';
 import { radius, sizes, spacing, typography, useTheme } from './theme';
 
+export type ButtonProps = {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  loading?: boolean;
+} & (
+  | { variant: 'icon'; icon: ReactElement }
+  | { variant?: 'primary' | 'secondary' | 'destructive'; icon?: ReactNode }
+);
+
 export function Button({
   label,
   onPress,
@@ -21,18 +31,10 @@ export function Button({
   disabled = false,
   loading = false,
   icon,
-}: {
-  label: string;
-  onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'destructive' | 'icon';
-  disabled?: boolean;
-  loading?: boolean;
-  icon?: ReactNode;
-}) {
+}: ButtonProps) {
   const c = useTheme();
   const [focused, setFocused] = useState(false);
   const blocked = disabled || loading;
-  const filled = variant === 'primary' || variant === 'destructive';
   const backgroundColor =
     variant === 'primary'
       ? c.primary
@@ -64,9 +66,9 @@ export function Button({
           borderColor: focused
             ? c.focus
             : variant === 'secondary'
-              ? c.border
+              ? c.controlBorder
               : 'transparent',
-          opacity: blocked ? 0.55 : pressed && !filled ? 0.75 : 1,
+          opacity: blocked ? 0.55 : pressed && variant !== 'primary' ? 0.75 : 1,
         },
         variant === 'icon' && styles.iconButton,
       ]}
@@ -96,38 +98,54 @@ type FieldProps = TextInputProps & {
   label: string;
   error?: string;
   hint?: string;
+  leading?: ReactNode;
+  trailing?: ReactNode;
 };
-export function TextField({ label, error, hint, style, ...props }: FieldProps) {
+export function TextField({
+  label,
+  error,
+  hint,
+  leading,
+  trailing,
+  style,
+  ...props
+}: FieldProps) {
   const c = useTheme();
   const [focused, setFocused] = useState(false);
   return (
     <View style={styles.field}>
       <Text style={[typography.strong, { color: c.text }]}>{label}</Text>
-      <TextInput
-        {...props}
-        accessibilityLabel={props.accessibilityLabel ?? label}
-        accessibilityHint={error || hint || props.accessibilityHint}
-        accessibilityState={{ disabled: props.editable === false }}
-        placeholderTextColor={c.textMuted}
-        onFocus={(e) => {
-          setFocused(true);
-          props.onFocus?.(e);
-        }}
-        onBlur={(e) => {
-          setFocused(false);
-          props.onBlur?.(e);
-        }}
+      <View
         style={[
-          styles.input,
-          typography.body,
+          styles.inputFrame,
           {
-            color: c.text,
             backgroundColor: c.surface,
-            borderColor: error ? c.danger : focused ? c.focus : c.border,
+            borderColor: focused ? c.focus : error ? c.danger : c.controlBorder,
           },
-          style,
         ]}
-      />
+      >
+        {leading}
+        <TextInput
+          {...props}
+          accessibilityLabel={props.accessibilityLabel ?? label}
+          accessibilityHint={error || hint || props.accessibilityHint}
+          accessibilityState={{
+            ...props.accessibilityState,
+            disabled: props.editable === false,
+          }}
+          placeholderTextColor={c.textMuted}
+          onFocus={(e) => {
+            setFocused(true);
+            props.onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            props.onBlur?.(e);
+          }}
+          style={[styles.input, typography.body, { color: c.text }, style]}
+        />
+        {trailing}
+      </View>
       {(error || hint) && (
         <Text
           accessibilityLiveRegion={error ? 'polite' : 'none'}
@@ -147,7 +165,11 @@ export function SearchField(props: FieldProps) {
     <TextField {...props} returnKeyType={props.returnKeyType ?? 'search'} />
   );
 }
-export function PasswordField(props: FieldProps) {
+export function PasswordField({
+  showPasswordLabel = 'Show password',
+  hidePasswordLabel = 'Hide password',
+  ...props
+}: FieldProps & { showPasswordLabel?: string; hidePasswordLabel?: string }) {
   const [visible, setVisible] = useState(false);
   return (
     <View>
@@ -155,7 +177,7 @@ export function PasswordField(props: FieldProps) {
       <View style={styles.passwordAction}>
         <Button
           variant="secondary"
-          label={visible ? 'Hide password' : 'Show password'}
+          label={visible ? hidePasswordLabel : showPasswordLabel}
           onPress={() => setVisible(!visible)}
         />
       </View>
@@ -172,7 +194,7 @@ export function Avatar({
   size?: number;
 }) {
   const c = useTheme();
-  const [failed, setFailed] = useState(false);
+  const [failedSource, setFailedSource] = useState<ImageSourcePropType>();
   const initials = name
     .trim()
     .split(/\s+/)
@@ -195,10 +217,10 @@ export function Avatar({
         overflow: 'hidden',
       }}
     >
-      {source && !failed ? (
+      {source && source !== failedSource ? (
         <Image
           source={source}
-          onError={() => setFailed(true)}
+          onError={() => setFailedSource(source)}
           style={{ width: size, height: size }}
         />
       ) : (
@@ -211,17 +233,33 @@ export function Avatar({
 }
 export function AvatarStack({
   people,
+  accessibilityLabel,
 }: {
   people: { name: string; source?: ImageSourcePropType }[];
+  accessibilityLabel?: string;
 }) {
+  const c = useTheme();
   return (
     <View
       accessible
-      accessibilityLabel={`${people.length} people: ${people.map((person) => person.name).join(', ')}`}
-      style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}
+      accessibilityLabel={
+        accessibilityLabel ??
+        `${people.length} people: ${people.map((person) => person.name).join(', ')}`
+      }
+      style={{ flexDirection: 'row', flexWrap: 'wrap' }}
     >
       {people.map((person, i) => (
-        <Avatar key={`${person.name}-${i}`} {...person} size={32} />
+        <View
+          key={`${person.name}-${i}`}
+          style={{
+            borderWidth: 2,
+            borderColor: c.surface,
+            borderRadius: radius.pill,
+            marginRight: i < people.length - 1 ? -spacing.sm : 0,
+          }}
+        >
+          <Avatar {...person} size={32} />
+        </View>
       ))}
     </View>
   );
@@ -245,14 +283,20 @@ export function Chip({
   const [focused, setFocused] = useState(false);
   const color = colors?.foreground ?? (tone === 'neutral' ? c.text : c[tone]);
   const content = (
-    <Text style={[typography.caption, { color, flexShrink: 1 }]}>{label}</Text>
+    <Text style={[typography.caption, { color, flexShrink: 1 }]}>
+      {selected ? `✓ ${label}` : label}
+    </Text>
   );
   const style: ViewStyle = {
     minHeight: onPress ? sizes.touch : 28,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: focused || selected ? c.focus : (colors?.border ?? c.border),
+    borderColor:
+      focused || selected
+        ? c.focus
+        : (colors?.border ?? (onPress ? c.controlBorder : c.border)),
     backgroundColor:
       colors?.background ?? (selected ? c.primaryTint : c.surfaceSoft),
     justifyContent: 'center',
@@ -385,11 +429,18 @@ const styles = StyleSheet.create({
   },
   iconButton: { paddingHorizontal: spacing.sm },
   field: { gap: spacing.xs },
-  input: {
+  inputFrame: {
     minHeight: sizes.touch,
     borderWidth: 1,
     borderRadius: radius.control,
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: spacing.md,
+  },
+  input: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: sizes.touch - 2,
     paddingVertical: spacing.sm,
   },
   passwordAction: { alignSelf: 'flex-end', marginTop: spacing.xs },
