@@ -71,6 +71,7 @@ test('selection controls expose and update their accessible states', async () =>
         options={[
           { label: 'First', value: 'a' },
           { label: 'Second', value: 'b' },
+          { label: 'Unavailable option', value: 'c', disabled: true },
         ]}
       />
     </>,
@@ -81,6 +82,10 @@ test('selection controls expose and update their accessible states', async () =>
   expect(
     screen.getByRole('radio', { name: 'First' }).props.accessibilityState,
   ).toMatchObject({ checked: true });
+  await fireEvent.press(
+    screen.getByRole('radio', { name: 'Unavailable option' }),
+  );
+  expect(action).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByRole('radio', { name: 'Second' }));
   expect(action).toHaveBeenCalledWith('b');
 });

@@ -226,7 +226,7 @@ export function SegmentedControl({
   onChange,
   label,
 }: {
-  options: { label: string; value: string }[];
+  options: { label: string; value: string; disabled?: boolean }[];
   value: string;
   onChange: (value: string) => void;
   label: string;
@@ -243,7 +243,11 @@ export function SegmentedControl({
         <Pressable
           key={option.value}
           accessibilityRole="radio"
-          accessibilityState={{ checked: value === option.value }}
+          accessibilityState={{
+            checked: value === option.value,
+            disabled: option.disabled,
+          }}
+          disabled={option.disabled}
           onPress={() => onChange(option.value)}
           onFocus={() => setFocused(option.value)}
           onBlur={() => setFocused(null)}
@@ -254,7 +258,7 @@ export function SegmentedControl({
             borderRadius: radius.control,
             borderWidth: 2,
             borderColor: focused === option.value ? c.focus : 'transparent',
-            opacity: pressed ? 0.75 : 1,
+            opacity: option.disabled ? 0.55 : pressed ? 0.75 : 1,
             backgroundColor: value === option.value ? c.primary : c.surfaceSoft,
           })}
         >

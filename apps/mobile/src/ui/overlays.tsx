@@ -82,7 +82,14 @@ export function Overlay({
             </ScrollView>
           </SafeAreaView>
         </KeyboardAvoidingView>
-        {placement === 'center' && <View style={{ flex: 1 }} />}
+        {placement === 'center' && (
+          <Pressable
+            accessible={false}
+            disabled={!dismissible}
+            onPress={dismissible ? onDismiss : undefined}
+            style={{ flex: 1 }}
+          />
+        )}
       </View>
     </Modal>
   );

@@ -34,10 +34,17 @@ test('core text, status and button pairs have readable contrast', () => {
       c.danger,
       c.info,
     ]) {
-      assert.ok(
-        contrast(foreground, c.surface) >= 4.5,
-        `${foreground} on ${c.surface}`,
-      );
+      for (const background of [
+        c.surface,
+        c.surfaceSoft,
+        c.primaryTint,
+        c.background,
+      ]) {
+        assert.ok(
+          contrast(foreground, background) >= 4.5,
+          `${foreground} on ${background}`,
+        );
+      }
     }
     assert.ok(contrast(c.onPrimary, c.primary) >= 4.5);
     assert.ok(contrast(c.surface, c.danger) >= 4.5);
