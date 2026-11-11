@@ -49,6 +49,7 @@ for (const file of maps) {
   const forbidden = sources.filter(
     (source) =>
       /apps\/(frontend|backend)\//.test(source) ||
+      /(?:^|\/)apps\/mobile\/gallery\//.test(source) ||
       /node_modules\/(react-dom|react-native-web|jsdom|@expo\/dom-webview)\//.test(
         source,
       ) ||
@@ -60,7 +61,7 @@ for (const file of maps) {
   assert.deepEqual(
     forbidden,
     [],
-    'Native graph must not contain Web/server code or Node shims',
+    'Native graph must not contain Web/server code, development gallery or Node shims',
   );
   console.log(
     `Verified ${file}: ${sources.length} native sources, shared ESM and approved logo`,
