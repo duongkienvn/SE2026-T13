@@ -45,9 +45,11 @@ Copy-Item apps/mobile/.env.example apps/mobile/.env
 pnpm dev:mobile
 ```
 
-The environment file is optional for MOB-01. Its `EXPO_PUBLIC_*` values reserve
-public local endpoints for the later transport issue; the bootstrap does not read
-them or send requests. These values will be embedded in client code when used.
+The environment file is optional for MOB-01. Since MOB-05 the session reads
+`EXPO_PUBLIC_API_BASE_URL` to verify a stored login with `GET /users/me`; it
+sends nothing when no credential is stored. Non-HTTPS URLs are accepted only for
+loopback, `10.0.2.2` and private-LAN hosts in development builds
+([session guide](session.md)). `EXPO_PUBLIC_SOCKET_URL` is still unused. These values will be embedded in client code when used.
 Never put JWTs, passwords, server keys, signing credentials or other secrets there.
 
 ## Android emulator on Windows

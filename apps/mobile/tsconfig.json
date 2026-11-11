@@ -4,13 +4,17 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "types": ["react", "react-native", "node"]
+    "types": ["react", "react-native", "node"],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
     "gallery/**/*.tsx",
     "app.config.ts",
-    "test/fixtures/**/*.ts"
+    "test/fixtures/**/*.ts",
+    "test/**/*.ts"
   ]
 }
