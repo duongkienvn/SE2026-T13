@@ -40,16 +40,17 @@ unauthenticated | expired | offline-uncertain` with a monotonic generation;
 
 ## Verification (2026-11-10)
 
-| Check                                                      | Result                                                        |
-| ---------------------------------------------------------- | ------------------------------------------------------------- |
-| `pnpm --filter @kanban/mobile test`                        | Pass — 44 tests (42 session + 2 existing Metro)               |
-| `pnpm --filter @kanban/mobile typecheck`                   | Pass                                                          |
-| `pnpm lint` (root)                                         | Pass                                                          |
-| `pnpm --filter @kanban/mobile bundle:android`              | Pass; bundle contains SecureStore and the inlined public URL  |
-| Prettier (changed files, `--end-of-line auto`), diff check | Pass                                                          |
-| Mutation checks                                            | 9/10 caught                                                   |
-| Android emulator / iOS device                              | **Not run** — no Android SDK on this machine; iOS needs macOS |
-| Real backend smoke                                         | **Not run** — no Login UI yet; DTO shapes checked in source   |
+| Check                                                      | Result                                                                                                               |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `pnpm --filter @kanban/mobile test`                        | Pass — 44 tests (42 session + 2 existing Metro)                                                                      |
+| Re-run after rebase on `main` with #250 (2026-11-11)       | Pass — 47 node tests + 22 jest component tests; typecheck, lint, Prettier, frozen lockfile and `bundle:android` pass |
+| `pnpm --filter @kanban/mobile typecheck`                   | Pass                                                                                                                 |
+| `pnpm lint` (root)                                         | Pass                                                                                                                 |
+| `pnpm --filter @kanban/mobile bundle:android`              | Pass; bundle contains SecureStore and the inlined public URL                                                         |
+| Prettier (changed files, `--end-of-line auto`), diff check | Pass                                                                                                                 |
+| Mutation checks                                            | 9/10 caught                                                                                                          |
+| Android emulator / iOS device                              | **Not run** — no Android SDK on this machine; iOS needs macOS                                                        |
+| Real backend smoke                                         | **Not run** — no Login UI yet; DTO shapes checked in source                                                          |
 
 Mutation survivor: removing the generation check inside the queued credential
 write. The post-write superseded check deletes the record anyway, so the guard
