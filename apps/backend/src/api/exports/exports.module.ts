@@ -10,6 +10,8 @@ import { ExportsController } from './exports.controller';
 import { BoardExportService } from './board-export.service';
 import { AccountExportService } from './account-export.service';
 import { ExportSnapshot } from './export-snapshot';
+import { ExportJobsService } from './export-jobs.service';
+import { ExportJobsWorker } from './export-jobs.worker';
 
 /** Run before authentication and validation, so failed downloads are never cached. */
 export function exportPrivacyHeaders(
@@ -25,7 +27,13 @@ export function exportPrivacyHeaders(
 @Module({
   imports: [AuthModule],
   controllers: [ExportsController],
-  providers: [BoardExportService, AccountExportService, ExportSnapshot],
+  providers: [
+    BoardExportService,
+    AccountExportService,
+    ExportSnapshot,
+    ExportJobsService,
+    ExportJobsWorker,
+  ],
 })
 export class ExportsModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
@@ -34,6 +42,16 @@ export class ExportsModule implements NestModule {
       .forRoutes(
         { path: 'boards/:boardId/export', method: RequestMethod.GET },
         { path: 'users/me/export', method: RequestMethod.GET },
+        { path: 'boards/:boardId/export-jobs', method: RequestMethod.POST },
+        { path: 'boards/:boardId/export-jobs/:id', method: RequestMethod.GET },
+        {
+          path: 'boards/:boardId/export-jobs/:id/retry',
+          method: RequestMethod.POST,
+        },
+        {
+          path: 'boards/:boardId/export-jobs/:id/download',
+          method: RequestMethod.GET,
+        },
       );
   }
 }

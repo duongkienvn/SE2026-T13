@@ -58,3 +58,12 @@ Khảo sát cách lưu trạng thái bền vững, truy cập và thu hồi quy�
 - Schema contract RED: table chưa tồn tại, exit 1, `evidence/red-schema.txt`. Sau entity+migration build session 97114 exit 0 và cùng contract GREEN exit 0, unique/no drift xác minh. Database tạm đã drop bởi finally.
 - `export-jobs.service.ts` mới là draft chưa kiểm chứng và chưa đăng ký module/controller; cần integration tests concurrency/retry/recovery, account cleanup inventory, worker và API. Không đánh dấu feature GREEN vì HTTP TC01 vẫn thiếu route.
 - Không có tiến trình test/build đang chạy ở checkpoint này. Container PostgreSQL test 55454 vẫn sẵn sàng. Các file chưa commit phải kiểm tra qua git status trước tiếp tục.
+
+## Backend service/API integration checkpoint
+
+- `export-jobs.service.ts` và worker đã triển khai, đăng ký ExportsModule; bốn route mới thêm vào ExportsController với privacy middleware. Controller job service là dependency bắt buộc; fixture constructor test cũ được cập nhật, không đổi regression assertions.
+- HTTP RED ban đầu đã GREEN trong focused run 3 suites/46 tests. Log `evidence/green-http-policy-regression.txt`. Full JWT HTTP/scheduler chưa chạy.
+- Service PostgreSQL first run: các cases retry/claim/recovery/TTL pass, cuối cùng FAIL account cleanup giữ 3 jobs (`evidence/jobs-database-first.txt`). Thêm bảng vào eraseAccountPrivateState inventory; rerun `evidence/green-jobs-database.txt`: 7 groups pass.
+- Build session 33499 exit 0 (`evidence/jobs-api-build.txt`). Lint focused lần đầu FAIL 2 no-undef Buffer trong integration harness (`evidence/jobs-focused-lint.txt`); đã thêm explicit node:buffer import; rerun session 51072 đang chạy, poll trước khi restart.
+- Bước tiếp: xác nhận focused lint, thêm real JWT HTTP+worker journey; UI test-first theo skills; mutation, coverage/flaky và 120 distinct-task HTTP load; xử lý baseline oversized export timeout; báo cáo PDF và PR cuối cùng.
+- Lint rerun session 51072 terminal exit 0, output rỗng (không lỗi): `evidence/jobs-focused-lint-fixed.txt`. Không còn tiến trình kiểm tra đang chạy tại thời điểm commit backend.

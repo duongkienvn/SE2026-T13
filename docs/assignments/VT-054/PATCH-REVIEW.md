@@ -16,3 +16,12 @@ Prompt thực tế: “Thêm executable schema contract trước migration: migr
 - PATCH: `BoardExportJob` và `1794787200000-AsyncBoardExports`. Guard user-reference dùng hàm account deletion có sẵn. Ràng buộc attempt/state/lease, bytes <=20MiB, expiry hữu hạn; populated down từ chối mất tombstone idempotency. Review sửa UUID default từ uuid_generate_v4 sang gen_random_uuid theo `database-options.ts` uuidExtension pgcrypto và initial migration. Không đổi expected tests.
 - Build entity/schema exit 0 (`evidence/schema-backend-build.txt`). GREEN cùng harness exit 0: durable table, UNIQUE, explicit migration và no schema drift; log `evidence/green-schema.txt`. pg cảnh báo concurrent-query deprecation khi schema inspection; không phải failure.
 - Giới hạn: hiện harness chỉ xác minh schema metadata, chưa chứng minh race, rollback, lease, account deletion hoặc legacy-data upgrade. Cần mở rộng integration tests trước final audit.
+
+## Service/API PATCH review
+
+- Actual timeline: initial HTTP RED and policy RED preceded production implementation. The service draft was generated before the detailed service integration harness; this harness therefore strengthens verification, not a claim that every service case was RED first. The account cleanup assertion was RED before its cleanup patch.
+- Keep: database UNIQUE and row claim/lease; generator and public mapper reuse; explicit failed retry; sanitized errors; current owner/session gates before final download.
+- Modify: add `.take(1)` to avoid locking more queue rows than an individual claim requires; use allSettled in worker batches so one rejection cannot clear the concurrency guard while siblings still run; remove optional production dependency introduced only for test convenience and update the old controller fixture instead.
+- Fix detected by test: `eraseAccountPrivateState` retained 3 export jobs; add job table to its explicit inventory. Same harness then passed all 7 groups, including count zero.
+- HTTP test boot now supplies a job-service stub because the controller has a new dependency; assertions remain 202/PENDING/ID and no private fields. This proves routing/validation wiring, not database behavior. Database harness exercises the real service separately.
+- GREEN focused Jest: 3 suites, 46 tests, 45.231s, exit 0 (`evidence/green-http-policy-regression.txt`). Database: 7 groups pass (`evidence/green-jobs-database.txt`). Backend build exit 0 (`evidence/jobs-api-build.txt`). Scheduler/full JWT HTTP and browser integration are still pending.

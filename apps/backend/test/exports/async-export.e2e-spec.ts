@@ -5,6 +5,7 @@ import { ExportsController } from '../../src/api/exports/exports.controller';
 import { BoardExportService } from '../../src/api/exports/board-export.service';
 import { AccountExportService } from '../../src/api/exports/account-export.service';
 import { ExportSnapshot } from '../../src/api/exports/export-snapshot';
+import { ExportJobsService } from '../../src/api/exports/export-jobs.service';
 import { JwtAuthGuard } from '../../src/api/auth/guards/jwt-auth.guard';
 import { createValidationPipe } from '../../src/config/validation';
 
@@ -32,6 +33,16 @@ describe('VT-054 async Board export HTTP contract', () => {
         { provide: BoardExportService, useValue: { create } },
         { provide: AccountExportService, useValue: {} },
         { provide: ExportSnapshot, useValue: {} },
+        {
+          provide: ExportJobsService,
+          useValue: {
+            start: jest.fn().mockResolvedValue({
+              id: '4da6b7b2-61b7-4890-acb9-0a2538030044',
+              state: 'PENDING',
+              progress: 0,
+            }),
+          },
+        },
       ],
     })
       .overrideGuard(JwtAuthGuard)
