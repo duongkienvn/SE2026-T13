@@ -1,7 +1,8 @@
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { verifySharedCompatibility } from '../bootstrap/shared-compatibility';
-import { createNativeSessionManager } from '../infrastructure/auth/native-session';
+import { nativeData, nativeSession } from '../infrastructure/query/native-data';
+import { DataProvider } from '../infrastructure/query/DataProvider';
 import { SessionProvider as AuthSessionProvider } from '../infrastructure/auth/SessionProvider';
 import { createNavigationSessionAdapter } from '../navigation/native-session-adapter';
 import { SessionProvider } from '../navigation/session-context';
@@ -14,7 +15,7 @@ import {
 verifySharedCompatibility();
 
 // MOB-05 owns restore and foreground verification; MOB-03 consumes token-free state.
-const sessionManager = createNativeSessionManager();
+const sessionManager = nativeSession;
 const navigationAdapter = createNavigationSessionAdapter(sessionManager);
 
 export function NavigationRoot({
@@ -35,7 +36,9 @@ export function NavigationRoot({
 export default function RootLayout() {
   return (
     <AuthSessionProvider manager={sessionManager}>
-      <NavigationRoot adapter={navigationAdapter} />
+      <DataProvider layer={nativeData}>
+        <NavigationRoot adapter={navigationAdapter} />
+      </DataProvider>
     </AuthSessionProvider>
   );
 }

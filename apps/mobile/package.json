@@ -23,9 +23,11 @@
   "dependencies": {
     "@expo/metro-runtime": "58.0.17",
     "@kanban/shared": "workspace:*",
+    "@tanstack/react-query": "5.90.21",
     "expo": "58.0.23",
     "expo-constants": "58.0.15",
     "expo-linking": "58.0.16",
+    "expo-network": "~58.0.5",
     "expo-router": "58.0.30",
     "expo-secure-store": "58.0.2",
     "expo-status-bar": "58.0.4",
