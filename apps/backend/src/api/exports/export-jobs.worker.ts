@@ -12,6 +12,7 @@ export class ExportJobsWorker
 {
   private timer?: ReturnType<typeof setInterval>;
   private current: Promise<void> | null = null;
+  private stopping = false;
   private readonly logger = new Logger(ExportJobsWorker.name);
   constructor(private readonly jobs: ExportJobsService) {}
 
@@ -31,12 +32,19 @@ export class ExportJobsWorker
   private async tick(): Promise<void> {
     await this.jobs.sweep();
     const results = await Promise.allSettled(
-      Array.from({ length: 4 }, () => this.jobs.processNext()),
+      Array.from({ length: 4 }, () => this.drainLane()),
     );
     if (results.some((result) => result.status === 'rejected'))
       throw new Error('Export worker batch incomplete');
   }
+  private async drainLane(): Promise<void> {
+    // Return to the scheduler periodically so expiry cleanup still runs under load.
+    for (let processed = 0; processed < 32 && !this.stopping; processed++) {
+      if (!(await this.jobs.processNext())) break;
+    }
+  }
   async onModuleDestroy(): Promise<void> {
+    this.stopping = true;
     if (this.timer) clearInterval(this.timer);
     await this.current;
   }

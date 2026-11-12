@@ -36,3 +36,16 @@ Raw samples and environment are preserved in load-*.json/txt. No failed row was 
 - Hai seed thứ tự Jest 23001908 và 54: mỗi lượt 2 suites/45 tests pass, không retry failed test. Các fixture clock/policy không dựa vào sleep, và assertions giữ nguyên. Logs `flaky-order-*.txt`.
 - Ba lượt service integration độc lập: mỗi lượt tạo/drop database ngẫu nhiên, 7 groups pass; bao gồm 120 same-key starts, 120 same-job retries và latch điều khiển stale completion. Logs `flaky-concurrency-1..3.txt`. Đây là bằng chứng cho hazards timing/concurrency và order/shared state trong phạm vi đã chạy, không chứng minh suite không bao giờ flaky.
 - Coverage V8 tổng hợp (load + 3 service repeats): service 97.43% lines / 94% branches; worker 97.67% / 91.66%; controller 88.14% / 88.88%; mapper 100% / 100%. Summary gốc giữ tại coverage-integration-initial.json; summary tổng hợp và uncovered lines tại coverage-integration.json. Service exhausted-retry error path và worker transient-error log vẫn chưa đi qua; policy exhausted retry đã có unit assertion nhưng không thay thế service integration cho nhánh đó. Các controller sync/account lines thiếu ở V8 run có unit regression riêng, không cộng số liệu hai công cụ để quảng cáo coverage chung.
+
+## Đo tải với HTTP keep-alive và worker nhận việc liên tục
+
+Giữ 120 thao tác đồng thời, hai POST cho mỗi thao tác, polling mỗi giây và kiểm tra download. Node HTTP Agent tái sử dụng tối đa 32 socket. Mỗi tác vụ bắt đầu đo trước khi chờ socket, nên số liệu gồm cả thời gian client xếp hàng. Cả hai lượt dùng cùng cấu hình socket, cùng Board rỗng, cùng giới hạn bốn worker và pool PostgreSQL 10. Không bật profiling.
+
+| Workload                                  | Success | Ack p50 / p95 / max (ms)    | Completion p50 / p95 / max (ms) | Download p50 / p95 / max (ms)  |
+| ----------------------------------------- | ------- | --------------------------- | ------------------------------- | ------------------------------ |
+| Keep-alive, một job mỗi worker mỗi tick   | 120/120 | 1774.85 / 3127.22 / 3263.51 | 10011.56 / 15192.19 / 16286.67  | 10643.23 / 15366.13 / 16372.99 |
+| Keep-alive, worker nhận job tiếp khi rảnh | 120/120 | 1680.41 / 2982.56 / 3195.11 | 8735.25 / 10825.70 / 10849.55   | 9010.28 / 11056.10 / 11086.74  |
+
+Cả hai lượt có 120 hàng, 120 key, 120 completed và 120 attempts. Acknowledgement đạt 3500 ms. Completion chưa đạt. Giữ exit 1 từ assertion completion trong cả hai lượt. Một lần đo cho mỗi cấu hình chỉ cho thấy cải thiện quan sát được, chưa đủ để kết luận mức cải thiện ổn định.
+
+Prompt test-first: “Dùng fake timer để xác minh scheduler xử lý 12 job ngay tick đầu và tối đa 4 claim đang chạy. Giữ clock, state và timeout xác định.” RED nhận 4 thay vì 12. GREEN pass cùng assertions. Review patch: bốn lane, tối đa 32 job mỗi lane mỗi vòng để sweep vẫn chạy, dừng nhận việc mới lúc shutdown. Lease, attempt, quyền và kết quả tải giữ các checks cũ. Logs worker-drain-red/green và load-keepalive-baseline/drain là bằng chứng.

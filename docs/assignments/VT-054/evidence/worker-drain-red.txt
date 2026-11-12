@@ -1,0 +1,28 @@
+FAIL src/api/exports/export-jobs.worker.spec.ts (10.389 s)
+  × drains queued work on the first tick with at most four simultaneous claims (15 ms)
+
+  ● drains queued work on the first tick with at most four simultaneous claims
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 12
+    Received: 4
+
+      27 |     worker.onApplicationBootstrap();
+      28 |     await jest.advanceTimersByTimeAsync(250);
+    > 29 |     expect(completed).toBe(12);
+         |                       ^
+      30 |     expect(peak).toBe(4);
+      31 |     expect(jobs.sweep).toHaveBeenCalledTimes(1);
+      32 |   } finally {
+
+      at Object.<anonymous> (src/api/exports/export-jobs.worker.spec.ts:29:23)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 total
+Snapshots:   0 total
+Time:        10.937 s
+Ran all test suites within paths "src/api/exports/export-jobs.worker.spec.ts".
+undefined
+D:\TAI LIEU DAI HOC\NAM BON\SEM_1\SE\SE2026-T13\.worktrees\23001908-vt054-fresh\apps\backend:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command "jest" not found
