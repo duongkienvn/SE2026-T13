@@ -20,7 +20,7 @@ not ok 2 - VT053-C02: boardId is a bound SQL parameter, never interpolated
   error: |-
     Expected values to be strictly deep-equal:
     + actual - expected
-    
+
     + null
     - {
     -   clause: 'card.boardId = :boardScopeId',
@@ -28,7 +28,7 @@ not ok 2 - VT053-C02: boardId is a bound SQL parameter, never interpolated
     -     boardScopeId: '11111111-1111-4111-8111-111111111111'
     -   }
     - }
-    
+
   code: 'ERR_ASSERTION'
   name: 'AssertionError'
   expected:

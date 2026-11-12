@@ -121,7 +121,7 @@ An independent review agent read the full original 11-file diff and continuation
 
 AI Usage Log:
 
-- Exact user request: [user-request.txt](evidence/user-request.txt). The earlier README's reconstructed “Prompt P1” is not treated as a verified historical transcript.
+- Complete user request (trailing whitespace normalized): [user-request.txt](evidence/user-request.txt). The earlier README's reconstructed “Prompt P1” is not treated as a verified historical transcript.
 - Primary assistant inspected source/contracts before proposing edits, preserved production scope, added tests/harnesses and executed commands. Independent agent reviewed without editing and reran tests.
 - Decisions/corrections are recorded above. Original helper TDD, temporary mutation, local PostgreSQL and observed failures are reported with their limits.
 - No final PDF generated. Commit/push is authorized only for this assignment branch; keep PR Draft, wait for CI, do not merge/deploy.

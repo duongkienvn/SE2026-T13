@@ -32,5 +32,10 @@
     "apps/backend/test/search/search.service.spec.ts": "13b28be918367e5930a7e13bfb9ec75de8780449efe1a2dc60da39cde83c80e2",
     "apps/backend/test/search/verify-evidence.mjs": "026479ad369e6ec2fc110329cfe1db88290467984a4f525c261b892acca639bf"
   },
-  "verifiedSourceCommit": "a9af8b0c549cfffd2528937a5f7d9f18d2f7486c"
+  "verifiedSourceCommit": "a9af8b0c549cfffd2528937a5f7d9f18d2f7486c",
+  "evidenceNormalization": "Captured text preserves output values, indentation, assertions and exit codes; trailing spaces/tabs removed for git diff --check. Line endings may be normalized by Git.",
+  "prompt": {
+    "originalSha256": "dfbce5ea94a65bdf97abace7489de7df6ef8b9791890e11968a4a212358d77ff",
+    "normalizedSha256": "07f3bc6810e583f3e8177d5ce25d283d30756720975274cfedc2968e23dbaab8"
+  }
 }

@@ -32,23 +32,23 @@ ok 1 - test\\search\\search.integration.mjs
 # ---------------------------------------------------------------------------
 # file                       | line % | branch % | funcs % | uncovered lines
 # ---------------------------------------------------------------------------
-# dist                       |        |          |         | 
-#  api                       |        |          |         | 
-#   search                   |        |          |         | 
-#    board-search.js         | 100.00 |   100.00 |  100.00 | 
-#    card-board-scope.js     | 100.00 |   100.00 |  100.00 | 
-#    card-search.js          | 100.00 |   100.00 |  100.00 | 
-#    dto                     |        |          |         | 
+# dist                       |        |          |         |
+#  api                       |        |          |         |
+#   search                   |        |          |         |
+#    board-search.js         | 100.00 |   100.00 |  100.00 |
+#    card-board-scope.js     | 100.00 |   100.00 |  100.00 |
+#    card-search.js          | 100.00 |   100.00 |  100.00 |
+#    dto                     |        |          |         |
 #     search-query.dto.js    |  99.20 |    88.89 |  100.00 | 5
 #     search-response.dto.js |  99.51 |    85.71 |  100.00 | 5
-#    search-query.js         | 100.00 |   100.00 |  100.00 | 
-#    search-snippet.js       | 100.00 |   100.00 |  100.00 | 
+#    search-query.js         | 100.00 |   100.00 |  100.00 |
+#    search-snippet.js       | 100.00 |   100.00 |  100.00 |
 #    search.controller.js    |  98.28 |    85.71 |  100.00 | 5
 #    search.module.js        |  96.15 |    33.33 |  100.00 | 5
 #    search.service.js       |  98.36 |    81.82 |  100.00 | 5
-#    workspace-search.js     | 100.00 |   100.00 |  100.00 | 
+#    workspace-search.js     | 100.00 |   100.00 |  100.00 |
 # ---------------------------------------------------------------------------
-# all files                  |  99.24 |    86.43 |  100.00 | 
+# all files                  |  99.24 |    86.43 |  100.00 |
 # ---------------------------------------------------------------------------
 # end of coverage report
 EXIT_CODE=0

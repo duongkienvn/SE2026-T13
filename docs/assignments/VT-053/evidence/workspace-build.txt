@@ -21,7 +21,7 @@ apps/frontend build: computing gzip size...
 apps/frontend build: dist/index.html                     3.64 kB │ gzip:   1.32 kB
 apps/frontend build: dist/assets/index-B8fshmnk.css    152.38 kB │ gzip:  27.40 kB
 apps/frontend build: dist/assets/index-Dw1n_yo7.js   1,053.43 kB │ gzip: 297.77 kB
-apps/frontend build: [plugin builtin:vite-reporter] 
+apps/frontend build: [plugin builtin:vite-reporter]
 apps/frontend build: (!) Some chunks are larger than 500 kB after minification. Consider:
 apps/frontend build: - Using dynamic import() to code-split the application
 apps/frontend build: - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting

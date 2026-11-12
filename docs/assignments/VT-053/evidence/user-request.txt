@@ -1,11 +1,11 @@
 You are working on my official Software Engineering 2026 group repository:
 
-**Repository:** `duongkienvn/SE2026-T13`  
-**Project:** APP-02 – Realtime Collaborative Kanban (Kanvexa)  
-**Student:** Dương Công Kiên – 23001895  
-**Individual Assignment:** BT3 – VT-053  
-**Existing branch:** `assignment/23001895-vt053-search-board-scope`  
-**Existing Draft PR:** #252  
+**Repository:** `duongkienvn/SE2026-T13`
+**Project:** APP-02 – Realtime Collaborative Kanban (Kanvexa)
+**Student:** Dương Công Kiên – 23001895
+**Individual Assignment:** BT3 – VT-053
+**Existing branch:** `assignment/23001895-vt053-search-board-scope`
+**Existing Draft PR:** #252
 **Original baseline:** `b7c1b97986e75d7d07bbed74b29f5ad3a53fcf30`
 
 ## Objective
