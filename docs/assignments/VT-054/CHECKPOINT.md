@@ -40,3 +40,6 @@ Khảo sát cách lưu trạng thái bền vững, truy cập và thu hồi quy�
 - Baseline Jest chạy ngoài sandbox hoàn tất: 33/33 pass. Lượt đầu 126.38s; lượt lưu log 37.801s. Không thể kết luận hai lần ngắt trước đó là bug ứng dụng; quá trình transform/import tốn thời gian và quyền sandbox có thể ảnh hưởng. Log thật tại `evidence/baseline-export-tests.txt`.
 - Test HTTP RED đã được viết trước implementation: `apps/backend/test/exports/async-export.e2e-spec.ts`; TC01 kỳ vọng 202/PENDING/ID. Guard được override bằng fixture, nên test này không chứng minh JWT/ACL. Session thực thi RED: 13302 (phải poll authoritative handle trước khi chạy lại).
 - Chưa có migration, service, UI, mutation, performance, PDF hoặc PR. Không có điểm rubric được xác nhận.
+
+- RED session 13302 terminal: exit 1, expected 202 versus actual 404, 1/1 test failed in 50.216s. `RED.md` reviews scope and weak oracles; `evidence/red-http.txt` preserves full output. Test-first commit is next; no production edits yet.
+- Specification/test-design commit: `b6efdfa`.
