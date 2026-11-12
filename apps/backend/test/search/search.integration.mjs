@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import process from 'node:process';
 import { URLSearchParams } from 'node:url';
 import { verifySearchScaleAndSnapshots } from './search-scale.mjs';
+import { runSearchLoad } from './search-load.mjs';
 
 // Never infer a migration target or load dotenv. All fixtures live in a random DB.
 assert.equal(process.env.SEARCH_DATABASE_TESTS, 'local-only');
@@ -298,9 +299,29 @@ try {
     boardId: beta.id,
   });
   assert.equal(betaScoped.groups.cards.items[0].id, betaCard);
+  const guestScoped = await search('guest', {
+    q: 'needle',
+    type: 'cards',
+    boardId: alpha.id,
+  });
+  assert.equal(guestScoped.groups.cards.total, 1);
+  assert.equal(guestScoped.groups.cards.items[0].workspaceName, null);
+  assert.ok(!JSON.stringify(guestScoped).includes('Needle Space A'));
+  const visibleScoped = await search('viewer', {
+    q: 'needle',
+    type: 'cards',
+    boardId: visible.id,
+  });
+  assert.deepEqual(
+    visibleScoped.groups.cards.items.map(({ id }) => id),
+    [visibleCard],
+  );
   for (const [actor, inaccessibleBoard] of [
     ['outsider', alpha.id],
     ['guest', hidden.id],
+    ['admin', hidden.id],
+    ['owner', archived.id],
+    ['owner', '11111111-1111-4111-8111-111111111111'],
   ]) {
     const denied = await search(actor, {
       q: 'needle',
@@ -357,6 +378,11 @@ try {
     Object.values((await search('member', { q: 'Needle Beta' })).groups).every(
       (group) => group.total === 0,
     ),
+  );
+  assert.deepEqual(
+    (await search('member', { q: 'needle', type: 'cards', boardId: beta.id }))
+      .groups.cards,
+    { items: [], total: 0, hasMore: false },
   );
   for (const actor of ['admin', 'guest', 'viewer', 'outsider']) {
     const result = await search(actor, { q: 'vaultsecret-188' });
@@ -534,6 +560,39 @@ try {
     assert.equal(beyond.groups[type].total, ranked[type].length);
     assert.equal(beyond.groups[type].hasMore, false);
   }
+  // Multiple scoped pages retain the same ranking and exact totals. Matching
+  // Cards outside the selected Board must affect neither rank nor count.
+  const outsideScope = await card(alpha, 'rank188');
+  const scopedIds = [];
+  for (let page = 1; page <= 4; page++) {
+    const result = await search('owner', {
+      q: 'rank188',
+      type: 'cards',
+      boardId: rankingBoard.id,
+      page: String(page),
+      limit: '2',
+    });
+    assert.equal(result.groups.cards.total, ranked.cards.length);
+    assert.equal(result.groups.cards.hasMore, page * 2 < ranked.cards.length);
+    scopedIds.push(...result.groups.cards.items.map(({ id }) => id));
+  }
+  assert.deepEqual(scopedIds, ranked.cards);
+  const scopedBeyond = await search('owner', {
+    q: 'rank188',
+    type: 'cards',
+    boardId: rankingBoard.id,
+    page: '100000000',
+    limit: '50',
+  });
+  assert.deepEqual(scopedBeyond.groups.cards, {
+    items: [],
+    total: ranked.cards.length,
+    hasMore: false,
+  });
+  pass(
+    'VT-053 scoped multi-page rank/ties, filtered totals and beyond-last boundary',
+  );
+  await source.query('DELETE FROM cards WHERE id=$1', [outsideScope]);
   const grouped = await search('owner', { q: 'rank188' });
   for (const type of ['workspaces', 'boards', 'cards']) {
     assert.equal(grouped.groups[type].items.length, 5);
@@ -623,6 +682,31 @@ try {
     actors,
     pass,
   });
+  if (process.env.VT053_RUN_LOAD === '1') {
+    const [bulk] = await source.query(
+      "SELECT id FROM boards WHERE name='Bulk188 board 0'",
+    );
+    for (const [label, query, expectedTotal] of [
+      ['legacy', 'q=Bulk188&type=cards&limit=20&page=40', 4000],
+      [
+        'scoped',
+        `q=Bulk188&type=cards&limit=20&page=2&boardId=${bulk.id}`,
+        100,
+      ],
+    ]) {
+      const result = await runSearchLoad({
+        endpoint: `${await app.getUrl()}/api/search?${query}`,
+        token: tokens.owner,
+        expectedTotal,
+      });
+      console.log(`VT053_LOAD_${label}: ${JSON.stringify(result)}`);
+      assert.equal(result.maxActive, 40);
+      assert.equal(result.meetsTarget, true);
+    }
+    pass(
+      'VT-053 real local AppModule/PostgreSQL load, legacy and scoped workloads',
+    );
+  }
   await http.get('/api/search?q=needle').expect(401);
   for (const query of [
     'page=1',
@@ -680,6 +764,46 @@ try {
   );
   const swagger = (await http.get('/api-docs-json').expect(200)).body;
   assert.ok(swagger.paths['/api/search'].get);
+  // Exercise the real service/HTTP boundary with an actual PostgreSQL error
+  // raised in the Card COUNT query. Restore the runner even if assertions fail.
+  const originalRunner = source.createQueryRunner.bind(source);
+  let injected = false;
+  source.createQueryRunner = (...args) => {
+    const runner = originalRunner(...args);
+    const query = runner.query.bind(runner);
+    runner.query = async (...queryArgs) => {
+      if (!injected && /FROM "cards" "card"/.test(queryArgs[0])) {
+        injected = true;
+        return query('SELECT vt053_missing_column FROM cards');
+      }
+      return query(...queryArgs);
+    };
+    return runner;
+  };
+  try {
+    const failed = await send(
+      'owner',
+      'get',
+      `/api/search?q=needle&type=cards&boardId=${alpha.id}`,
+    ).expect(500);
+    assert.equal(injected, true);
+    assert.equal(failed.body.success, false);
+    assert.equal(failed.body.code, 'INTERNAL_ERROR');
+    assert.equal(failed.body.message, 'Internal server error');
+    assert.equal(failed.body.data, undefined);
+    assert.ok(!JSON.stringify(failed.body).includes('vt053_missing_column'));
+    assert.ok(!JSON.stringify(failed.body).includes('SELECT'));
+  } finally {
+    source.createQueryRunner = originalRunner;
+  }
+  assert.equal(
+    (await search('owner', { q: 'needle', type: 'cards', boardId: alpha.id }))
+      .groups.cards.total,
+    1,
+  );
+  pass(
+    'VT-053 real PostgreSQL query failure remains sanitized HTTP 500, then recovers',
+  );
   await source.query(
     'UPDATE users SET auth_version=auth_version+1 WHERE id=$1',
     [actors.owner],

@@ -9,11 +9,15 @@ const errorsFor = (query: Record<string, unknown>) =>
 
 describe('VT-053 search backward-compatible input contract', () => {
   it('accepts legacy search without boardId (no new required parameter)', async () => {
-    expect(await errorsFor({ q: 'needle', type: 'cards', page: '1' })).toEqual([]);
+    expect(await errorsFor({ q: 'needle', type: 'cards', page: '1' })).toEqual(
+      [],
+    );
   });
 
   it('accepts boardId only when type=cards', async () => {
-    expect(await errorsFor({ q: 'needle', type: 'cards', boardId })).toEqual([]);
+    expect(await errorsFor({ q: 'needle', type: 'cards', boardId })).toEqual(
+      [],
+    );
     for (const type of ['all', 'boards', 'workspaces']) {
       expect(
         (await errorsFor({ q: 'needle', type, boardId })).some(
@@ -28,11 +32,15 @@ describe('VT-053 search backward-compatible input contract', () => {
       'not-a-uuid',
       '',
       '11111111-1111-1111-1111-111111111111',
+      null,
+      [boardId],
+      { id: boardId },
+      123,
     ]) {
       expect(
-        (await errorsFor({ q: 'needle', type: 'cards', boardId: invalid })).some(
-          (error) => error.property === 'boardId',
-        ),
+        (
+          await errorsFor({ q: 'needle', type: 'cards', boardId: invalid })
+        ).some((error) => error.property === 'boardId'),
       ).toBe(true);
     }
   });

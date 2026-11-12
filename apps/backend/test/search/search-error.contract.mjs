@@ -23,6 +23,7 @@ const js = ts.transpileModule(code, {
   },
 }).outputText;
 const exports = {};
+const queryOutage = new Error('VT053_CARD_QUERY_FAILURE');
 const mockRequire = (specifier) => {
   if (specifier === '@nestjs/common')
     return { Injectable: () => (klass) => klass };
@@ -42,7 +43,7 @@ const mockRequire = (specifier) => {
       throw new Error('unexpected workspace search');
     },
     searchCards: async () => {
-      throw new Error('unexpected card search');
+      throw queryOutage;
     },
   };
 };
@@ -69,6 +70,23 @@ test('VT053-C08: DB failure must not become empty success', async () => {
   await assert.rejects(
     () => service.search('actor', { q: 'needle', type: 'cards' }),
     (err) => err === outage,
+  );
+  assert.equal(called, 1);
+});
+
+test('VT053-C09: query failure inside the transaction must propagate', async () => {
+  let called = 0;
+  const service = new exports.SearchService({
+    manager: {
+      transaction: async (_isolation, callback) => {
+        called++;
+        return callback({});
+      },
+    },
+  });
+  await assert.rejects(
+    () => service.search('actor', { q: 'needle', type: 'cards' }),
+    (err) => err === queryOutage,
   );
   assert.equal(called, 1);
 });
