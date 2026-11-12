@@ -11,6 +11,7 @@ import { decodeSessionUser } from '../auth/session-api.ts';
 import type { SessionManager } from '../auth/session-manager.ts';
 import { createMobileQueryClient } from './client.ts';
 import { queryKeys } from './keys.ts';
+import { createQueryCoordinator } from './coordinator.ts';
 
 /** Construct before SessionProvider starts restoring credentials. */
 export function createMobileDataLayer(
@@ -40,6 +41,7 @@ export function createMobileDataLayer(
   });
 
   return {
+    ...createQueryCoordinator({ queryClient, getIdentity, assertCurrent }),
     queryClient,
     api: network.client,
     getIdentity,
