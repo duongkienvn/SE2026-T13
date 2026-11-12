@@ -142,13 +142,14 @@ function abortable<T>(
       return;
     }
     signal.addEventListener('abort', abort, { once: true });
-    Promise.resolve()
-      .then(() => {
-        if (signal.aborted) throw error();
-        return operation();
-      })
-      .then(resolve, reject)
-      .finally(() => signal.removeEventListener('abort', abort));
+    try {
+      operation()
+        .then(resolve, reject)
+        .finally(() => signal.removeEventListener('abort', abort));
+    } catch (cause) {
+      signal.removeEventListener('abort', abort);
+      reject(cause);
+    }
   });
 }
 
