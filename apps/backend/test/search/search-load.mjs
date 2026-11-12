@@ -1,5 +1,7 @@
+import console from 'node:console';
 import { performance } from 'node:perf_hooks';
 import process from 'node:process';
+import { URL } from 'node:url';
 
 const endpoint = process.env.VT053_SEARCH_URL;
 const token = process.env.VT053_SEARCH_TOKEN;
@@ -20,9 +22,9 @@ async function worker() {
     maxActive = Math.max(maxActive, active);
     const start = performance.now();
     try {
-      const response = await fetch(endpoint, {
+      const response = await globalThis.fetch(endpoint, {
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-        signal: AbortSignal.timeout(10000),
+        signal: globalThis.AbortSignal.timeout(10000),
         cache: 'no-store',
       });
       const body = await response.json();
