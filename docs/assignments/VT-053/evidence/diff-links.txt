@@ -1,0 +1,5 @@
+COMMAND=git diff --check
+warning: in the working copy of 'docs/assignments/VT-053/README.md', LF will be replaced by CRLF the next time Git touches it
+DIFF_EXIT_CODE=0
+PASS: 46 local Markdown links; 7 tested source hashes match commit a9af8b0c549cfffd2528937a5f7d9f18d2f7486c; service blob unchanged from baseline f619c5a2774fb4645a5863a7439b6cfe96613dce; no mutation in submitted service.
+AUDIT_EXIT_CODE=0

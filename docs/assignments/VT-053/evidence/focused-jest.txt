@@ -1,0 +1,29 @@
+PASS src/api/search/search-contract.spec.ts (8.919 s)
+PASS test/search/search.e2e-spec.ts (7.507 s)
+PASS test/search/search.service.spec.ts
+PASS test/search/search.dto.spec.ts
+-------------------------|---------|----------|---------|---------|-------------------
+File                     | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------------|---------|----------|---------|---------|-------------------
+All files                |   82.68 |    87.75 |      75 |   83.83 |                   
+ search                  |    69.9 |     62.5 |   41.17 |   71.27 |                   
+  board-search.ts        |   66.66 |      100 |       0 |   66.66 | 19,34-57          
+  card-board-scope.ts    |      25 |        0 |       0 |   33.33 | 5-6               
+  card-search.ts         |      60 |        0 |       0 |   64.28 | 30-64             
+  search-query.ts        |      50 |      100 |   33.33 |      50 | 13,28-42          
+  search-snippet.ts      |     100 |      100 |     100 |     100 |                   
+  search.controller.ts   |     100 |      100 |     100 |     100 |                   
+  search.module.ts       |       0 |      100 |     100 |       0 | 1-13              
+  search.service.ts      |     100 |      100 |     100 |     100 |                   
+  workspace-search.ts    |    62.5 |      100 |       0 |    62.5 | 13-35             
+ search/dto              |     100 |      100 |     100 |     100 |                   
+  search-query.dto.ts    |     100 |      100 |     100 |     100 |                   
+  search-response.dto.ts |     100 |      100 |     100 |     100 |                   
+-------------------------|---------|----------|---------|---------|-------------------
+
+Test Suites: 4 passed, 4 total
+Tests:       77 passed, 77 total
+Snapshots:   0 total
+Time:        20.674 s, estimated 26 s
+Ran all test suites matching /search/i.
+EXIT_CODE=0

@@ -1,0 +1,5 @@
+
+> realtime-collaborative-kanban@ lint D:\NAM_BON\KI_I\Software_Engineering\Projects\SE2026-T13
+> eslint apps packages
+
+EXIT_CODE=0

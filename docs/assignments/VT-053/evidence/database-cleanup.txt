@@ -1,0 +1,6 @@
+COMMAND=psql local disposable cluster: count remaining kanban_search_* databases, then pg_ctl stop
+0
+COUNT_EXIT_CODE=0
+waiting for server to shut down.... done
+server stopped
+STOP_EXIT_CODE=0

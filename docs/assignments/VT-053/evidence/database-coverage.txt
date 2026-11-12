@@ -1,0 +1,54 @@
+TAP version 13
+# (node:37912) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# PASS: VT-053 Board-filtered Cards, legacy wire shape, authorization and invalid scopes
+# PASS: full Workspace/Board ACL matrix, Guest directory privacy, cross-Workspace isolation, deduplication and deep-link/discovery parity
+# PASS: visibility changes, independent Board grants after Workspace removal, revoked membership, assignment independence and archive/restore
+# PASS: VT-053 scoped multi-page rank/ties, filtered totals and beyond-last boundary
+# PASS: exact/prefix/title-substring/description-only rank, timestamp and UUID ties, independent grouped totals and stable pagination
+# PASS: literal wildcard/backslash and injection strings, Unicode case, long matched snippets and empty-query behavior
+# PASS: zero business queries for empty search and consistent snapshot during committed revocation, directory loss and archive
+# Search query sanity: 4,000 Cards / 40 Boards; grouped 6 SELECTs, single type 2 SELECTs; workspaces count=0.11ms, workspaces page=0.121ms, boards count=0.389ms, boards page=0.529ms, cards count=18.847ms, cards page=204.046ms
+# PASS: 4,000-row stable page traversal, grouped caps/defaults, constant query count, unauthorized assignments and actual EXPLAIN plans
+# PASS: VT-053 real PostgreSQL query failure remains sanitized HTTP 500, then recovers
+# PASS: compiled AppModule HTTP, exact allowlisted fields, JWT/session invalidation, validation, no-store and Swagger
+# Global Search PostgreSQL integration: 10 groups passed
+# Subtest: test\\search\\search.integration.mjs
+ok 1 - test\\search\\search.integration.mjs
+  ---
+  duration_ms: 67670.6535
+  type: 'test'
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 67704.8489
+# start of coverage report
+# ---------------------------------------------------------------------------
+# file                       | line % | branch % | funcs % | uncovered lines
+# ---------------------------------------------------------------------------
+# dist                       |        |          |         | 
+#  api                       |        |          |         | 
+#   search                   |        |          |         | 
+#    board-search.js         | 100.00 |   100.00 |  100.00 | 
+#    card-board-scope.js     | 100.00 |   100.00 |  100.00 | 
+#    card-search.js          | 100.00 |   100.00 |  100.00 | 
+#    dto                     |        |          |         | 
+#     search-query.dto.js    |  99.20 |    88.89 |  100.00 | 5
+#     search-response.dto.js |  99.51 |    85.71 |  100.00 | 5
+#    search-query.js         | 100.00 |   100.00 |  100.00 | 
+#    search-snippet.js       | 100.00 |   100.00 |  100.00 | 
+#    search.controller.js    |  98.28 |    85.71 |  100.00 | 5
+#    search.module.js        |  96.15 |    33.33 |  100.00 | 5
+#    search.service.js       |  98.36 |    81.82 |  100.00 | 5
+#    workspace-search.js     | 100.00 |   100.00 |  100.00 | 
+# ---------------------------------------------------------------------------
+# all files                  |  99.24 |    86.43 |  100.00 | 
+# ---------------------------------------------------------------------------
+# end of coverage report
+EXIT_CODE=0

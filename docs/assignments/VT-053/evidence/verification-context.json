@@ -1,0 +1,36 @@
+{
+  "capturedAt": "2026-11-12T07:28:24.096Z",
+  "startingHead": "654cbb2d9e2c48b2e057b7793075d9a810f77788",
+  "baseline": "b7c1b97986e75d7d07bbed74b29f5ad3a53fcf30",
+  "note": "Verification executed on working-tree files subsequently committed; hashes identify that code. EOL normalized to LF for cross-platform comparison.",
+  "environment": {
+    "node": "v22.17.0",
+    "pnpm": "10.18.3",
+    "jest": "29.7.0",
+    "prettier": "3.9.9",
+    "postgresql": "17.5",
+    "platform": "win32",
+    "arch": "x64",
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
+    "logicalCpuCount": 20,
+    "memoryGiB": 40,
+    "database": {
+      "host": "127.0.0.1",
+      "port": 55453,
+      "localeProvider": "icu",
+      "locale": "und",
+      "encoding": "UTF8",
+      "poolSize": 10
+    }
+  },
+  "files": {
+    "apps/backend/src/api/search/search-contract.spec.ts": "c564313ecd29f001daf33cbe86909d636b90b8bab17d960ba57ff7a6bddd735e",
+    "apps/backend/test/search/search-error.contract.mjs": "e0067c9d5d91015b7ae7855afe943bc940f2f90ce71c360a48e170287c75262b",
+    "apps/backend/test/search/search-load.mjs": "cd73e99c4a4d2a2828872d839d237cb4282f57c2b6c4bcb952560b8ca6ca5d13",
+    "apps/backend/test/search/search.e2e-spec.ts": "efb30ef38d4e3675ad31883cc811cf4114bc0de085a1978e32dc2362b8c31f9c",
+    "apps/backend/test/search/search.integration.mjs": "81bb25370f638bdfec0b1b97dcc4ef2accfeb172143686391188d7598487c34e",
+    "apps/backend/test/search/search.service.spec.ts": "13b28be918367e5930a7e13bfb9ec75de8780449efe1a2dc60da39cde83c80e2",
+    "apps/backend/test/search/verify-evidence.mjs": "026479ad369e6ec2fc110329cfe1db88290467984a4f525c261b892acca639bf"
+  },
+  "verifiedSourceCommit": "a9af8b0c549cfffd2528937a5f7d9f18d2f7486c"
+}

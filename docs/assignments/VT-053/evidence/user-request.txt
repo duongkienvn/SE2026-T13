@@ -1,0 +1,250 @@
+You are working on my official Software Engineering 2026 group repository:
+
+**Repository:** `duongkienvn/SE2026-T13`  
+**Project:** APP-02 – Realtime Collaborative Kanban (Kanvexa)  
+**Student:** Dương Công Kiên – 23001895  
+**Individual Assignment:** BT3 – VT-053  
+**Existing branch:** `assignment/23001895-vt053-search-board-scope`  
+**Existing Draft PR:** #252  
+**Original baseline:** `b7c1b97986e75d7d07bbed74b29f5ad3a53fcf30`
+
+## Objective
+
+Complete and rigorously verify the **CODE and EXECUTABLE EVIDENCE** for Assignment 3.
+
+This is not a request to generate the final PDF. Another assistant will produce the academic report afterward using your verified results.
+
+The assignment requires the engineering loop:
+
+**Spec → Test → AI-assisted Change → Verify → Review**
+
+Personalized requirements:
+
+- Change request: Search with filtering, pagination, and stable result ordering.
+- Primary risk: Backward-incompatible schema/API changes breaking existing clients.
+- Mandatory technique: Contract testing.
+- Mandatory mutation: Swallow an exception and return default/empty data.
+- Performance workload: 40 concurrent users/tasks.
+- Target: p95 ≤ 1.5 seconds.
+- AI must explain contracts and invariants BEFORE proposing implementation.
+- Changes must be independently reviewed; do not merge.
+
+## Phase 1 — Repository investigation (MANDATORY)
+
+First inspect the real current repository and existing PR #252.
+
+Read the relevant implementation, including:
+
+- `apps/backend/src/api/search/`
+- `apps/backend/test/search/`
+- `packages/shared/src/search.ts`
+- `apps/frontend/src/features/search/api.ts`
+- Existing Jest configuration and CI workflow
+- Existing tests and project conventions
+
+Before changing any code:
+
+1. Explain the existing API request/response contract.
+2. Identify invariants involving authorization, response shape, filtering, pagination, ordering, error propagation, and client compatibility.
+3. Explain which search requirements were ALREADY implemented on the original baseline.
+4. Identify the precise incremental scope of VT-053.
+5. Propose a small implementation plan listing exact files, tests, risks, and assumptions.
+
+Review the plan against actual repository evidence.
+
+Document at least TWO assumptions or proposed approaches that should be rejected or corrected, with precise file references and explanations.
+
+The existing branch attempts an additive, optional `boardId` filter for Card searches. Evaluate whether that remains the best backward-compatible vertical slice. Preserve it if sound; correct it if necessary.
+
+**Do not rebuild existing global search functionality unnecessarily.**
+
+## Phase 2 — Fix existing implementation and CI
+
+The current PR contains code produced by another AI assistant. Treat ALL of it as untrusted until independently verified.
+
+Inspect the entire PR diff.
+
+Known historical CI failures included:
+
+- ESLint `no-undef` errors in Node test harnesses.
+- Jest loading incompatible ESM dependencies from `@nestjs/typeorm`.
+- An existing Swagger contract test expecting the old query parameter list.
+- Prettier formatting failures.
+
+Some have already been patched. Determine the CURRENT state instead of blindly repeating fixes.
+
+Review and correct:
+
+- DTO validation and backward compatibility.
+- SQL query construction and bound parameters.
+- Board authorization and cross-workspace privacy.
+- Pagination totals and stable ordering.
+- HTTP response schema.
+- Existing client compatibility.
+- Error propagation.
+- Test quality and test infrastructure.
+- Windows/Node portability where relevant.
+
+Keep the production patch minimal.
+
+Do not weaken existing assertions, disable tests, add broad Jest configuration hacks, or modify unrelated modules merely to make CI green.
+
+## Phase 3 — Test-first evidence
+
+Preserve or reconstruct a verifiable RED → GREEN history using the existing Git commits and separate Git worktrees if necessary.
+
+Required:
+
+- Baseline commit SHA.
+- Test written before the corresponding implementation.
+- Actual failing test output and exit code.
+- Explanation of WHY it failed.
+- Minimal implementation patch.
+- Actual passing test output and exit code.
+- Relevant commit SHAs.
+
+Use executable tests, not illustrative pseudocode.
+
+Implement or verify a risk-based test portfolio with at least 10 cases covering:
+
+- Legacy search contract.
+- Optional Card filtering.
+- Pagination boundaries.
+- Stable ranking and tie-breaking.
+- Invalid input.
+- Unauthorized access and data isolation.
+- Response shape compatibility.
+- Empty search behavior.
+- Backend/database failure propagation.
+- Mutation detection.
+
+Prioritize API/contract tests and integration tests. Include unit tests where appropriate, and a focused E2E scenario only if valuable.
+
+Test expected behavior independently of implementation details.
+
+## Phase 4 — Deliberate mutation
+
+The mandatory mutation is:
+
+**Catch a backend/database exception and return default or empty search results instead of propagating the failure.**
+
+Requirements:
+
+1. Verify the original failure-path test PASSES.
+2. Introduce the deliberate bug in a separate temporary worktree/branch or temporary file.
+3. Run the SAME test against the mutant.
+4. Show that at least one assertion FAILS for the correct reason.
+5. Restore the original implementation.
+6. Verify that the submission branch contains NO mutation.
+
+If the mutation survives, strengthen the test and repeat.
+
+Record exact commands, outputs, exit codes, and relevant commit SHAs.
+
+Do not fabricate mutation results.
+
+## Phase 5 — Coverage, flaky tests and load
+
+Collect actual line/branch coverage for the relevant tested code wherever supported.
+
+Explain the difference between code coverage and risk coverage. Do not claim that high coverage proves correctness.
+
+Evaluate at least TWO flaky-test risks, especially shared database state, ordering/timestamps, network or concurrency.
+
+Review the existing load harness:
+
+`apps/backend/test/search/search-load.mjs`
+
+Requirements:
+
+- 40 concurrent requests/tasks.
+- Record request count, successful/failed responses, error rate, latency measurements and p95.
+- Compare p95 against 1500 ms.
+- Use a realistic local application/database workload if the environment supports it.
+- Never load-test production without explicit permission.
+- If only synthetic load testing is feasible, report it honestly as harness validation, NOT actual backend performance evidence.
+
+Avoid hard-coded or invented performance measurements.
+
+## Phase 6 — Full verification and CI
+
+Run the repository's established quality checks, including:
+
+- Lint
+- Tests
+- Build
+- Infrastructure tests
+- Format check
+- Focused search contract tests
+- Database integration tests, where the required local database is available
+- Mutation verification
+- Performance harness
+
+Use the actual package scripts and tool versions found in the repository.
+
+Inspect GitHub Actions on PR #252 after pushing.
+
+**Do not consider the task complete until all applicable CI checks are GREEN.**
+
+If an external dependency prevents a verification step, document the exact blocker and do not claim it passed.
+
+Do not modify unrelated tests or hide failures.
+
+## Phase 7 — Engineering documentation
+
+Update the short assignment README under:
+
+`docs/assignments/VT-053/README.md`
+
+Include:
+
+1. Specification and 3–5 testable acceptance criteria.
+2. At least 2 non-functional constraints.
+3. Contracts and invariants.
+4. AI-assisted plan, assumptions and two evidence-backed corrections.
+5. Risk-based test strategy.
+6. Test case table with at least 10 cases and IDs.
+7. RED → GREEN commands and evidence.
+8. Mutation experiment and outcome.
+9. Coverage and flaky-test review.
+10. 40-concurrent performance experiment and limitations.
+11. Traceability: AC/Risk → Test → File → Commit → Result.
+12. AI Usage Log, including this prompt, proposed changes, decisions and verification.
+
+Keep documentation accurate and concise. Save longer raw execution logs in an appropriate assignment evidence directory when useful.
+
+Do not generate the final PDF.
+
+## Final GitHub requirements
+
+- Work only on the existing individual assignment branch.
+- Preserve the original baseline in the documented history.
+- Commit the final reviewed code and tests.
+- Push to existing PR #252.
+- Keep the PR as DRAFT.
+- DO NOT merge into `main`.
+- DO NOT deploy production.
+- DO NOT change unrelated functionality.
+
+## Final report to me
+
+Return a detailed but concise report containing:
+
+1. Original baseline SHA and final HEAD SHA.
+2. What was already implemented versus what you changed.
+3. Contract and invariants.
+4. The two rejected/corrected AI assumptions and their evidence.
+5. List of changed files and commits.
+6. Test-first RED/GREEN evidence.
+7. Contract test results.
+8. Mutation result with exact failing assertion.
+9. Line/branch coverage and risk coverage.
+10. Flaky-test assessment.
+11. Load results: concurrency, request count, p95, errors and limitations.
+12. GitHub CI status and URL.
+13. Remaining risks or unverified steps.
+14. Final Draft PR URL.
+
+**Important: This is an individually graded Software Engineering assignment. Accuracy, reproducibility, independent verification and honest reporting are more important than simply making the code run. Do not fabricate evidence or silently weaken tests.**
+
+Proceed with investigation, implementation, verification and commits. Do not request confirmation for ordinary engineering decisions within this scope.
