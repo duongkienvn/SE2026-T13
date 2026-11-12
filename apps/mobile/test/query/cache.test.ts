@@ -44,7 +44,7 @@ test('session teardown synchronously removes queries/mutations and fences late r
     context.layer.queryClient.setQueryData(key, { private: 'a' });
     context.layer.queryClient
       .getMutationCache()
-      .build(context.layer.queryClient, { mutationKey: key });
+      .build(context.layer.queryClient, { mutationKey: key, gcTime: Infinity });
     const old = context.layer.meOptions(a);
     const pending = context.layer.queryClient.fetchQuery(old);
     const settled = pending.catch(() => null);
@@ -278,4 +278,60 @@ test('pagination uses server metadata and deduplicates overlaps without reorderi
   assert.throws(() =>
     requirePage({ success: true, statusCode: 200, message: 'OK', data: [] }),
   );
+});
+
+test('both accounts fetch their own data; signing into the same account again gets a fresh generation', async () => {
+  const context = await setup();
+  try {
+    const { layer } = context;
+    const a = layer.getIdentity()!;
+    assert.equal(
+      (await layer.queryClient.fetchQuery(layer.meOptions(a))).id,
+      USER_A,
+    );
+    await context.manager.establishSession(loginResponse(USER_B));
+    const b = layer.getIdentity()!;
+    assert.equal(
+      (await layer.queryClient.fetchQuery(layer.meOptions(b))).id,
+      USER_B,
+    );
+    assert.equal(layer.queryClient.getQueryData(queryKeys.me(a)), undefined);
+    await context.manager.establishSession(loginResponse(USER_A));
+    const again = layer.getIdentity()!;
+    assert.notEqual(again.generation, a.generation);
+    assert.equal(
+      (await layer.queryClient.fetchQuery(layer.meOptions(again))).id,
+      USER_A,
+    );
+    assert.equal(layer.queryClient.getQueryData(queryKeys.me(b)), undefined);
+    assert.equal(context.requests.length, 3);
+  } finally {
+    context.dispose();
+  }
+});
+
+test('resource eviction cancels queries and prevents a late optimistic success from restoring revoked data', async () => {
+  const context = await setup();
+  try {
+    const { layer } = context;
+    const identity = layer.getIdentity()!;
+    const key = queryKeys.card(identity, 'b', 'c');
+    layer.queryClient.setQueryData(key, 'private');
+    const gate = deferred<string>();
+    const pending = layer.optimistic({
+      identity,
+      key,
+      update: () => 'edit',
+      mutation: () => gate.promise,
+      reconcile: (value) => value,
+    });
+    const check = assert.rejects(pending, { kind: 'session-changed' });
+    await flush();
+    layer.evict(identity, [queryKeys.board(identity, 'b')]);
+    gate.resolve('revoked');
+    await check;
+    assert.equal(layer.queryClient.getQueryData(key), undefined);
+  } finally {
+    context.dispose();
+  }
 });

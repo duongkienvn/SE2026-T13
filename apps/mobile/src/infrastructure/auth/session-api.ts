@@ -56,6 +56,7 @@ export function decodeSessionUser(data: unknown): SessionUser {
 }
 
 export interface FetchSessionApiOptions {
+  readonly allowInsecureLocal?: boolean;
   /** Validated base such as `https://kanvexa.tech/api`. */
   readonly baseUrl: URL;
   readonly fetch: typeof fetch;

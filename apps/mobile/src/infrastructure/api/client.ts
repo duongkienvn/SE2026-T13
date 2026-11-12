@@ -9,7 +9,7 @@ import {
   type Clock,
   type Timers,
 } from '../auth/clock.ts';
-import { requestUrl, type QueryParams } from './config.ts';
+import { parseApiBaseUrl, requestUrl, type QueryParams } from './config.ts';
 import { ApiError, httpError, invalidResponse } from './errors.ts';
 
 export type Decoder<T> = (value: unknown) => T;
@@ -78,6 +78,7 @@ export interface HttpClient {
 }
 
 export interface HttpClientOptions {
+  readonly allowInsecureLocal?: boolean;
   readonly baseUrl: URL | null;
   readonly fetch: typeof fetch;
   readonly timers?: Timers;
@@ -159,7 +160,10 @@ export function createHttpClient(config: HttpClientOptions): HttpClient {
   const timers = config.timers ?? systemTimers;
   const clock = config.clock ?? systemClock;
   // Snapshot configuration so callers cannot mutate a URL after validation.
-  const base = config.baseUrl ? new URL(config.baseUrl.href) : null;
+  const base = parseApiBaseUrl(
+    config.baseUrl?.href,
+    config.allowInsecureLocal === true,
+  );
 
   async function send<T>(
     path: string,

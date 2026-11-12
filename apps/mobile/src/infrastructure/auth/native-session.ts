@@ -35,6 +35,7 @@ export function createNativeSessionManager(http?: HttpClient): SessionManager {
       : baseUrl
         ? createFetchSessionApi({
             baseUrl,
+            allowInsecureLocal: __DEV__,
             // Unbound call: some fetch implementations reject a foreign `this`.
             fetch: (input, init) => fetch(input, init),
             timers: systemTimers,

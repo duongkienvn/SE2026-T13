@@ -74,7 +74,7 @@ function safeString(value: unknown, max: number): value is string {
     typeof value === 'string' &&
     value.length > 0 &&
     value.length <= max &&
-    !/[\u0000-\u001f]/.test(value)
+    ![...value].some((character) => character.charCodeAt(0) < 32)
   );
 }
 

@@ -103,6 +103,7 @@ export function createQueryCoordinator(owner: CoordinatorOwner) {
     await prior;
     let previous: TCache | undefined;
     let updateCount: number | undefined;
+    let optimisticQuery: unknown;
     try {
       owner.assertCurrent(identity);
       await owner.queryClient.cancelQueries({ queryKey: key, exact: true });
@@ -110,8 +111,17 @@ export function createQueryCoordinator(owner: CoordinatorOwner) {
       previous = owner.queryClient.getQueryData<TCache>(key);
       owner.queryClient.setQueryData<TCache>(key, options.update(previous));
       updateCount = owner.queryClient.getQueryState(key)?.dataUpdateCount;
+      optimisticQuery = owner.queryClient
+        .getQueryCache()
+        .find({ queryKey: key, exact: true });
       const result = await options.mutation();
       owner.assertCurrent(identity);
+      if (
+        owner.queryClient
+          .getQueryCache()
+          .find({ queryKey: key, exact: true }) !== optimisticQuery
+      )
+        throw new ApiError('session-changed');
       if (options.reconcile)
         owner.queryClient.setQueryData<TCache>(key, (current) =>
           options.reconcile!(result, current),
@@ -123,6 +133,9 @@ export function createQueryCoordinator(owner: CoordinatorOwner) {
       // A newer authoritative write wins over this rollback.
       if (
         updateCount !== undefined &&
+        owner.queryClient
+          .getQueryCache()
+          .find({ queryKey: key, exact: true }) === optimisticQuery &&
         owner.queryClient.getQueryState(key)?.dataUpdateCount === updateCount
       ) {
         if (previous === undefined)

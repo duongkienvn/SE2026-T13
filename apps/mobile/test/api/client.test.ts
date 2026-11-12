@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { mock, test } from 'node:test';
 import { createHttpClient } from '../../src/infrastructure/api/client.ts';
 import { ApiError } from '../../src/infrastructure/api/errors.ts';
 import { FakeTime, deferred, flush } from '../auth/support.ts';
@@ -315,5 +315,88 @@ test('bounded GET retry honors Retry-After, while unsafe methods never replay', 
       failure('http', 429),
     );
     assert.equal(limited.requests.length, 1);
+  }
+});
+
+test('transport validates the base URL even if a caller bypasses environment parsing', async () => {
+  let calls = 0;
+  const client = createHttpClient({
+    baseUrl: new URL('http://public.example/api'),
+    allowInsecureLocal: true,
+    fetch: (async () => {
+      calls++;
+      return ok({});
+    }) as typeof fetch,
+  });
+  await assert.rejects(
+    client.json('/items', identity),
+    failure('configuration'),
+  );
+  assert.equal(calls, 0);
+});
+
+test('retry exhaustion is bounded; HTTP-date Retry-After is respected and client errors are not retried', async () => {
+  const exhausted = setup(async () => json({}, 503));
+  const failed = exhausted.client.json('/items', identity, { retries: 2 });
+  const check = assert.rejects(failed, failure('http', 503));
+  await flush();
+  exhausted.time.advance(250);
+  await flush();
+  exhausted.time.advance(500);
+  await check;
+  assert.equal(exhausted.requests.length, 3);
+  for (const status of [400, 401, 403, 404, 409, 413]) {
+    const context = setup(async () => json({}, status));
+    await assert.rejects(
+      context.client.json('/items', identity, { retries: 2 }),
+      failure('http', status),
+    );
+    assert.equal(context.requests.length, 1);
+  }
+  let count = 0;
+  const dated = setup(async () =>
+    ++count === 1
+      ? json({}, 429, {
+          'retry-after': new Date(dated.time.now() + 2000).toUTCString(),
+        })
+      : ok('done'),
+  );
+  const pending = dated.client.json('/items', identity);
+  await flush();
+  dated.time.advance(1999);
+  await flush();
+  assert.equal(count, 1);
+  dated.time.advance(1);
+  assert.equal(await pending, 'done');
+});
+
+test('credentials and private request/response payloads never reach a logger', async () => {
+  const captures: unknown[][] = [];
+  const spies = (['log', 'info', 'debug', 'warn', 'error'] as const).map(
+    (method) =>
+      mock.method(console, method, (...args: unknown[]) => {
+        captures.push(args);
+      }),
+  );
+  try {
+    const context = setup(async () => {
+      throw new Error('private-native-body bearer-secret');
+    });
+    await assert.rejects(
+      context.client.json('/items', identity, {
+        method: 'POST',
+        body: { password: 'private-password' },
+        accessToken: 'bearer-secret',
+      }),
+    );
+    const rejected = setup(
+      async () => new Response('private-response-body', { status: 500 }),
+    );
+    await assert.rejects(
+      rejected.client.json('/items', identity, { retries: 0 }),
+    );
+    assert.deepEqual(captures, []);
+  } finally {
+    for (const spy of spies) spy.mock.restore();
   }
 });
