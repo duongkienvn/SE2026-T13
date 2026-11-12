@@ -98,6 +98,7 @@ chưa triển khai. Mục lục dưới đây liệt kê toàn bộ task documen
 ## Frontend tasks
 
 - [MOB-01 Expo bootstrap and pnpm/Metro compatibility](frontend/mob-01-expo-foundation.md)
+- [MOB-05 Secure native session lifecycle](frontend/mob-05-secure-session.md)
 
 - [PERF-01 API traffic and realtime working record](frontend/perf-01-api-traffic.md)
 
