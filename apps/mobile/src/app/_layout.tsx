@@ -1,3 +1,5 @@
+import { nativeRealtime } from '../infrastructure/realtime/native-realtime';
+import { RealtimeProvider } from '../infrastructure/realtime/RealtimeProvider';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { verifySharedCompatibility } from '../bootstrap/shared-compatibility';
@@ -36,8 +38,13 @@ export function NavigationRoot({
 export default function RootLayout() {
   return (
     <AuthSessionProvider manager={sessionManager}>
-      <DataProvider layer={nativeData}>
-        <NavigationRoot adapter={navigationAdapter} />
+      <DataProvider
+        layer={nativeData}
+        onEnvironment={nativeRealtime.setEnvironment}
+      >
+        <RealtimeProvider client={nativeRealtime}>
+          <NavigationRoot adapter={navigationAdapter} />
+        </RealtimeProvider>
       </DataProvider>
     </AuthSessionProvider>
   );
