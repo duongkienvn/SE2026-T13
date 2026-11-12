@@ -50,3 +50,11 @@ Khảo sát cách lưu trạng thái bền vững, truy cập và thu hồi quy�
 - Docker Desktop đã khởi động qua `docker desktop start`; daemon 27.5.1. Container test riêng `vt054-23001908-postgres` ID prefix `7712b9e42f3a`, image `postgres:16.15-alpine3.24`, bind `127.0.0.1:55454`. Database administration test `vt054_test`, user postgres; host-auth trust chỉ dùng cho container local này. `pg_isready` trả accepting connections. Không dùng container phát triển `se2026-t13-postgres-1` hoặc Supabase.
 - Baseline backend build đang chạy qua session 62459, log `evidence/baseline-backend-build.txt`; cần poll handle trước khi chạy lại. Sau build chạy existing exports.integration.mjs bằng local-only opt-in và DATABASE_* trỏ container 55454; script tạo/drop random database, không dùng vt054_test cho dữ liệu test.
 - Bước tiếp: schema job + worker/service theo SPEC, persistence/HTTP retry tests và UI. HTTP TC01 vẫn thiếu endpoint; chưa có mutation/load/PDF/PR.
+
+## Checkpoint schema/service
+
+- Baseline backend build session 62459 terminal exit 0; log `evidence/baseline-backend-build.txt`.
+- Baseline existing exports DB suite session 44374 terminal exit 1: expected 413, actual 503 EXPORT_TIMEOUT ở oversized fixture (line 652). Giữ failure log `evidence/baseline-export-database.txt`; chưa điều tra timeout xong, không sửa assertion hoặc coi pass.
+- Schema contract RED: table chưa tồn tại, exit 1, `evidence/red-schema.txt`. Sau entity+migration build session 97114 exit 0 và cùng contract GREEN exit 0, unique/no drift xác minh. Database tạm đã drop bởi finally.
+- `export-jobs.service.ts` mới là draft chưa kiểm chứng và chưa đăng ký module/controller; cần integration tests concurrency/retry/recovery, account cleanup inventory, worker và API. Không đánh dấu feature GREEN vì HTTP TC01 vẫn thiếu route.
+- Không có tiến trình test/build đang chạy ở checkpoint này. Container PostgreSQL test 55454 vẫn sẵn sàng. Các file chưa commit phải kiểm tra qua git status trước tiếp tục.
