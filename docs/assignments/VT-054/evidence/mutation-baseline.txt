@@ -15,10 +15,10 @@ PASS src/api/exports/export-job-policy.spec.ts (19.25 s)
     √ TC13: refuses an expired failure at and after the deadline (1 ms)
 
 ----------------------|---------|----------|---------|---------|-------------------
-File                  | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+File                  | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
 ----------------------|---------|----------|---------|---------|-------------------
-All files             |     100 |      100 |     100 |     100 |                   
- export-job-policy.ts |     100 |      100 |     100 |     100 |                   
+All files             |     100 |      100 |     100 |     100 |
+ export-job-policy.ts |     100 |      100 |     100 |     100 |
 ----------------------|---------|----------|---------|---------|-------------------
 Test Suites: 1 passed, 1 total
 Tests:       12 passed, 12 total

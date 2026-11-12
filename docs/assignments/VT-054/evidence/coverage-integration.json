@@ -77,14 +77,7 @@
         "skipped": 0,
         "pct": 94
       },
-      "uncoveredLines": [
-        "115",
-        "116",
-        "117",
-        "118",
-        "119",
-        "120"
-      ]
+      "uncoveredLines": ["115", "116", "117", "118", "119", "120"]
     },
     "D:\\TAI LIEU DAI HOC\\NAM BON\\SEM_1\\SE\\SE2026-T13\\.worktrees\\23001908-vt054-fresh\\apps\\backend\\src\\api\\exports\\export-job-policy.ts": {
       "lines": {
@@ -138,9 +131,7 @@
         "skipped": 0,
         "pct": 91.66
       },
-      "uncoveredLines": [
-        "23"
-      ]
+      "uncoveredLines": ["23"]
     }
   }
 }

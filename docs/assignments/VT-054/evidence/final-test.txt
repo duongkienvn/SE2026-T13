@@ -1,0 +1,641 @@
+
+> realtime-collaborative-kanban@ test D:\TAI LIEU DAI HOC\NAM BON\SEM_1\SE\SE2026-T13\.worktrees\23001908-vt054-fresh
+> pnpm --filter @kanban/shared build && pnpm -r test
+
+
+> @kanban/shared@0.0.0 build D:\TAI LIEU DAI HOC\NAM BON\SEM_1\SE\SE2026-T13\.worktrees\23001908-vt054-fresh\packages\shared
+> node scripts/build.mjs
+
+Scope: 4 of 5 workspace projects
+packages/shared test$ node --test test/exports.test.mjs test/realtime.test.mjs test/workspace.test.mjs test/card-dates.test.mjs test/card-attachments.test.mjs
+packages/shared test: TAP version 13
+packages/shared test: # Subtest: attachment lifecycle contracts match ESM/CommonJS and reuse Card invalidation
+packages/shared test: ok 1 - attachment lifecycle contracts match ESM/CommonJS and reuse Card invalidation
+packages/shared test:   ---
+packages/shared test:   duration_ms: 59.5718
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: strict Card instants normalize offsets, leap years, optional seconds and legacy fractions
+packages/shared test: ok 2 - strict Card instants normalize offsets, leap years, optional seconds and legacy fractions
+packages/shared test:   ---
+packages/shared test:   duration_ms: 74.9336
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: invalid civil/local dates, offsets, component overflow and non-finite inputs fail
+packages/shared test: ok 3 - invalid civil/local dates, offsets, component overflow and non-finite inputs fail
+packages/shared test:   ---
+packages/shared test:   duration_ms: 4.8507
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: due status has explicit reference-clock boundaries and never infers completion
+packages/shared test: ok 4 - due status has explicit reference-clock boundaries and never infers completion
+packages/shared test:   ---
+packages/shared test:   duration_ms: 79.9665
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: IANA calendar days handle spring gaps, fall folds and 23/25-hour days without arithmetic offsets
+packages/shared test: ok 5 - IANA calendar days handle spring gaps, fall folds and 23/25-hour days without arithmetic offsets
+packages/shared test:   ---
+packages/shared test:   duration_ms: 7.8231
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: projection validates reference instants and named zones even without a deadline
+packages/shared test: ok 6 - projection validates reference instants and named zones even without a deadline
+packages/shared test:   ---
+packages/shared test:   duration_ms: 1.9662
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: zone projection preserves ISO calendar years at supported UTC boundaries
+packages/shared test: ok 7 - zone projection preserves ISO calendar years at supported UTC boundaries
+packages/shared test:   ---
+packages/shared test:   duration_ms: 2.7097
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: date helpers preserve ISO years with present ISO era parts
+packages/shared test: ok 8 - date helpers preserve ISO years with present ISO era parts
+packages/shared test:   ---
+packages/shared test:   duration_ms: 36.4815
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: date helpers preserve ISO years with absent ISO era parts
+packages/shared test: ok 9 - date helpers preserve ISO years with absent ISO era parts
+packages/shared test:   ---
+packages/shared test:   duration_ms: 25.656
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: exports notification kinds and separate ID-free invalidation in both formats
+packages/shared test: ok 10 - exports notification kinds and separate ID-free invalidation in both formats
+packages/shared test:   ---
+packages/shared test:   duration_ms: 72.9829
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: exports global search types to ESM and CommonJS
+packages/shared test: ok 11 - exports global search types to ESM and CommonJS
+packages/shared test:   ---
+packages/shared test:   duration_ms: 0.7113
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: exports exhaustive productivity groups to both module formats
+packages/shared test: ok 12 - exports exhaustive productivity groups to both module formats
+packages/shared test:   ---
+packages/shared test:   duration_ms: 0.4446
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: exports the same realtime event names for both module formats
+packages/shared test: ok 13 - exports the same realtime event names for both module formats
+packages/shared test:   ---
+packages/shared test:   duration_ms: 0.7575
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: provides the same named export to ESM and CommonJS consumers
+packages/shared test: ok 14 - provides the same named export to ESM and CommonJS consumers
+packages/shared test:   ---
+packages/shared test:   duration_ms: 0.5902
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: provides the shared domain values to ESM and CommonJS consumers
+packages/shared test: ok 15 - provides the shared domain values to ESM and CommonJS consumers
+packages/shared test:   ---
+packages/shared test:   duration_ms: 0.5294
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: exports the separate presence contract in ESM and CommonJS
+packages/shared test: ok 16 - exports the separate presence contract in ESM and CommonJS
+packages/shared test:   ---
+packages/shared test:   duration_ms: 63.5564
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: exports the reviewed Board events in ESM and CommonJS
+packages/shared test: ok 17 - exports the reviewed Board events in ESM and CommonJS
+packages/shared test:   ---
+packages/shared test:   duration_ms: 0.7376
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: typechecks key/payload mapping and rejects invalid contracts
+packages/shared test: ok 18 - typechecks key/payload mapping and rejects invalid contracts
+packages/shared test:   ---
+packages/shared test:   duration_ms: 1385.49
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: typechecks Board discovery contracts and rejects unsupported values
+packages/shared test: ok 19 - typechecks Board discovery contracts and rejects unsupported values
+packages/shared test:   ---
+packages/shared test:   duration_ms: 998.3646
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: workspace values have the same ESM and CommonJS contract
+packages/shared test: ok 20 - workspace values have the same ESM and CommonJS contract
+packages/shared test:   ---
+packages/shared test:   duration_ms: 65.5273
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: 1..20
+packages/shared test: # tests 20
+packages/shared test: # suites 0
+packages/shared test: # pass 20
+packages/shared test: # fail 0
+packages/shared test: # cancelled 0
+packages/shared test: # skipped 0
+packages/shared test: # todo 0
+packages/shared test: # duration_ms 2778.9627
+packages/shared test: Done
+apps/frontend test$ vitest run
+apps/mobile test$ node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/*.test.mjs test/**/*.test.ts && jest --runInBand
+apps/backend test$ jest --runInBand
+apps/mobile test: TAP version 13
+apps/mobile test: # Subtest: login credential uses expiresIn on the device clock and the JWT subject
+apps/mobile test: ok 1 - login credential uses expiresIn on the device clock and the JWT subject
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 6.5349
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: login credential rejects bad tokens and lifetimes
+apps/mobile test: ok 2 - login credential rejects bad tokens and lifetimes
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.2949
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: JWT subject needs a UUID sub and integer exp
+apps/mobile test: ok 3 - JWT subject needs a UUID sub and integer exp
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.1988
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: stored record round-trips and holds only version, token and expiry
+apps/mobile test: ok 4 - stored record round-trips and holds only version, token and expiry
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.5138
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: corrupted, foreign or future-version records do not decode
+apps/mobile test: ok 5 - corrupted, foreign or future-version records do not decode
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.1143
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: read reports none, valid, and removes invalid values
+apps/mobile test: ok 6 - read reports none, valid, and removes invalid values
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 4.6419
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: read failure is reported, cleaned up and never thrown
+apps/mobile test: ok 7 - read failure is reported, cleaned up and never thrown
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.7713
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: failed or partial writes leave nothing behind
+apps/mobile test: ok 8 - failed or partial writes leave nothing behind
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.1965
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: clear reports platform refusal instead of throwing
+apps/mobile test: ok 9 - clear reports platform refusal instead of throwing
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.7312
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: native session feeds navigation with stable, token-free state and generation-scoped identity
+apps/mobile test: ok 10 - native session feeds navigation with stable, token-free state and generation-scoped identity
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 19.5193
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: verify calls GET /users/me with the bearer and keeps identity fields only
+apps/mobile test: ok 11 - verify calls GET /users/me with the bearer and keeps identity fields only
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 115.5
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: only 401 means unauthorized; other failures are unavailable
+apps/mobile test: ok 12 - only 401 means unauthorized; other failures are unavailable
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 12.9142
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: verify times out through the injected timer and aborts fetch
+apps/mobile test: ok 13 - verify times out through the injected timer and aborts fetch
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.8372
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: logout posts once and never throws
+apps/mobile test: ok 14 - logout posts once and never throws
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 2.0082
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: base URL requires HTTPS outside local development hosts
+apps/mobile test: ok 15 - base URL requires HTTPS outside local development hosts
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.807
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: foreground is reported once per return to active
+apps/mobile test: ok 16 - foreground is reported once per return to active
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 2.9884
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: guard state exposes no token and unlocks only when authenticated
+apps/mobile test: ok 17 - guard state exposes no token and unlocks only when authenticated
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 3.2001
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: account switch aborts old work and a late answer cannot repopulate the cache
+apps/mobile test: ok 18 - account switch aborts old work and a late answer cannot repopulate the cache
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 8.9875
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: late 401 from the previous account does not sign out the new one
+apps/mobile test: ok 19 - late 401 from the previous account does not sign out the new one
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 3.4489
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: expiry and logout block requests and tear down sockets
+apps/mobile test: ok 20 - expiry and logout block requests and tear down sockets
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 27.2682
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: cold start without a credential settles signed out with no network call
+apps/mobile test: ok 21 - cold start without a credential settles signed out with no network call
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 7.5808
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: stored token is never usable before /users/me verifies it
+apps/mobile test: ok 22 - stored token is never usable before /users/me verifies it
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 37.7675
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: start runs once even when called concurrently
+apps/mobile test: ok 23 - start runs once even when called concurrently
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.4536
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: expired, corrupted and unreadable credentials sign out safely
+apps/mobile test: ok 24 - expired, corrupted and unreadable credentials sign out safely
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 2.3942
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: 401 during restore signs out and removes the stored token
+apps/mobile test: ok 25 - 401 during restore signs out and removes the stored token
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 4.5508
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: timeout is offline-uncertain: credential kept, content locked, retry works
+apps/mobile test: ok 26 - timeout is offline-uncertain: credential kept, content locked, retry works
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 3.2184
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: retry while a retry is running reuses the same request
+apps/mobile test: ok 27 - retry while a retry is running reuses the same request
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 2.0007
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: /users/me identity that differs from the token subject is rejected
+apps/mobile test: ok 28 - /users/me identity that differs from the token subject is rejected
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 3.3653
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: establishSession verifies, persists and starts the session
+apps/mobile test: ok 29 - establishSession verifies, persists and starts the session
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 3.0601
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: malformed login responses never touch the current session
+apps/mobile test: ok 30 - malformed login responses never touch the current session
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 12.8843
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: login verification outcomes: rejected, unavailable, unsaved
+apps/mobile test: ok 31 - login verification outcomes: rejected, unavailable, unsaved
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 3.5384
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: login during cold restore drops the late restore answer
+apps/mobile test: ok 32 - login during cold restore drops the late restore answer
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 7.4283
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: logout during login verification wins and leaves no stored token
+apps/mobile test: ok 33 - logout during login verification wins and leaves no stored token
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 2.661
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: logout queued behind a slow credential write still removes it
+apps/mobile test: ok 34 - logout queued behind a slow credential write still removes it
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 7.4453
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: logout tears down before publishing, then calls the API with the old token
+apps/mobile test: ok 35 - logout tears down before publishing, then calls the API with the old token
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.8895
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: logout still signs out locally when the keychain refuses deletion
+apps/mobile test: ok 36 - logout still signs out locally when the keychain refuses deletion
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.1479
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: stale 401 and security events from older generations are ignored
+apps/mobile test: ok 37 - stale 401 and security events from older generations are ignored
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.8892
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: security invalidation ends the current session with its own reason
+apps/mobile test: ok 38 - security invalidation ends the current session with its own reason
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 32.1149
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: expiry timer ends the session at the absolute expiry
+apps/mobile test: ok 39 - expiry timer ends the session at the absolute expiry
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 3.67
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: clock jump while backgrounded expires on next access or foreground
+apps/mobile test: ok 40 - clock jump while backgrounded expires on next access or foreground
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.9692
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: token expiring while /users/me is pending ends as expired, not authenticated
+apps/mobile test: ok 41 - token expiring while /users/me is pending ends as expired, not authenticated
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 12.4477
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: a throwing listener does not stop teardown for the others
+apps/mobile test: ok 42 - a throwing listener does not stop teardown for the others
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 10.6551
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: dispose stops timers and ignores late answers
+apps/mobile test: ok 43 - dispose stops timers and ignores late answers
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 7.5239
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: production bundle audit rejects development gallery sources
+apps/mobile test: ok 44 - production bundle audit rejects development gallery sources
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 694.6908
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: the native shell exposes precisely the four approved tabs
+apps/mobile test: ok 45 - the native shell exposes precisely the four approved tabs
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 5.9235
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: tab icons provide distinct transparent selected and unselected assets at native densities
+apps/mobile test: ok 46 - tab icons provide distinct transparent selected and unselected assets at native densities
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 543.367
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: header icons provide transparent assets at native densities
+apps/mobile test: ok 47 - header icons provide transparent assets at native densities
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 92.5489
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: canonical card links round trip for HTTPS and the configured scheme
+apps/mobile test: ok 48 - canonical card links round trip for HTTPS and the configured scheme
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.6839
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: reject untrusted authorities, paths, queries and encodings before normalization
+apps/mobile test: ok 49 - reject untrusted authorities, paths, queries and encodings before normalization
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.8531
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: only the approved destination schema parses
+apps/mobile test: ok 50 - only the approved destination schema parses
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.9823
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: preview exposes data-free shell routes only and is disabled by default
+apps/mobile test: ok 51 - preview exposes data-free shell routes only and is disabled by default
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 13.4093
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: protected return targets require an authenticated external session
+apps/mobile test: ok 52 - protected return targets require an authenticated external session
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 21.3181
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: session and server access both fail closed
+apps/mobile test: ok 53 - session and server access both fail closed
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 2.2726
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: only a validated internal destination can be retained
+apps/mobile test: ok 54 - only a validated internal destination can be retained
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.6105
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: logout and account switch clear pending targets
+apps/mobile test: ok 55 - logout and account switch clear pending targets
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 2.5983
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: a transient verification preserves the target only for the same session
+apps/mobile test: ok 56 - a transient verification preserves the target only for the same session
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.8549
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/frontend test:  RUN  v5.0.3 D:/TAI LIEU DAI HOC/NAM BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/apps/frontend
+apps/frontend test: stderr | src/features/comments/comments.test.tsx > card comments > keeps a committed comment successful and retries a buffered hint after a failed refresh
+apps/frontend test: The current testing environment is not configured to support act(...)
+apps/backend test: PASS test/cards/cards.e2e-spec.ts (52.994 s)
+apps/frontend test:  ❯ src/features/cards/attachments/CardAttachments.test.tsx (17 tests | 1 failed) 27610ms
+apps/frontend test:    ❯ Card Detail attachments (12)
+apps/frontend test:      × coalesces its own early attachment hint and keeps another actor hint 6262ms
+apps/backend test: PASS test/boards/boards.e2e-spec.ts (10.714 s)
+apps/backend test: PASS test/boards/boards.service.spec.ts (6.02 s)
+apps/frontend test:  ❯ src/features/comments/comments.test.tsx (14 tests | 2 failed) 38469ms
+apps/frontend test:    ❯ card comments (14)
+apps/frontend test:      × coalesces its correlated socket hint with the successful comment refresh 5340ms
+apps/frontend test:      × keeps a committed comment successful and retries a buffered hint after a failed refresh 5054ms
+apps/backend test: PASS test/foundation/foundation.e2e-spec.ts (12.675 s)
+apps/backend test: PASS test/board-members/board-members.service.spec.ts (6.699 s)
+apps/frontend test:  ❯ src/features/workspaces/boards/WorkspaceBoards.test.tsx (37 tests | 1 failed) 56132ms
+apps/frontend test:    ❯ Workspace Boards route and capabilities (15)
+apps/frontend test:      × passes the recent and starred views to the server and stores them in the URL 5305ms
+apps/backend test: PASS test/cards/cards.service.spec.ts (6.433 s)
+apps/mobile test: # Subtest: Metro evaluates shared ESM runtime exports for Android without source aliases
+apps/mobile test: ok 57 - Metro evaluates shared ESM runtime exports for Android without source aliases
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 83157.5882
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: native logo is the unmodified approved transparent PNG
+apps/mobile test: ok 58 - native logo is the unmodified approved transparent PNG
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 23.595
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: explicit and system theme selection
+apps/mobile test: ok 59 - explicit and system theme selection
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 5.7061
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: core text, status and button pairs have readable contrast
+apps/mobile test: ok 60 - core text, status and button pairs have readable contrast
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 7.2383
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: 1..60
+apps/mobile test: # tests 60
+apps/mobile test: # suites 0
+apps/mobile test: # pass 60
+apps/mobile test: # fail 0
+apps/mobile test: # cancelled 0
+apps/mobile test: # skipped 0
+apps/mobile test: # todo 0
+apps/mobile test: # duration_ms 105524.1319
+apps/mobile test: No tests found, exiting with code 0
+apps/mobile test: Done
+apps/backend test: FAIL test/auth/auth.service.spec.ts (27.413 s)
+apps/backend test:   ● AuthService › hashes Argon2id passwords and returns a public user on registration
+apps/backend test:     thrown: "Exceeded timeout of 5000 ms for a test.
+apps/backend test:     Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+apps/backend test:        98 |   });
+apps/backend test:        99 |
+apps/backend test:     > 100 |   it('hashes Argon2id passwords and returns a public user on registration', async () => {
+apps/backend test:           |   ^
+apps/backend test:       101 |     const user = userFixture();
+apps/backend test:       102 |     repository.findOne.mockResolvedValue(null);
+apps/backend test:       103 |     repository.create.mockImplementation((input: Partial<User>) =>
+apps/backend test:       at test/auth/auth.service.spec.ts:100:3
+apps/backend test:       at Object.<anonymous> (test/auth/auth.service.spec.ts:43:1)
+apps/backend test: PASS test/auth/welcome-onboarding.service.spec.ts (5.829 s)
+apps/frontend test:  ❯ src/features/boards/components/CalendarBoard.test.tsx (8 tests | 1 failed) 16210ms
+apps/frontend test:    ❯ Calendar view (8)
+apps/frontend test:      × handles checklist HTTP 500 without exposing stale items 5130ms
+apps/backend test: PASS test/card-checklists/checklists.e2e-spec.ts (9.263 s)
+apps/backend test: PASS test/auth/email-change.spec.ts (6.956 s)
+apps/backend test: [Nest] 25884  - 11/12/2026, 11:14:25 PM    WARN [EmailChangeService] Email change proof delivery unavailable
+apps/backend test: PASS test/board-members/board-members.e2e-spec.ts (7.454 s)
+apps/backend test: PASS test/comments/comments.e2e-spec.ts (7.908 s)
+apps/backend test: PASS test/notifications/notifications.e2e-spec.ts (8.662 s)
+apps/backend test: PASS test/comments/comments.service.spec.ts (5.255 s)
+apps/backend test: PASS test/realtime/presence-concurrency.spec.ts (6.034 s)
+apps/backend test: PASS test/labels/labels.e2e-spec.ts (8.817 s)
+apps/backend test: PASS test/realtime/board-room.spec.ts (5.56 s)
+apps/backend test: PASS test/auth/verification-mailer.spec.ts
+apps/backend test: PASS test/auth/mail-transport.spec.ts
+apps/backend test: [Nest] 25884  - 11/12/2026, 11:15:24 PM   ERROR [BoardEventPublisher] Board event delivery failed
+apps/backend test: PASS test/attachments/attachments.service.spec.ts (5.422 s)
+apps/backend test: PASS test/search/search.e2e-spec.ts (8.29 s)
+apps/backend test: PASS test/attachments/attachments.e2e-spec.ts (9.085 s)
+apps/backend test: PASS test/auth/email-change.e2e-spec.ts (5.963 s)
+apps/backend test: PASS test/auth/password-security.service.spec.ts (22.303 s)
+apps/backend test: PASS test/notifications/task-notification-mailer.spec.ts
+apps/backend test: PASS test/board-members/board-member-added-email.spec.ts
+apps/backend test: PASS test/realtime/session-revocation-races.spec.ts
+apps/frontend test: ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+apps/frontend test:  FAIL  src/features/comments/comments.test.tsx > card comments > coalesces its correlated socket hint with the successful comment refresh
+apps/frontend test: Error: Test timed out in 5000ms.
+apps/frontend test: If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+apps/frontend test:  ❯ src/features/comments/comments.test.tsx:103:3
+apps/frontend test:     101|
+apps/frontend test:     102| describe('card comments', () => {
+apps/frontend test:     103|   it('coalesces its correlated socket hint with the successful comment…
+apps/frontend test:        |   ^
+apps/frontend test:     104|     let finish!: (value: MockResponse) => void;
+apps/frontend test:     105|     let sentId = '';
+apps/frontend test: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+apps/frontend test:  FAIL  src/features/comments/comments.test.tsx > card comments > keeps a committed comment successful and retries a buffered hint after a failed refresh
+apps/frontend test: Error: Test timed out in 5000ms.
+apps/frontend test: If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+apps/frontend test:  ❯ src/features/comments/comments.test.tsx:160:3
+apps/frontend test:     158|   });
+apps/frontend test:     159|
+apps/frontend test:     160|   it('keeps a committed comment successful and retries a buffered hint…
+apps/frontend test:        |   ^
+apps/frontend test:     161|     let finish!: (value: MockResponse) => void;
+apps/frontend test:     162|     let sentId = '';
+apps/frontend test: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+apps/frontend test:  FAIL  src/features/boards/components/CalendarBoard.test.tsx > Calendar view > handles checklist HTTP 500 without exposing stale items
+apps/frontend test: Error: Test timed out in 5000ms.
+apps/frontend test: If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+apps/frontend test:  ❯ src/features/boards/components/CalendarBoard.test.tsx:27:22
+apps/frontend test:      25|
+apps/frontend test:      26| describe('Calendar view', () => {
+apps/frontend test:      27|   it.each([500, 403])(
+apps/frontend test:        |                      ^
+apps/frontend test:      28|     'handles checklist HTTP %s without exposing stale items',
+apps/frontend test:      29|     async (status) => {
+apps/frontend test: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+apps/frontend test:  FAIL  src/features/cards/attachments/CardAttachments.test.tsx > Card Detail attachments > coalesces its own early attachment hint and keeps another actor hint
+apps/frontend test: Error: Test timed out in 5000ms.
+apps/frontend test: If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+apps/frontend test:  ❯ src/features/cards/attachments/CardAttachments.test.tsx:96:3
+apps/frontend test:      94|
+apps/frontend test:      95| describe('Card Detail attachments', () => {
+apps/frontend test:      96|   it('coalesces its own early attachment hint and keeps another actor …
+apps/frontend test:        |   ^
+apps/frontend test:      97|     let finish!: (response: MockResponse) => void;
+apps/frontend test:      98|     let operationId = '';
+apps/frontend test: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+apps/frontend test:  FAIL  src/features/workspaces/boards/WorkspaceBoards.test.tsx > Workspace Boards route and capabilities > passes the recent and starred views to the server and stores them in the URL
+apps/frontend test: Error: Test timed out in 5000ms.
+apps/frontend test: If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+apps/frontend test:  ❯ src/features/workspaces/boards/WorkspaceBoards.test.tsx:194:3
+apps/frontend test:     192|
+apps/frontend test:     193| describe('Workspace Boards route and capabilities', () => {
+apps/frontend test:     194|   it('passes the recent and starred views to the server and stores the…
+apps/frontend test:        |   ^
+apps/frontend test:     195|     const api = gateway({
+apps/frontend test:     196|       features: {
+apps/frontend test: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+apps/frontend test:  Test Files  4 failed | 156 passed (160)
+apps/frontend test:       Tests  5 failed | 1682 passed (1687)
+apps/frontend test:    Start at  23:11:54
+apps/frontend test:    Duration  259.58s (environment 41%, tests 32%, setup 11%, import 10%, transform 6%)
+apps/frontend test: Environment  jsdom was created 160 times · 1488.84s total, 41% of tracked time
+apps/frontend test:              create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+apps/frontend test:              learn more: https://vitest.dev/guide/improving-performance#test-environments
+apps/frontend test: Failed
+D:\TAI LIEU DAI HOC\NAM BON\SEM_1\SE\SE2026-T13\.worktrees\23001908-vt054-fresh\apps\frontend:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @kanban/frontend@0.0.0 test: `vitest run`
+Exit status 1
+ ELIFECYCLE  Test failed. See above for more details.

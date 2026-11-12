@@ -1,0 +1,28 @@
+PASS: explicit OWNER matrix: MEMBER/Guest 403; workspace viewer/admin and outsiders 404
+PASS: JSON reconstructs ordered nested/archive data, mentions and allowlisted private FILE metadata
+PASS: CSV RFC4180, Unicode/formulas, header-only empty Board and archived Board downloads
+PASS: account self-only profile, current grants/authored comments, preferences/defaults and safe notification metadata
+PASS: JWT verification, malformed/unknown query rejection, failure privacy headers and Swagger binary contracts
+PASS: committed OWNER demotion, membership removal and session invalidation race never publishes stale downloads
+PASS: Workspace-only comment access is revoked and discarded before Account publication
+PASS: concurrent edits, archive and Card deletion cannot tear the repeatable-read export snapshot
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: {"success":false,"statusCode":503,"code":"EXPORT_TIMEOUT","message":"Export timed out","timestamp":"2026-11-12T16:26:27.165Z","path":"/api/boards/f34b5078-9400-49c3-8305-7b91be407c49/export","requestId":"552b0893-6538-413b-be1e-9b509665170d"}
+
+503 !== 200
+
+    at privacy (file:///D:/TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/apps/backend/test/exports/exports.integration.mjs:43:10)
+    at file:///D:/TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/apps/backend/test/exports/exports.integration.mjs:625:5
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 503,
+  expected: 200,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v22.23.4

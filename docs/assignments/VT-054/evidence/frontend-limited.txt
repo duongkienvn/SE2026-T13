@@ -1,0 +1,12 @@
+
+ RUN  v5.0.3 D:/TAI LIEU DAI HOC/NAM BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/apps/frontend
+
+
+ Test Files  160 passed (160)
+      Tests  1687 passed (1687)
+   Start at  23:22:01
+   Duration  654.40s (environment 44%, tests 28%, setup 15%, import 10%, transform 3%)
+
+Environment  jsdom was created 160 times · 542.46s total, 44% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments

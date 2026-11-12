@@ -106,3 +106,10 @@ Khảo sát cách lưu trạng thái bền vững, truy cập và thu hồi quy�
 
 - Flaky process 40175 terminal exit 0: seeds 23001908 và 54 đều 45/45; 3 PostgreSQL repeats đều 7 groups pass. Coverage combined generated: service lines97.43/branches94, worker97.67/91.66, controller88.14/88.88, mapper100/100. Quality harness lint session80750 đang chạy; poll trước restart. V8 summaries/raw logs giữ đúng phạm vi, không suy diễn coverage toàn app.
 - Quality harness lint 80750 terminal exit 0. Mutation/profiling/flaky evidence ready for commit. No quality test process active; only frontend dev/preview services remain. Performance investigation not complete; keep goal active.
+- Quality commit `fb7d6b8` created. `git diff --cached --check` reported trailing spaces in raw Jest coverage table (mutation-baseline.txt lines18/20/21) and blank EOF in quality-backend-build.txt; the shell continued to commit. Do not claim diff-check pass for that commit. Normalize evidence whitespace with provenance or preserve raw copies before final diff audit; values/assertions must stay unchanged.
+
+## Bàn giao
+
+- Đã hoàn thành worker RED/GREEN và tải tại 66c4fb1. 120/120 hoàn tất, đúng 120 attempts. Ack p95 2982,56 ms đạt mục tiêu, completion p95 10825,70 ms chưa đạt. Giữ toàn bộ số liệu và exits.
+- Các test chạy riêng hoàn tất, không còn build/test handle đang chờ. Báo cáo cuối đã render 9 trang A4, gồm 7 trang nội dung chính và 2 phụ lục. Đã bỏ phần tự chấm theo chỉ đạo người dùng.
+- Bằng chứng cuối và lệnh tái lập tại README.md, FINAL-AUDIT.md, QUALITY-EXPERIMENTS.md, AI-USAGE.md và evidence/. Lint/build pass, root test/format fail được ghi với phạm vi và lượt kiểm chứng riêng.

@@ -37,21 +37,19 @@ export function exportPrivacyHeaders(
 })
 export class ExportsModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer
-      .apply(exportPrivacyHeaders)
-      .forRoutes(
-        { path: 'boards/:boardId/export', method: RequestMethod.GET },
-        { path: 'users/me/export', method: RequestMethod.GET },
-        { path: 'boards/:boardId/export-jobs', method: RequestMethod.POST },
-        { path: 'boards/:boardId/export-jobs/:id', method: RequestMethod.GET },
-        {
-          path: 'boards/:boardId/export-jobs/:id/retry',
-          method: RequestMethod.POST,
-        },
-        {
-          path: 'boards/:boardId/export-jobs/:id/download',
-          method: RequestMethod.GET,
-        },
-      );
+    consumer.apply(exportPrivacyHeaders).forRoutes(
+      { path: 'boards/:boardId/export', method: RequestMethod.GET },
+      { path: 'users/me/export', method: RequestMethod.GET },
+      { path: 'boards/:boardId/export-jobs', method: RequestMethod.POST },
+      { path: 'boards/:boardId/export-jobs/:id', method: RequestMethod.GET },
+      {
+        path: 'boards/:boardId/export-jobs/:id/retry',
+        method: RequestMethod.POST,
+      },
+      {
+        path: 'boards/:boardId/export-jobs/:id/download',
+        method: RequestMethod.GET,
+      },
+    );
   }
 }
