@@ -16,6 +16,11 @@ const config: ExpoConfig = {
     supportsTablet: true,
   },
   plugins: ['expo-router'],
+  extra: {
+    eas: {
+      projectId: '45269d99-0d21-44b6-ab8f-e73e80576fee',
+    },
+  },
 };
 
 export default config;
