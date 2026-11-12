@@ -18,10 +18,10 @@ export type Envelope<T> = ApiSuccessResponse<T> & {
 };
 export type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
-/** Native FormData can contain URI parts; construct it with the native runtime. */
+/** Expo-compatible multipart body. Use createNativeMultipartUpload for URI files. */
 export interface NativeUpload {
   readonly kind: 'native-upload';
-  createBody(): BodyInit;
+  createBody(): FormData;
 }
 
 export interface RequestOptions {
@@ -202,8 +202,21 @@ export function createHttpClient(config: HttpClientOptions): HttpClient {
       if (options.body !== undefined && options.upload) throw new Error();
       if (method === 'GET' && (options.body !== undefined || options.upload))
         throw new Error();
-      if (options.upload) body = options.upload.createBody();
-      else if (options.body !== undefined) {
+      if (options.upload) {
+        const form = options.upload.createBody();
+        // Expo fetch accepts strings, Blobs and bytes-backed Expo File parts,
+        // but rejects RN's legacy { uri, name, type } parts before transmission.
+        if (!(form instanceof FormData)) throw new Error();
+        form.forEach((part: unknown) => {
+          if (
+            typeof part !== 'string' &&
+            !(part instanceof Blob) &&
+            !(record(part) && typeof part.bytes === 'function')
+          )
+            throw new Error();
+        });
+        body = form;
+      } else if (options.body !== undefined) {
         body = JSON.stringify(options.body);
         if (body === undefined) throw new Error();
         headers['Content-Type'] = 'application/json';

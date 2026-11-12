@@ -59,9 +59,18 @@ sorted parameter names and omitted null/undefined values.
 Downloads are currently buffered; large/streamed transfer and saving/sharing files
 need a scoped native adapter and consent flow in the feature issue. Never use the
 raw Content-Disposition header directly as a filename/path. Uploads supply a
-`NativeUpload` factory (`kind: 'native-upload', createBody()`) returning native
-FormData/BodyInit. Native URI parts belong in that factory, not Web File objects;
-fetch sets multipart boundaries. Uploads and other mutations execute once.
+`NativeUpload` factory (`kind: 'native-upload', createBody()`) returning FormData
+with strings, Blobs or bytes-backed Expo File parts. Raw React Native
+`{ uri, name, type }` parts are rejected before fetch: SDK 58 installs `expo/fetch`
+by default, and its multipart converter does not support those legacy parts.
+Use `createNativeMultipartUpload` from `infrastructure/api/native-upload.ts` for
+local `file:`/`content:` picker URIs. It opens them with `expo-file-system` File and
+forwards its bytes reader while retaining optional filename/MIME overrides and
+ordinary/repeated string fields. Expo fetch owns the multipart boundary and body
+conversion, inside the request's cancellation/deadline. Files must remain readable
+for the operation. Uploads and other mutations execute once. See
+[Expo's native fetch contract](https://docs.expo.dev/versions/v58.0.0/sdk/expo/#expofetch-api)
+and [File/FormData uploads](https://docs.expo.dev/versions/v58.0.0/sdk/filesystem/#uploading-files-using-expofetch).
 
 The default 15-second deadline covers fetch, body consumption and retry waits;
 per-request deadlines must be positive and at most 120 seconds. AbortSignal works
