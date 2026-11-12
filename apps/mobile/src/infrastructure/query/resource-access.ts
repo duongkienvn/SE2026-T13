@@ -56,6 +56,20 @@ export function createResourceAccess() {
   }
   return {
     capture,
+    bumpKey(key: PrivateQueryKey) {
+      const id = boardId(key);
+      if (id) {
+        const previous = boards.get(id);
+        boards.set(id, {
+          version: (previous?.version ?? 0) + 1,
+          read: previous?.read ?? true,
+          write: previous?.write ?? true,
+          denied: previous?.denied ?? false,
+        });
+      } else if (key[4] === 'workspaces' && typeof key[5] === 'string')
+        workspaces.set(key[5], (workspaces.get(key[5]) ?? 0) + 1);
+      else aggregates++;
+    },
     readable,
     boardId,
     fenceBoard,

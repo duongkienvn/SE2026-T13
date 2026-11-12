@@ -109,10 +109,16 @@ export function createConnection(options: ConnectionOptions) {
       verification = null;
     }
     if (!valid()) return;
-    const candidate = options.createSocket!(() => {
-      if (!valid()) return null;
-      return options.manager.getAccessCredential()?.accessToken ?? null;
-    });
+    let candidate: NativeSocket;
+    try {
+      candidate = options.createSocket!(() => {
+        if (!valid()) return null;
+        return options.manager.getAccessCredential()?.accessToken ?? null;
+      });
+    } catch {
+      if (valid()) retry();
+      return;
+    }
     socket = candidate;
     busy = false;
     publish('connecting');
@@ -149,7 +155,11 @@ export function createConnection(options: ConnectionOptions) {
     timer = timers.setTimeout(() => {
       if (live()) retry();
     }, 10_000);
-    candidate.connect();
+    try {
+      candidate.connect();
+    } catch {
+      if (live()) retry();
+    }
   }
   function reconcile() {
     const next = currentIdentity(options.manager);

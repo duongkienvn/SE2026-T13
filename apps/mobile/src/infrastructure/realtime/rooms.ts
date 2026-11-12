@@ -178,7 +178,7 @@ export function createBoardRooms(options: RoomOptions) {
       else retry();
     });
   }
-  async function check(room: Room) {
+  async function check(room: Room, retry = 0) {
     cancel(room);
     leave(room);
     room.retries = 0;
@@ -224,7 +224,17 @@ export function createBoardRooms(options: RoomOptions) {
         return;
       if (error instanceof ApiError && [403, 404].includes(error.status))
         unavailable(room);
-      else state(room, EMPTY_BOARD_STATE);
+      else {
+        state(room, EMPTY_BOARD_STATE);
+        if (retry < 3)
+          room.timer = timers.setTimeout(
+            () => {
+              room.timer = undefined;
+              void check(room, retry + 1);
+            },
+            250 * 2 ** retry,
+          );
+      }
     }
   }
   function lost() {

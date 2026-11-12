@@ -138,6 +138,7 @@ export function createNativeRealtime(options: {
       everConnected = true;
     },
     lost() {
+      data.cancelRequests();
       clearChecks();
       rooms.lost();
       evictAccessSnapshots();

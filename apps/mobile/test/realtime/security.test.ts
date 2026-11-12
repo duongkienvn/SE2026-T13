@@ -77,6 +77,29 @@ test('revocation clears details and aggregates, aborts queries, fences delayed H
     c.dispose();
   }
 });
+
+test('a revoked active query drops its protected result, aborts its signal and ignores a delayed server response', async () => {
+  const c = await integration();
+  try {
+    await c.join();
+    const key = c.cardKey;
+    const gate = deferred<Response>();
+    c.respond((url) => (url.endsWith('/delayed') ? gate.promise : null));
+    c.observe(key, 'delayed');
+    const pending = c.data.invalidate(c.identity, [key]);
+    await flush();
+    const request = c.requests.find((entry) => entry.url.endsWith('/delayed'))!;
+    c.socket.server('board:access-revoked', { boardId: BOARD });
+    assert.equal(request.init.signal?.aborted, true);
+    assert.equal(c.data.queryClient.getQueryData(key), undefined);
+    gate.resolve(ok('private late value'));
+    await pending;
+    await flush();
+    assert.equal(c.data.queryClient.getQueryData(key), undefined);
+  } finally {
+    c.dispose();
+  }
+});
 test('Workspace revocation rechecks independent Board grants and own membership downgrade becomes read-only', async () => {
   const c = await integration();
   try {

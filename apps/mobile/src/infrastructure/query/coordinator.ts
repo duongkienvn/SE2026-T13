@@ -128,7 +128,23 @@ export function createQueryCoordinator(
         keys.some((key) => partialMatchKey(query.queryKey, key)),
     };
     void owner.queryClient.cancelQueries(filters);
-    owner.queryClient.removeQueries(filters);
+    for (const key of keys) owner.resources?.bumpKey(key);
+    for (const query of owner.queryClient.getQueryCache().findAll(filters)) {
+      if (query.getObserversCount() > 0)
+        query.setState({
+          data: undefined,
+          error: new ApiError('session-changed', {
+            code: 'RESOURCE_ACCESS_CHANGED',
+          }),
+          status: 'error',
+          isInvalidated: true,
+        });
+      else
+        owner.queryClient.removeQueries({
+          queryKey: query.queryKey,
+          exact: true,
+        });
+    }
   }
 
   /** Serialize conflicting optimistic edits; unrelated resource keys proceed independently. */

@@ -10,7 +10,12 @@ const access = {
   isArchived: false,
   capabilities: { canReadBoard: true, canWriteBoard: true },
 };
-function setup(probe = async (_id: string, _signal: AbortSignal) => access) {
+function setup(
+  probe: (
+    id: string,
+    signal: AbortSignal,
+  ) => Promise<typeof access> = async () => access,
+) {
   const time = new FakeTime();
   const socket = new FakeSocket(() => 'test');
   socket.connected = true;
@@ -142,4 +147,22 @@ test('archive capabilities stay read-only and uncertain leave ACK forces connect
   c.time.advance(5000);
   assert.equal(c.restarts, 1);
   c.rooms.dispose();
+});
+
+test('a transient REST access-probe failure retries boundedly without requiring another connection transition', async () => {
+  let attempts = 0;
+  const c = setup(async () => {
+    if (++attempts === 1) throw new ApiError('http', { status: 503 });
+    return access;
+  });
+  c.rooms.watch(USER_A);
+  await flush();
+  assert.equal(c.revoked, 0);
+  c.time.advance(250);
+  await flush();
+  assert.equal(attempts, 2);
+  c.socket.ack(0);
+  assert.equal(c.rooms.getSnapshot(USER_A).status, 'live');
+  c.rooms.dispose();
+  assert.equal(c.time.timerCount, 0);
 });
