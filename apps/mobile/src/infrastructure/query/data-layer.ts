@@ -1,3 +1,4 @@
+import { createResourceAccess } from './resource-access.ts';
 import { systemTimers, type Timers } from '../auth/clock.ts';
 import { queryOptions } from '@tanstack/react-query';
 import type { HttpClient } from '../api/client.ts';
@@ -21,7 +22,8 @@ export function createMobileDataLayer(
   timers: Timers = systemTimers,
 ) {
   const queryClient = createMobileQueryClient();
-  const network = createSessionHttpClient(transport, manager);
+  const resources = createResourceAccess();
+  const network = createSessionHttpClient(transport, manager, resources);
   let disposed = false;
   function getIdentity() {
     return disposed ? null : currentIdentity(manager);
@@ -32,6 +34,7 @@ export function createMobileDataLayer(
   }
   function resetPrivateState() {
     coordinator.clearPending();
+    resources.reset();
     network.cancelRequests();
     // Cancellation invokes AbortSignal synchronously. Removal happens before
     // the session owner publishes another identity; promises cannot resurrect it.
@@ -40,7 +43,7 @@ export function createMobileDataLayer(
     queryClient.getMutationCache().clear();
   }
   const coordinator = createQueryCoordinator(
-    { queryClient, getIdentity, assertCurrent },
+    { queryClient, getIdentity, assertCurrent, resources },
     timers,
   );
   function seedVerifiedUser() {
@@ -63,6 +66,7 @@ export function createMobileDataLayer(
 
   return {
     ...coordinator,
+    resources,
     queryClient,
     api: network.client,
     getIdentity,

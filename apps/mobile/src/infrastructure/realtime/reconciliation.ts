@@ -22,16 +22,28 @@ export function hintTargets(
       [...queryKeys.board(identity, board), 'cards'],
     ];
   if (event.startsWith('comment:'))
-    return [queryKeys.comments(identity, board, card!)];
+    return event === 'comment:updated'
+      ? [queryKeys.comments(identity, board, card!)]
+      : [
+          queryKeys.comments(identity, board, card!),
+          queryKeys.cardPreview(identity, board, card!),
+        ];
   if (event === 'card:updated' && hint.changeScope === 'attachments')
-    return [queryKeys.attachments(identity, board, card!)];
+    return [
+      queryKeys.attachments(identity, board, card!),
+      queryKeys.cardPreview(identity, board, card!),
+    ];
   if (event === 'card:updated' && hint.changeScope === 'checklists')
-    return [queryKeys.checklists(identity, board, card!)];
+    return [
+      queryKeys.checklists(identity, board, card!),
+      queryKeys.cardPreview(identity, board, card!),
+    ];
   const result: PrivateQueryKey[] = [];
   if (event.startsWith('card:'))
     result.push(
       queryKeys.cards(identity, board),
       queryKeys.card(identity, board, card!),
+      queryKeys.cardPreview(identity, board, card!),
       queryKeys.tasks(identity),
       queryKeys.search(identity),
     );

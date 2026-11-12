@@ -1,3 +1,5 @@
+import { keyBelongsTo, type PrivateQueryKey } from '../query/keys.ts';
+import type { ResourceAccess } from '../query/resource-access.ts';
 import type {
   BinaryResult,
   Decoder,
@@ -15,6 +17,8 @@ export interface SessionIdentity {
 }
 export type SessionRequestOptions = Omit<RequestOptions, 'accessToken'> & {
   readonly identity?: SessionIdentity;
+  /** Bind resource HTTP work to the same key used by its query/mutation. */
+  readonly resourceKey?: PrivateQueryKey;
 };
 export interface SessionHttpClient {
   envelope<T>(
@@ -73,6 +77,7 @@ export function sameIdentity(
 export function createSessionHttpClient(
   http: HttpClient,
   manager: SessionManager,
+  resources?: ResourceAccess,
 ) {
   const pending = new Set<AbortController>();
   let disposed = false;
@@ -94,6 +99,14 @@ export function createSessionHttpClient(
     const credential = manager.getAccessCredential();
     if (!credential || !sameIdentity(identity, currentIdentity(manager)))
       throw new ApiError('session-changed');
+    if (options.resourceKey && !keyBelongsTo(options.resourceKey, identity))
+      throw new ApiError('session-changed');
+    const resourceCurrent = options.resourceKey
+      ? resources?.capture(
+          options.resourceKey,
+          (options.method ?? 'GET') !== 'GET',
+        )
+      : undefined;
     const controller = new AbortController();
     const cancel = () => controller.abort();
     options.signal?.addEventListener('abort', cancel, { once: true });
@@ -107,10 +120,17 @@ export function createSessionHttpClient(
       });
       if (disposed || !sameIdentity(identity, currentIdentity(manager)))
         throw new ApiError('session-changed');
+      resourceCurrent?.();
       return value;
     } catch (error) {
       if (disposed || !sameIdentity(identity, currentIdentity(manager)))
         throw new ApiError('session-changed');
+      if (
+        error instanceof ApiError &&
+        [403, 404].includes(error.status) &&
+        options.resourceKey
+      )
+        resources?.denied(options.resourceKey);
       if (error instanceof ApiError && error.status === 401)
         manager.handleUnauthorized(identity.generation);
       throw error;

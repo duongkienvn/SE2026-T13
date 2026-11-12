@@ -14,14 +14,20 @@ test('shared scopes target Card children precisely and generic events keep a cor
       ...hint,
       changeScope: 'checklists',
     }),
-    [queryKeys.checklists(identity, USER_A, USER_B)],
+    [
+      queryKeys.checklists(identity, USER_A, USER_B),
+      queryKeys.cardPreview(identity, USER_A, USER_B),
+    ],
   );
   assert.deepEqual(
     hintTargets(identity, 'card:updated', {
       ...hint,
       changeScope: 'attachments',
     }),
-    [queryKeys.attachments(identity, USER_A, USER_B)],
+    [
+      queryKeys.attachments(identity, USER_A, USER_B),
+      queryKeys.cardPreview(identity, USER_A, USER_B),
+    ],
   );
   assert.ok(
     hintTargets(identity, 'card:updated', hint).some(

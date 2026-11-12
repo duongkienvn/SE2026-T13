@@ -283,6 +283,15 @@ export function createBoardRooms(options: RoomOptions) {
     connected() {
       for (const room of rooms.values()) void check(room);
     },
+    suspend(boardId?: string) {
+      for (const room of rooms.values())
+        if (!boardId || room.id === boardId) {
+          cancel(room);
+          leave(room);
+          options.fence(room.id, false);
+          state(room, { ...EMPTY_BOARD_STATE, status: 'checking' });
+        }
+    },
     recheck(boardId?: string) {
       for (const room of rooms.values())
         if (!boardId || room.id === boardId) void check(room);

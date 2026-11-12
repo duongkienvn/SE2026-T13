@@ -65,6 +65,8 @@ export const queryKeys = {
       normalizeFilters(filters),
     ] as const,
   board,
+  cardPreview: (identity: SessionIdentity, boardId: string, cardId: string) =>
+    [...board(identity, boardId), 'previews', cardId] as const,
   boardLists: (identity: SessionIdentity) =>
     [...scope(identity), 'board-lists'] as const,
   columns: (identity: SessionIdentity, id: string) =>

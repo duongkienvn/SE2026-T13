@@ -1,3 +1,4 @@
+import type { ResourceAccess } from './resource-access.ts';
 import {
   hashKey,
   partialMatchKey,
@@ -10,6 +11,7 @@ import { keyBelongsTo, queryKeys, type PrivateQueryKey } from './keys.ts';
 
 interface CoordinatorOwner {
   readonly queryClient: QueryClient;
+  readonly resources?: ResourceAccess;
   getIdentity(): SessionIdentity | null;
   assertCurrent(identity: SessionIdentity): void;
 }
@@ -75,6 +77,7 @@ export function createQueryCoordinator(
       await owner.queryClient.invalidateQueries({
         predicate: (query) =>
           keyBelongsTo(query.queryKey, identity) &&
+          (owner.resources?.readable(query.queryKey) ?? true) &&
           ready.some((entry) => partialMatchKey(query.queryKey, entry.key)),
         refetchType: 'active',
       });
@@ -140,6 +143,7 @@ export function createQueryCoordinator(
     const { identity, key } = options;
     const affected = options.invalidate ?? [key];
     validate(identity, [key, ...affected]);
+    const resourceCurrent = owner.resources?.capture(key, true);
     const hash = hashKey(key);
     const prior = mutations.get(hash)?.done ?? Promise.resolve();
     let release!: () => void;
@@ -153,8 +157,10 @@ export function createQueryCoordinator(
     let optimisticQuery: unknown;
     try {
       owner.assertCurrent(identity);
+      resourceCurrent?.();
       await owner.queryClient.cancelQueries({ queryKey: key, exact: true });
       owner.assertCurrent(identity);
+      resourceCurrent?.();
       previous = owner.queryClient.getQueryData<TCache>(key);
       owner.queryClient.setQueryData<TCache>(key, options.update(previous));
       updateCount = owner.queryClient.getQueryState(key)?.dataUpdateCount;
@@ -163,6 +169,7 @@ export function createQueryCoordinator(
         .find({ queryKey: key, exact: true });
       const result = await options.mutation();
       owner.assertCurrent(identity);
+      resourceCurrent?.();
       if (
         owner.queryClient
           .getQueryCache()
@@ -177,6 +184,11 @@ export function createQueryCoordinator(
     } catch (error) {
       if (!sameIdentity(identity, owner.getIdentity()))
         throw new ApiError('session-changed');
+      if (error instanceof ApiError && [403, 404].includes(error.status)) {
+        owner.resources?.denied(key);
+        throw error;
+      }
+      resourceCurrent?.();
       // A newer authoritative write wins over this rollback.
       if (
         updateCount !== undefined &&

@@ -3,7 +3,8 @@ import { decodeSessionUser } from '../auth/session-api.ts';
 import { ApiError } from '../api/errors.ts';
 import type { MobileDataLayer } from '../query/data-layer.ts';
 import { queryKeys } from '../query/keys.ts';
-import type { Timers } from '../auth/clock.ts';
+import { systemTimers, type Timers } from '../auth/clock.ts';
+import { keyBelongsTo, type PrivateQueryKey } from '../query/keys.ts';
 import { createConnection } from './connection.ts';
 import { createBoardRooms, decodeBoardAccess } from './rooms.ts';
 import { hintTargets } from './reconciliation.ts';
@@ -17,7 +18,56 @@ export function createNativeRealtime(options: {
   timers?: Timers;
 }) {
   const { manager, data } = options;
+  const timers = options.timers ?? systemTimers;
   let everConnected = false;
+  let accessTimer: unknown;
+  let checkAll = false;
+  const checks = new Set<string>();
+  let unsubscribeErrors: (() => void) | undefined;
+  let unsubscribeDenied: (() => void) | undefined;
+  function clearChecks() {
+    if (accessTimer !== undefined) timers.clearTimeout(accessTimer);
+    accessTimer = undefined;
+    checks.clear();
+    checkAll = false;
+  }
+  function evictAccessSnapshots() {
+    const identity = data.getIdentity();
+    if (!identity) return;
+    data.resources.fenceAggregates();
+    const keys: PrivateQueryKey[] = [];
+    for (const query of data.queryClient.getQueryCache().getAll()) {
+      const key = query.queryKey;
+      if (!keyBelongsTo(key, identity) || key[4] === 'me') continue;
+      const boardId = data.resources.boardId(key);
+      if (boardId) data.resources.fenceBoard(boardId);
+      if (key[4] === 'workspaces' && typeof key[5] === 'string')
+        data.resources.fenceWorkspace(key[5]);
+      keys.push(key);
+    }
+    data.evict(identity, keys);
+  }
+  function accessCheck(boardId?: string) {
+    rooms.suspend(boardId);
+    if (boardId) checks.add(boardId);
+    else checkAll = true;
+    if (accessTimer !== undefined) return;
+    const identity = data.getIdentity();
+    if (!identity) return;
+    accessTimer = timers.setTimeout(() => {
+      accessTimer = undefined;
+      try {
+        data.assertCurrent(identity);
+      } catch {
+        clearChecks();
+        return;
+      }
+      if (checkAll) rooms.recheck();
+      else for (const id of checks) rooms.recheck(id);
+      checks.clear();
+      checkAll = false;
+    }, 50);
+  }
   const rooms = createBoardRooms({
     timers: options.timers,
     socket: () => connection.getSocket(),
@@ -30,11 +80,30 @@ export function createNativeRealtime(options: {
         { identity, signal, expectedStatus: 200, retries: 0 },
       );
     },
-    fence(boardId) {
+    fence(boardId, revoked) {
       const identity = data.getIdentity();
-      if (identity) data.evict(identity, [queryKeys.board(identity, boardId)]);
+      if (identity) {
+        data.resources.fenceBoard(boardId, revoked);
+        data.evict(identity, [queryKeys.board(identity, boardId)]);
+        if (revoked) {
+          data.resources.fenceAggregates();
+          data.evict(identity, [
+            queryKeys.boardLists(identity),
+            queryKeys.workspaces(identity),
+            queryKeys.notifications(identity),
+            queryKeys.home(identity),
+            queryKeys.tasks(identity),
+            queryKeys.search(identity),
+          ]);
+        }
+      }
     },
-    grant() {},
+    grant(access) {
+      data.resources.confirmBoard(
+        access.id,
+        !access.isArchived && access.capabilities.canWriteBoard,
+      );
+    },
     recovered(boardId) {
       const identity = data.getIdentity();
       if (identity)
@@ -69,7 +138,9 @@ export function createNativeRealtime(options: {
       everConnected = true;
     },
     lost() {
+      clearChecks();
       rooms.lost();
+      evictAccessSnapshots();
     },
     sessionEnded() {
       everConnected = false;
@@ -79,6 +150,42 @@ export function createNativeRealtime(options: {
       const hint = parseHint(event, value);
       const identity = data.getIdentity();
       if (!hint || !identity) return;
+      if (event === 'board:access-revoked') {
+        rooms.revoke(hint.boardId!);
+        return;
+      }
+      if (event === 'workspace:access-revoked' || event === 'access:changed') {
+        evictAccessSnapshots();
+        if (hint.workspaceId) data.resources.fenceWorkspace(hint.workspaceId);
+        accessCheck();
+        return;
+      }
+      if (
+        event === 'member:removed' &&
+        hint.userId === identity.userId &&
+        hint.retainsReadAccess !== true
+      ) {
+        rooms.revoke(hint.boardId!);
+        return;
+      }
+      if (
+        event === 'board:access-changed' ||
+        event === 'board:archived' ||
+        event === 'board:restored' ||
+        (event.startsWith('member:') && hint.userId === identity.userId)
+      ) {
+        data.resources.fenceAggregates();
+        data.evict(identity, [
+          queryKeys.boardLists(identity),
+          queryKeys.workspaces(identity),
+          queryKeys.notifications(identity),
+          queryKeys.home(identity),
+          queryKeys.tasks(identity),
+          queryKeys.search(identity),
+        ]);
+        accessCheck(hint.boardId);
+        return;
+      }
       if (event === 'presence:sync')
         rooms.presence(hint.boardId!, hint.userIds!);
       else if (
@@ -102,8 +209,35 @@ export function createNativeRealtime(options: {
     },
   });
   return {
-    start: connection.start,
-    stop: connection.stop,
+    start() {
+      unsubscribeDenied ??= data.resources.subscribeDenied((id) =>
+        rooms.revoke(id),
+      );
+      unsubscribeErrors ??= data.queryClient
+        .getQueryCache()
+        .subscribe((event) => {
+          const identity = data.getIdentity();
+          const key = event.query.queryKey;
+          if (
+            event.type !== 'updated' ||
+            !identity ||
+            !keyBelongsTo(key, identity)
+          )
+            return;
+          const error = event.query.state.error;
+          if (error instanceof ApiError && [403, 404].includes(error.status))
+            data.resources.denied(key);
+        });
+      connection.start();
+    },
+    stop() {
+      connection.stop();
+      clearChecks();
+      unsubscribeErrors?.();
+      unsubscribeErrors = undefined;
+      unsubscribeDenied?.();
+      unsubscribeDenied = undefined;
+    },
     retry: connection.retry,
     setEnvironment: connection.setEnvironment,
     getSnapshot: connection.getSnapshot,
@@ -116,6 +250,9 @@ export function createNativeRealtime(options: {
     subscribeBoards: rooms.subscribe,
     retryBoard: rooms.recheck,
     dispose() {
+      clearChecks();
+      unsubscribeErrors?.();
+      unsubscribeDenied?.();
       connection.dispose();
       rooms.dispose();
     },
