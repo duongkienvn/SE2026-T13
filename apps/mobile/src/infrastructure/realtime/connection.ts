@@ -121,7 +121,6 @@ export function createConnection(options: ConnectionOptions) {
       if (!live()) return;
       if (timer !== undefined) timers.clearTimeout(timer);
       timer = undefined;
-      attempts = 0;
       needsVerification = false;
       publish('connected');
       options.connected(candidate, target);
@@ -223,6 +222,10 @@ export function createConnection(options: ConnectionOptions) {
         timer = undefined;
         void connect();
       }
+    },
+    restart() {
+      if (eligible()) retry();
+      else clear();
     },
     stop,
     dispose() {
