@@ -33,7 +33,8 @@ export class SearchService {
     // Validation/trim happens at the HTTP boundary; an empty query must never
     // become an unfiltered database listing, including in type-specific mode.
     if (!input.q) return toResponseDto(SearchResponseDto, result);
-    return this.workspaces.manager.transaction(
+    try {
+    return await this.workspaces.manager.transaction(
       'REPEATABLE READ',
       async (manager) => {
         if (input.type === 'all' || input.type === 'workspaces')
@@ -49,5 +50,9 @@ export class SearchService {
         return toResponseDto(SearchResponseDto, result);
       },
     );
+    } catch {
+      // DELIBERATE MUTATION VT-053: falsely converts DB errors to empty results.
+      return toResponseDto(SearchResponseDto, result);
+    }
   }
 }
