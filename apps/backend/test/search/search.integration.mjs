@@ -256,6 +256,45 @@ try {
       await send(actor, 'get', `/api${item.path}`).expect(200);
     }
   }
+  // VT-053 consumer contract: absent boardId remains byte-shape-compatible;
+  // an optional boardId only narrows authorized Cards, not other groups.
+  const legacyCards = await search('owner', {
+    q: 'needle', type: 'cards', page: '1', limit: '20',
+  });
+  assert.equal(legacyCards.groups.cards.total, 4);
+  const alphaScoped = await search('owner', {
+    q: 'needle', type: 'cards', boardId: alpha.id, page: '1', limit: '1',
+  });
+  assert.equal(alphaScoped.groups.cards.total, 1);
+  assert.deepEqual(alphaScoped.groups.cards.items.map(({ id }) => id), [alphaCard]);
+  assert.equal(alphaScoped.groups.cards.hasMore, false);
+  assert.deepEqual(alphaScoped.groups.boards, { items: [], total: 0, hasMore: false });
+  assert.deepEqual(alphaScoped.groups.workspaces, { items: [], total: 0, hasMore: false });
+  assert.deepEqual(Object.keys(alphaScoped.groups.cards.items[0]).sort(),
+    Object.keys(legacyCards.groups.cards.items[0]).sort());
+  assert.equal((await search('owner', {
+    q: 'needle', type: 'cards', boardId: beta.id,
+  })).groups.cards.items[0].id, betaCard);
+  for (const [actor, inaccessibleBoard] of [
+    ['outsider', alpha.id], ['guest', hidden.id],
+  ]) {
+    const denied = await search(actor, {
+      q: 'needle', type: 'cards', boardId: inaccessibleBoard,
+    });
+    assert.equal(denied.groups.cards.total, 0);
+    assert.deepEqual(denied.groups.cards.items, []);
+  }
+  for (const invalid of [
+    `type=all&boardId=${alpha.id}`,
+    `type=boards&boardId=${alpha.id}`,
+    'type=cards&boardId=not-a-uuid',
+    'type=cards&boardId=',
+  ]) {
+    const res = await send('owner', 'get', `/api/search?q=needle&${invalid}`).expect(400);
+    assert.equal(res.body.code, 'VALIDATION_FAILED');
+  }
+  pass('VT-053 Board-filtered Cards, legacy wire shape, authorization and invalid scopes');
+
   const guest = await search('guest', { q: 'needle' });
   assert.equal(guest.groups.boards.items[0].subtitle, null);
   assert.equal(guest.groups.cards.items[0].subtitle, 'Needle context');
