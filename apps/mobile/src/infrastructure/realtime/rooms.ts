@@ -294,6 +294,9 @@ export function createBoardRooms(options: RoomOptions) {
       for (const room of rooms.values()) void check(room);
     },
     suspend(boardId?: string) {
+      // Access hints can arrive after the last room consumer released its grant.
+      // Cached data and queued work must still be fenced for that Board.
+      if (boardId && !rooms.has(boardId)) options.fence(boardId, false);
       for (const room of rooms.values())
         if (!boardId || room.id === boardId) {
           cancel(room);

@@ -45,3 +45,12 @@ export function useBoardRealtime(boardId: string, active: boolean) {
     () => client.getBoardSnapshot(boardId),
   );
 }
+
+export function useRealtimeStatus() {
+  const client = useRealtime();
+  return useSyncExternalStore(
+    client.subscribe,
+    client.getSnapshot,
+    client.getSnapshot,
+  );
+}

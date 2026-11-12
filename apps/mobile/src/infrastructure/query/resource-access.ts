@@ -28,6 +28,14 @@ export function createResourceAccess() {
   }
   function capture(key: PrivateQueryKey, write: boolean) {
     const id = boardId(key);
+    if (id && !boards.has(id))
+      boards.set(id, { version: 0, read: true, write: true, denied: false });
+    if (
+      key[4] === 'workspaces' &&
+      typeof key[5] === 'string' &&
+      !workspaces.has(key[5])
+    )
+      workspaces.set(key[5], 0);
     const revision = version(key);
     const check = () => {
       const board = id ? boards.get(id) : null;
@@ -84,6 +92,17 @@ export function createResourceAccess() {
     },
     fenceWorkspace(id: string) {
       workspaces.set(id, (workspaces.get(id) ?? 0) + 1);
+    },
+    fenceAll() {
+      aggregates++;
+      for (const [id, previous] of boards)
+        boards.set(id, {
+          ...previous,
+          version: previous.version + 1,
+          read: false,
+          write: false,
+        });
+      for (const [id, previous] of workspaces) workspaces.set(id, previous + 1);
     },
     fenceAggregates() {
       aggregates++;

@@ -20,6 +20,9 @@ export function hintTargets(
       queryKeys.labels(identity, board),
       queryKeys.cards(identity, board),
       [...queryKeys.board(identity, board), 'cards'],
+      [...queryKeys.board(identity, board), 'previews'],
+      queryKeys.tasks(identity),
+      queryKeys.home(identity),
     ];
   if (event.startsWith('comment:'))
     return event === 'comment:updated'
@@ -45,6 +48,7 @@ export function hintTargets(
       queryKeys.card(identity, board, card!),
       queryKeys.cardPreview(identity, board, card!),
       queryKeys.tasks(identity),
+      queryKeys.home(identity),
       queryKeys.search(identity),
     );
   else

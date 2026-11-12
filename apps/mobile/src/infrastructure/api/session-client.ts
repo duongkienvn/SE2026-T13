@@ -1,3 +1,4 @@
+import { partialMatchKey } from '@tanstack/react-query';
 import { keyBelongsTo, type PrivateQueryKey } from '../query/keys.ts';
 import type { ResourceAccess } from '../query/resource-access.ts';
 import type {
@@ -79,10 +80,10 @@ export function createSessionHttpClient(
   manager: SessionManager,
   resources?: ResourceAccess,
 ) {
-  const pending = new Set<AbortController>();
+  const pending = new Map<AbortController, PrivateQueryKey | undefined>();
   let disposed = false;
   function cancelRequests() {
-    for (const controller of pending) controller.abort();
+    for (const controller of pending.keys()) controller.abort();
     pending.clear();
   }
   const unbind = manager.addLifecycleListener({ onSessionEnd: cancelRequests });
@@ -111,7 +112,7 @@ export function createSessionHttpClient(
     const cancel = () => controller.abort();
     options.signal?.addEventListener('abort', cancel, { once: true });
     if (options.signal?.aborted) cancel();
-    pending.add(controller);
+    pending.set(controller, options.resourceKey);
     try {
       const value = await operation({
         ...options,
@@ -133,6 +134,10 @@ export function createSessionHttpClient(
         resources?.denied(options.resourceKey);
       if (error instanceof ApiError && error.status === 401)
         manager.handleUnauthorized(identity.generation);
+      else if (!(
+        error instanceof ApiError && [403, 404].includes(error.status)
+      ))
+        resourceCurrent?.();
       throw error;
     } finally {
       pending.delete(controller);
@@ -155,6 +160,11 @@ export function createSessionHttpClient(
   return {
     client,
     cancelRequests,
+    cancelResourceRequests(key: PrivateQueryKey) {
+      for (const [controller, resourceKey] of pending)
+        if (resourceKey && partialMatchKey(resourceKey, key))
+          controller.abort();
+    },
     dispose() {
       disposed = true;
       cancelRequests();

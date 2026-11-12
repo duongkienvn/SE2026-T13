@@ -73,6 +73,7 @@ export function createMobileDataLayer(
     assertCurrent,
     resetPrivateState,
     cancelRequests: network.cancelRequests,
+    cancelResourceRequests: network.cancelResourceRequests,
     meOptions(identity: SessionIdentity) {
       return queryOptions({
         queryKey: queryKeys.me(identity),

@@ -38,7 +38,7 @@ function scope(identity: SessionIdentity) {
   return ['mobile', 'private', identity.userId, identity.generation] as const;
 }
 function board(identity: SessionIdentity, boardId: string) {
-  return [...scope(identity), 'boards', boardId] as const;
+  return [...scope(identity), 'boards', boardId.toLowerCase()] as const;
 }
 function notifications(identity: SessionIdentity) {
   return [...scope(identity), 'notifications'] as const;
@@ -52,7 +52,7 @@ export const queryKeys = {
   workspaces: (identity: SessionIdentity, filters: Filters = {}) =>
     [...scope(identity), 'workspace-lists', normalizeFilters(filters)] as const,
   workspace: (identity: SessionIdentity, workspaceId: string) =>
-    [...scope(identity), 'workspaces', workspaceId] as const,
+    [...scope(identity), 'workspaces', workspaceId.toLowerCase()] as const,
   boards: (
     identity: SessionIdentity,
     workspaceId: string | null,
@@ -61,12 +61,12 @@ export const queryKeys = {
     [
       ...scope(identity),
       'board-lists',
-      workspaceId,
+      workspaceId?.toLowerCase() ?? null,
       normalizeFilters(filters),
     ] as const,
   board,
   cardPreview: (identity: SessionIdentity, boardId: string, cardId: string) =>
-    [...board(identity, boardId), 'previews', cardId] as const,
+    [...board(identity, boardId), 'previews', cardId.toLowerCase()] as const,
   boardLists: (identity: SessionIdentity) =>
     [...scope(identity), 'board-lists'] as const,
   columns: (identity: SessionIdentity, id: string) =>
@@ -76,11 +76,26 @@ export const queryKeys = {
   labels: (identity: SessionIdentity, id: string) =>
     [...board(identity, id), 'labels'] as const,
   comments: (identity: SessionIdentity, boardId: string, cardId: string) =>
-    [...board(identity, boardId), 'cards', cardId, 'comments'] as const,
+    [
+      ...board(identity, boardId),
+      'cards',
+      cardId.toLowerCase(),
+      'comments',
+    ] as const,
   checklists: (identity: SessionIdentity, boardId: string, cardId: string) =>
-    [...board(identity, boardId), 'cards', cardId, 'checklists'] as const,
+    [
+      ...board(identity, boardId),
+      'cards',
+      cardId.toLowerCase(),
+      'checklists',
+    ] as const,
   attachments: (identity: SessionIdentity, boardId: string, cardId: string) =>
-    [...board(identity, boardId), 'cards', cardId, 'attachments'] as const,
+    [
+      ...board(identity, boardId),
+      'cards',
+      cardId.toLowerCase(),
+      'attachments',
+    ] as const,
   home: (identity: SessionIdentity) => [...scope(identity), 'home'] as const,
   tasks: (identity: SessionIdentity) => [...scope(identity), 'tasks'] as const,
   search: (identity: SessionIdentity) =>
@@ -92,7 +107,7 @@ export const queryKeys = {
       normalizeFilters(filters),
     ] as const,
   card: (identity: SessionIdentity, boardId: string, cardId: string) =>
-    [...board(identity, boardId), 'cards', cardId] as const,
+    [...board(identity, boardId), 'cards', cardId.toLowerCase()] as const,
   notifications,
   notificationList: (identity: SessionIdentity, filters: Filters = {}) =>
     [...notifications(identity), 'list', normalizeFilters(filters)] as const,

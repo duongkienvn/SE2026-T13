@@ -34,7 +34,8 @@ export function createNativeRealtime(options: {
   function evictAccessSnapshots() {
     const identity = data.getIdentity();
     if (!identity) return;
-    data.resources.fenceAggregates();
+    data.cancelRequests();
+    data.resources.fenceAll();
     const keys: PrivateQueryKey[] = [];
     for (const query of data.queryClient.getQueryCache().getAll()) {
       const key = query.queryKey;
@@ -84,6 +85,7 @@ export function createNativeRealtime(options: {
       const identity = data.getIdentity();
       if (identity) {
         data.resources.fenceBoard(boardId, revoked);
+        data.cancelResourceRequests(queryKeys.board(identity, boardId));
         data.evict(identity, [queryKeys.board(identity, boardId)]);
         if (revoked) {
           data.resources.fenceAggregates();

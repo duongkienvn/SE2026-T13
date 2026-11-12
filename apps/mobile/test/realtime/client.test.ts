@@ -91,6 +91,45 @@ test('socket echoes during an optimistic write share its authoritative refresh a
     c.dispose();
   }
 });
+
+test('label catalog changes refresh embedded labels and previews; Card edits also refresh Home up-next', async () => {
+  const c = await integration();
+  try {
+    await c.join();
+    const keys = [
+      c.cardKey,
+      queryKeys.cards(c.identity, BOARD),
+      queryKeys.cardPreview(c.identity, BOARD, CARD),
+      queryKeys.labels(c.identity, BOARD),
+      queryKeys.tasks(c.identity),
+      queryKeys.home(c.identity),
+    ];
+    keys.forEach((key, index) => c.observe(key, `read-${index}`));
+    const other = queryKeys.card(c.identity, CARD, BOARD);
+    c.observe(other, 'other-board');
+    const before = c.requests.length;
+    c.configure({ cardValue: 4 });
+    c.socket.server('labels:changed', { boardId: BOARD, labelId: CARD });
+    c.time.advance(50);
+    await flush();
+    assert.equal(c.requests.length, before + keys.length);
+    keys.forEach((key) =>
+      assert.equal(c.data.queryClient.getQueryData(key), 4),
+    );
+    assert.equal(c.data.queryClient.getQueryData(other), 0);
+    c.configure({ cardValue: 5 });
+    c.socket.server('card:updated', payload);
+    c.time.advance(50);
+    await flush();
+    assert.equal(c.requests.length, before + keys.length + 5);
+    assert.equal(
+      c.data.queryClient.getQueryData(queryKeys.home(c.identity)),
+      5,
+    );
+  } finally {
+    c.dispose();
+  }
+});
 test('background/offline cleanup suspends presence and resumes only after session verification and fresh room authorization', async () => {
   const c = await integration();
   try {

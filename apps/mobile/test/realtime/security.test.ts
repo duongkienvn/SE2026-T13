@@ -238,3 +238,58 @@ test('old socket callbacks, hints and in-flight requests cannot clear or populat
     c.dispose();
   }
 });
+
+test('ID-free access loss also fences queued work whose resource has not populated the cache yet', async () => {
+  const c = await integration();
+  try {
+    await c.join();
+    const key = queryKeys.card(c.identity, WORKSPACE, CARD);
+    let writes = 0;
+    const pending = c.data.optimistic({
+      identity: c.identity,
+      key,
+      update: () => 'private',
+      mutation: async () => {
+        writes++;
+        return 'private';
+      },
+    });
+    const rejected = assert.rejects(pending, {
+      code: 'RESOURCE_ACCESS_CHANGED',
+    });
+    c.socket.server('access:changed');
+    await rejected;
+    assert.equal(writes, 0);
+    assert.equal(c.data.queryClient.getQueryData(key), undefined);
+  } finally {
+    c.dispose();
+  }
+});
+
+test('a Board access hint fences cached and queued data even without an active room consumer', async () => {
+  const c = await integration();
+  try {
+    const release = await c.join();
+    release();
+    c.data.queryClient.setQueryData(c.cardKey, 'private');
+    let writes = 0;
+    const pending = c.data.optimistic({
+      identity: c.identity,
+      key: c.cardKey,
+      update: () => 'edited',
+      mutation: async () => {
+        writes++;
+      },
+    });
+    const rejected = assert.rejects(pending, {
+      code: 'RESOURCE_ACCESS_CHANGED',
+    });
+    c.socket.server('board:access-changed', { boardId: BOARD });
+    await rejected;
+    assert.equal(writes, 0);
+    assert.equal(c.data.queryClient.getQueryData(c.cardKey), undefined);
+    assert.equal(c.realtime.getBoardSnapshot(BOARD).canRead, false);
+  } finally {
+    c.dispose();
+  }
+});
