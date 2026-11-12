@@ -36,3 +36,4 @@ apps/mobile/*.mobileprovision
 apps/mobile/*.apk
 apps/mobile/*.aab
 apps/mobile/*.ipa
+apps/mobile/apk/
