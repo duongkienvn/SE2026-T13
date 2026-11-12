@@ -1,3 +1,4 @@
+import { systemTimers, type Timers } from '../auth/clock.ts';
 import { queryOptions } from '@tanstack/react-query';
 import type { HttpClient } from '../api/client.ts';
 import { ApiError } from '../api/errors.ts';
@@ -17,6 +18,7 @@ import { createQueryCoordinator } from './coordinator.ts';
 export function createMobileDataLayer(
   manager: SessionManager,
   transport: HttpClient,
+  timers: Timers = systemTimers,
 ) {
   const queryClient = createMobileQueryClient();
   const network = createSessionHttpClient(transport, manager);
@@ -29,6 +31,7 @@ export function createMobileDataLayer(
       throw new ApiError('session-changed');
   }
   function resetPrivateState() {
+    coordinator.clearPending();
     network.cancelRequests();
     // Cancellation invokes AbortSignal synchronously. Removal happens before
     // the session owner publishes another identity; promises cannot resurrect it.
@@ -36,6 +39,10 @@ export function createMobileDataLayer(
     queryClient.removeQueries({ queryKey: queryKeys.private });
     queryClient.getMutationCache().clear();
   }
+  const coordinator = createQueryCoordinator(
+    { queryClient, getIdentity, assertCurrent },
+    timers,
+  );
   function seedVerifiedUser() {
     const snapshot = manager.getSnapshot();
     if (snapshot.status === 'authenticated') {
@@ -55,7 +62,7 @@ export function createMobileDataLayer(
   seedVerifiedUser();
 
   return {
-    ...createQueryCoordinator({ queryClient, getIdentity, assertCurrent }),
+    ...coordinator,
     queryClient,
     api: network.client,
     getIdentity,

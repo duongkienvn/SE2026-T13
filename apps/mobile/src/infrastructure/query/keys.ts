@@ -65,6 +65,24 @@ export const queryKeys = {
       normalizeFilters(filters),
     ] as const,
   board,
+  boardLists: (identity: SessionIdentity) =>
+    [...scope(identity), 'board-lists'] as const,
+  columns: (identity: SessionIdentity, id: string) =>
+    [...board(identity, id), 'columns'] as const,
+  members: (identity: SessionIdentity, id: string) =>
+    [...board(identity, id), 'members'] as const,
+  labels: (identity: SessionIdentity, id: string) =>
+    [...board(identity, id), 'labels'] as const,
+  comments: (identity: SessionIdentity, boardId: string, cardId: string) =>
+    [...board(identity, boardId), 'cards', cardId, 'comments'] as const,
+  checklists: (identity: SessionIdentity, boardId: string, cardId: string) =>
+    [...board(identity, boardId), 'cards', cardId, 'checklists'] as const,
+  attachments: (identity: SessionIdentity, boardId: string, cardId: string) =>
+    [...board(identity, boardId), 'cards', cardId, 'attachments'] as const,
+  home: (identity: SessionIdentity) => [...scope(identity), 'home'] as const,
+  tasks: (identity: SessionIdentity) => [...scope(identity), 'tasks'] as const,
+  search: (identity: SessionIdentity) =>
+    [...scope(identity), 'search'] as const,
   cards: (identity: SessionIdentity, boardId: string, filters: Filters = {}) =>
     [
       ...board(identity, boardId),

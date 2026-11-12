@@ -6,6 +6,7 @@ import { queryKeys } from '../query/keys.ts';
 import type { Timers } from '../auth/clock.ts';
 import { createConnection } from './connection.ts';
 import { createBoardRooms, decodeBoardAccess } from './rooms.ts';
+import { hintTargets } from './reconciliation.ts';
 import { parseHint } from './contracts.ts';
 import type { SocketFactory } from './socket.ts';
 
@@ -80,14 +81,24 @@ export function createNativeRealtime(options: {
       if (!hint || !identity) return;
       if (event === 'presence:sync')
         rooms.presence(hint.boardId!, hint.userIds!);
-      else if (event === 'notifications:changed')
+      else if (
+        event === 'notifications:changed' ||
+        (hint.boardId && rooms.isLive(hint.boardId))
+      ) {
         void data
-          .invalidate(identity, [queryKeys.notifications(identity)])
+          .invalidateHints(
+            identity,
+            hintTargets(
+              identity,
+              event,
+              hint,
+              hint.boardId
+                ? rooms.getSnapshot(hint.boardId).workspaceId
+                : undefined,
+            ),
+          )
           .catch(() => undefined);
-      else if (hint.boardId && rooms.isLive(hint.boardId))
-        void data
-          .invalidate(identity, [queryKeys.board(identity, hint.boardId)])
-          .catch(() => undefined);
+      }
     },
   });
   return {
