@@ -30,42 +30,7 @@ export interface SessionApi {
 }
 
 const DEFAULT_TIMEOUT_MS = 15_000;
-const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '10.0.2.2', '[::1]']);
-
-function isPrivateLanHost(host: string): boolean {
-  return (
-    LOCAL_HOSTS.has(host) ||
-    /^10\.\d+\.\d+\.\d+$/.test(host) ||
-    /^192\.168\.\d+\.\d+$/.test(host) ||
-    /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/.test(host)
-  );
-}
-
-/**
- * Validates `EXPO_PUBLIC_API_BASE_URL`. HTTPS is required everywhere except
- * development builds talking to a loopback, emulator or private-LAN host.
- */
-export function parseApiBaseUrl(
-  value: string | undefined,
-  allowInsecureLocal: boolean,
-): URL | null {
-  if (!value) return null;
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    return null;
-  }
-  if (url.username || url.password || url.search || url.hash) return null;
-  if (url.protocol === 'https:') return url;
-  if (
-    url.protocol === 'http:' &&
-    allowInsecureLocal &&
-    isPrivateLanHost(url.hostname)
-  )
-    return url;
-  return null;
-}
+export { parseApiBaseUrl } from '../api/config.ts';
 
 function parseUser(body: unknown): SessionUser | null {
   if (typeof body !== 'object' || body === null) return null;
