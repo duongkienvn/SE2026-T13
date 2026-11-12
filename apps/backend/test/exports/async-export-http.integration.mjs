@@ -225,6 +225,15 @@ try {
       boards,
     });
   }
+  if (process.env.VT054_LOAD === '1') {
+    const { runExportLoad } = await import('./async-export-load.mjs');
+    await runExportLoad({
+      baseUrl: await app.getUrl(),
+      token: tokens.owner,
+      boardId: board.id,
+      source,
+    });
+  }
   await source.query(
     "UPDATE board_members SET role='MEMBER' WHERE board_id=$1 AND user_id=$2",
     [board.id, users.owner.id],

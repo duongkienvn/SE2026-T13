@@ -1,0 +1,13 @@
+diff --git a/apps/backend/src/api/exports/export-job-policy.ts b/apps/backend/src/api/exports/export-job-policy.ts
+index 24b550d..1f3bfd8 100644
+--- a/apps/backend/src/api/exports/export-job-policy.ts
++++ b/apps/backend/src/api/exports/export-job-policy.ts
+@@ -12,7 +12,7 @@ export function toExportJobResponse(row: ExportJobRecord): ExportJobResponse {
+   return {
+     id: row.id,
+     state: row.state,
+-    format: row.format,
++    format: 'json',
+     attempts: row.attempts,
+     expiresAt: row.expiresAt.toISOString(),
+     progress:

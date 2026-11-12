@@ -1,0 +1,9 @@
+PASS src/api/exports/export-job-policy.spec.ts (8.831 s)
+PASS src/api/exports/exports.spec.ts (5.098 s)
+
+Seed:        54
+Test Suites: 2 passed, 2 total
+Tests:       45 passed, 45 total
+Snapshots:   0 total
+Time:        14.485 s, estimated 16 s
+Ran all test suites within paths "src/api/exports/export-job-policy.spec.ts", "src/api/exports/exports.spec.ts".
