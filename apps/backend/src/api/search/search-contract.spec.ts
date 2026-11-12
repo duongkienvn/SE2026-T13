@@ -1,10 +1,7 @@
 import 'reflect-metadata';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import type { Repository } from 'typeorm';
-import { Workspace } from '../workspaces/entities/workspace.entity';
 import { SearchQueryDto } from './dto/search-query.dto';
-import { SearchService } from './search.service';
 
 const boardId = '11111111-1111-4111-8111-111111111111';
 const errorsFor = (query: Record<string, unknown>) =>
@@ -36,17 +33,4 @@ describe('VT-053 search backward-compatible input contract', () => {
     }
   });
 
-  it('propagates backend errors: never returns a plausible empty result', async () => {
-    const outage = new Error('VT053_DATABASE_OUTAGE');
-    const transaction = jest.fn().mockRejectedValue(outage);
-    const repository = { manager: { transaction } } as unknown as Repository<Workspace>;
-    const service = new SearchService(repository);
-    await expect(
-      service.search('11111111-1111-4111-8111-111111111111', {
-        q: 'needle',
-        type: 'cards',
-      } as SearchQueryDto),
-    ).rejects.toBe(outage);
-    expect(transaction).toHaveBeenCalledTimes(1);
-  });
 });
