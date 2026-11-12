@@ -293,7 +293,7 @@ describe('global search authenticated HTTP contract', () => {
     expect(get.security).toEqual([{ bearer: [] }]);
     expect(
       get.parameters!.map((p) => ('name' in p ? p.name : '')).sort(),
-    ).toEqual(['limit', 'page', 'q', 'type']);
+    ).toEqual(['boardId', 'limit', 'page', 'q', 'type']);
     for (const status of ['200', '400', '401', '429', '500'])
       expect(get.responses[status]).toBeDefined();
     expect(doc.components!.schemas!.CardSearchResultDto).toMatchObject({
