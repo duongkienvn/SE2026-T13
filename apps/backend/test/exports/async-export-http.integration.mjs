@@ -57,6 +57,7 @@ try {
     GOOGLE_CLIENT_ID: '',
     TASK_NOTIFICATION_EMAIL_ENABLED: 'false',
     TASK_NOTIFICATION_JOBS_ENABLED: 'false',
+    CORS_ORIGINS: process.env.VT054_BROWSER_URL || 'http://localhost:5173',
   });
   const { AppModule } = require('../../dist/app.module.js');
   const {
@@ -68,7 +69,10 @@ try {
     .compile();
   app = module.createNestApplication();
   configureHttpApplication(app);
-  await app.listen(0, '127.0.0.1');
+  await app.listen(
+    Number(process.env.VT054_BROWSER_HTTP_PORT || 0),
+    '127.0.0.1',
+  );
   const http = request(app.getHttpServer()),
     jwt = app.get(JwtService);
   const users = {},
@@ -212,6 +216,15 @@ try {
   pass(
     'TC10: scheduler failure sanitized and explicit retry completes using same job',
   );
+  if (process.env.VT054_BROWSER_URL) {
+    const { browserJourney } = await import('./async-export.browser.mjs');
+    await browserJourney({
+      backendUrl: await app.getUrl(),
+      token: tokens.owner,
+      boardId: board.id,
+      boards,
+    });
+  }
   await source.query(
     "UPDATE board_members SET role='MEMBER' WHERE board_id=$1 AND user_id=$2",
     [board.id, users.owner.id],

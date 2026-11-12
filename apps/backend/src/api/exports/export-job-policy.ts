@@ -1,19 +1,13 @@
+import type { BoardExportJobResponse, ExportJobState } from '@kanban/shared';
+
 export interface ExportJobRecord {
   id: string;
-  state: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+  state: ExportJobState;
   format: 'json' | 'csv';
   attempts: number;
   expiresAt: Date;
 }
-export interface ExportJobResponse {
-  id: string;
-  state: ExportJobRecord['state'];
-  format: ExportJobRecord['format'];
-  attempts: number;
-  expiresAt: string;
-  progress: number | null;
-  error: string | null;
-}
+export type ExportJobResponse = BoardExportJobResponse;
 export function toExportJobResponse(row: ExportJobRecord): ExportJobResponse {
   return {
     id: row.id,

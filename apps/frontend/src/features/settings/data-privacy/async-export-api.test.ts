@@ -45,7 +45,9 @@ describe('VT-054 async Board export API workflow', () => {
       (error) => ({ error }),
     );
     await vi.runAllTimersAsync();
-    expect(await observed).toMatchObject({ value: { blob: expect.any(Blob) } });
+    const result = await observed;
+    if ('error' in result) throw result.error;
+    expect(await result.value.blob.text()).toBe('{"board":{}}');
     expect(phase.mock.calls.map(([value]) => value)).toEqual([
       'queued',
       'running',
@@ -99,6 +101,49 @@ describe('VT-054 async Board export API workflow', () => {
         new AbortController().signal,
       ),
     ).rejects.toMatchObject({ status: 401 });
+    expect(calls).toHaveLength(1);
+  });
+
+  it('TC15: abort during the polling wait cancels its timer and makes no later request', async () => {
+    vi.useFakeTimers();
+    const abort = new AbortController();
+    let entered!: () => void;
+    const waiting = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const phase = vi.fn(() => entered());
+    const calls = mockApi({ [`POST ${path}`]: json('PENDING', 202) });
+    const observed = exportBoardDataAsync(
+      'token',
+      board,
+      'json',
+      key,
+      abort.signal,
+      phase,
+    ).then(
+      (value) => ({ value }),
+      (error) => ({ error }),
+    );
+    await waiting;
+    expect(vi.getTimerCount()).toBe(1);
+    abort.abort();
+    expect(await observed).toMatchObject({ error: { name: 'AbortError' } });
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.runAllTimersAsync();
+    expect(calls).toHaveLength(1);
+  });
+
+  it('rejects an unknown job state instead of polling indefinitely', async () => {
+    const calls = mockApi({ [`POST ${path}`]: json('UNKNOWN', 202) });
+    await expect(
+      exportBoardDataAsync(
+        'token',
+        board,
+        'json',
+        key,
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code: 'INVALID_RESPONSE' });
     expect(calls).toHaveLength(1);
   });
 });
