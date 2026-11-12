@@ -1,15 +1,30 @@
-import { Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { verifySharedCompatibility } from '../bootstrap/shared-compatibility';
+import { SessionProvider } from '../navigation/session-context';
+import { RootStack } from '../navigation/root-stack';
+import {
+  defaultSessionAdapter,
+  type SessionAdapter,
+} from '../navigation/session';
 
 verifySharedCompatibility();
 
-export default function RootLayout() {
+export function NavigationRoot({
+  adapter = defaultSessionAdapter,
+}: {
+  adapter?: SessionAdapter;
+}) {
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" />
-      <Slot />
+      <SessionProvider adapter={adapter}>
+        <StatusBar style="auto" />
+        <RootStack />
+      </SessionProvider>
     </SafeAreaProvider>
   );
+}
+
+export default function RootLayout() {
+  return <NavigationRoot />;
 }
