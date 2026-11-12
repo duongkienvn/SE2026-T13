@@ -190,6 +190,7 @@ test('optimistic failure rolls back, then reconciles through an authoritative ac
       update: () => ({ title: 'new' }),
       mutation: async () => 'committed',
     });
+    await flush(); // Reconciliation completes independently of the write promise.
     assert.equal(reads, 2);
     assert.deepEqual(layer.queryClient.getQueryData(key), { title: 'server' });
     stop();
@@ -282,6 +283,152 @@ test('conflicting optimistic edits serialize without blocking unrelated keys', a
     assert.deepEqual(calls, ['first', 'other', 'second']);
     assert.equal(layer.queryClient.getQueryData(key), 2);
   } finally {
+    context.dispose();
+  }
+});
+
+test('committed same-key edits release their locks before slow refetches, cancel old reads and refresh again', async () => {
+  const reads: {
+    gate: ReturnType<typeof deferred<Response>>;
+    signal: AbortSignal;
+  }[] = [];
+  let writes = 0;
+  const context = await setup(async (init) => {
+    if (init.method === 'PATCH') return ok({ value: ++writes });
+    const gate = deferred<Response>();
+    reads.push({ gate, signal: init.signal! });
+    return gate.promise;
+  });
+  const { layer } = context;
+  const identity = layer.getIdentity()!;
+  const key = queryKeys.card(identity, 'b', 'c');
+  layer.queryClient.setQueryData(key, { value: 0 });
+  const decode = (value: unknown) => {
+    assert.ok(
+      value &&
+        typeof value === 'object' &&
+        'value' in value &&
+        typeof value.value === 'number',
+    );
+    return { value: value.value };
+  };
+  const observer = new QueryObserver(layer.queryClient, {
+    queryKey: key,
+    staleTime: Infinity,
+    queryFn: ({ signal }) =>
+      layer.api.json('/cards/c', decode, { identity, signal, retries: 0 }),
+  });
+  const stop = observer.subscribe(() => {});
+  const edit = () =>
+    layer.optimistic({
+      identity,
+      key,
+      update: (previous: { value: number } | undefined) => ({
+        value: (previous?.value ?? 0) + 1,
+      }),
+      mutation: () =>
+        layer.api.json('/cards/c', decode, {
+          identity,
+          method: 'PATCH',
+          body: { value: writes + 1 },
+        }),
+      reconcile: (result) => result,
+    });
+  try {
+    let firstSettled = false;
+    const first = edit().then((result) => {
+      firstSettled = true;
+      return result;
+    });
+    await flush();
+    assert.equal(
+      firstSettled,
+      true,
+      'a committed write must not wait for its slow GET',
+    );
+    assert.deepEqual(await first, { value: 1 });
+    assert.equal(reads.length, 1);
+    assert.equal(layer.queryClient.getQueryState(key)?.fetchStatus, 'fetching');
+    let secondSettled = false;
+    const second = edit().then((result) => {
+      secondSettled = true;
+      return result;
+    });
+    await flush();
+    assert.equal(
+      secondSettled,
+      true,
+      'the next same-key edit must acquire the released lock',
+    );
+    assert.deepEqual(await second, { value: 2 });
+    assert.equal(reads[0]!.signal.aborted, true);
+    assert.equal(
+      reads.length,
+      2,
+      'the second edit must trigger its own authoritative read',
+    );
+    assert.deepEqual(
+      context.requests.map((request) => request.method),
+      ['PATCH', 'GET', 'PATCH', 'GET'],
+    );
+    reads[0]!.gate.resolve(ok({ value: -1 }));
+    await flush();
+    assert.deepEqual(
+      layer.queryClient.getQueryData(key),
+      { value: 2 },
+      'cancelled read cannot overwrite the newer edit',
+    );
+    reads[1]!.gate.resolve(ok({ value: 20 }));
+    await flush();
+    assert.deepEqual(layer.queryClient.getQueryData(key), { value: 20 });
+    assert.equal(layer.queryClient.getQueryState(key)?.fetchStatus, 'idle');
+    assert.equal(context.requests.length, 4);
+  } finally {
+    for (const read of reads) read.gate.resolve(ok({ value: writes }));
+    stop();
+    context.dispose();
+  }
+});
+
+test('failed authoritative refetch cannot reject a committed write or leave an unhandled promise', async () => {
+  const context = await setup(
+    async () =>
+      new Response('{}', {
+        status: 503,
+        headers: { 'content-type': 'application/json' },
+      }),
+  );
+  const { layer } = context;
+  const identity = layer.getIdentity()!;
+  const key = queryKeys.card(identity, 'b', 'c');
+  layer.queryClient.setQueryData(key, 'old');
+  const observer = new QueryObserver(layer.queryClient, {
+    queryKey: key,
+    staleTime: Infinity,
+    queryFn: ({ signal }) =>
+      layer.api.json('/cards/c', (value) => value, {
+        identity,
+        signal,
+        retries: 0,
+      }),
+  });
+  const stop = observer.subscribe(() => {});
+  try {
+    assert.equal(
+      await layer.optimistic({
+        identity,
+        key,
+        update: () => 'new',
+        mutation: async () => 'committed',
+      }),
+      'committed',
+    );
+    await flush();
+    assert.equal(layer.queryClient.getQueryState(key)?.status, 'error');
+    assert.equal(layer.queryClient.getQueryData(key), 'new');
+    assert.equal(context.requests.length, 1);
+  } finally {
+    stop();
     context.dispose();
   }
 });

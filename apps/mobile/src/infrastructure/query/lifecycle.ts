@@ -38,8 +38,8 @@ export function bindQueryLifecycle(
     const connected =
       state.isConnected !== false && state.isInternetReachable !== false;
     manager.checkExpiry();
-    if (!wasOnline && connected) manager.handleNetworkRestored();
     onlineManager.setOnline(connected);
+    if (!wasOnline && connected) manager.handleNetworkRestored();
   }
   focus(app.currentState);
   const appSubscription = app.addEventListener('change', focus);

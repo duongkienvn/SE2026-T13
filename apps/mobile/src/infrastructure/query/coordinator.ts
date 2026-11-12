@@ -145,8 +145,9 @@ export function createQueryCoordinator(owner: CoordinatorOwner) {
       throw error;
     } finally {
       if (sameIdentity(identity, owner.getIdentity())) {
-        // Refetch failures live on queries; they must not fail a committed write.
-        await invalidate(identity, affected).catch(() => undefined);
+        // Refetch failures live on queries. Neither the committed write nor
+        // the next same-key edit waits for this read to finish.
+        void invalidate(identity, affected).catch(() => undefined);
       }
       release();
       if (mutations.get(hash) === lock) mutations.delete(hash);

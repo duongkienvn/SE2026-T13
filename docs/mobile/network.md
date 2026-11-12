@@ -114,7 +114,8 @@ Queries have 30-second stale time, five-minute GC, stale active refetch on focus
 and reconnect, and no additional retry layer. Mutations have no retries and use
 `networkMode: 'always'` to report offline rather than queue writes. Native AppState
 checks expiry before enabling focus; Expo Network feeds onlineManager and session
-reverification. Initial asynchronous connectivity cannot overwrite a newer event.
+reverification after onlineManager has been marked online. Initial asynchronous
+connectivity cannot overwrite a newer event.
 Follow the [TanStack native integration](https://tanstack.com/query/v5/docs/framework/react/react-native)
 and [cancellation contract](https://tanstack.com/query/v5/docs/framework/react/guides/query-cancellation).
 
@@ -137,9 +138,11 @@ snapshot is authoritative. Count actual fetches, not just invalidation calls.
 `data.optimistic({ identity, key, update, mutation, reconcile?, invalidate? })`
 serializes edits of the same exact key, cancels its read, snapshots data and applies
 an optimistic patch. On error it rolls back only its own unchanged query revision;
-newer authoritative data wins. On settlement it invalidates affected keys, while a
-refetch error never turns a committed write into a failed write. Optional reconcile
-uses the server result. Session changes or eviction fence late reconciliation.
+newer authoritative data wins. On settlement it queues invalidation of affected keys
+without waiting for the read: the write promise and same-key lock settle immediately.
+The next edit can cancel that read and trigger its own authoritative refresh.
+Refetch rejection is handled asynchronously and never fails a committed write.
+Optional reconcile uses the server result. Session changes or eviction fence late reconciliation.
 Use `data.api` with the captured identity inside `mutation`; never store credentials
 in mutation variables. Domain-specific conflict/reorder behavior still belongs to
 the feature's tests. Queries for unrelated resources are not blocked.
