@@ -242,6 +242,17 @@ test('offline and native failures normalize without leaking native messages', as
   );
 });
 
+test('an interrupted JSON body is a network failure while malformed completed JSON is invalid-response', async () => {
+  const response = ok({});
+  response.text = async () => {
+    throw new TypeError('private interrupted URL');
+  };
+  await assert.rejects(
+    setup(async () => response).client.json('/items', identity, { retries: 0 }),
+    failure('network'),
+  );
+});
+
 test('timeouts include body consumption and settle even when fetch ignores cancellation', async () => {
   const pending = deferred<Response>();
   const { client, time } = setup(() => pending.promise);

@@ -28,10 +28,12 @@ export function bindQueryLifecycle(
   let disposed = false;
   let receivedEvent = false;
   function focus(state: string | null | undefined) {
+    if (disposed) return;
     if (state === 'active') manager.checkExpiry();
     focusManager.setFocused(state === 'active');
   }
   function online(state: NetworkState) {
+    if (disposed) return;
     const wasOnline = onlineManager.isOnline();
     const connected =
       state.isConnected !== false && state.isInternetReachable !== false;

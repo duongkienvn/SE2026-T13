@@ -35,6 +35,42 @@ test('same-key concurrent observers share one actual HTTP request', async () => 
   }
 });
 
+test('the real session verification result seeds me without an immediate duplicate HTTP request', async () => {
+  const context = await setup(undefined, { keepVerifiedUser: true });
+  try {
+    const options = context.layer.meOptions(context.layer.getIdentity()!);
+    assert.equal(
+      (await context.layer.queryClient.fetchQuery(options)).id,
+      USER_A,
+    );
+    assert.equal(context.requests.length, 0);
+    await context.layer.invalidate(context.layer.getIdentity()!, [
+      options.queryKey,
+    ]);
+    assert.equal(
+      (await context.layer.queryClient.fetchQuery(options)).id,
+      USER_A,
+    );
+    assert.equal(context.requests.length, 1);
+  } finally {
+    context.dispose();
+  }
+});
+
+test('current-user adapter rejects a response for a different identity', async () => {
+  const context = await setup(async () => ok(user(USER_B)));
+  try {
+    await assert.rejects(
+      context.layer.queryClient.fetchQuery(
+        context.layer.meOptions(context.layer.getIdentity()!),
+      ),
+      { kind: 'invalid-response' },
+    );
+  } finally {
+    context.dispose();
+  }
+});
+
 test('session teardown synchronously removes queries/mutations and fences late results and old query functions', async () => {
   const gate = deferred<Response>();
   const context = await setup(() => gate.promise);
@@ -291,6 +327,7 @@ test('both accounts fetch their own data; signing into the same account again ge
     );
     await context.manager.establishSession(loginResponse(USER_B));
     const b = layer.getIdentity()!;
+    await layer.invalidate(b, [queryKeys.me(b)]);
     assert.equal(
       (await layer.queryClient.fetchQuery(layer.meOptions(b))).id,
       USER_B,
@@ -299,6 +336,7 @@ test('both accounts fetch their own data; signing into the same account again ge
     await context.manager.establishSession(loginResponse(USER_A));
     const again = layer.getIdentity()!;
     assert.notEqual(again.generation, a.generation);
+    await layer.invalidate(again, [queryKeys.me(again)]);
     assert.equal(
       (await layer.queryClient.fetchQuery(layer.meOptions(again))).id,
       USER_A,

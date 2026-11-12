@@ -62,6 +62,11 @@ children only while authenticated and remounts them when `generation` changes.
 
 ## What each owner plugs in
 
+MOB-04 now implements the transport/query integration below through the existing
+session owner. See [network and MOB-06 integration](network.md). Session verification
+and logout use the same HTTP implementation as feature requests; their bootstrap
+port still takes an explicit bearer and never recursively calls session guards.
+
 - **MOB-04 transport/Query:** read `getAccessCredential()` immediately before
   sending, never cache the token. Tag the request with its `generation`; after
   the response, ignore it unless `isCurrent(generation)`. On `401` call

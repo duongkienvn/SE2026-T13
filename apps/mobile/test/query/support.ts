@@ -1,6 +1,7 @@
 import { createHttpClient } from '../../src/infrastructure/api/client.ts';
 import { createCredentialStore } from '../../src/infrastructure/auth/credential-store.ts';
 import { createSessionManager } from '../../src/infrastructure/auth/session-manager.ts';
+import { queryKeys } from '../../src/infrastructure/query/keys.ts';
 import { createMobileDataLayer } from '../../src/infrastructure/query/data-layer.ts';
 import {
   FakeSessionApi,
@@ -20,6 +21,7 @@ export function ok(data: unknown) {
 }
 export async function setup(
   respond?: (init: RequestInit) => Promise<Response>,
+  options: { keepVerifiedUser?: boolean } = {},
 ) {
   const time = new FakeTime();
   const api = new FakeSessionApi();
@@ -59,6 +61,12 @@ export async function setup(
     },
   });
   await manager.establishSession(loginResponse(USER_A));
+  // Most transport tests deliberately exercise a cache miss after verification.
+  if (!options.keepVerifiedUser)
+    layer.queryClient.removeQueries({
+      queryKey: queryKeys.me(layer.getIdentity()!),
+      exact: true,
+    });
   return {
     layer,
     manager,

@@ -19,6 +19,8 @@ in this package, first run `pnpm --filter @kanban/shared build` at the root.
 `pnpm build` checks mobile TypeScript; native bundles are explicit opt-in commands.
 MOB-05 adds the SecureStore-backed session owner (`src/infrastructure/auth/`);
 its contract for navigation, REST/Query and realtime is in the
-[session guide](../../docs/mobile/session.md). Login screens, the REST/Query
-layer, feature screens, the four-tab shell, EAS and release signing belong to
-later mobile issues.
+[session guide](../../docs/mobile/session.md). The REST/Query
+foundation now shares one transport with the session owner; see the
+[network and MOB-06 integration guide](../../docs/mobile/network.md).
+MOB-03 supplies the navigation shell. Feature screens, auth forms, realtime and
+release signing remain in their respective issues.

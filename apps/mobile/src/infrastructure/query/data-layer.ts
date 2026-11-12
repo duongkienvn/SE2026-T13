@@ -36,9 +36,23 @@ export function createMobileDataLayer(
     queryClient.removeQueries({ queryKey: queryKeys.private });
     queryClient.getMutationCache().clear();
   }
+  function seedVerifiedUser() {
+    const snapshot = manager.getSnapshot();
+    if (snapshot.status === 'authenticated') {
+      queryClient.setQueryData(
+        queryKeys.me({
+          userId: snapshot.user.id,
+          generation: snapshot.generation,
+        }),
+        snapshot.user,
+      );
+    }
+  }
   const unbind = manager.addLifecycleListener({
     onSessionEnd: resetPrivateState,
+    onSessionStart: seedVerifiedUser,
   });
+  seedVerifiedUser();
 
   return {
     ...createQueryCoordinator({ queryClient, getIdentity, assertCurrent }),
@@ -53,11 +67,20 @@ export function createMobileDataLayer(
         queryKey: queryKeys.me(identity),
         queryFn: ({ signal }) => {
           assertCurrent(identity);
-          return network.client.json('/users/me', decodeSessionUser, {
-            identity,
-            signal,
-            expectedStatus: 200,
-          });
+          return network.client.json(
+            '/users/me',
+            (value) => {
+              const user = decodeSessionUser(value);
+              if (user.id !== identity.userId)
+                throw new Error('Unexpected current user');
+              return user;
+            },
+            {
+              identity,
+              signal,
+              expectedStatus: 200,
+            },
+          );
         },
       });
     },

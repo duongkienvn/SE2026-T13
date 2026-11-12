@@ -81,4 +81,8 @@ test('native focus/reconnect refresh stale active data once; initial async statu
   }
   assert.equal(removed, 2);
   assert.equal(focusManager.isFocused(), true);
+  networkListener!({ isConnected: false });
+  appListener!('background');
+  assert.equal(onlineManager.isOnline(), true);
+  assert.equal(focusManager.isFocused(), true);
 });

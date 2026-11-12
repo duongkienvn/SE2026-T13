@@ -319,8 +319,9 @@ export function createHttpClient(config: HttpClientOptions): HttpClient {
   async function jsonBody(response: Response): Promise<unknown> {
     if (response.status === 204 || !isJson(contentType(response)))
       throw invalidResponse(response.status);
+    const text = await response.text();
     try {
-      return JSON.parse(await response.text());
+      return JSON.parse(text);
     } catch {
       throw invalidResponse(response.status);
     }
