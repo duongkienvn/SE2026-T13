@@ -11,3 +11,10 @@ Result: exit 1; 1 suite failed, 1 test failed. Expected HTTP 202, received 404, 
 Keep: real Nest HTTP response and public response shape assertions. Modify in subsequent test-first cycle: add generator completion barrier, exact projection keys, stronger UUID pattern, retry/concurrency and fresh ACL/session cases. Reject: interpreting this one route test as evidence of idempotency or security. Guard override deliberately limits scope to authenticated contract routing. No production code has been edited at this checkpoint.
 
 Prompt for next cycle: “Before implementing the job service, write retry/state/failure cases using controlled deferred work and exact response projection; preserve this 202 oracle. For persistence uniqueness/lease, add disposable PostgreSQL tests and do not treat mocks as proof.”
+
+## Vòng test-first policy
+
+Prompt self-directed thực tế: “Viết test trước cho exact response allowlist, state/progress mapping, CSV preservation và failed retry dưới 3 attempts/trước expiry. Dùng clock cố định; test không được coi là chứng minh database uniqueness.”
+Output giữ: `export-job-policy.spec.ts`, 12 tests; seam `export-job-policy.ts` chỉ khai báo contract và throw unsupported. Chạy RED trước triển khai: `pnpm --filter @kanban/backend exec jest --runInBand --runTestsByPath src/api/exports/export-job-policy.spec.ts --watchman=false`; 12 failed/12, 26.976s, exit 1, log `evidence/red-policy.txt`. Thất bại ở mapper/retry chưa implement, không phải import/compile. Giới hạn: fixture thêm private columns kiểm tra allowlist nhưng không chứng minh query không tải bytes; sẽ cần kiểm tra repository/API thực tế.
+
+Quyết định policy trước implementation: 3 attempts tối đa, job/result hết hạn sau 15 phút kể từ khi tạo; worker concurrency dự kiến 4. Running progress null, completed 100. Policy không tự reset attempt count và không tự động retry FAILED. Các giới hạn này chưa được benchmark.
