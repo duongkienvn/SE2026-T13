@@ -1,0 +1,9 @@
+{
+  "expo": {
+    "name": "Kanvexa Navigation Device Harness",
+    "slug": "kanvexa-navigation-device-harness",
+    "scheme": "kanvexa-nav-test",
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router"]
+  }
+}
