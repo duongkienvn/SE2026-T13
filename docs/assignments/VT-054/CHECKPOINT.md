@@ -67,3 +67,11 @@ Khảo sát cách lưu trạng thái bền vững, truy cập và thu hồi quy�
 - Build session 33499 exit 0 (`evidence/jobs-api-build.txt`). Lint focused lần đầu FAIL 2 no-undef Buffer trong integration harness (`evidence/jobs-focused-lint.txt`); đã thêm explicit node:buffer import; rerun session 51072 đang chạy, poll trước khi restart.
 - Bước tiếp: xác nhận focused lint, thêm real JWT HTTP+worker journey; UI test-first theo skills; mutation, coverage/flaky và 120 distinct-task HTTP load; xử lý baseline oversized export timeout; báo cáo PDF và PR cuối cùng.
 - Lint rerun session 51072 terminal exit 0, output rỗng (không lỗi): `evidence/jobs-focused-lint-fixed.txt`. Không còn tiến trình kiểm tra đang chạy tại thời điểm commit backend.
+
+## HTTP/JWT và frontend test-first checkpoint
+
+- Real AppModule JWT+worker+PostgreSQL integration: `async-export-http.integration.mjs`, 5 groups pass, log `evidence/jobs-real-http.txt`. Generator latch chứng minh 202 trước completion; kiểm tra raw response allowlist, privacy headers cả errors, JWT/member/isolation, failure/retry, OWNER revoke/session invalidation. Không browser E2E.
+- UI progress test-first RED: 3 failed/3, log `evidence/red-ui-progress.txt`. Client workflow tests + seam chưa implement: reviewed RED 4 failed/4, log `evidence/red-ui-api-reviewed.txt`. Test oracle unhandled rejection đã sửa (xem RED.md); không hạ expected result.
+- `useExportDownload.ts` và `ExportCard.tsx` hiện có draft hỗ trợ phase callback/visible message, chưa kiểm chứng và chưa commit. `async-export-api.ts` vẫn contract seam throw unsupported. BoardExportCard vẫn dùng sync API; chưa tích hợp async workflow.
+- Skill kanvexa-ui và impeccable đã đọc. Impeccable context đã chạy một lần; craft-floor/harden đã đọc. Không cần init/redesign cho refinement nhỏ này. Sau UI hoàn thiện phải chạy detector một lần và visual QA desktop/mobile; chưa làm.
+- Không có process build/test đang chạy tại checkpoint. Tiếp theo triển khai raw-JSON client helper/shared contract và async client workflow; giữ key qua retry và session isolation, nối BoardExportCard; chạy test GREEN và regression trước mutation/load/report.

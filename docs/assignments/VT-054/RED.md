@@ -18,3 +18,12 @@ Prompt self-directed thực tế: “Viết test trước cho exact response all
 Output giữ: `export-job-policy.spec.ts`, 12 tests; seam `export-job-policy.ts` chỉ khai báo contract và throw unsupported. Chạy RED trước triển khai: `pnpm --filter @kanban/backend exec jest --runInBand --runTestsByPath src/api/exports/export-job-policy.spec.ts --watchman=false`; 12 failed/12, 26.976s, exit 1, log `evidence/red-policy.txt`. Thất bại ở mapper/retry chưa implement, không phải import/compile. Giới hạn: fixture thêm private columns kiểm tra allowlist nhưng không chứng minh query không tải bytes; sẽ cần kiểm tra repository/API thực tế.
 
 Quyết định policy trước implementation: 3 attempts tối đa, job/result hết hạn sau 15 phút kể từ khi tạo; worker concurrency dự kiến 4. Running progress null, completed 100. Policy không tự reset attempt count và không tự động retry FAILED. Các giới hạn này chưa được benchmark.
+
+## Real HTTP và UI test-first
+
+- HTTP/JWT/worker integration mới dùng AppModule thật và PostgreSQL disposable: 5 groups pass (`evidence/jobs-real-http.txt`). Latch giữ generator cho tới sau response 202; route/private headers, validation/auth/member/isolation, fault/retry và authVersion/owner revocation được kiểm tra. Không coi đây là browser E2E.
+- UI prompt thực tế: “Viết test trước cho visible queued/running/downloading announcement, disable khi đang xử lý; viết client workflow tests kiểm tra same-key retry, polling → download và abort/session error.”
+- UI progress RED: 3 failed/3 vì thông báo vẫn generic/sr-only, không phải compile/import; log `evidence/red-ui-progress.txt`. Client workflow có seam throw unsupported, tests đang chờ kết quả session 45411. Chưa có implementation client workflow.
+- Đã đọc kanvexa-ui và impeccable từ skill gốc (worktree không có impeccable vì skill không tracked). Context launcher chạy một lần, cho phép scoped existing refinement. DESIGN.md trong frontend là record Board cũ và không áp dụng cho settings; source components/tokens và settings spec là incumbent authority cho chỉnh sửa nhỏ. Không thay đổi global visual design.
+
+- Client workflow RED lần đầu có 4 failed tests và 1 unhandled rejection do test trì hoãn quan sát assertion promise. Self-review sửa test để gắn fulfillment/rejection observer ngay, không đổi expected workflow. Lượt reviewed RED: 4 failed/4, không unhandled error (`evidence/red-ui-api-reviewed.txt`). Đây là lỗi test do AI sinh có evidence thật; log đầu giữ tại `evidence/red-ui-api.txt`.

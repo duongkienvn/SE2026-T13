@@ -1,0 +1,103 @@
+
+ RUN  v5.0.3 D:/TAI LIEU DAI HOC/NAM BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/apps/frontend
+
+ ❯ src/features/settings/data-privacy/async-export-api.test.ts (4 tests | 4 failed) 89ms
+   ❯ VT-054 async Board export API workflow (4)
+     × TC14: follows queued/running/completed states then downloads only the completed job 60ms
+     × TC10/14: explicit user retry reuses a failed job identity 5ms
+     × TC15: an already-aborted session starts no network operation 9ms
+     × TC06: authorization failure stops polling and never downloads 9ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/features/settings/data-privacy/async-export-api.test.ts > VT-054 async Board export API workflow > TC14: follows queued/running/completed states then downloads only the completed job
+AssertionError: expected { …(1) } to match object { value: { blob: Any<Blob> } }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "value": {
+-     "blob": Any<Blob>,
++   "error": Error {
++     "message": "Async Board export client workflow is not implemented",
+    },
+  }
+
+ ❯ src/features/settings/data-privacy/async-export-api.test.ts:48:28
+     46|     );
+     47|     await vi.runAllTimersAsync();
+     48|     expect(await observed).toMatchObject({ value: { blob: expect.any(B…
+       |                            ^
+     49|     expect(phase.mock.calls.map(([value]) => value)).toEqual([
+     50|       'queued',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/features/settings/data-privacy/async-export-api.test.ts > VT-054 async Board export API workflow > TC10/14: explicit user retry reuses a failed job identity
+Error: Async Board export client workflow is not implemented
+ ❯ exportBoardDataAsync src/features/settings/data-privacy/async-export-api.ts:12:9
+     10|   _onPhase?: (phase: ExportPhase) => void,
+     11| ): Promise<BinaryResponse> {
+     12|   throw new Error('Async Board export client workflow is not implement…
+       |         ^
+     13| }
+     14|
+ ❯ src/features/settings/data-privacy/async-export-api.test.ts:64:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  src/features/settings/data-privacy/async-export-api.test.ts > VT-054 async Board export API workflow > TC15: an already-aborted session starts no network operation
+AssertionError: expected Error: Async Board export client workflow… to match object { name: 'AbortError' }
+
+- Expected
++ Received
+
+- {
+-   "name": "AbortError",
++ Error {
++   "message": "Async Board export client workflow is not implemented",
+  }
+
+ ❯ src/features/settings/data-privacy/async-export-api.test.ts:83:6
+     81|     await expect(
+     82|       exportBoardDataAsync('token', board, 'json', key, abort.signal),
+     83|     ).rejects.toMatchObject({ name: 'AbortError' });
+       |      ^
+     84|     expect(calls).toHaveLength(0);
+     85|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  src/features/settings/data-privacy/async-export-api.test.ts > VT-054 async Board export API workflow > TC06: authorization failure stops polling and never downloads
+AssertionError: expected Error: Async Board export client workflow… to match object { status: 401 }
+
+- Expected
++ Received
+
+- {
+-   "status": 401,
++ Error {
++   "message": "Async Board export client workflow is not implemented",
+  }
+
+ ❯ src/features/settings/data-privacy/async-export-api.test.ts:101:6
+     99|         new AbortController().signal,
+    100|       ),
+    101|     ).rejects.toMatchObject({ status: 401 });
+       |      ^
+    102|     expect(calls).toHaveLength(1);
+    103|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed (4)
+   Start at  22:17:18
+   Duration  3.48s (environment 66%, setup 18%, transform 9%, import 3%, tests 3%)
+
+undefined
+D:\TAI LIEU DAI HOC\NAM BON\SEM_1\SE\SE2026-T13\.worktrees\23001908-vt054-fresh\apps\frontend:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command "vitest" not found
