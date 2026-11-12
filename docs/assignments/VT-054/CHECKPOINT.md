@@ -43,3 +43,10 @@ Khảo sát cách lưu trạng thái bền vững, truy cập và thu hồi quy�
 
 - RED session 13302 terminal: exit 1, expected 202 versus actual 404, 1/1 test failed in 50.216s. `RED.md` reviews scope and weak oracles; `evidence/red-http.txt` preserves full output. Test-first commit is next; no production edits yet.
 - Specification/test-design commit: `b6efdfa`.
+
+## Vòng policy và môi trường test riêng
+
+- Trước production policy: commit `a7bb5fa`, 12/12 RED (`evidence/red-policy.txt`). Sau patch: 12/12 GREEN (`evidence/green-policy.txt`), không sửa assertions. Xem `PATCH-REVIEW.md`.
+- Docker Desktop đã khởi động qua `docker desktop start`; daemon 27.5.1. Container test riêng `vt054-23001908-postgres` ID prefix `7712b9e42f3a`, image `postgres:16.15-alpine3.24`, bind `127.0.0.1:55454`. Database administration test `vt054_test`, user postgres; host-auth trust chỉ dùng cho container local này. `pg_isready` trả accepting connections. Không dùng container phát triển `se2026-t13-postgres-1` hoặc Supabase.
+- Baseline backend build đang chạy qua session 62459, log `evidence/baseline-backend-build.txt`; cần poll handle trước khi chạy lại. Sau build chạy existing exports.integration.mjs bằng local-only opt-in và DATABASE_* trỏ container 55454; script tạo/drop random database, không dùng vt054_test cho dữ liệu test.
+- Bước tiếp: schema job + worker/service theo SPEC, persistence/HTTP retry tests và UI. HTTP TC01 vẫn thiếu endpoint; chưa có mutation/load/PDF/PR.

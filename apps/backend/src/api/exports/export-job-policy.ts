@@ -1,4 +1,3 @@
-// Contract seam only. Behavior is deliberately unsupported until RED is recorded.
 export interface ExportJobRecord {
   id: string;
   state: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED';
@@ -15,9 +14,18 @@ export interface ExportJobResponse {
   progress: number | null;
   error: string | null;
 }
-export function toExportJobResponse(_row: ExportJobRecord): ExportJobResponse {
-  throw new Error('Async export response mapping is not implemented');
+export function toExportJobResponse(row: ExportJobRecord): ExportJobResponse {
+  return {
+    id: row.id,
+    state: row.state,
+    format: row.format,
+    attempts: row.attempts,
+    expiresAt: row.expiresAt.toISOString(),
+    progress:
+      row.state === 'COMPLETED' ? 100 : row.state === 'PENDING' ? 0 : null,
+    error: row.state === 'FAILED' ? 'EXPORT_FAILED' : null,
+  };
 }
-export function canRetryExportJob(_row: ExportJobRecord, _now: Date): boolean {
-  throw new Error('Async export retry policy is not implemented');
+export function canRetryExportJob(row: ExportJobRecord, now: Date): boolean {
+  return row.state === 'FAILED' && row.attempts < 3 && row.expiresAt > now;
 }
