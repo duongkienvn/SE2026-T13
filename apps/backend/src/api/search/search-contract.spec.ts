@@ -24,7 +24,11 @@ describe('VT-053 search backward-compatible input contract', () => {
   });
 
   it('rejects malformed board scope instead of silently ignoring it', async () => {
-    for (const invalid of ['not-a-uuid', '', '11111111-1111-1111-1111-111111111111']) {
+    for (const invalid of [
+      'not-a-uuid',
+      '',
+      '11111111-1111-1111-1111-111111111111',
+    ]) {
       expect(
         (await errorsFor({ q: 'needle', type: 'cards', boardId: invalid })).some(
           (error) => error.property === 'boardId',
@@ -32,5 +36,4 @@ describe('VT-053 search backward-compatible input contract', () => {
       ).toBe(true);
     }
   });
-
 });
