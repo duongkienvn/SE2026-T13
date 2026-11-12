@@ -10,6 +10,7 @@ import type { SearchQueryDto } from './dto/search-query.dto';
 import { joinReadableWorkspace } from './board-search';
 import { searchPage, searchParameters } from './search-query';
 import { plainSearchSnippet } from './search-snippet';
+import { cardBoardScope } from './card-board-scope';
 
 interface CardHit {
   id: string;
@@ -52,6 +53,9 @@ export function searchCards(
       ELSE NULL END`,
       'fragment',
     );
+  // Additional scope never replaces the readable-Board ACL above.
+  const boardScope = cardBoardScope(input.boardId);
+  if (boardScope) base.andWhere(boardScope.clause, boardScope.params);
   return searchPage(
     base,
     input,
