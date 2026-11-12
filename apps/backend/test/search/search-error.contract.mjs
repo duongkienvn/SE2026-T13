@@ -53,7 +53,7 @@ runInNewContext(js, {
   Error,
 });
 
-test('VT053-C08: a rejected DB transaction must not be swallowed into empty HTTP-200 data', async () => {
+test('VT053-C08: DB failure must not become empty success', async () => {
   const outage = new Error('VT053_DB_FAILURE');
   let called = 0;
   const service = new exports.SearchService({
