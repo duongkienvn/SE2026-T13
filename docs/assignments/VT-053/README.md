@@ -20,8 +20,11 @@ Two proposed shortcuts were rejected on repository evidence: (i) rebuilding `/se
 # Fast independent contract tests, Node 22+; no DB.
 node --experimental-strip-types --test apps/backend/test/search/board-scope.contract.mjs
 
-# Jest contract + exception propagation; workspace dependencies installed.
+# Jest input/compatibility DTO contract; workspace dependencies installed.
 cd apps/backend && pnpm exec jest --runInBand --runTestsByPath src/api/search/search-contract.spec.ts
+
+# Failure path contract: execute the real service with an injected rejecting transaction.
+node --test test/search/search-error.contract.mjs
 
 # HTTP/Postgres real contract; ONLY a local isolated PostgreSQL instance:
 # SEARCH_DATABASE_TESTS=local-only DATABASE_HOST=127.0.0.1, other local DB env.
