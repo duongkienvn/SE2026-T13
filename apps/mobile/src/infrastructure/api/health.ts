@@ -24,6 +24,6 @@ export function getHealth(
         throw new Error('Invalid health');
       return { name: value.name, status: value.status };
     },
-    { signal, expectedStatus: 200 },
+    { signal, expectedStatus: 200, originRelative: true },
   );
 }

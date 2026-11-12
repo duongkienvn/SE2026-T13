@@ -26,6 +26,8 @@ export interface NativeUpload {
 
 export interface RequestOptions {
   readonly method?: HttpMethod;
+  /** Verified prefix-exempt endpoints only (HealthController). Same origin. */
+  readonly originRelative?: boolean;
   readonly query?: QueryParams;
   readonly headers?: Readonly<Record<string, string>>;
   readonly body?: unknown;
@@ -174,7 +176,11 @@ export function createHttpClient(config: HttpClientOptions): HttpClient {
     const method = options.method ?? 'GET';
     const headers: Record<string, string> = { Accept: accept };
     try {
-      url = requestUrl(base, path, options.query);
+      url = requestUrl(
+        options.originRelative ? new URL(base.origin) : base,
+        path,
+        options.query,
+      );
       for (const [name, value] of Object.entries(options.headers ?? {})) {
         if (
           /^(authorization|cookie|host|content-length|content-type|accept)$/i.test(

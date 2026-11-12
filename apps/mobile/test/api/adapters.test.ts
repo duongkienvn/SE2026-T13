@@ -9,7 +9,7 @@ test('verified health adapter requests raw JSON without bearer and validates its
     baseUrl: new URL('https://example.test/api'),
     fetch: (async (url, init) => {
       count++;
-      assert.equal(url, 'https://example.test/api/health');
+      assert.equal(url, 'https://example.test/health');
       assert.equal(
         (init?.headers as Record<string, string>).Authorization,
         undefined,
