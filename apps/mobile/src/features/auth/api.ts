@@ -44,6 +44,15 @@ export function createAuthApi(http: HttpClient) {
         signal,
       });
     },
+    /** Google ID token in, Kanvexa login out. The Google token is never kept. */
+    google(credential: string, signal: AbortSignal) {
+      return http.json('/auth/google', decodeLogin, {
+        method: 'POST',
+        expectedStatus: 200,
+        body: { credential },
+        signal,
+      });
+    },
     register(
       displayName: string,
       email: string,
