@@ -12,6 +12,7 @@ import { RootStack } from '../navigation/root-stack';
 import { AuthProvider } from '../features/auth/runtime';
 import { createAuthApi } from '../features/auth/api';
 import { nativeAuthFlow } from '../features/auth/flow';
+import { WorkspaceSelectionProvider } from '../features/workspaces/WorkspaceSelection';
 import { nativeTransport } from '../infrastructure/query/native-data';
 import {
   defaultSessionAdapter,
@@ -53,7 +54,9 @@ export default function RootLayout() {
           onEnvironment={nativeRealtime.setEnvironment}
         >
           <RealtimeProvider client={nativeRealtime}>
-            <NavigationRoot adapter={navigationAdapter} />
+            <WorkspaceSelectionProvider>
+              <NavigationRoot adapter={navigationAdapter} />
+            </WorkspaceSelectionProvider>
           </RealtimeProvider>
         </DataProvider>
       </AuthProvider>

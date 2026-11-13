@@ -10,6 +10,7 @@ export function createResourceAccess() {
   >();
   const workspaces = new Map<string, number>();
   const revokedWorkspaces = new Set<string>();
+  let workspaceDirectory = 0;
   const deniedListeners = new Set<
     (boardId: string, key: PrivateQueryKey) => void
   >();
@@ -23,7 +24,14 @@ export function createResourceAccess() {
       ? key[5].toLowerCase()
       : null;
   }
+  function workspaceId(key: readonly unknown[]) {
+    return (key[4] === 'workspaces' || key[4] === 'board-lists') &&
+      typeof key[5] === 'string'
+      ? key[5]
+      : null;
+  }
   function version(key: PrivateQueryKey): number {
+    if (key[4] === 'workspace-lists') return workspaceDirectory + aggregates;
     const id = boardId(key);
     if (id)
       return (
@@ -32,13 +40,17 @@ export function createResourceAccess() {
           .filter((resource) => partialMatchKey(key, resource.key))
           .reduce((total, resource) => total + resource.version, 0)
       );
-    if (key[4] === 'workspaces' && typeof key[5] === 'string')
-      return workspaces.get(key[5]) ?? 0;
+    const workspace = workspaceId(key);
+    if (workspace)
+      return (
+        (workspaces.get(workspace) ?? 0) +
+        (key[4] === 'board-lists' ? aggregates : 0)
+      );
     return key[4] === 'me' ? 0 : aggregates;
   }
   function readable(key: readonly unknown[]) {
-    if (key[4] === 'workspaces' && typeof key[5] === 'string')
-      return !revokedWorkspaces.has(key[5]);
+    const workspace = workspaceId(key);
+    if (workspace) return !revokedWorkspaces.has(workspace);
     const id = boardId(key);
     return !id || !boards.has(id) || boards.get(id)!.read;
   }
@@ -46,12 +58,8 @@ export function createResourceAccess() {
     const id = boardId(key);
     if (id && !boards.has(id))
       boards.set(id, { version: 0, read: true, write: true, denied: false });
-    if (
-      key[4] === 'workspaces' &&
-      typeof key[5] === 'string' &&
-      !workspaces.has(key[5])
-    )
-      workspaces.set(key[5], 0);
+    const workspace = workspaceId(key);
+    if (workspace && !workspaces.has(workspace)) workspaces.set(workspace, 0);
     const revision = version(key);
     const check = () => {
       const board = id ? boards.get(id) : null;
@@ -94,9 +102,13 @@ export function createResourceAccess() {
         write: previous?.write ?? true,
         denied: previous?.denied ?? false,
       });
-    } else if (key[4] === 'workspaces' && typeof key[5] === 'string')
-      workspaces.set(key[5], (workspaces.get(key[5]) ?? 0) + 1);
-    else aggregates++;
+    } else {
+      const workspace = workspaceId(key);
+      if (workspace)
+        workspaces.set(workspace, (workspaces.get(workspace) ?? 0) + 1);
+      else if (key[4] === 'workspace-lists') workspaceDirectory++;
+      else aggregates++;
+    }
   }
   return {
     capture,
@@ -116,6 +128,9 @@ export function createResourceAccess() {
     fenceWorkspace(id: string, revoked = false) {
       workspaces.set(id, (workspaces.get(id) ?? 0) + 1);
       if (revoked) revokedWorkspaces.add(id);
+    },
+    confirmWorkspace(id: string) {
+      revokedWorkspaces.delete(id);
     },
     fenceAll() {
       aggregates++;
@@ -151,6 +166,7 @@ export function createResourceAccess() {
       resources.clear();
       workspaces.clear();
       revokedWorkspaces.clear();
+      workspaceDirectory++;
       aggregates++;
     },
   };
