@@ -1,12 +1,20 @@
 import { useRouter } from 'expo-router';
+import type { ReactNode } from 'react';
 import { Image, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import searchIcon from 'expo-router/assets/react-navigation/elements/search-icon.png';
 import accountIcon from '../../assets/navigation/account.png';
 import settingsIcon from '../../assets/navigation/settings.png';
 import { AppHeader, Button, sizes, spacing, typography, useTheme } from '../ui';
+import { destinationPath } from './routes';
 
-function TabHeader({ search }: { search: boolean }) {
+export function TabHeader({
+  search,
+  avatar,
+}: {
+  search: boolean;
+  avatar?: ReactNode;
+}) {
   const router = useRouter();
   const colors = useTheme();
   return (
@@ -17,7 +25,14 @@ function TabHeader({ search }: { search: boolean }) {
           <Button
             label={search ? 'Search' : 'Settings'}
             variant="icon"
-            onPress={() => router.push(search ? '/search' : '/settings')}
+            onPress={() =>
+              router.push(
+                destinationPath({
+                  kind: 'screen',
+                  screen: search ? 'search' : 'settings',
+                }),
+              )
+            }
             icon={
               <Image
                 source={search ? searchIcon : settingsIcon}
@@ -32,7 +47,11 @@ function TabHeader({ search }: { search: boolean }) {
           <Button
             label="Account settings"
             variant="icon"
-            onPress={() => router.push('/settings')}
+            onPress={() =>
+              router.push(
+                destinationPath({ kind: 'screen', screen: 'settings' }),
+              )
+            }
             icon={
               <View
                 style={{
@@ -44,14 +63,16 @@ function TabHeader({ search }: { search: boolean }) {
                   justifyContent: 'center',
                 }}
               >
-                <Image
-                  source={accountIcon}
-                  style={{
-                    width: sizes.iconLarge,
-                    height: sizes.iconLarge,
-                    tintColor: colors.textSecondary,
-                  }}
-                />
+                {avatar ?? (
+                  <Image
+                    source={accountIcon}
+                    style={{
+                      width: sizes.iconLarge,
+                      height: sizes.iconLarge,
+                      tintColor: colors.textSecondary,
+                    }}
+                  />
+                )}
               </View>
             }
           />

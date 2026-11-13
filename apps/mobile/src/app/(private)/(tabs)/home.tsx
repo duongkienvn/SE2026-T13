@@ -1,4 +1,1 @@
-import { Scaffold } from '../../../navigation/scaffold';
-export default function Home() {
-  return <Scaffold title="Home" tab />;
-}
+export { HomeScreen as default } from '../../../features/home/HomeScreen';
