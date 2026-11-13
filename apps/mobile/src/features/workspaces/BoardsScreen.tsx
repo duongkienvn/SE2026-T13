@@ -1,5 +1,5 @@
 import { useIsFocused, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   RefreshControl,
   ScrollView,
@@ -27,6 +27,7 @@ import {
   useTheme,
 } from '../../ui';
 import { useSelectedWorkspace } from './WorkspaceSelection';
+import { workspaceDirectoryFilters } from './api';
 import { WorkspaceBoards } from './WorkspaceBoards';
 import { WorkspaceSelector } from './WorkspaceSelector';
 import { workspaceBoardOptions, workspaceOverviewOptions } from './queries';
@@ -51,6 +52,7 @@ function VerifiedBoards() {
   const online = useWorkspaceOnline();
   const [picker, setPicker] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const lastRefresh = useRef(-Infinity);
   const {
     directory,
     identity,
@@ -64,10 +66,12 @@ function VerifiedBoards() {
   }, [active, selectedId]);
 
   async function refresh() {
+    const now = Date.now();
     if (
       !active ||
       !online ||
       refreshing ||
+      (now - lastRefresh.current < 800 && !directory.isError) ||
       !sameIdentity(identity, data.getIdentity()) ||
       data.queryClient.isFetching({
         queryKey: queryKeys.workspaces(identity),
@@ -75,6 +79,7 @@ function VerifiedBoards() {
       !canRetryWorkspace(directory.error, directory.errorUpdatedAt)
     )
       return;
+    lastRefresh.current = now;
     setRefreshing(true);
     try {
       const latest = await directory.refetch({ cancelRefetch: false });
@@ -173,8 +178,7 @@ function VerifiedBoards() {
             key={selected.id}
             selected={selected}
             identity={identity}
-            active={active && !picker}
-            overviewActive={active}
+            active={active}
             picker={picker}
             setPicker={setPicker}
             workspaces={workspaces ?? []}
@@ -193,7 +197,6 @@ function SelectedWorkspace({
   selected,
   identity,
   active,
-  overviewActive,
   picker,
   setPicker,
   workspaces,
@@ -203,7 +206,6 @@ function SelectedWorkspace({
   selected: NonNullable<ReturnType<typeof useSelectedWorkspace>['selected']>;
   identity: ReturnType<typeof useSelectedWorkspace>['identity'];
   active: boolean;
-  overviewActive: boolean;
   picker: boolean;
   setPicker: (value: boolean) => void;
   workspaces: NonNullable<
@@ -214,8 +216,8 @@ function SelectedWorkspace({
 }) {
   const data = useMobileData();
   const options = workspaceOverviewOptions(data, identity, selected.id);
-  const overview = useQuery({ ...options, enabled: overviewActive });
-  const directory = queryKeys.workspaces(identity, { limit: 20 });
+  const overview = useQuery({ ...options, enabled: active });
+  const directory = queryKeys.workspaces(identity, workspaceDirectoryFilters);
   const safe = () =>
     sameIdentity(identity, data.getIdentity()) &&
     data.resources.readable(queryKeys.workspace(identity, selected.id)) &&
@@ -253,7 +255,7 @@ function SelectedWorkspace({
       <WorkspaceBoards
         identity={identity}
         workspace={selected.id}
-        active={active || picker}
+        active={active}
         onBoard={(id) => {
           if (safe()) navigate(destinationPath({ kind: 'board', boardId: id }));
         }}

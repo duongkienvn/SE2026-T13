@@ -1,4 +1,5 @@
 import { WorkspaceType, WorkspaceRole } from '@kanban/shared';
+import { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import accountIcon from '../../../assets/navigation/account.png';
 import {
@@ -75,19 +76,22 @@ function WorkspaceRow({
 }) {
   const c = useTheme();
   const meta = workspaceMetadata(workspace, members);
+  const [focused, setFocused] = useState(false);
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${trigger ? 'Switch workspace. Current workspace: ' : 'Select '}${workspace.name}, ${meta}`}
       accessibilityState={trigger ? { expanded } : { selected }}
       onPress={onPress}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
       style={({ pressed }) => [
         styles.row,
         {
           backgroundColor: trigger || selected ? c.primaryTint : c.surface,
-          borderColor: selected
-            ? c.primaryBorder
-            : trigger
+          borderColor: focused
+            ? c.focus
+            : selected || trigger
               ? c.primaryBorder
               : 'transparent',
           opacity: pressed ? 0.78 : 1,
@@ -159,6 +163,8 @@ export function WorkspaceSelector({
         <BottomSheet
           visible
           title="Switch workspace"
+          showHandle
+          respectReducedMotion
           dismissLabel="Dismiss workspace picker"
           onDismiss={onDismiss}
         >

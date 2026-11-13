@@ -97,13 +97,15 @@ export function WorkspaceBoards({
         return (
           <Surface key={board.id}>
             <ListRow
+              disabled={!active || !online}
               title={board.name}
               subtitle={meta || undefined}
               accessibilityLabel={`Open board ${board.name}${meta ? ', ' + meta : ''}`}
               leading={<BoardArtwork preset={board.backgroundPreset} />}
               onPress={() => {
                 const current = data.queryClient.getQueryData(options.queryKey);
-                if (query.data && current === query.data) onBoard(board.id);
+                if (active && online && query.data && current === query.data)
+                  onBoard(board.id);
               }}
             />
           </Surface>
@@ -133,6 +135,8 @@ export function WorkspaceBoards({
           disabled={!online || query.isFetching}
           onPress={() => {
             if (
+              active &&
+              online &&
               !data.queryClient.isFetching({
                 queryKey: options.queryKey,
                 exact: true,

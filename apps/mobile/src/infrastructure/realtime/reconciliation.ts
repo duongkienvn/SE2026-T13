@@ -59,7 +59,9 @@ export function hintTargets(
       queryKeys.tasks(identity),
       queryKeys.search(identity),
     );
-  if (event.startsWith('member:') && workspaceId)
+  if (workspaceId && event.startsWith('member:'))
     result.push(queryKeys.workspace(identity, workspaceId));
+  else if (workspaceId && event.startsWith('board:'))
+    result.push([...queryKeys.workspace(identity, workspaceId), 'overview']);
   return result;
 }

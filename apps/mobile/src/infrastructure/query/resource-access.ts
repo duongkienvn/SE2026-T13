@@ -115,6 +115,7 @@ export function createResourceAccess() {
     bumpKey,
     readable,
     boardId,
+    workspaceId,
     fenceBoard,
     confirmBoard(id: string, writable: boolean) {
       const previous = boards.get(id);

@@ -34,6 +34,7 @@ export function createNativeRealtime(options: {
   let everConnected = false;
   let accessTimer: unknown;
   let checkAll = false;
+  const workspaceChecks = new Set<string>();
   let accessEpoch = 0;
   const checks = new Set<string>();
   const verificationIds = new Set<string>();
@@ -62,6 +63,7 @@ export function createNativeRealtime(options: {
     if (accessTimer !== undefined) timers.clearTimeout(accessTimer);
     accessTimer = undefined;
     checks.clear();
+    workspaceChecks.clear();
     checkAll = false;
   }
   function resourceFailed(boardId: string, key: PrivateQueryKey) {
@@ -133,8 +135,8 @@ export function createNativeRealtime(options: {
       if (!keyBelongsTo(key, identity) || key[4] === 'me') continue;
       const boardId = data.resources.boardId(key);
       if (boardId) data.resources.fenceBoard(boardId);
-      if (key[4] === 'workspaces' && typeof key[5] === 'string')
-        data.resources.fenceWorkspace(key[5]);
+      const workspaceId = data.resources.workspaceId(key);
+      if (workspaceId) data.resources.fenceWorkspace(workspaceId);
       keys.push(key);
     }
     data.evict(identity, keys);
@@ -153,7 +155,9 @@ export function createNativeRealtime(options: {
       const ticket = accessEpoch;
       const all = checkAll;
       const ids = [...checks];
+      const workspaceIds = [...workspaceChecks];
       checks.clear();
+      workspaceChecks.clear();
       checkAll = false;
       void reconcile(identity);
       async function reconcile(identity: SessionIdentity) {
@@ -167,6 +171,7 @@ export function createNativeRealtime(options: {
           // fenced Board keys, or infer access from a successful aggregate read.
           await data.invalidate(identity, [
             ...aggregateKeys(identity),
+            ...workspaceIds.map((id) => queryKeys.workspace(identity, id)),
             ...(all
               ? [
                   [
@@ -271,9 +276,11 @@ export function createNativeRealtime(options: {
         return;
       }
       if (event === 'workspace:access-revoked' || event === 'access:changed') {
-        evictAccessSnapshots();
-        if (hint.workspaceId)
+        if (hint.workspaceId) {
           data.resources.fenceWorkspace(hint.workspaceId, true);
+          workspaceChecks.add(hint.workspaceId);
+        }
+        evictAccessSnapshots();
         accessCheck();
         return;
       }
@@ -282,6 +289,8 @@ export function createNativeRealtime(options: {
         hint.userId === identity.userId &&
         hint.retainsReadAccess !== true
       ) {
+        const workspace = rooms.getSnapshot(hint.boardId!).workspaceId;
+        if (workspace) workspaceChecks.add(workspace);
         rooms.revoke(hint.boardId!);
         return;
       }

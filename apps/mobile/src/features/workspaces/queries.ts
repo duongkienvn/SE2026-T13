@@ -26,7 +26,20 @@ export function workspaceDirectoryOptions(
     queryKey: key,
     async queryFn({ signal }) {
       const current = data.resources.capture(key, false);
-      const rows = await api.directory(signal);
+      let rows;
+      try {
+        rows = await api.directory(signal);
+      } catch (error) {
+        if (!signal.aborted && isWorkspaceDenied(error)) {
+          data.assertCurrent(identity);
+          data.evict(identity, [
+            key,
+            queryKeys.boardLists(identity),
+            [...queryKeys.scope(identity), 'workspaces'],
+          ]);
+        }
+        throw error;
+      }
       data.assertCurrent(identity);
       current();
       if (signal.aborted) throw new ApiError('aborted');
