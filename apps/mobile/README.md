@@ -21,6 +21,9 @@ MOB-05 adds the SecureStore-backed session owner (`src/infrastructure/auth/`);
 its contract for navigation, REST/Query and realtime is in the
 [session guide](../../docs/mobile/session.md). The REST/Query
 foundation now shares one transport with the session owner; see the
-[network and MOB-06 integration guide](../../docs/mobile/network.md).
-MOB-03 supplies the navigation shell. Feature screens, auth forms, realtime and
-release signing remain in their respective issues.
+[network guide](../../docs/mobile/network.md). MOB-06 adds session-scoped native
+Socket.IO, authorized Board subscriptions, transient presence and Query
+reconciliation; future screens integrate through the
+[realtime guide](../../docs/mobile/realtime.md).
+MOB-03 supplies the navigation shell. Feature screens, auth forms and release
+signing remain in their respective issues.

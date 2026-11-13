@@ -1,3 +1,5 @@
+import { createResourceAccess } from './resource-access.ts';
+import { systemTimers, type Timers } from '../auth/clock.ts';
 import { queryOptions } from '@tanstack/react-query';
 import type { HttpClient } from '../api/client.ts';
 import { ApiError } from '../api/errors.ts';
@@ -17,9 +19,11 @@ import { createQueryCoordinator } from './coordinator.ts';
 export function createMobileDataLayer(
   manager: SessionManager,
   transport: HttpClient,
+  timers: Timers = systemTimers,
 ) {
   const queryClient = createMobileQueryClient();
-  const network = createSessionHttpClient(transport, manager);
+  const resources = createResourceAccess();
+  const network = createSessionHttpClient(transport, manager, resources);
   let disposed = false;
   function getIdentity() {
     return disposed ? null : currentIdentity(manager);
@@ -29,6 +33,8 @@ export function createMobileDataLayer(
       throw new ApiError('session-changed');
   }
   function resetPrivateState() {
+    coordinator.clearPending();
+    resources.reset();
     network.cancelRequests();
     // Cancellation invokes AbortSignal synchronously. Removal happens before
     // the session owner publishes another identity; promises cannot resurrect it.
@@ -36,6 +42,10 @@ export function createMobileDataLayer(
     queryClient.removeQueries({ queryKey: queryKeys.private });
     queryClient.getMutationCache().clear();
   }
+  const coordinator = createQueryCoordinator(
+    { queryClient, getIdentity, assertCurrent, resources },
+    timers,
+  );
   function seedVerifiedUser() {
     const snapshot = manager.getSnapshot();
     if (snapshot.status === 'authenticated') {
@@ -55,13 +65,15 @@ export function createMobileDataLayer(
   seedVerifiedUser();
 
   return {
-    ...createQueryCoordinator({ queryClient, getIdentity, assertCurrent }),
+    ...coordinator,
+    resources,
     queryClient,
     api: network.client,
     getIdentity,
     assertCurrent,
     resetPrivateState,
     cancelRequests: network.cancelRequests,
+    cancelResourceRequests: network.cancelResourceRequests,
     meOptions(identity: SessionIdentity) {
       return queryOptions({
         queryKey: queryKeys.me(identity),

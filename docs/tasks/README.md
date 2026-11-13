@@ -97,6 +97,8 @@ chưa triển khai. Mục lục dưới đây liệt kê toàn bộ task documen
 
 ## Frontend tasks
 
+- [MOB-06 Native Socket.IO Realtime Foundation](frontend/mob-06-native-realtime.md)
+
 - [MOB-01 Expo bootstrap and pnpm/Metro compatibility](frontend/mob-01-expo-foundation.md)
 - [MOB-04 Native REST, TanStack Query and session-safe network](frontend/mob-04-native-network.md)
 - [MOB-05 Secure native session lifecycle](frontend/mob-05-secure-session.md)

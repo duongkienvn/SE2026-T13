@@ -10,12 +10,17 @@ const DataContext = createContext<MobileDataLayer | null>(null);
 export function DataProvider({
   layer,
   children,
+  onEnvironment,
 }: {
   layer: MobileDataLayer;
   children: ReactNode;
+  onEnvironment?: (state: { foreground: boolean; online: boolean }) => void;
 }) {
   const manager = useSessionManager();
-  useEffect(() => bindQueryLifecycle(manager, AppState, Network), [manager]);
+  useEffect(
+    () => bindQueryLifecycle(manager, AppState, Network, onEnvironment),
+    [manager, onEnvironment],
+  );
   return (
     <DataContext.Provider value={layer}>
       <QueryClientProvider client={layer.queryClient}>

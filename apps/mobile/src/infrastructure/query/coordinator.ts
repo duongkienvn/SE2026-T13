@@ -1,29 +1,41 @@
+import type { ResourceAccess } from './resource-access.ts';
 import {
   hashKey,
   partialMatchKey,
   type QueryClient,
 } from '@tanstack/react-query';
+import { systemTimers, type Timers } from '../auth/clock.ts';
 import { ApiError } from '../api/errors.ts';
 import { sameIdentity, type SessionIdentity } from '../api/session-client.ts';
 import { keyBelongsTo, queryKeys, type PrivateQueryKey } from './keys.ts';
 
 interface CoordinatorOwner {
   readonly queryClient: QueryClient;
+  readonly resources?: ResourceAccess;
   getIdentity(): SessionIdentity | null;
   assertCurrent(identity: SessionIdentity): void;
 }
 
 /** One coordinator per data layer; no sockets and no server permission inference. */
-export function createQueryCoordinator(owner: CoordinatorOwner) {
-  type Batch = {
+export function createQueryCoordinator(
+  owner: CoordinatorOwner,
+  timers: Timers = systemTimers,
+) {
+  type Pending = {
     identity: SessionIdentity;
-    keys: PrivateQueryKey[];
+    key: PrivateQueryKey;
     resolve(): void;
     reject(error: unknown): void;
   };
-  let batches: Batch[] = [];
-  const mutations = new Map<string, Promise<void>>();
-
+  let pending: Pending[] = [];
+  let scheduled = false;
+  let hintTimer: unknown;
+  const mutations = new Map<
+    string,
+    { keys: readonly PrivateQueryKey[]; done: Promise<void> }
+  >();
+  const overlaps = (a: readonly unknown[], b: readonly unknown[]) =>
+    partialMatchKey(a, b) || partialMatchKey(b, a);
   function validate(
     identity: SessionIdentity,
     keys: readonly PrivateQueryKey[],
@@ -32,42 +44,80 @@ export function createQueryCoordinator(owner: CoordinatorOwner) {
     if (keys.some((key) => !keyBelongsTo(key, identity)))
       throw new ApiError('session-changed');
   }
-  function invalidate(
+  function schedule() {
+    if (hintTimer !== undefined) timers.clearTimeout(hintTimer);
+    hintTimer = undefined;
+    if (scheduled) return;
+    scheduled = true;
+    void Promise.resolve().then(flush);
+  }
+  async function flush() {
+    scheduled = false;
+    const ready: Pending[] = [];
+    const waiting: Pending[] = [];
+    for (const entry of pending) {
+      try {
+        validate(entry.identity, [entry.key]);
+      } catch (error) {
+        entry.reject(error);
+        continue;
+      }
+      if (
+        [...mutations.values()].some((mutation) =>
+          mutation.keys.some((key) => overlaps(key, entry.key)),
+        )
+      )
+        waiting.push(entry);
+      else ready.push(entry);
+    }
+    pending = waiting;
+    if (!ready.length) return;
+    try {
+      const identity = ready[0]!.identity;
+      await owner.queryClient.invalidateQueries({
+        predicate: (query) =>
+          keyBelongsTo(query.queryKey, identity) &&
+          (owner.resources?.readable(query.queryKey) ?? true) &&
+          ready.some((entry) => partialMatchKey(query.queryKey, entry.key)),
+        refetchType: 'active',
+      });
+      owner.assertCurrent(identity);
+      ready.forEach((entry) => entry.resolve());
+    } catch (error) {
+      ready.forEach((entry) => entry.reject(error));
+    }
+  }
+  function enqueue(
     identity: SessionIdentity,
     keys: readonly PrivateQueryKey[],
+    hints: boolean,
   ): Promise<void> {
     try {
       validate(identity, keys);
     } catch (error) {
       return Promise.reject(error);
     }
-    return new Promise((resolve, reject) => {
-      batches.push({ identity, keys: [...keys], resolve, reject });
-      if (batches.length !== 1) return;
-      // Duplicate/overlapping keys in this tick match each query only once.
-      void Promise.resolve().then(async () => {
-        const batch = batches;
-        batches = [];
-        try {
-          const current = batch[0]!.identity;
-          validate(
-            current,
-            batch.flatMap((item) => item.keys),
-          );
-          const targets = batch.flatMap((item) => item.keys);
-          await owner.queryClient.invalidateQueries({
-            predicate: (query) =>
-              keyBelongsTo(query.queryKey, current) &&
-              targets.some((key) => partialMatchKey(query.queryKey, key)),
-            refetchType: 'active',
-          });
-          owner.assertCurrent(current);
-          batch.forEach((item) => item.resolve());
-        } catch (error) {
-          batch.forEach((item) => item.reject(error));
-        }
-      });
-    });
+    const result = Promise.all(
+      keys.map(
+        (key) =>
+          new Promise<void>((resolve, reject) => {
+            pending.push({ identity, key, resolve, reject });
+          }),
+      ),
+    ).then(() => undefined);
+    if (!hints) schedule();
+    else if (hintTimer === undefined)
+      hintTimer = timers.setTimeout(() => {
+        hintTimer = undefined;
+        schedule();
+      }, 50);
+    return result;
+  }
+  function invalidate(
+    identity: SessionIdentity,
+    keys: readonly PrivateQueryKey[],
+  ) {
+    return enqueue(identity, keys, false);
   }
 
   function evict(identity: SessionIdentity, keys: readonly PrivateQueryKey[]) {
@@ -78,7 +128,23 @@ export function createQueryCoordinator(owner: CoordinatorOwner) {
         keys.some((key) => partialMatchKey(query.queryKey, key)),
     };
     void owner.queryClient.cancelQueries(filters);
-    owner.queryClient.removeQueries(filters);
+    for (const key of keys) owner.resources?.bumpKey(key);
+    for (const query of owner.queryClient.getQueryCache().findAll(filters)) {
+      if (query.getObserversCount() > 0)
+        query.setState({
+          data: undefined,
+          error: new ApiError('session-changed', {
+            code: 'RESOURCE_ACCESS_CHANGED',
+          }),
+          status: 'error',
+          isInvalidated: true,
+        });
+      else
+        owner.queryClient.removeQueries({
+          queryKey: query.queryKey,
+          exact: true,
+        });
+    }
   }
 
   /** Serialize conflicting optimistic edits; unrelated resource keys proceed independently. */
@@ -93,21 +159,24 @@ export function createQueryCoordinator(owner: CoordinatorOwner) {
     const { identity, key } = options;
     const affected = options.invalidate ?? [key];
     validate(identity, [key, ...affected]);
+    const resourceCurrent = owner.resources?.capture(key, true);
     const hash = hashKey(key);
-    const prior = mutations.get(hash) ?? Promise.resolve();
+    const prior = mutations.get(hash)?.done ?? Promise.resolve();
     let release!: () => void;
     const lock = new Promise<void>((resolve) => {
       release = resolve;
     });
-    mutations.set(hash, lock);
+    mutations.set(hash, { keys: [key, ...affected], done: lock });
     await prior;
     let previous: TCache | undefined;
     let updateCount: number | undefined;
     let optimisticQuery: unknown;
     try {
       owner.assertCurrent(identity);
+      resourceCurrent?.();
       await owner.queryClient.cancelQueries({ queryKey: key, exact: true });
       owner.assertCurrent(identity);
+      resourceCurrent?.();
       previous = owner.queryClient.getQueryData<TCache>(key);
       owner.queryClient.setQueryData<TCache>(key, options.update(previous));
       updateCount = owner.queryClient.getQueryState(key)?.dataUpdateCount;
@@ -116,6 +185,7 @@ export function createQueryCoordinator(owner: CoordinatorOwner) {
         .find({ queryKey: key, exact: true });
       const result = await options.mutation();
       owner.assertCurrent(identity);
+      resourceCurrent?.();
       if (
         owner.queryClient
           .getQueryCache()
@@ -130,6 +200,11 @@ export function createQueryCoordinator(owner: CoordinatorOwner) {
     } catch (error) {
       if (!sameIdentity(identity, owner.getIdentity()))
         throw new ApiError('session-changed');
+      if (error instanceof ApiError && [403, 404].includes(error.status)) {
+        owner.resources?.denied(key);
+        throw error;
+      }
+      resourceCurrent?.();
       // A newer authoritative write wins over this rollback.
       if (
         updateCount !== undefined &&
@@ -150,12 +225,28 @@ export function createQueryCoordinator(owner: CoordinatorOwner) {
         void invalidate(identity, affected).catch(() => undefined);
       }
       release();
-      if (mutations.get(hash) === lock) mutations.delete(hash);
+      if (mutations.get(hash)?.done === lock) mutations.delete(hash);
+      schedule();
     }
   }
 
   return {
     invalidate,
+    invalidateHints(
+      identity: SessionIdentity,
+      keys: readonly PrivateQueryKey[],
+    ) {
+      return enqueue(identity, keys, true);
+    },
+    clearPending() {
+      if (hintTimer !== undefined) timers.clearTimeout(hintTimer);
+      hintTimer = undefined;
+      const previous = pending;
+      pending = [];
+      previous.forEach((entry) =>
+        entry.reject(new ApiError('session-changed')),
+      );
+    },
     evict,
     optimistic,
     recover(identity: SessionIdentity) {

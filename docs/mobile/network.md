@@ -149,8 +149,10 @@ the feature's tests. Queries for unrelated resources are not blocked.
 
 ## MOB-06 integration
 
-MOB-06 owns socket lifecycle, board receive grants, event coalescing across ticks,
-and mapping verified server events to affected resources. It should:
+MOB-06 implements socket lifecycle, Board receive grants, event coalescing across
+ticks and mapping verified server events to affected resources. See the
+[realtime integration guide](realtime.md) for the implemented owner, hooks and
+authorization rules. Its integration uses these contracts:
 
 1. Obtain identity via `data.getIdentity()` and bearer via the existing manager's
    `getAccessCredential()` at each connect. Capture identity in every callback.
@@ -172,8 +174,13 @@ and mapping verified server events to affected resources. It should:
 
 4. On access loss call `data.evict(identity, affectedKeys)` immediately, including
    relevant lists/previews and notifications, then rerun verified access reads.
-   Eviction synchronously cancels/removes matching queries. Every queryFn must
-   forward its signal. For broader loss, `data.cancelRequests()` aborts all bound
+   Eviction synchronously cancels matching queries and drops protected data.
+   Inactive queries are removed; active Query objects retain empty error state
+   so mounted observers can recover after authoritative access verification.
+   Every queryFn must forward its signal, captured identity and `resourceKey`
+   (the same exported key as the query). Resource epochs reject stale HTTP
+   results and queued optimistic work after access changes. Tagged resource
+   requests can be aborted with `data.cancelResourceRequests(prefix)`. For broader loss, `data.cancelRequests()` aborts all bound
    HTTP operations; `data.resetPrivateState()` also clears protected cache.
    MOB-06 must revoke its receive grant and prevent new unauthorized observers
    from mounting; eviction alone is not a grant registry.
