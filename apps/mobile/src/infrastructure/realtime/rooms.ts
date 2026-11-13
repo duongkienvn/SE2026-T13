@@ -298,7 +298,10 @@ export function createBoardRooms(options: RoomOptions) {
       // Cached data and queued work must still be fenced for that Board.
       if (boardId && !rooms.has(boardId)) options.fence(boardId, false);
       for (const room of rooms.values())
-        if (!boardId || room.id === boardId) {
+        if (
+          (!boardId && room.state.status !== 'unavailable') ||
+          room.id === boardId
+        ) {
           cancel(room);
           leave(room);
           options.fence(room.id, false);
@@ -306,8 +309,15 @@ export function createBoardRooms(options: RoomOptions) {
         }
     },
     recheck(boardId?: string) {
-      for (const room of rooms.values())
-        if (!boardId || room.id === boardId) void check(room);
+      return Promise.all(
+        [...rooms.values()]
+          .filter(
+            (room) =>
+              (!boardId && room.state.status !== 'unavailable') ||
+              room.id === boardId,
+          )
+          .map((room) => check(room)),
+      );
     },
     revoke(boardId: string) {
       const room = rooms.get(boardId);

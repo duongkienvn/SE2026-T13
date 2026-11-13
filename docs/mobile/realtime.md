@@ -142,6 +142,15 @@ MOB-04's private-state reset before the next identity publishes. Dispose realtim
 before data/session when replacing an app runtime; individual screens only release
 their subscriptions. Nothing persists sockets, presence or business data offline.
 
+Access reconciliation refreshes the fenced aggregate prefixes (Board Lists,
+Workspace lists, Notifications, Home, Tasks and Search) through their authoritative
+REST queries after the batched Board checks. Global access checks also recover
+eligible Workspace detail observers. Confirmed Board/Workspace loss remains
+fenced; aggregate success never grants access to those resource keys. Adjacent
+access hints share one check/refetch batch, including screens without a Board
+subscription. Confirmed revocation also refreshes safe aggregates so mounted
+observers can leave their empty access-change error state.
+
 ## Verification commands and limits
 
 Run `pnpm test:mobile`, mobile typecheck, root lint/build/test and

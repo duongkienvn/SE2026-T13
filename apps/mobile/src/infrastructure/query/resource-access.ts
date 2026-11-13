@@ -8,6 +8,7 @@ export function createResourceAccess() {
     { version: number; read: boolean; write: boolean; denied: boolean }
   >();
   const workspaces = new Map<string, number>();
+  const revokedWorkspaces = new Set<string>();
   const deniedListeners = new Set<(boardId: string) => void>();
   let aggregates = 0;
   function boardId(key: readonly unknown[]) {
@@ -23,6 +24,8 @@ export function createResourceAccess() {
     return key[4] === 'me' ? 0 : aggregates;
   }
   function readable(key: readonly unknown[]) {
+    if (key[4] === 'workspaces' && typeof key[5] === 'string')
+      return !revokedWorkspaces.has(key[5]);
     const id = boardId(key);
     return !id || !boards.has(id) || boards.get(id)!.read;
   }
@@ -59,7 +62,7 @@ export function createResourceAccess() {
       version: (previous?.version ?? 0) + 1,
       read: false,
       write: false,
-      denied,
+      denied: denied || previous?.denied === true,
     });
   }
   return {
@@ -90,8 +93,9 @@ export function createResourceAccess() {
         denied: false,
       });
     },
-    fenceWorkspace(id: string) {
+    fenceWorkspace(id: string, revoked = false) {
       workspaces.set(id, (workspaces.get(id) ?? 0) + 1);
+      if (revoked) revokedWorkspaces.add(id);
     },
     fenceAll() {
       aggregates++;
@@ -123,6 +127,7 @@ export function createResourceAccess() {
     reset() {
       boards.clear();
       workspaces.clear();
+      revokedWorkspaces.clear();
       aggregates++;
     },
   };

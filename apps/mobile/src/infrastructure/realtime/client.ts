@@ -10,6 +10,18 @@ import { createBoardRooms, decodeBoardAccess } from './rooms.ts';
 import { hintTargets } from './reconciliation.ts';
 import { parseHint } from './contracts.ts';
 import type { SocketFactory } from './socket.ts';
+import type { SessionIdentity } from '../api/session-client.ts';
+
+function aggregateKeys(identity: SessionIdentity): PrivateQueryKey[] {
+  return [
+    queryKeys.boardLists(identity),
+    queryKeys.workspaces(identity),
+    queryKeys.notifications(identity),
+    queryKeys.home(identity),
+    queryKeys.tasks(identity),
+    queryKeys.search(identity),
+  ];
+}
 
 export function createNativeRealtime(options: {
   manager: SessionManager;
@@ -22,10 +34,12 @@ export function createNativeRealtime(options: {
   let everConnected = false;
   let accessTimer: unknown;
   let checkAll = false;
+  let accessEpoch = 0;
   const checks = new Set<string>();
   let unsubscribeErrors: (() => void) | undefined;
   let unsubscribeDenied: (() => void) | undefined;
   function clearChecks() {
+    accessEpoch++;
     if (accessTimer !== undefined) timers.clearTimeout(accessTimer);
     accessTimer = undefined;
     checks.clear();
@@ -49,6 +63,7 @@ export function createNativeRealtime(options: {
     data.evict(identity, keys);
   }
   function accessCheck(boardId?: string) {
+    accessEpoch++;
     rooms.suspend(boardId);
     if (boardId) checks.add(boardId);
     else checkAll = true;
@@ -57,16 +72,36 @@ export function createNativeRealtime(options: {
     if (!identity) return;
     accessTimer = timers.setTimeout(() => {
       accessTimer = undefined;
-      try {
-        data.assertCurrent(identity);
-      } catch {
-        clearChecks();
-        return;
-      }
-      if (checkAll) rooms.recheck();
-      else for (const id of checks) rooms.recheck(id);
+      const ticket = accessEpoch;
+      const all = checkAll;
+      const ids = [...checks];
       checks.clear();
       checkAll = false;
+      void reconcile(identity);
+      async function reconcile(identity: SessionIdentity) {
+        try {
+          data.assertCurrent(identity);
+          if (all) await rooms.recheck();
+          else await Promise.all(ids.map((id) => rooms.recheck(id)));
+          if (ticket !== accessEpoch) return;
+          data.assertCurrent(identity);
+          // Aggregate REST endpoints enforce their own access rules. Never include
+          // fenced Board keys, or infer access from a successful aggregate read.
+          await data.invalidate(identity, [
+            ...aggregateKeys(identity),
+            ...(all
+              ? [
+                  [
+                    ...queryKeys.scope(identity),
+                    'workspaces',
+                  ] as PrivateQueryKey,
+                ]
+              : []),
+          ]);
+        } catch {
+          // A newer access check, session end or disposal owns subsequent recovery.
+        }
+      }
     }, 50);
   }
   const rooms = createBoardRooms({
@@ -89,14 +124,10 @@ export function createNativeRealtime(options: {
         data.evict(identity, [queryKeys.board(identity, boardId)]);
         if (revoked) {
           data.resources.fenceAggregates();
-          data.evict(identity, [
-            queryKeys.boardLists(identity),
-            queryKeys.workspaces(identity),
-            queryKeys.notifications(identity),
-            queryKeys.home(identity),
-            queryKeys.tasks(identity),
-            queryKeys.search(identity),
-          ]);
+          data.evict(identity, aggregateKeys(identity));
+          void data
+            .invalidateHints(identity, aggregateKeys(identity))
+            .catch(() => undefined);
         }
       }
     },
@@ -159,7 +190,8 @@ export function createNativeRealtime(options: {
       }
       if (event === 'workspace:access-revoked' || event === 'access:changed') {
         evictAccessSnapshots();
-        if (hint.workspaceId) data.resources.fenceWorkspace(hint.workspaceId);
+        if (hint.workspaceId)
+          data.resources.fenceWorkspace(hint.workspaceId, true);
         accessCheck();
         return;
       }
@@ -178,14 +210,7 @@ export function createNativeRealtime(options: {
         (event.startsWith('member:') && hint.userId === identity.userId)
       ) {
         data.resources.fenceAggregates();
-        data.evict(identity, [
-          queryKeys.boardLists(identity),
-          queryKeys.workspaces(identity),
-          queryKeys.notifications(identity),
-          queryKeys.home(identity),
-          queryKeys.tasks(identity),
-          queryKeys.search(identity),
-        ]);
+        data.evict(identity, aggregateKeys(identity));
         accessCheck(hint.boardId);
         return;
       }
