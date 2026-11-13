@@ -6,7 +6,13 @@ import { hashKey, partialMatchKey } from '@tanstack/react-query';
 export function createResourceAccess() {
   const boards = new Map<
     string,
-    { version: number; read: boolean; write: boolean; denied: boolean }
+    {
+      version: number;
+      read: boolean;
+      write: boolean;
+      denied: boolean;
+      workspaceId?: string;
+    }
   >();
   const workspaces = new Map<string, number>();
   const revokedWorkspaces = new Set<string>();
@@ -14,6 +20,7 @@ export function createResourceAccess() {
   const deniedListeners = new Set<
     (boardId: string, key: PrivateQueryKey) => void
   >();
+  const workspaceDeniedListeners = new Set<(workspaceId: string) => void>();
   const resources = new Map<
     string,
     { key: PrivateQueryKey; version: number }
@@ -31,22 +38,21 @@ export function createResourceAccess() {
       : null;
   }
   function version(key: PrivateQueryKey): number {
-    if (key[4] === 'workspace-lists') return workspaceDirectory + aggregates;
+    const scoped = [...resources.values()]
+      .filter((resource) => partialMatchKey(key, resource.key))
+      .reduce((total, resource) => total + resource.version, 0);
+    if (key[4] === 'workspace-lists')
+      return workspaceDirectory + aggregates + scoped;
     const id = boardId(key);
-    if (id)
-      return (
-        (boards.get(id)?.version ?? 0) +
-        [...resources.values()]
-          .filter((resource) => partialMatchKey(key, resource.key))
-          .reduce((total, resource) => total + resource.version, 0)
-      );
+    if (id) return (boards.get(id)?.version ?? 0) + scoped;
     const workspace = workspaceId(key);
     if (workspace)
       return (
         (workspaces.get(workspace) ?? 0) +
-        (key[4] === 'board-lists' ? aggregates : 0)
+        (key[4] === 'board-lists' ? aggregates : 0) +
+        scoped
       );
-    return key[4] === 'me' ? 0 : aggregates;
+    return key[4] === 'me' ? 0 : aggregates + scoped;
   }
   function readable(key: readonly unknown[]) {
     const workspace = workspaceId(key);
@@ -84,30 +90,30 @@ export function createResourceAccess() {
       read: false,
       write: false,
       denied: denied || previous?.denied === true,
+      workspaceId: previous?.workspaceId,
     });
   }
   function bumpKey(key: PrivateQueryKey) {
     const id = boardId(key);
-    if (id && key.length > 6) {
-      const hash = hashKey(key);
-      resources.set(hash, {
-        key,
-        version: (resources.get(hash)?.version ?? 0) + 1,
-      });
-    } else if (id) {
+    const workspace = workspaceId(key);
+    if (id && key.length === 6) {
       const previous = boards.get(id);
       boards.set(id, {
         version: (previous?.version ?? 0) + 1,
         read: previous?.read ?? true,
         write: previous?.write ?? true,
         denied: previous?.denied ?? false,
+        workspaceId: previous?.workspaceId,
       });
-    } else {
-      const workspace = workspaceId(key);
-      if (workspace)
-        workspaces.set(workspace, (workspaces.get(workspace) ?? 0) + 1);
-      else if (key[4] === 'workspace-lists') workspaceDirectory++;
-      else aggregates++;
+    } else if (workspace)
+      workspaces.set(workspace, (workspaces.get(workspace) ?? 0) + 1);
+    else if (key[4] === 'workspace-lists') workspaceDirectory++;
+    else {
+      const hash = hashKey(key);
+      resources.set(hash, {
+        key,
+        version: (resources.get(hash)?.version ?? 0) + 1,
+      });
     }
   }
   return {
@@ -116,19 +122,39 @@ export function createResourceAccess() {
     readable,
     boardId,
     workspaceId,
+    trackedWorkspaceIds: () => workspaces.keys(),
     fenceBoard,
-    confirmBoard(id: string, writable: boolean) {
+    boardWorkspace: (id: string) => boards.get(id)?.workspaceId,
+    trackedBoardIds: () => boards.keys(),
+    rememberBoardWorkspace(id: string, workspaceId: string) {
+      const board = boards.get(id);
+      if (board) board.workspaceId = workspaceId;
+    },
+    confirmBoard(id: string, writable: boolean, workspaceId?: string) {
       const previous = boards.get(id);
       boards.set(id, {
         version: previous?.version ?? 0,
         read: true,
         write: writable,
         denied: false,
+        workspaceId: workspaceId ?? previous?.workspaceId,
       });
     },
     fenceWorkspace(id: string, revoked = false) {
       workspaces.set(id, (workspaces.get(id) ?? 0) + 1);
       if (revoked) revokedWorkspaces.add(id);
+    },
+    denyWorkspace(id: string) {
+      workspaces.set(id, (workspaces.get(id) ?? 0) + 1);
+      if (revokedWorkspaces.has(id)) return;
+      revokedWorkspaces.add(id);
+      for (const listener of [...workspaceDeniedListeners]) listener(id);
+    },
+    subscribeWorkspaceDenied(listener: (id: string) => void) {
+      workspaceDeniedListeners.add(listener);
+      return () => {
+        workspaceDeniedListeners.delete(listener);
+      };
     },
     confirmWorkspace(id: string) {
       revokedWorkspaces.delete(id);

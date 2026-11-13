@@ -63,10 +63,16 @@ Board behavior.
 
 MOB-06 remains the only socket owner. A Workspace revocation fences detail,
 overview and the Workspace's Board-list keys. Existing access reconciliation
-evicts stale data and reloads joined memberships. Workspace-specific 403/404
-also removes that Workspace and its private cache immediately and reconciles
-the directory. Rejoining requires fresh authorized membership data. An
-unverified or expired session cannot render the Workspace subtree.
+evicts stale data and reloads joined memberships. A Workspace-specific
+403/404, or a missing membership in a complete directory response, fences
+the Workspace and clears Home and other cross-Workspace aggregates for the
+current session. This runs even before the first socket connection. MOB-06
+uses the Board REST endpoint to recheck affected cached and active Boards,
+including cached Boards whose parent is unknown. Only a successful Board
+check can restore reads for an independently authorized Board Member or Guest.
+Cached data for Boards associated with unrelated Workspaces remains available.
+Failed refreshes leave evicted aggregates empty. Rejoining a Workspace
+requires fresh authorized membership data.
 Board access loss also evicts cached Workspace overview previews that may
 contain the Board. The existing reconciliation owner reloads only active,
 readable queries from REST.
@@ -74,9 +80,13 @@ readable queries from REST.
 A focused Boards screen observes only one selected list and overview. Manual
 refresh reloads the directory first, then refreshes the still-selected
 Workspace. Query identity, AbortSignal, and resource epochs guard each read.
-An authorized in-memory view can remain visible during recoverable errors
-with an offline or error notice. Selection changes do not invalidate Home
-or My Tasks.
+The directory restarts from page one once if pagination totals change
+between pages. If the second traversal also changes, it fails and retains
+the last complete directory. The offset API has no cross-request snapshot
+identifier, so a same-count membership swap can still escape detection.
+A reopened Workspace detail screen requires a successful fresh detail read
+before displaying cached metadata. Workspace retry controls honor a valid
+Retry-After and use a five-second manual cooldown for an invalid header.
 
 ## Visual comparison
 

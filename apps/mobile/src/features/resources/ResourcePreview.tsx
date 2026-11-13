@@ -66,12 +66,14 @@ function AccessCheck({
     async queryFn({ signal }) {
       const homeKey = queryKeys.home(identity);
       try {
-        return await data.api.json(
+        const result = await data.api.json(
           path,
           (value) => {
             if (destination.kind === 'board') {
               const board = decodeBoardAccess(value);
-              return board.id === boardId && board.capabilities.canReadBoard;
+              return board.id === boardId && board.capabilities.canReadBoard
+                ? board
+                : false;
             }
             const card = value as { id?: unknown; boardId?: unknown } | null;
             return card?.id === destination.cardId && card?.boardId === boardId;
@@ -84,6 +86,9 @@ function AccessCheck({
             retries: 0,
           },
         );
+        if (typeof result === 'object')
+          data.resources.rememberBoardWorkspace(boardId, result.workspaceId);
+        return result !== false;
       } catch (error) {
         if (error instanceof ApiError && [403, 404].includes(error.status)) {
           // Returning to Home must not flash a preview after an authoritative

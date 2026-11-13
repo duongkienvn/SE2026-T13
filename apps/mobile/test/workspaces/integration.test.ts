@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { InfiniteQueryObserver, QueryObserver } from '@tanstack/react-query';
+import { homeOptions } from '../../src/features/home/query.ts';
+import { ApiError } from '../../src/infrastructure/api/errors.ts';
 import { createWorkspaceApi } from '../../src/features/workspaces/api.ts';
 import {
   decodeWorkspace,
@@ -16,6 +18,7 @@ import {
 import { resolveWorkspace } from '../../src/features/workspaces/selection.ts';
 import { queryKeys } from '../../src/infrastructure/query/keys.ts';
 import { deferred, flush, loginResponse, USER_B } from '../auth/support.ts';
+import { emptyHome, fixture as homeFixture } from '../home/fixtures.ts';
 import { integration, json, ok } from '../realtime/integration-support.ts';
 import { board, overview, page, uuid, workspace } from './fixtures.ts';
 
@@ -458,4 +461,185 @@ test('a Board revoke also purges authorized Workspace overview previews without 
     env.requests.filter(({ url }) => url.endsWith('/overview')).length,
     2,
   );
+});
+
+test('a complete directory fences previously read Workspace data even without a cached directory', async (t) => {
+  const env = await integration();
+  t.after(env.dispose);
+  const identity = env.identity;
+  const detail = workspaceDetailOptions(env.data, identity, team.id);
+  const directory = workspaceDirectoryOptions(env.data, identity);
+  const home = queryKeys.home(identity);
+  env.respond((url) =>
+    listCall(url)
+      ? Promise.resolve(pageAt(url, [personal]))
+      : Promise.resolve(ok(team)),
+  );
+  await env.data.queryClient.fetchQuery(detail);
+  env.data.queryClient.setQueryData(home, homeFixture());
+  assert.deepEqual(await env.data.queryClient.fetchQuery(directory), [
+    personal,
+  ]);
+  assert.equal(env.data.queryClient.getQueryData(detail.queryKey), undefined);
+  assert.equal(env.data.queryClient.getQueryData(home), undefined);
+  assert.equal(env.data.resources.readable(detail.queryKey), false);
+});
+
+test('REST Workspace denial fences Home and pending Board reads before independent permissions are rechecked without a socket', async (t) => {
+  const env = await integration();
+  t.after(env.dispose);
+  const identity = env.identity;
+  const otherIdentity = { userId: USER_B, generation: identity.generation };
+  const denied = board(team.id, 1);
+  const member = board(team.id, 2);
+  const guest = board(team.id, 3);
+  const unrelated = board(personal.id, 4);
+  const cachedHome = homeFixture();
+  const homeSnapshot = {
+    ...cachedHome,
+    upNext: [],
+    recentBoards: [],
+    starredBoards: [denied, member, guest, unrelated].map((item) => ({
+      ...cachedHome.starredBoards[0]!,
+      id: item.id,
+      name: item.name,
+      path: `/boards/${item.id}`,
+      workspaceId: item.workspaceId,
+    })),
+  };
+  const home = homeOptions(env.data, identity);
+  const homeObserver = new QueryObserver(env.data.queryClient, home);
+  const lateHome = deferred<Response>();
+  const lateBoard = deferred<Response>();
+  const lateUnrelated = deferred<Response>();
+  const [deniedKey, memberKey, guestKey, unrelatedKey] = [
+    denied,
+    member,
+    guest,
+    unrelated,
+  ].map(({ id }) => queryKeys.columns(identity, id));
+  const lost = workspaceDetailOptions(env.data, identity, team.id);
+  const lostObserver = new QueryObserver(env.data.queryClient, {
+    ...lost,
+    staleTime: Infinity,
+  });
+  const kept = workspaceDetailOptions(env.data, identity, personal.id);
+  const keptBoards = workspaceBoardOptions(env.data, identity, personal.id);
+  const directory = workspaceDirectoryOptions(env.data, identity);
+  const observer = new QueryObserver(env.data.queryClient, {
+    queryKey: memberKey,
+    staleTime: Infinity,
+    queryFn: ({ signal }) =>
+      env.data.api.json(`/boards/${member.id}/columns`, (value) => value, {
+        identity,
+        resourceKey: memberKey,
+        signal,
+        retries: 0,
+      }),
+  });
+  const client = env.data.queryClient;
+  const otherHome = queryKeys.home(otherIdentity);
+  let homeCalls = 0;
+  env.respond((input) => {
+    const url = new URL(input);
+    if (url.pathname === '/api/users/me/home') {
+      homeCalls++;
+      if (homeCalls === 1) return Promise.resolve(ok(homeSnapshot));
+      if (homeCalls === 2) return lateHome.promise;
+      return Promise.resolve(homeCalls === 3 ? json({}, 503) : ok(emptyHome()));
+    }
+    if (url.pathname === `/api/workspaces/${team.id}`)
+      return Promise.resolve(json({}, 403));
+    if (url.pathname === '/api/workspaces')
+      return Promise.resolve(pageAt(input, [personal]));
+    if (url.pathname === `/api/workspaces/${personal.id}/boards`)
+      return Promise.resolve(pageAt(input, [unrelated]));
+    if (url.pathname === `/api/boards/${denied.id}/columns`)
+      return lateBoard.promise;
+    if (url.pathname === `/api/boards/${unrelated.id}/columns`)
+      return lateUnrelated.promise;
+    if (url.pathname === `/api/boards/${member.id}/columns`)
+      return Promise.resolve(ok('fresh authorized columns'));
+    if (url.pathname === `/api/boards/${denied.id}`)
+      return Promise.resolve(json({}, 404));
+    if (url.pathname === `/api/boards/${member.id}`)
+      return Promise.resolve(
+        ok({
+          ...member,
+          currentUserRole: 'MEMBER',
+          capabilities: { canReadBoard: true, canWriteBoard: true },
+        }),
+      );
+    if (url.pathname === `/api/boards/${guest.id}`)
+      return Promise.resolve(ok({ ...guest, currentUserRole: 'MEMBER' }));
+    return null;
+  });
+  t.after(homeObserver.subscribe(() => {}));
+  client.setQueryData(otherHome, emptyHome());
+  client.setQueryData(lost.queryKey, team);
+  t.after(lostObserver.subscribe(() => {}));
+  client.setQueryData(kept.queryKey, personal);
+  client.setQueryData(directory.queryKey, [personal, team]);
+  const otherBoardList = await client.fetchInfiniteQuery(keptBoards);
+  for (const key of [deniedKey, memberKey, guestKey, unrelatedKey])
+    client.setQueryData(key, 'cached columns');
+  t.after(observer.subscribe(() => {}));
+  await flush();
+  assert.equal(homeObserver.getCurrentResult().data?.starredBoards.length, 4);
+  const refetch = homeObserver.refetch();
+  const readColumns = (id: string, resourceKey: typeof deniedKey) =>
+    env.data.api.json(`/boards/${id}/columns`, (value) => value, {
+      identity,
+      resourceKey,
+      retries: 0,
+    });
+  const fenced = assert.rejects(readColumns(denied.id, deniedKey));
+  const unrelatedRequest = readColumns(unrelated.id, unrelatedKey);
+  await flush();
+  await lostObserver.refetch();
+  assert.equal(lostObserver.getCurrentResult().isError, true);
+
+  assert.equal(homeObserver.getCurrentResult().data, undefined);
+  for (const key of [lost.queryKey, deniedKey, memberKey, guestKey]) {
+    assert.equal(client.getQueryData(key), undefined);
+    assert.equal(env.data.resources.readable(key), false);
+  }
+  assert.deepEqual(client.getQueryData(directory.queryKey), [personal]);
+  assert.equal(client.getQueryData(unrelatedKey), 'cached columns');
+  assert.equal(client.getQueryData(kept.queryKey), personal);
+  assert.equal(client.getQueryData(keptBoards.queryKey), otherBoardList);
+  assert.deepEqual(client.getQueryData(otherHome), emptyHome());
+  assert.equal(env.socket.connected, false);
+  assert.equal(env.socket.commands.length, 0);
+
+  lateHome.resolve(ok(homeSnapshot));
+  lateBoard.resolve(ok('old restricted columns'));
+  lateUnrelated.resolve(ok('authorized unrelated columns'));
+  await Promise.all([refetch, fenced]);
+  assert.equal(await unrelatedRequest, 'authorized unrelated columns');
+  env.time.advance(50);
+  await flush();
+  const homeError = homeObserver.getCurrentResult().error;
+  assert.ok(homeError instanceof ApiError);
+  assert.equal(homeError.status, 503);
+  assert.equal(homeObserver.getCurrentResult().data, undefined);
+  assert.equal(client.getQueryData(deniedKey), undefined);
+  assert.equal(env.data.resources.readable(deniedKey), false);
+  assert.equal(env.data.resources.readable(memberKey), true);
+  assert.doesNotThrow(() => env.data.resources.capture(memberKey, true));
+  assert.equal(env.data.resources.readable(guestKey), true);
+  assert.throws(() => env.data.resources.capture(guestKey, true));
+  assert.equal(client.getQueryData(unrelatedKey), 'cached columns');
+  assert.equal(client.getQueryData(keptBoards.queryKey), otherBoardList);
+  assert.deepEqual(
+    env.requests
+      .filter(({ url }) => /\/api\/boards\/[^/]+$/.test(url))
+      .map(({ url }) => new URL(url).pathname.split('/').at(-1)),
+    [denied.id, member.id, guest.id],
+  );
+  env.time.advance(50);
+  await flush();
+  assert.equal(observer.getCurrentResult().data, 'fresh authorized columns');
+  assert.equal(homeObserver.getCurrentResult().data, undefined);
+  assert.deepEqual((await homeObserver.refetch()).data, emptyHome());
 });

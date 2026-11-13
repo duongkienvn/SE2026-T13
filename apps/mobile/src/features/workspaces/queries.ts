@@ -44,12 +44,18 @@ export function workspaceDirectoryOptions(
       data.assertCurrent(identity);
       current();
       if (signal.aborted) throw new ApiError('aborted');
-      const visible = new Set(rows.map((workspace) => workspace.id));
+      const visible = new Set<string>(rows.map((workspace) => workspace.id));
       const previous = data.queryClient.getQueryData<WorkspaceSummary[]>(key);
-      for (const workspace of previous ?? []) {
-        if (!visible.has(workspace.id))
-          evictWorkspaceResources(data, identity, workspace.id);
-      }
+      const lost = new Set([
+        ...(previous ?? []).map(({ id }) => id),
+        ...data.resources.trackedWorkspaceIds(),
+      ]);
+      for (const id of lost)
+        if (
+          !visible.has(id) &&
+          data.resources.readable(queryKeys.workspace(identity, id))
+        )
+          evictWorkspaceResources(data, identity, id);
       for (const workspace of rows)
         data.resources.confirmWorkspace(workspace.id);
       return rows;
@@ -60,14 +66,16 @@ export function workspaceDirectoryOptions(
 function evictWorkspaceResources(
   data: MobileDataLayer,
   identity: SessionIdentity,
-  id: ResourceId,
+  id: string,
 ) {
   data.assertCurrent(identity);
-  data.resources.fenceWorkspace(id, true);
-  data.evict(identity, [
+  data.resources.denyWorkspace(id);
+  const keys = [
     queryKeys.workspace(identity, id),
     queryKeys.workspaceBoards(identity, id),
-  ]);
+  ];
+  for (const key of keys) data.cancelResourceRequests(key);
+  data.evict(identity, keys);
 }
 
 function evictWorkspace(
