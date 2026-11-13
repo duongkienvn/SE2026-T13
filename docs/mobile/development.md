@@ -17,6 +17,7 @@ remain in their respective roadmap issues. See the
 | Expo Metro / underlying Metro / Metro runtime | **58.0.0** / **0.87.1** / **58.0.17**                                                       |
 | Expo Constants / Linking / Status Bar         | **58.0.15** / **58.0.16** / **58.0.4**                                                      |
 | Native safe-area-context / screens            | **5.11.1** / **4.30.1**                                                                     |
+| Native Google Sign-In (MOB-09)                | `@react-native-google-signin/google-signin` **16.1.5**; needs a development/preview build   |
 | Mobile TypeScript / React types               | **6.0.3** / **19.3.0**; existing workspaces keep TypeScript 5.9.3                           |
 | pnpm                                          | **10.18.3**, repository `packageManager`; isolated linker                                   |
 | Node                                          | Use **22.17.0** (tested here) or a compatible Node 22 release ≥22.13.0; CI uses **22.13.0** |
@@ -180,6 +181,34 @@ If Metro has stale module paths after dependencies/config change:
 pnpm --filter @kanban/shared build
 pnpm --filter @kanban/mobile dev --clear
 ```
+
+## Native Google Sign-In setup (MOB-09)
+
+Google Sign-In uses a native module, so **Expo Go cannot run it**. Without the
+module or without public client IDs the app simply hides "Continue with Google";
+email/password keeps working. All values below are public identifiers. Never
+put a client secret, keystore, `google-services.json` private data or signing
+password in `EXPO_PUBLIC_*`, `app.config.ts`, the repository or screenshots.
+
+1. In the Google Cloud project that owns the backend `GOOGLE_CLIENT_ID` (a
+   **Web application** OAuth client), keep that Web client as the token audience.
+2. Create an **Android** OAuth client for package `tech.kanvexa.mobile.dev` with
+   the SHA-1 of the certificate that signs the build you install. Debug build:
+   `keytool -list -v -keystore apps/mobile/android/app/debug.keystore -alias androiddebugkey -storepass android -keypass android`
+   (after `pnpm --filter @kanban/mobile exec expo prebuild --platform android`).
+   EAS preview/internal build: `eas credentials --platform android` shows the
+   SHA-1 of the remote keystore. Each distinct signing key needs its own entry.
+3. iOS only: create an **iOS** OAuth client for bundle `tech.kanvexa.mobile.dev`.
+4. Set, in `apps/mobile/.env` or the EAS build environment:
+   `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=<backend GOOGLE_CLIENT_ID>` and, for iOS,
+   `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=<iOS client>`. The iOS value also adds the
+   reversed-client URL scheme through the SDK config plugin at prebuild.
+5. Build a native app (`pnpm --filter @kanban/mobile android:native`, or an EAS
+   development/preview build once authorized) and install it.
+
+The native SDK is asked for an ID token **for the Web client ID**, so the backend
+audience check stays unchanged. A wrong SHA-1/package shows Google's
+`DEVELOPER_ERROR`, which the app reports as a generic Google failure.
 
 ## Device acceptance still required
 

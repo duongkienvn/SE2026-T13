@@ -4,6 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { ApiError } from '../../infrastructure/api/errors';
 import { Button, PasswordField, TextField } from '../../ui';
 import { AuthFrame, AuthIcon, AuthLink, AuthText } from './components';
+import { GoogleSignInOption, type GoogleFeedback } from './GoogleSignIn';
 import {
   authError,
   retryDelay,
@@ -32,7 +33,8 @@ export function SignUpScreen() {
   const [errors, setErrors] = useState<Record<string, string | undefined>>({}),
     [error, setError] = useState(''),
     [until, setUntil] = useState(0),
-    [uncertain, setUncertain] = useState(false);
+    [uncertain, setUncertain] = useState(false),
+    [via, setVia] = useState<'email' | 'google'>('email');
   const cooldown = useCooldown(until),
     emailInput = useRef<ComponentRef<typeof TextInput>>(null),
     passwordInput = useRef<ComponentRef<typeof TextInput>>(null),
@@ -70,6 +72,7 @@ export function SignUpScreen() {
     if (Object.values(validation).some(Boolean) || cooldown || uncertain)
       return;
     setError('');
+    setVia('email');
     void request.run(
       async (signal, current) => {
         await api.register(name, email, password, signal);
@@ -98,6 +101,18 @@ export function SignUpScreen() {
           setUncertain(true);
       },
     );
+  };
+  // Google creates (or reuses) the account server-side; no local registration.
+  const google: GoogleFeedback = {
+    onStart: () => {
+      setVia('google');
+      setPassword('');
+      setConfirm('');
+      setError('');
+    },
+    onError: setError,
+    onUnverified: () => {},
+    onCooldown: setUntil,
   };
   return (
     <AuthFrame
@@ -183,9 +198,16 @@ export function SignUpScreen() {
       )}
       <Button
         label={cooldown ? `Try again in ${cooldown}s` : 'Sign up'}
-        loading={request.pending}
-        disabled={!!cooldown || uncertain}
+        loading={request.pending && via === 'email'}
+        disabled={
+          !!cooldown || uncertain || (request.pending && via === 'google')
+        }
         onPress={submit}
+      />
+      <GoogleSignInOption
+        request={request}
+        disabled={!!cooldown}
+        feedback={google}
       />
       <View
         style={{
