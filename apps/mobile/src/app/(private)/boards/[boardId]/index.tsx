@@ -1,4 +1,4 @@
-import { ResourceBoundary } from '../../../../navigation/resource-boundary';
+import { ResourcePreview } from '../../../../features/resources/ResourcePreview';
 export default function Board() {
-  return <ResourceBoundary access="unavailable" />;
+  return <ResourcePreview kind="board" />;
 }

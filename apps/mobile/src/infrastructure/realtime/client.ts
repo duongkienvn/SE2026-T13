@@ -251,10 +251,12 @@ export function createNativeRealtime(options: {
       everConnected = true;
     },
     lost() {
-      data.cancelRequests();
       clearChecks();
       rooms.lost();
-      evictAccessSnapshots();
+      // Before the first successful handshake, there are no receive grants
+      // or missed socket events. A failed first connection must not discard
+      // a fresh authorized REST read or strand Home in an access error.
+      if (everConnected) evictAccessSnapshots();
     },
     sessionEnded() {
       everConnected = false;

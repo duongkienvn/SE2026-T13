@@ -16,7 +16,7 @@ import Index from '../src/app/index';
 import PrivateLayout from '../src/app/(private)/_layout';
 import { PublicScaffold } from '../src/navigation/public-scaffold';
 import { redirectSystemPath } from '../src/app/+native-intent';
-import Card from '../src/app/(private)/boards/[boardId]/cards/[cardId]';
+import { ResourceBoundary } from '../src/navigation/resource-boundary';
 
 const cardPath =
   '/boards/01234567-89ab-cdef-0123-456789abcdef/cards/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
@@ -110,7 +110,11 @@ function routesFor(adapter) {
     '(private)/(tabs)/inbox': () => <Text>Inbox content</Text>,
     '(private)/search': () => <Text>Search content</Text>,
     '(private)/invitation': () => <Text>Invitation content</Text>,
-    '(private)/boards/[boardId]/cards/[cardId]': Card,
+    // This suite supplies only a navigation session, with no REST access grant.
+    // The auth router integration exercises the actual Board and Card entries.
+    '(private)/boards/[boardId]/cards/[cardId]': () => (
+      <ResourceBoundary access="unavailable" />
+    ),
   };
 }
 
