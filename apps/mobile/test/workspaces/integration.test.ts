@@ -315,3 +315,40 @@ test('membership 404 fences the old cache, 401 ends session, and account replace
   );
   assert.equal(env.data.getIdentity(), null);
 });
+test('a Board revoke also purges authorized Workspace overview previews without a Board room', async (t) => {
+  const env = await integration();
+  t.after(env.dispose);
+  env.socket.server('connect');
+  let revoked = false;
+  env.respond((url) =>
+    url.endsWith('/overview')
+      ? Promise.resolve(
+          ok(
+            revoked
+              ? {
+                  ...overview(),
+                  visibleBoardCount: 0,
+                  activeBoardCount: 0,
+                  recentBoards: [],
+                }
+              : overview(),
+          ),
+        )
+      : null,
+  );
+  const options = workspaceOverviewOptions(env.data, env.identity, team.id);
+  const observer = new QueryObserver(env.data.queryClient, options);
+  t.after(observer.subscribe(() => {}));
+  await flush();
+  assert.equal(observer.getCurrentResult().data?.recentBoards.length, 1);
+  revoked = true;
+  env.socket.server('board:access-revoked', { boardId: board().id });
+  assert.equal(observer.getCurrentResult().data, undefined);
+  env.time.advance(50);
+  await flush();
+  assert.equal(observer.getCurrentResult().data?.recentBoards.length, 0);
+  assert.equal(
+    env.requests.filter(({ url }) => url.endsWith('/overview')).length,
+    2,
+  );
+});

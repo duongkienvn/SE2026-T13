@@ -34,7 +34,6 @@ export function createNativeRealtime(options: {
   let everConnected = false;
   let accessTimer: unknown;
   let checkAll = false;
-  const workspaceChecks = new Set<string>();
   let accessEpoch = 0;
   const checks = new Set<string>();
   const verificationIds = new Set<string>();
@@ -42,6 +41,22 @@ export function createNativeRealtime(options: {
   let verificationTimer: unknown;
   let unsubscribeErrors: (() => void) | undefined;
   let unsubscribeDenied: (() => void) | undefined;
+  function workspaceOverviewKeys(
+    identity: SessionIdentity,
+    workspaceId?: string,
+  ) {
+    const result: PrivateQueryKey[] = [];
+    for (const { queryKey } of data.queryClient.getQueryCache().getAll()) {
+      if (
+        keyBelongsTo(queryKey, identity) &&
+        queryKey[4] === 'workspaces' &&
+        queryKey[6] === 'overview' &&
+        (!workspaceId || queryKey[5] === workspaceId)
+      )
+        result.push(queryKey);
+    }
+    return result;
+  }
   function cancelVerification(boardId?: string) {
     if (boardId) {
       verificationIds.delete(boardId);
@@ -63,7 +78,6 @@ export function createNativeRealtime(options: {
     if (accessTimer !== undefined) timers.clearTimeout(accessTimer);
     accessTimer = undefined;
     checks.clear();
-    workspaceChecks.clear();
     checkAll = false;
   }
   function resourceFailed(boardId: string, key: PrivateQueryKey) {
@@ -155,9 +169,7 @@ export function createNativeRealtime(options: {
       const ticket = accessEpoch;
       const all = checkAll;
       const ids = [...checks];
-      const workspaceIds = [...workspaceChecks];
       checks.clear();
-      workspaceChecks.clear();
       checkAll = false;
       void reconcile(identity);
       async function reconcile(identity: SessionIdentity) {
@@ -171,7 +183,7 @@ export function createNativeRealtime(options: {
           // fenced Board keys, or infer access from a successful aggregate read.
           await data.invalidate(identity, [
             ...aggregateKeys(identity),
-            ...workspaceIds.map((id) => queryKeys.workspace(identity, id)),
+            ...workspaceOverviewKeys(identity),
             ...(all
               ? [
                   [
@@ -208,11 +220,14 @@ export function createNativeRealtime(options: {
         data.cancelResourceRequests(queryKeys.board(identity, boardId));
         data.evict(identity, [queryKeys.board(identity, boardId)]);
         if (revoked) {
+          const workspaceId = rooms.getSnapshot(boardId).workspaceId;
+          const keys = [
+            ...aggregateKeys(identity),
+            ...workspaceOverviewKeys(identity, workspaceId),
+          ];
           data.resources.fenceAggregates();
-          data.evict(identity, aggregateKeys(identity));
-          void data
-            .invalidateHints(identity, aggregateKeys(identity))
-            .catch(() => undefined);
+          data.evict(identity, keys);
+          void data.invalidateHints(identity, keys).catch(() => undefined);
         }
       }
     },
@@ -278,7 +293,6 @@ export function createNativeRealtime(options: {
       if (event === 'workspace:access-revoked' || event === 'access:changed') {
         if (hint.workspaceId) {
           data.resources.fenceWorkspace(hint.workspaceId, true);
-          workspaceChecks.add(hint.workspaceId);
         }
         evictAccessSnapshots();
         accessCheck();
@@ -289,8 +303,6 @@ export function createNativeRealtime(options: {
         hint.userId === identity.userId &&
         hint.retainsReadAccess !== true
       ) {
-        const workspace = rooms.getSnapshot(hint.boardId!).workspaceId;
-        if (workspace) workspaceChecks.add(workspace);
         rooms.revoke(hint.boardId!);
         return;
       }
@@ -301,7 +313,13 @@ export function createNativeRealtime(options: {
         (event.startsWith('member:') && hint.userId === identity.userId)
       ) {
         data.resources.fenceAggregates();
-        data.evict(identity, aggregateKeys(identity));
+        data.evict(identity, [
+          ...aggregateKeys(identity),
+          ...workspaceOverviewKeys(
+            identity,
+            rooms.getSnapshot(hint.boardId!).workspaceId,
+          ),
+        ]);
         accessCheck(hint.boardId);
         return;
       }
