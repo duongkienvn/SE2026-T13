@@ -1,4 +1,9 @@
-import { PublicScaffold } from '../navigation/public-scaffold';
-export default function VerifyEmail() {
-  return <PublicScaffold title="Verify email" header />;
+import { VerifyEmailScreen } from '../features/auth/VerifyEmailScreen';
+import { PublicAuthGate } from '../features/auth/runtime';
+export default function AuthRoute() {
+  return (
+    <PublicAuthGate>
+      <VerifyEmailScreen />
+    </PublicAuthGate>
+  );
 }

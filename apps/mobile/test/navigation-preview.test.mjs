@@ -3,7 +3,7 @@ import test from 'node:test';
 import process from 'node:process';
 import { isPublicNavigationPreview } from '../src/navigation/preview.ts';
 
-test('preview exposes data-free shell routes only and is disabled by default', () => {
+test('retired preview flag never bypasses real authentication', () => {
   const previous = process.env.EXPO_PUBLIC_NAVIGATION_PREVIEW;
   try {
     delete process.env.EXPO_PUBLIC_NAVIGATION_PREVIEW;
@@ -18,7 +18,7 @@ test('preview exposes data-free shell routes only and is disabled by default', (
       '/settings',
       '/invitation',
     ]) {
-      assert.equal(isPublicNavigationPreview(path), true, path);
+      assert.equal(isPublicNavigationPreview(path), false, path);
     }
     for (const path of [
       '/boards/01234567-89ab-cdef-0123-456789abcdef',

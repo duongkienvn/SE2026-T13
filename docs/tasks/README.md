@@ -97,6 +97,8 @@ chưa triển khai. Mục lục dưới đây liệt kê toàn bộ task documen
 
 ## Frontend tasks
 
+- [MOB-08 Native email/password authentication, verification and recovery](frontend/mob-08-native-auth.md)
+
 - [MOB-06 Native Socket.IO Realtime Foundation](frontend/mob-06-native-realtime.md)
 
 - [MOB-01 Expo bootstrap and pnpm/Metro compatibility](frontend/mob-01-expo-foundation.md)

@@ -49,7 +49,7 @@ session.getAccessCredential(); // { accessToken, generation } | null — call pe
 session.isCurrent(generation); // drop responses from older sessions
 session.handleUnauthorized(generation); // a 401 seen by a request with this tag
 session.handleSecurityInvalidation(generation); // after a server-confirmed password/email change
-session.establishSession(loginResponseData); // MOB-08/09 after a successful login API call
+session.establishSession(loginResponseData, signal); // MOB-08/09; optional AbortSignal
 session.logout(); // local teardown first, then best-effort POST /auth/logout
 session.retryVerification(); // Retry button for offline-uncertain
 session.handleNetworkRestored(); // MOB-04: call when the network comes back
@@ -59,6 +59,12 @@ session.addLifecycleListener({ onSessionEnd, onSessionStart });
 `SessionProvider` (mounted in `src/app/_layout.tsx`) starts the restore once and
 re-checks expiry on every return to the foreground. `SessionGate` renders its
 children only while authenticated and remounts them when `generation` changes.
+
+MOB-08 adds optional establishment cancellation. Leaving a pending login can
+cancel that credential's verification/storage without affecting a newer generation
+or an already authenticated session. See the
+[native auth implementation record](../tasks/frontend/mob-08-native-auth.md) for
+public forms and the separate trusted email-link intake.
 
 ## What each owner plugs in
 

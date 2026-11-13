@@ -10,6 +10,7 @@ import { loginResponse, USER_A } from './auth/support';
 import { queryKeys } from '../src/infrastructure/query/keys';
 
 jest.mock('expo-status-bar', () => ({ StatusBar: () => null }));
+jest.mock('expo-router', () => ({ useFocusEffect: jest.fn() }));
 
 jest.mock('expo-network', () => ({
   getNetworkStateAsync: async () => ({ isConnected: true }),
@@ -43,6 +44,7 @@ jest.mock('../src/infrastructure/query/native-data', () => {
   const transport = createHttpClient({ baseUrl: null, fetch: jest.fn() });
   return {
     nativeSession,
+    nativeTransport: transport,
     nativeData: createMobileDataLayer(nativeSession, transport),
   };
 });

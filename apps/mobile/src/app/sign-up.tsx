@@ -1,4 +1,9 @@
-import { PublicScaffold } from '../navigation/public-scaffold';
-export default function SignUp() {
-  return <PublicScaffold title="Sign up" header />;
+import { SignUpScreen } from '../features/auth/SignUpScreen';
+import { PublicAuthGate } from '../features/auth/runtime';
+export default function AuthRoute() {
+  return (
+    <PublicAuthGate>
+      <SignUpScreen />
+    </PublicAuthGate>
+  );
 }

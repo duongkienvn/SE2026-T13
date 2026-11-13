@@ -1,7 +1,13 @@
 # Mobile REST and Query foundation (MOB-04)
 
+MOB-08 adds typed public auth adapters over the same `nativeTransport`, without
+bearer credentials or protected Query state. Mail-request operations use an
+explicit 45-second deadline. The root includes an `AuthProvider` around existing
+data/realtime/navigation owners; session/cache/socket ownership is unchanged.
+See the [native auth record](../tasks/frontend/mob-08-native-auth.md).
+
 The app root owns one `nativeSession` and `nativeData`, constructed before secure
-restore begins. `AuthSessionProvider → DataProvider → NavigationRoot` preserves
+restore begins. `AuthSessionProvider → AuthProvider → DataProvider → RealtimeProvider → NavigationRoot` preserves
 the existing SecureStore manager, route guards, safe areas and status bar.
 `useMobileData()` exposes the layer to features. No feature UI or socket connection
 is introduced here.

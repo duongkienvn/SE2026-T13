@@ -1,8 +1,5 @@
-import { parsePath } from './routes.ts';
-
-/** Preview APKs expose only data-free shell routes until MOB-05 is integrated. */
-export function isPublicNavigationPreview(path: string): boolean {
-  if (process.env.EXPO_PUBLIC_NAVIGATION_PREVIEW !== '1') return false;
-  const destination = parsePath(path);
-  return destination?.kind === 'tab' || destination?.kind === 'screen';
+/** MOB-08 retires the foundation-only bypass. All app builds require real auth. */
+export function isPublicNavigationPreview(_path: string): boolean {
+  void _path;
+  return false;
 }
