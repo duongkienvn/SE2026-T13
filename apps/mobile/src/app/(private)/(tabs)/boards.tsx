@@ -1,4 +1,1 @@
-import { Scaffold } from '../../../navigation/scaffold';
-export default function Boards() {
-  return <Scaffold title="Boards" tab />;
-}
+export { BoardsScreen as default } from '../../../features/workspaces/BoardsScreen';
