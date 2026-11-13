@@ -299,6 +299,10 @@ test('a superseding verification proof fences stale success without consuming th
   ctx.flow.intake('https://kanvexa.tech/verify-email?token=' + 'a'.repeat(43));
   await ctx.render(VerifyEmailScreen);
   await fireEvent.press(screen.getByRole('button', { name: 'Verify email' }));
+  expect(
+    screen.getByRole('button', { name: 'Verify email' }).props
+      .accessibilityState.busy,
+  ).toBe(true);
   await act(() =>
     ctx.flow.intake(
       'https://kanvexa.tech/verify-email?token=' + 'b'.repeat(43),
@@ -344,4 +348,19 @@ test('invalid and reused reset proofs give actionable recovery without retrying 
     expect(ctx.manager.establishSession).not.toHaveBeenCalled();
     await view.unmount();
   }
+});
+
+test('a queued submit callback cannot start public auth after its screen leaves', async () => {
+  const ctx = setup();
+  const view = await ctx.render(SignInScreen);
+  await fireEvent.changeText(
+    screen.getByLabelText('Email address'),
+    'user@example.test',
+  );
+  await fireEvent.changeText(screen.getByLabelText('Password'), 'password');
+  const lateSubmit = screen.getByLabelText('Password').props.onSubmitEditing;
+  await view.unmount();
+  await act(() => lateSubmit());
+  expect(ctx.api.login).not.toHaveBeenCalled();
+  expect(ctx.manager.establishSession).not.toHaveBeenCalled();
 });

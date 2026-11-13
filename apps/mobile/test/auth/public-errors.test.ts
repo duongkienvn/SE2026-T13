@@ -139,3 +139,31 @@ test('offline, timeout and abort settle public auth without leaking native error
       !JSON.stringify(error).includes('raw secret'),
   );
 });
+
+test('malformed proof is rejected before any request, including a trailing newline', () => {
+  let calls = 0;
+  const api = createAuthApi(
+    createHttpClient({
+      baseUrl: new URL('https://api.example.test/api'),
+      fetch: async () => {
+        calls++;
+        return new Response(null, { status: 204 });
+      },
+    }),
+  );
+  for (const proof of [
+    'a'.repeat(42),
+    'a'.repeat(44),
+    'a'.repeat(43) + '\n',
+    'a'.repeat(42) + '!',
+  ]) {
+    assert.throws(() => api.verify(proof, new AbortController().signal), {
+      kind: 'configuration',
+    });
+    assert.throws(
+      () => api.reset(proof, 'Password1!', new AbortController().signal),
+      { kind: 'configuration' },
+    );
+  }
+  assert.equal(calls, 0);
+});

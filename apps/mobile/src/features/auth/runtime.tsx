@@ -117,6 +117,7 @@ export function PublicAuthGate({ children }: { children: ReactNode }) {
 export function usePublicRequest() {
   const { manager } = useAuth();
   const current = useRef<AbortController | null>(null);
+  const focused = useRef(false);
   const [pending, setPending] = useState(false);
   const cancel = useCallback(() => {
     current.current?.abort();
@@ -125,8 +126,12 @@ export function usePublicRequest() {
   }, []);
   useFocusEffect(
     useCallback(() => {
+      focused.current = true;
       setPending(false);
-      return cancel;
+      return () => {
+        focused.current = false;
+        cancel();
+      };
     }, [cancel]),
   );
   return {
@@ -139,7 +144,7 @@ export function usePublicRequest() {
       ) => Promise<void>,
       failed: (error: unknown) => void,
     ) => {
-      if (current.current) return;
+      if (current.current || !focused.current) return;
       const controller = new AbortController();
       current.current = controller;
       setPending(true);

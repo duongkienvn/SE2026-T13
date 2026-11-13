@@ -21,11 +21,13 @@ export function VerifyEmailScreen() {
   const [email, setEmail] = useState(state.email),
     [error, setError] = useState(''),
     [ack, setAck] = useState(''),
-    [verified, setVerified] = useState(false);
+    [verified, setVerified] = useState(false),
+    [verifying, setVerifying] = useState(false);
   const cooldown = useCooldown(state.cooldownUntil);
   useEffect(() => {
     request.cancel();
     setVerified(false);
+    setVerifying(false);
     setError('');
     setAck('');
     setEmail(state.email);
@@ -45,6 +47,8 @@ export function VerifyEmailScreen() {
     if (request.pending) return;
     const proof = flow.takeProof('verify-email');
     if (!proof) return;
+    setVerifying(true);
+    setError('');
     void request.run(
       async (signal, current) => {
         await api.verify(proof, signal);
@@ -53,11 +57,13 @@ export function VerifyEmailScreen() {
           flow.getSnapshot().proofVersion === state.proofVersion
         ) {
           setVerified(true);
+          setVerifying(false);
           setError('');
         }
       },
       () => {
         if (flow.getSnapshot().proofVersion !== state.proofVersion) return;
+        setVerifying(false);
         setError(
           'This verification link is invalid, expired, already used, or could not be confirmed. Request a new link or try signing in.',
         );
@@ -99,7 +105,7 @@ export function VerifyEmailScreen() {
   return (
     <AuthFrame
       title={
-        state.hasProof && state.proofKind === 'verify-email'
+        (state.hasProof && state.proofKind === 'verify-email') || verifying
           ? 'Verify your email'
           : 'Check your email'
       }
@@ -122,10 +128,12 @@ export function VerifyEmailScreen() {
         securely in your browser. Once verified, return here to sign in.
       </AuthText>
       <AuthText>Verification does not sign you in automatically.</AuthText>
-      {state.hasProof && state.proofKind === 'verify-email' && (
+      {((state.hasProof && state.proofKind === 'verify-email') ||
+        verifying) && (
         <Button
           label="Verify email"
-          loading={request.pending}
+          loading={verifying}
+          disabled={!state.hasProof}
           onPress={verify}
         />
       )}
@@ -151,8 +159,8 @@ export function VerifyEmailScreen() {
             : 'Resend verification email'
         }
         variant="secondary"
-        disabled={!!cooldown}
-        loading={request.pending}
+        disabled={!!cooldown || verifying}
+        loading={request.pending && !verifying}
         onPress={resend}
       />
     </AuthFrame>

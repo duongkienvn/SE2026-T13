@@ -36,7 +36,11 @@ export function confirmationError(
 }
 
 export function isProof(value: unknown): value is string {
-  return typeof value === 'string' && /^[A-Za-z0-9_-]{43}$/.test(value);
+  return (
+    typeof value === 'string' &&
+    value.length === 43 &&
+    /^[A-Za-z0-9_-]{43}$/.test(value)
+  );
 }
 
 export function maskEmail(value: string): string {
