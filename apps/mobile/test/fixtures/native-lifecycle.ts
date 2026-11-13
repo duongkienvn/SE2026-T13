@@ -8,8 +8,11 @@ export function nativeLifecycle(initial: NetworkState = { isConnected: true }) {
   let appListener: ((state: string) => void) | undefined;
   let networkListener: ((state: NetworkState) => void) | undefined;
   let networkState = initial;
+  let appState = 'active';
   const app: NativeAppState = {
-    currentState: 'active',
+    get currentState() {
+      return appState;
+    },
     addEventListener(_event, listener) {
       appListener = listener;
       return {
@@ -33,7 +36,10 @@ export function nativeLifecycle(initial: NetworkState = { isConnected: true }) {
   return {
     app,
     network,
-    setAppState: (state: string) => appListener?.(state),
+    setAppState(state: string) {
+      appState = state;
+      appListener?.(state);
+    },
     setNetworkState(state: NetworkState) {
       networkState = state;
       networkListener?.(state);

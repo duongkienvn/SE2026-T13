@@ -1,0 +1,64 @@
+{
+  "date": "2026-11-13",
+  "buildId": "ab2c375e-05cc-494f-91ff-e53feab17ff3",
+  "buildStatus": "FINISHED",
+  "sourceCommit": "c3eb7a829709f33b291b83ec10a26876dff8b14d",
+  "variant": "EAS preview / Android release",
+  "applicationId": "tech.kanvexa.mobile.dev",
+  "label": "Kanvexa",
+  "version": "0.1.0",
+  "versionCode": 1,
+  "bytes": 91718071,
+  "sha256": "915e3443e6bba650ac5d27d70f0cdb7cc1542fdcbcc12fe9f75e3fde0c68fd20",
+  "embeddedJsBundle": true,
+  "nativeAbis": ["arm64-v8a", "armeabi-v7a", "x86", "x86_64"],
+  "device": {
+    "avd": "kanvexa_mob07_pixel8",
+    "hardwareProfile": "Pixel 8",
+    "android": "16 / API 36",
+    "abi": "x86_64",
+    "resolution": "1080x2400",
+    "densityDpi": 420
+  },
+  "install": "PASS: adb install -r returned Success",
+  "coldLaunch": "PASS: am start -W Status ok",
+  "noMetro": "PASS: offline cold launch; no 8081 listener or adb reverse; Expo Go absent",
+  "guards": [
+    {
+      "case": "cold-card",
+      "result": "PASS",
+      "visibleText": ["Sign in", "This feature is coming soon."]
+    },
+    {
+      "case": "warm-home",
+      "result": "PASS",
+      "visibleText": ["Sign in", "This feature is coming soon."]
+    },
+    {
+      "case": "warm-search",
+      "result": "PASS",
+      "visibleText": ["Sign in", "This feature is coming soon."]
+    },
+    {
+      "case": "malformed",
+      "result": "PASS",
+      "visibleText": ["Sign in", "This feature is coming soon."]
+    },
+    {
+      "case": "untrusted",
+      "result": "PASS",
+      "visibleText": ["Sign in", "This feature is coming soon."]
+    }
+  ],
+  "appearance": "PASS: approved splash icon; light/dark; font scales 1.0, 1.3, 1.6; landscape; safe areas",
+  "hardwareBack": "PASS: public root returns to Android launcher",
+  "crashBuffer": "empty",
+  "ReactNativeJsErrors": "empty",
+  "AndroidRuntimeErrors": "empty",
+  "limitations": [
+    "Signed-out scaffold only: current sign-in screen has no auth form; authenticated tabs were verified with existing component/Router tests, not device credentials.",
+    "No reachable keyboard/sheet/modal in the signed-out scaffold; covered by existing component tests, not claimed as native device coverage.",
+    "Transient Quickstep/System UI ANR before app QA; dismissed and launcher force-stopped. Subsequent Kanvexa runs and guard scenarios passed.",
+    "Physical Android and iOS were not tested."
+  ]
+}

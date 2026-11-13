@@ -8,7 +8,8 @@ const readJson = (path) =>
 
 test('preview profile does not enable the navigation bypass', () => {
   const eas = readJson('../eas.json');
-  assert.notEqual(eas.build.preview.env?.EXPO_PUBLIC_NAVIGATION_PREVIEW, '1');
+  assert.equal(eas.build.preview.env.EXPO_PUBLIC_NAVIGATION_PREVIEW, '0');
+  assert.equal(eas.build.preview.environment, 'preview');
   assert.equal(eas.build.preview.android.buildType, 'apk');
 });
 
