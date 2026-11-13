@@ -1,0 +1,8 @@
+PASS src/api/exports/export-jobs.worker.spec.ts (10.035 s)
+  √ drains queued work on the first tick with at most four simultaneous claims (16 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+Snapshots:   0 total
+Time:        10.654 s, estimated 11 s
+Ran all test suites within paths "src/api/exports/export-jobs.worker.spec.ts".

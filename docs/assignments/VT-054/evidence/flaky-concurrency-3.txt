@@ -1,0 +1,8 @@
+PASS TC01/02/03: 120 concurrent retries create one durable pending job
+PASS TC04/05/06/07/08: conflict, invalid key, job isolation, invalid session and not-ready download
+PASS TC09/12: one claim, exact completed projection and real JSON; replay never regenerates
+PASS TC10: sanitized failure, 120 retries reuse same job and one new attempt
+PASS TC11: expired lease recovered; stale attempt cannot overwrite current result
+PASS TC13: fresh owner revocation, result TTL and expired-byte cleanup
+PASS AC3 security regression: account erasure removes job bytes and identity keys
+Async export PostgreSQL suite: 7 groups passed

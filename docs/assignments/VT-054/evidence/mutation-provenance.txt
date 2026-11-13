@@ -1,0 +1,5 @@
+Submission HEAD: e30de97779db3dd89b151647dd0aad5d2da92885
+Mutation commit: 44f8c6fb56ad729db5fe453513562fec64e248a5
+Mutation ancestor check exit: 1 (1 means not an ancestor)
+Submission mapper:
+    format: row.format,

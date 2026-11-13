@@ -6,6 +6,10 @@ import {
   Query,
   Res,
   UseGuards,
+  Body,
+  Headers,
+  HttpCode,
+  Post,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -21,6 +25,7 @@ import { BoardExportQueryDto, AccountExportQueryDto } from './export-query.dto';
 import { BoardExportService } from './board-export.service';
 import { AccountExportService } from './account-export.service';
 import { ExportSnapshot, snapshotAuthorization } from './export-snapshot';
+import { ExportJobsService } from './export-jobs.service';
 
 @Controller()
 @UseGuards(JwtAuthGuard)
@@ -30,7 +35,66 @@ export class ExportsController {
     private readonly boards: BoardExportService,
     private readonly accounts: AccountExportService,
     private readonly snapshots: ExportSnapshot,
+    private readonly jobs: ExportJobsService,
   ) {}
+
+  @Post('boards/:boardId/export-jobs')
+  @HttpCode(202)
+  @ApiBearerToken()
+  @ApiOperation({
+    summary: 'Start or replay an OWNER-only asynchronous Board export',
+  })
+  @ApiCommonErrors([400, 401, 403, 404, 409, 410, 429, 500, 503])
+  startJob(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('boardId', new ParseUUIDPipe()) boardId: string,
+    @Headers('idempotency-key') key: string | undefined,
+    @Body() body: BoardExportQueryDto,
+  ) {
+    return this.jobs.start(user, boardId, key, body.format);
+  }
+
+  @Get('boards/:boardId/export-jobs/:id')
+  @ApiBearerToken()
+  @ApiOperation({
+    summary: 'Read current export progress without private bytes',
+  })
+  jobStatus(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('boardId', new ParseUUIDPipe()) boardId: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
+    return this.jobs.status(user, boardId, id);
+  }
+
+  @Post('boards/:boardId/export-jobs/:id/retry')
+  @HttpCode(202)
+  @ApiBearerToken()
+  @ApiOperation({
+    summary: 'Explicitly retry a failed export using the same job identity',
+  })
+  retryJob(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('boardId', new ParseUUIDPipe()) boardId: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
+    return this.jobs.retry(user, boardId, id);
+  }
+
+  @Get('boards/:boardId/export-jobs/:id/download')
+  @ApiBearerToken()
+  @ApiOperation({
+    summary: 'Download a completed export after fresh OWNER/session checks',
+  })
+  async downloadJob(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('boardId', new ParseUUIDPipe()) boardId: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Res() response: Response,
+  ): Promise<void> {
+    const result = await this.jobs.download(user, boardId, id);
+    this.send(response, result.body, `kanvexa-board-${boardId}`, result.format);
+  }
   @Get('boards/:boardId/export')
   @ApiBearerToken()
   @ApiOperation({

@@ -1,0 +1,134 @@
+
+> @kanban/shared@0.0.0 test D:\TAI LIEU DAI HOC\NAM BON\SEM_1\SE\SE2026-T13\.worktrees\23001908-vt054-fresh\packages\shared
+> node --test test/exports.test.mjs test/realtime.test.mjs test/workspace.test.mjs test/card-dates.test.mjs test/card-attachments.test.mjs
+
+TAP version 13
+# Subtest: attachment lifecycle contracts match ESM/CommonJS and reuse Card invalidation
+ok 1 - attachment lifecycle contracts match ESM/CommonJS and reuse Card invalidation
+  ---
+  duration_ms: 40.1772
+  type: 'test'
+  ...
+# Subtest: strict Card instants normalize offsets, leap years, optional seconds and legacy fractions
+ok 2 - strict Card instants normalize offsets, leap years, optional seconds and legacy fractions
+  ---
+  duration_ms: 48.2082
+  type: 'test'
+  ...
+# Subtest: invalid civil/local dates, offsets, component overflow and non-finite inputs fail
+ok 3 - invalid civil/local dates, offsets, component overflow and non-finite inputs fail
+  ---
+  duration_ms: 2.5255
+  type: 'test'
+  ...
+# Subtest: due status has explicit reference-clock boundaries and never infers completion
+ok 4 - due status has explicit reference-clock boundaries and never infers completion
+  ---
+  duration_ms: 113.3767
+  type: 'test'
+  ...
+# Subtest: IANA calendar days handle spring gaps, fall folds and 23/25-hour days without arithmetic offsets
+ok 5 - IANA calendar days handle spring gaps, fall folds and 23/25-hour days without arithmetic offsets
+  ---
+  duration_ms: 10.2814
+  type: 'test'
+  ...
+# Subtest: projection validates reference instants and named zones even without a deadline
+ok 6 - projection validates reference instants and named zones even without a deadline
+  ---
+  duration_ms: 2.0936
+  type: 'test'
+  ...
+# Subtest: zone projection preserves ISO calendar years at supported UTC boundaries
+ok 7 - zone projection preserves ISO calendar years at supported UTC boundaries
+  ---
+  duration_ms: 2.5403
+  type: 'test'
+  ...
+# Subtest: date helpers preserve ISO years with present ISO era parts
+ok 8 - date helpers preserve ISO years with present ISO era parts
+  ---
+  duration_ms: 43.8066
+  type: 'test'
+  ...
+# Subtest: date helpers preserve ISO years with absent ISO era parts
+ok 9 - date helpers preserve ISO years with absent ISO era parts
+  ---
+  duration_ms: 32.4499
+  type: 'test'
+  ...
+# Subtest: exports notification kinds and separate ID-free invalidation in both formats
+ok 10 - exports notification kinds and separate ID-free invalidation in both formats
+  ---
+  duration_ms: 64.3219
+  type: 'test'
+  ...
+# Subtest: exports global search types to ESM and CommonJS
+ok 11 - exports global search types to ESM and CommonJS
+  ---
+  duration_ms: 0.7433
+  type: 'test'
+  ...
+# Subtest: exports exhaustive productivity groups to both module formats
+ok 12 - exports exhaustive productivity groups to both module formats
+  ---
+  duration_ms: 0.8919
+  type: 'test'
+  ...
+# Subtest: exports the same realtime event names for both module formats
+ok 13 - exports the same realtime event names for both module formats
+  ---
+  duration_ms: 1.7575
+  type: 'test'
+  ...
+# Subtest: provides the same named export to ESM and CommonJS consumers
+ok 14 - provides the same named export to ESM and CommonJS consumers
+  ---
+  duration_ms: 1.6973
+  type: 'test'
+  ...
+# Subtest: provides the shared domain values to ESM and CommonJS consumers
+ok 15 - provides the shared domain values to ESM and CommonJS consumers
+  ---
+  duration_ms: 0.7498
+  type: 'test'
+  ...
+# Subtest: exports the separate presence contract in ESM and CommonJS
+ok 16 - exports the separate presence contract in ESM and CommonJS
+  ---
+  duration_ms: 83.2802
+  type: 'test'
+  ...
+# Subtest: exports the reviewed Board events in ESM and CommonJS
+ok 17 - exports the reviewed Board events in ESM and CommonJS
+  ---
+  duration_ms: 0.7703
+  type: 'test'
+  ...
+# Subtest: typechecks key/payload mapping and rejects invalid contracts
+ok 18 - typechecks key/payload mapping and rejects invalid contracts
+  ---
+  duration_ms: 2538.7539
+  type: 'test'
+  ...
+# Subtest: typechecks Board discovery contracts and rejects unsupported values
+ok 19 - typechecks Board discovery contracts and rejects unsupported values
+  ---
+  duration_ms: 859.8542
+  type: 'test'
+  ...
+# Subtest: workspace values have the same ESM and CommonJS contract
+ok 20 - workspace values have the same ESM and CommonJS contract
+  ---
+  duration_ms: 71.9201
+  type: 'test'
+  ...
+1..20
+# tests 20
+# suites 0
+# pass 20
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3764.2944

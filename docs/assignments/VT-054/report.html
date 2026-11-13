@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="vi">
+  <meta charset="utf-8" />
+  <title>BT3 · 23001908 · VT-054</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 17mm 15mm;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      color: #162638;
+      font:
+        10.6pt/1.48 'Segoe UI',
+        Arial,
+        sans-serif;
+    }
+    .page {
+      break-after: page;
+    }
+    .appendix th,
+    .appendix td {
+      padding-block: 4px;
+    }
+    .appendix table {
+      font-size: 8.8pt;
+    }
+    pre {
+      font:
+        8.8pt/1.4 Consolas,
+        monospace;
+      background: #edf3f6;
+      padding: 8px;
+      margin: 2px 0 12px;
+      white-space: pre-wrap;
+    }
+    .page:last-of-type {
+      break-after: auto;
+    }
+    h1,
+    h2,
+    h3 {
+      line-height: 1.18;
+      margin: 0 0 12px;
+    }
+    h1 {
+      font-size: 35pt;
+      letter-spacing: -1pt;
+    }
+    h2 {
+      font-size: 24pt;
+      letter-spacing: -0.55pt;
+    }
+    h3 {
+      font-size: 13pt;
+      margin-top: 18px;
+    }
+    p {
+      margin: 0 0 10px;
+    }
+    .eyebrow {
+      color: #08776e;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin: 0 0 12px;
+    }
+    .lede {
+      font-size: 14pt;
+      max-width: 58ch;
+    }
+    .meta {
+      margin: 23px 0;
+      padding: 15px 0;
+      border-block: 1px solid #b7c7ce;
+    }
+    .meta p {
+      margin: 4px 0;
+    }
+    .callout {
+      background: #eaf5f2;
+      padding: 12px 14px;
+      margin: 14px 0;
+      border-radius: 5px;
+    }
+    a {
+      color: #08685f;
+      overflow-wrap: anywhere;
+    }
+    code {
+      font:
+        9pt Consolas,
+        monospace;
+      overflow-wrap: anywhere;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 9.15pt;
+      margin: 10px 0 14px;
+    }
+    th,
+    td {
+      text-align: left;
+      vertical-align: top;
+      padding: 6px 7px;
+      border-bottom: 1px solid #d4dee2;
+    }
+    th {
+      background: #edf3f6;
+      color: #18394b;
+    }
+    tr {
+      break-inside: avoid;
+    }
+    ol,
+    ul {
+      margin: 7px 0 12px;
+      padding-left: 22px;
+    }
+    li {
+      margin-bottom: 6px;
+    }
+    .fine {
+      color: #415669;
+      font-size: 9.3pt;
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin: 18px 0;
+    }
+    .metrics div {
+      padding: 11px 12px;
+      background: #edf3f6;
+      border-radius: 5px;
+    }
+    .metrics strong {
+      display: block;
+      font-size: 19pt;
+      color: #17465a;
+    }
+  </style>
+  <body>
+    <section class="page">
+      <p class="eyebrow">Bài tập cá nhân 3 · APP-02 · VT-054</p>
+      <h1>Export Board<br />bất đồng bộ</h1>
+      <p class="lede">
+        Theo dõi tác vụ dài trong Data &amp; Privacy và dùng lại cùng job khi
+        gửi lại yêu cầu.
+      </p>
+      <div class="meta">
+        <p><strong>Vũ Quang Nam</strong> · MSSV 23001908 · Nhóm SE2026-T13</p>
+        <p>Dự án Kanvexa · Realtime Collaborative Kanban</p>
+        <p>
+          Repository
+          <a href="https://github.com/duongkienvn/SE2026-T13"
+            >duongkienvn/SE2026-T13</a
+          >
+        </p>
+        <p>Baseline <code>5c20856ba4686bac472c2cdb26cbf6dc51e83c76</code></p>
+        <p>
+          Nhánh
+          <a
+            href="https://github.com/duongkienvn/SE2026-T13/tree/assignment/23001908-vt054-async-progress"
+            >assignment/23001908-vt054-async-progress</a
+          >
+        </p>
+        <!-- PR_LINK -->
+      </div>
+      <p>
+        <strong
+          >Tôi chịu trách nhiệm về toàn bộ code, test và nội dung bài làm; tôi
+          đã khai báo việc sử dụng AI.</strong
+        >
+      </p>
+      <h3>Vấn đề</h3>
+      <p>
+        Ở baseline, tải Board JSON/CSV giữ request mở trong khi server tạo
+        snapshot. Người dùng chỉ thấy thông báo chuẩn bị file và khó biết yêu
+        cầu trước đã được nhận hay chưa khi kết nối gián đoạn. VT-054 tách việc
+        tạo snapshot sang job, hiển thị trạng thái và bảo vệ thao tác lặp.
+      </p>
+      <div class="metrics">
+        <div><strong>120/120</strong>tác vụ hoàn tất</div>
+        <div><strong>2,98 giây</strong>p95 acknowledgement</div>
+        <div><strong>10,83 giây</strong>p95 completion</div>
+      </div>
+      <p class="fine">
+        Kết quả local với PostgreSQL 16, một Board rỗng, một session và 120 thao
+        tác đồng thời. Completion chưa đạt 3,5 giây.
+      </p>
+    </section>
+    <section class="page">
+      <p class="eyebrow">Specification · Kế hoạch AI</p>
+      <h2>Hợp đồng và quyền truy cập</h2>
+      <ol>
+        <li>
+          <strong>AC1.</strong> OWNER gửi format và key UUID v4. POST trả 202 và
+          job ID trước completion. Replay cùng key/payload nhận lại ID. Payload
+          khác trả 409.
+        </li>
+        <li>
+          <strong>AC2.</strong> Người tạo job có quyền hiện tại xem PENDING,
+          RUNNING, COMPLETED, FAILED. RUNNING không có phần trăm. COMPLETED có
+          progress 100 và FAILED có mã lỗi an toàn.
+        </li>
+        <li>
+          <strong>AC3.</strong> File JSON/CSV chỉ được trả sau completion và
+          kiểm tra lại OWNER/session. Job hết hạn không trả bytes. API export
+          đồng bộ vẫn dùng được.
+        </li>
+        <li>
+          <strong>AC4.</strong> Retry FAILED giữ ID, giới hạn 3 attempt. Worker
+          nhận job bằng row lock và lease. Token lease ngăn worker cũ ghi đè kết
+          quả.
+        </li>
+        <li>
+          <strong>AC5.</strong> UI hiển thị pha chờ, chạy, tải và lỗi. Retry giữ
+          key trong cùng thao tác. Đổi session hoặc unmount hủy polling.
+        </li>
+      </ol>
+      <div class="callout">
+        <strong>Invariant.</strong> UNIQUE(user_id, idempotency_key) bảo đảm một
+        ID cho một thao tác. Chỉ lease hiện hành mới có thể công bố kết quả.
+        Export là read-only, nên oracle side effect đếm hàng job, attempt và kết
+        quả.
+      </div>
+      <p>
+        <strong>Ràng buộc.</strong> Đo 120 tác vụ với p95 ≤ 3500 ms, tách
+        acknowledgement khỏi completion. Dữ liệu job tồn tại qua restart, file
+        tối đa 20 MiB, hết hạn sau 15 phút và bị xóa khi tài khoản được xóa.
+      </p>
+      <h3>Review kế hoạch trước patch</h3>
+      <table>
+        <tr>
+          <th>Đề xuất</th>
+          <th>Bằng chứng repository</th>
+          <th>Quyết định</th>
+        </tr>
+        <tr>
+          <td>Giữ kết quả trong RAM</td>
+          <td>ExportSnapshot recheck quyền/session, file tới 20 MiB</td>
+          <td>Dùng PostgreSQL, TTL và cleanup</td>
+        </tr>
+        <tr>
+          <td>Test thông báo trùng</td>
+          <td>BoardExportService chỉ đọc snapshot</td>
+          <td>Đếm job và attempt thực tế</td>
+        </tr>
+        <tr>
+          <td>Chỉ thay API</td>
+          <td>BoardExportCard là luồng người dùng hiện có</td>
+          <td>Thêm phase UI và browser journey</td>
+        </tr>
+      </table>
+      <p class="fine">
+        Bản đầy đủ gồm prompt, assumptions và danh sách file nằm trong
+        SPEC-PLAN.md. Commit plan b6efdfa.
+      </p>
+    </section>
+    <section class="page">
+      <p class="eyebrow">Test design · Equivalence partitioning</p>
+      <h2>Dữ liệu đại diện theo rủi ro</h2>
+      <p>
+        Mỗi hàng chọn một lớp input hoặc trạng thái có cùng kỳ vọng. ID và key
+        tổng hợp cố định cho unit, database riêng cho integration. API test kiểm
+        tra hợp đồng, PostgreSQL kiểm tra cạnh tranh thật, browser kiểm tra hành
+        trình người dùng. Malformed input không cần lặp lại trên browser.
+      </p>
+      <table>
+        <tr>
+          <th>ID</th>
+          <th>AC / risk</th>
+          <th>Level</th>
+          <th>Partition và input đại diện</th>
+          <th>Kỳ vọng</th>
+          <th>Ưu tiên</th>
+        </tr>
+        <tr>
+          <td>01</td>
+          <td>AC1</td>
+          <td>HTTP</td>
+          <td>OWNER, JSON, key mới, latch</td>
+          <td>202 trước khi generator xong</td>
+          <td>P0</td>
+        </tr>
+        <tr>
+          <td>02</td>
+          <td>Trùng</td>
+          <td>DB</td>
+          <td>Cùng key, cùng payload</td>
+          <td>Cùng ID, completed không chạy lại</td>
+          <td>P0</td>
+        </tr>
+        <tr>
+          <td>03</td>
+          <td>Race</td>
+          <td>DB</td>
+          <td>120 request đồng thời cùng key</td>
+          <td>Một row, một claim</td>
+          <td>P0</td>
+        </tr>
+        <tr>
+          <td>04</td>
+          <td>AC1</td>
+          <td>HTTP</td>
+          <td>Key cũ, đổi JSON thành CSV</td>
+          <td>409, giữ kết quả trước</td>
+          <td>P0</td>
+        </tr>
+        <tr>
+          <td>05</td>
+          <td>Validate</td>
+          <td>HTTP</td>
+          <td>Key thiếu/sai, UUID sai, format zip</td>
+          <td>400</td>
+          <td>P1</td>
+        </tr>
+        <tr>
+          <td>06</td>
+          <td>AC3</td>
+          <td>HTTP</td>
+          <td>Thiếu JWT, unverified, authVersion cũ</td>
+          <td>401, không lộ dữ liệu</td>
+          <td>P0</td>
+        </tr>
+        <tr>
+          <td>07</td>
+          <td>ACL</td>
+          <td>HTTP</td>
+          <td>Member, outsider, OWNER khác</td>
+          <td>403/404, job riêng theo user</td>
+          <td>P0</td>
+        </tr>
+        <tr>
+          <td>08</td>
+          <td>AC2</td>
+          <td>Unit/HTTP</td>
+          <td>PENDING và RUNNING có latch</td>
+          <td>Progress 0/null, tải sớm 409</td>
+          <td>P1</td>
+        </tr>
+        <tr>
+          <td>09</td>
+          <td>Contract</td>
+          <td>Unit/DB</td>
+          <td>COMPLETED với JSON thật</td>
+          <td>100, bytes đúng, allowlist</td>
+          <td>P0</td>
+        </tr>
+        <tr>
+          <td>10</td>
+          <td>AC4</td>
+          <td>DB/HTTP</td>
+          <td>Generator ném lỗi nội bộ</td>
+          <td>FAILED an toàn, retry cùng ID</td>
+          <td>P0</td>
+        </tr>
+        <tr>
+          <td>11</td>
+          <td>Recovery</td>
+          <td>DB</td>
+          <td>Lease hết hạn, worker cũ trả muộn</td>
+          <td>Giữ kết quả của lease mới</td>
+          <td>P0</td>
+        </tr>
+        <tr>
+          <td>12</td>
+          <td>Regression</td>
+          <td>Unit/UI</td>
+          <td>CSV và JSON, account export cũ</td>
+          <td>Giữ format và filename</td>
+          <td>P1</td>
+        </tr>
+        <tr>
+          <td>13</td>
+          <td>Privacy</td>
+          <td>DB/HTTP</td>
+          <td>Demote OWNER, TTL hết</td>
+          <td>Chặn download, xóa bytes</td>
+          <td>P0</td>
+        </tr>
+        <tr>
+          <td>14</td>
+          <td>AC5</td>
+          <td>Browser/UI</td>
+          <td>Start, chạy, tải, lỗi rồi retry</td>
+          <td>Thông báo pha, dùng lại key</td>
+          <td>P1</td>
+        </tr>
+        <tr>
+          <td>15</td>
+          <td>Session</td>
+          <td>UI</td>
+          <td>Abort khi timer polling tồn tại</td>
+          <td>Timer bị hủy, không request tiếp</td>
+          <td>P0</td>
+        </tr>
+        <tr>
+          <td>16</td>
+          <td>Latency</td>
+          <td>Load</td>
+          <td>120 key mới, 240 POST</td>
+          <td>Đếm job/attempt, đo hai p95</td>
+          <td>P1</td>
+        </tr>
+      </table>
+      <p class="fine">
+        Chi tiết partitions, representative data và preconditions trong
+        TEST-DESIGN.md.
+      </p>
+    </section>
+    <section class="page">
+      <p class="eyebrow">Test-first · Review patch</p>
+      <h2>Từ RED đến GREEN</h2>
+      <table>
+        <tr>
+          <th>Vòng</th>
+          <th>RED</th>
+          <th>PATCH và GREEN</th>
+        </tr>
+        <tr>
+          <td>HTTP</td>
+          <td>5230eb1. Kỳ vọng 202, thực tế 404</td>
+          <td>0497e65. 46/46 focused Jest cùng regression</td>
+        </tr>
+        <tr>
+          <td>Policy</td>
+          <td>a7bb5fa. 12/12 fail tại seam chưa hỗ trợ</td>
+          <td>a8b0ecc. 12/12 pass, giữ assertions</td>
+        </tr>
+        <tr>
+          <td>Schema</td>
+          <td>Migration baseline thiếu bảng job</td>
+          <td>01cd51e. Bảng, unique constraint và no drift trên PostgreSQL</td>
+        </tr>
+        <tr>
+          <td>UI</td>
+          <td>5c84617. 3 phase và 4 workflow RED</td>
+          <td>e30de97. 69/69 focused regression, timer abort 6/6</td>
+        </tr>
+        <tr>
+          <td>Worker</td>
+          <td>Fake clock tick đầu xử lý 4/12</td>
+          <td>12/12 xử lý, peak 4, test GREEN</td>
+        </tr>
+      </table>
+      <h3>Review code theo scope, design, correctness và evidence</h3>
+      <p>
+        Giữ generator read-only và các route tải cũ. Thêm bảng job và migration
+        tường minh, mapper allowlist, endpoint status/retry/download và UI
+        polling. Claim dùng FOR UPDATE SKIP LOCKED. Update kết quả ràng buộc
+        lease token, state và TTL. Xóa tài khoản dọn hàng job trong cùng luồng
+        xóa trạng thái riêng tư.
+      </p>
+      <p>
+        Test ban đầu phát hiện xóa tài khoản còn 3 hàng. Sau khi thêm bảng vào
+        cleanup inventory, harness PostgreSQL pass 7 nhóm. Cùng harness đếm 120
+        start replay và 120 retry với cùng job. JWT thật kiểm tra owner, member,
+        outsider và session invalidation ở 5 nhóm HTTP.
+      </p>
+      <p>
+        Chromium chạy trên frontend build và backend thật. Tám tổ hợp từ 375 px
+        đến 1440 px với light/dark đều khởi tạo bằng bàn phím, hiển thị RUNNING,
+        kiểm tra tràn ngang và tải JSON đúng Board. Ảnh và log nằm trong cây
+        bằng chứng.
+      </p>
+      <div class="callout">
+        Baseline unit export 33/33 pass. Baseline integration export cũ gặp 503
+        EXPORT_TIMEOUT ở ca oversized có kỳ vọng 413. Lỗi baseline được lưu, và
+        regression đó chưa có bằng chứng pass.
+      </div>
+      <h3>Quality gates</h3>
+      <!-- GATES -->
+      <p class="fine">
+        Đề Yêu cầu.txt và nội dung text của Lecture 06 (27 slide), Lecture 07
+        (28 slide) đã được đọc. Chưa tìm thấy HTML VT-052. Tip nhánh VT-053 khớp
+        <a href="https://github.com/duongkienvn/SE2026-T13/pull/252">PR #252</a>
+        qua Git pull ref. Phần tham khảo dùng lịch sử Git và nhóm file để đối
+        chiếu cách tổ chức bằng chứng.
+      </p>
+    </section>
+    <section class="page">
+      <p class="eyebrow">Quality engineering · Mutation, coverage, flaky</p>
+      <h2>Test bắt được lỗi mapping</h2>
+      <p>
+        Nhánh tạm chứa commit <code>44f8c6f</code>. Chỉ đổi response field
+        <code>format: row.format</code> thành <code>format: 'json'</code>.
+        Baseline đúng 12/12 pass. Mutant 11 pass, 1 fail, TC12 kỳ vọng CSV và
+        nhận JSON. Trở về nhánh nộp, cùng lệnh pass 12/12. Git xác nhận commit
+        mutant không là ancestor của nhánh nộp.
+      </p>
+      <div class="callout">
+        <strong>KILLED</strong> · Một mutation đã kiểm chứng. Case CSV có oracle
+        riêng cho hợp đồng format.
+      </div>
+      <table>
+        <tr>
+          <th>Phạm vi đo</th>
+          <th>Line</th>
+          <th>Branch</th>
+          <th>Giới hạn</th>
+        </tr>
+        <tr>
+          <td>Jest mapper/policy</td>
+          <td>100%</td>
+          <td>100%</td>
+          <td>Logic state, format, attempt, expiry</td>
+        </tr>
+        <tr>
+          <td>V8 service</td>
+          <td>97,43%</td>
+          <td>94%</td>
+          <td>Exhausted retry ở service chưa đi qua</td>
+        </tr>
+        <tr>
+          <td>V8 worker trước tối ưu</td>
+          <td>97,67%</td>
+          <td>91,66%</td>
+          <td>Nhánh log khi worker lỗi chưa đi qua</td>
+        </tr>
+        <tr>
+          <td>V8 controller</td>
+          <td>88,14%</td>
+          <td>88,88%</td>
+          <td>Bao gồm các route sync/account cũ</td>
+        </tr>
+      </table>
+      <p>
+        V8 block coverage và Jest branch coverage có mẫu số riêng. UNIQUE, lease
+        recovery và bảo vệ ACL được xác minh bởi assertions trên PostgreSQL và
+        HTTP, không suy ra từ tỷ lệ coverage.
+      </p>
+      <h3>Flaky risks đã thử</h3>
+      <ul>
+        <li>
+          <strong>Order/shared state.</strong> Jest randomize seed 23001908 và
+          54, mỗi lượt 45/45 pass.
+        </li>
+        <li>
+          <strong>Timing/concurrency.</strong> Ba database mới, mỗi lượt 7 nhóm
+          pass. Latch kiểm soát lease và stale completion, fake clock kiểm tra
+          timer. Không retry test lỗi.
+        </li>
+      </ul>
+      <p class="fine">
+        Lệnh và output trong QUALITY-EXPERIMENTS.md, evidence/mutation-*,
+        coverage-*, flaky-* và worker-drain-*.
+      </p>
+    </section>
+    <section class="page">
+      <p class="eyebrow">Performance · 120 tác vụ đồng thời</p>
+      <h2>Acknowledgement đạt, completion còn chậm</h2>
+      <p>
+        Windows, Node v22.23.4, Intel i5-1340P 16 logical CPU, RAM khoảng 16 GB.
+        PostgreSQL 16 disposable, pool 10, worker 4. Sau 5 warm-up, gửi 120
+        logical operations với 2 POST cùng key cho mỗi operation. Client poll
+        mỗi giây và kiểm tra bytes JSON. HTTP Agent tái sử dụng tối đa 32
+        socket. Đồng hồ chạy từ trước lúc request vào hàng đợi socket.
+      </p>
+      <table>
+        <tr>
+          <th>Lượt</th>
+          <th>Thành công</th>
+          <th>Ack p95</th>
+          <th>Completion p95</th>
+        </tr>
+        <tr>
+          <td>Profiling và build đồng thời</td>
+          <td>116/120</td>
+          <td>5,87 s</td>
+          <td>45,72 s</td>
+        </tr>
+        <tr>
+          <td>Supertest, không profiling</td>
+          <td>116/120</td>
+          <td>4,87 s</td>
+          <td>32,45 s</td>
+        </tr>
+        <tr>
+          <td>Node Fetch, không profiling</td>
+          <td>117/120</td>
+          <td>4,22 s</td>
+          <td>27,63 s</td>
+        </tr>
+        <tr>
+          <td>Keep-alive, trước patch worker</td>
+          <td>120/120</td>
+          <td>3,13 s</td>
+          <td>15,19 s</td>
+        </tr>
+        <tr>
+          <td>Keep-alive, sau patch worker</td>
+          <td>120/120</td>
+          <td>2,98 s</td>
+          <td>10,83 s</td>
+        </tr>
+      </table>
+      <table>
+        <tr>
+          <th>Đo sau patch (ms)</th>
+          <th>p50</th>
+          <th>p95</th>
+          <th>Max</th>
+        </tr>
+        <tr>
+          <td>Acknowledgement (cả 2 POST)</td>
+          <td>1680,41</td>
+          <td>2982,56</td>
+          <td>3195,11</td>
+        </tr>
+        <tr>
+          <td>Quan sát COMPLETED</td>
+          <td>8735,25</td>
+          <td>10825,70</td>
+          <td>10849,55</td>
+        </tr>
+        <tr>
+          <td>Tải xong và xác minh JSON</td>
+          <td>9010,28</td>
+          <td>11056,10</td>
+          <td>11086,74</td>
+        </tr>
+      </table>
+      <p>
+        120 hàng, 120 key, 120 completed, 120 attempts. Không duplicate trong
+        lượt cuối. Worker nhận job tiếp khi rảnh giúp giảm completion quan sát
+        được khoảng 29% so với lượt keep-alive trước patch. Hai lượt đều exit 1
+        do completion vượt 3500 ms.
+      </p>
+      <p class="fine">
+        Đây là một Board rỗng và một session trên cùng máy. Polling góp phần vào
+        completion quan sát. Một lượt mỗi cấu hình chưa đo độ biến thiên. Logs
+        và toàn bộ mẫu trong evidence/load-*.json.
+      </p>
+    </section>
+    <section class="page">
+      <p class="eyebrow">Traceability · Reflection</p>
+      <h2>Bằng chứng và giới hạn</h2>
+      <table>
+        <tr>
+          <th>AC / risk</th>
+          <th>Case</th>
+          <th>File / commit</th>
+          <th>Kết quả</th>
+        </tr>
+        <tr>
+          <td>AC1, duplicate</td>
+          <td>01–05</td>
+          <td>
+            async-export-http.integration.mjs, async-export-jobs.integration.mjs
+            · 5230eb1 / 0497e65
+          </td>
+          <td>RED/GREEN, 120 replay, 1 job</td>
+        </tr>
+        <tr>
+          <td>AC2, mapping</td>
+          <td>08–10, 12</td>
+          <td>export-job-policy.spec.ts · a7bb5fa / a8b0ecc / fb7d6b8</td>
+          <td>12 pass, mutant KILLED</td>
+        </tr>
+        <tr>
+          <td>AC3–4, ACL/lease</td>
+          <td>06–07, 10–13</td>
+          <td>async-export-jobs.integration.mjs · 0497e65</td>
+          <td>Revoke, cleanup, stale worker</td>
+        </tr>
+        <tr>
+          <td>AC5, UI/session</td>
+          <td>14–15</td>
+          <td>
+            async-export-api.test.ts, DataPrivacyPage.test.tsx,
+            async-export.browser.mjs · e30de97
+          </td>
+          <td>8 journeys, key ổn định, abort</td>
+        </tr>
+        <tr>
+          <td>NFR1, tải</td>
+          <td>16</td>
+          <td>async-export-load.mjs, load-keepalive-drain.json</td>
+          <td>Ack đạt, completion chưa đạt</td>
+        </tr>
+      </table>
+      <h3>Reflection</h3>
+      <!-- REFLECTION -->
+    </section>
+
+    <section class="page appendix">
+      <p class="eyebrow">Phụ lục · Engineering evidence</p>
+      <h2>AI Usage Log và tái lập</h2>
+      <p>
+        Codex dùng quy trình SPEC → PLAN → GENERATE → VERIFY → INTEGRATE. Nhật
+        ký ghi những vòng đã thực hiện, lý do giữ/sửa/bỏ và link evidence. Việc
+        review trong phiên này là tự review của Codex.
+      </p>
+      <!-- AI_LOG -->
+      <p>
+        <a
+          href="https://github.com/duongkienvn/SE2026-T13/tree/assignment/23001908-vt054-async-progress/docs/assignments/VT-054"
+          >README, test design, AI log và evidence trên GitHub</a
+        >
+      </p>
+    </section>
+    <section class="page appendix">
+      <p class="eyebrow">Phụ lục · Execution logs</p>
+      <h2>Trích log thực thi</h2>
+      <!-- EXECUTION_LOGS -->
+      <h3>Mutation diff</h3>
+      <pre>
+-    format: row.format,
++    format: 'json',</pre>
+      <p class="fine">
+        Bản đầy đủ và lệnh tương ứng nằm trong README.md, RED.md và
+        QUALITY-EXPERIMENTS.md. Các logs ghi đúng kết quả tại thời điểm chạy.
+      </p>
+    </section>
+  </body>
+</html>

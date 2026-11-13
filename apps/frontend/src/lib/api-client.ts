@@ -246,6 +246,48 @@ export interface BinaryResponse {
   contentDisposition: string | null;
 }
 
+/** JSON endpoints deliberately outside the envelope (asynchronous export status). */
+export async function requestRawJson(
+  path: string,
+  {
+    method = 'GET',
+    body,
+    accessToken,
+    signal,
+    expectedStatus,
+    headers,
+  }: ApiRequestOptions,
+): Promise<unknown> {
+  signal?.throwIfAborted();
+  const response = await sendRequest(
+    `${env.apiBaseUrl}${path}`,
+    {
+      method,
+      cache: 'no-store',
+      headers: {
+        ...headers,
+        Accept: 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    },
+    signal,
+  );
+  let payload: unknown;
+  try {
+    payload = JSON.parse(await response.text());
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    throw invalidResponse(response.status);
+  }
+  signal?.throwIfAborted();
+  if (!response.ok) throw errorFromPayload(response.status, payload);
+  if (expectedStatus !== undefined && response.status !== expectedStatus)
+    throw invalidResponse(response.status);
+  return payload;
+}
+
 /**
  * Authenticated GET for attachment bytes. Only `200` yields a Blob; any other
  * status rejects with the decoded `ApiError`, so an error body is never

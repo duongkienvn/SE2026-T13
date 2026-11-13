@@ -1,0 +1,73 @@
+PASS TC01/02/08/09: JWT HTTP acknowledgement before gated work; actual scheduler, same-key replay, progress and real JSON download
+PASS TC04/05: payload conflict, malformed key/body/id and validation privacy
+PASS TC06/07: real JWT, verified identity, owner gate and private job isolation
+PASS TC10: scheduler failure sanitized and explicit retry completes using same job
+{
+  "startedAt": "2026-11-12T15:55:40.471Z",
+  "workload": "120 simultaneous independent JSON exports of one synthetic empty Board, each with a simultaneous same-key duplicate POST; 1s status polling; actual JWT, Nest worker, PostgreSQL and download",
+  "warmup": 5,
+  "concurrency": 120,
+  "successes": 116,
+  "failures": [
+    "Error: ECONNREFUSED: Connection refused",
+    "Error: ECONNREFUSED: Connection refused",
+    "Error: ECONNREFUSED: Connection refused",
+    "Error: ECONNREFUSED: Connection refused"
+  ],
+  "counts": {
+    "rows": 116,
+    "logical_operations": 116,
+    "attempts": 116,
+    "completed": 116
+  },
+  "ack": {
+    "p50": 4344.365900000001,
+    "p95": 4867.382600000001,
+    "max": 4913.036599999999
+  },
+  "completion": {
+    "p50": 24967.8616,
+    "p95": 32452.590900000003,
+    "max": 33593.8538
+  },
+  "download": {
+    "p50": 25829.972100000003,
+    "p95": 32705.8104,
+    "max": 33633.4835
+  },
+  "environment": {
+    "node": "v22.23.4",
+    "platform": "win32",
+    "release": "10.0.26200",
+    "cpu": "13th Gen Intel(R) Core(TM) i5-1340P",
+    "logicalCpus": 16,
+    "memoryBytes": 16849256448,
+    "database": "PostgreSQL 16 disposable local container; pool 10",
+    "workerConcurrency": 4
+  },
+  "limitations": "Local same-machine empty-Board workload; does not prove large exports, 120 distinct human sessions, WAN latency or production performance. Job identity/attempts are the relevant side effects; exports do not send notifications.",
+  "target": {
+    "thresholdMs": 3500,
+    "ack": false,
+    "completion": false
+  }
+}
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+4 !== 0
+
+    at runExportLoad (file:///D:/TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/apps/backend/test/exports/async-export-load.mjs:135:10)
+    at async file:///D:/TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/apps/backend/test/exports/async-export-http.integration.mjs:230:5 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 4,
+  expected: 0,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v22.23.4

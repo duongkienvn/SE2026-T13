@@ -1,0 +1,29 @@
+FAIL test/exports/async-export.e2e-spec.ts (48.743 s)
+  VT-054 async Board export HTTP contract
+    × TC01: acknowledges a valid operation as 202 with an observable job identity (1053 ms)
+
+  ● VT-054 async Board export HTTP contract › TC01: acknowledges a valid operation as 202 with an observable job identity
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 202
+    Received: 404
+
+      60 |
+      61 |     // This is a behavioral RED: the baseline has no async route and returns 404.
+    > 62 |     expect(response.status).toBe(202);
+         |                             ^
+      63 |     expect(response.body).toMatchObject({
+      64 |       id: expect.stringMatching(/^[0-9a-f-]{36}$/),
+      65 |       state: 'PENDING',
+
+      at Object.<anonymous> (test/exports/async-export.e2e-spec.ts:62:29)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 total
+Snapshots:   0 total
+Time:        50.216 s
+Ran all test suites within paths "test/exports/async-export.e2e-spec.ts".
+undefined
+D:\TAI LIEU DAI HOC\NAM BON\SEM_1\SE\SE2026-T13\.worktrees\23001908-vt054-fresh\apps\backend:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command "jest" not found

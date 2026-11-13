@@ -1,0 +1,78 @@
+{
+  "browser": "151.0.7922.34",
+  "api": "real Nest JWT + disposable PostgreSQL; origin forwarded",
+  "records": [
+    {
+      "name": "mobile",
+      "width": 375,
+      "height": 812,
+      "theme": "",
+      "viewport": 375,
+      "jobId": "d827a5e9-c414-4888-b380-3fa4a1935094",
+      "download": "validated actual JSON"
+    },
+    {
+      "name": "mobile",
+      "width": 375,
+      "height": 812,
+      "theme": "",
+      "viewport": 375,
+      "jobId": "276e9e3c-ccaf-4919-9cf7-b82e6c6d64f8",
+      "download": "validated actual JSON"
+    },
+    {
+      "name": "tablet",
+      "width": 768,
+      "height": 1024,
+      "theme": "",
+      "viewport": 768,
+      "jobId": "2d847c8f-7f2a-4486-88e8-dd6dd6183a3e",
+      "download": "validated actual JSON"
+    },
+    {
+      "name": "tablet",
+      "width": 768,
+      "height": 1024,
+      "theme": "",
+      "viewport": 768,
+      "jobId": "81fad4e8-d193-47ed-823c-2d25134e3aef",
+      "download": "validated actual JSON"
+    },
+    {
+      "name": "laptop",
+      "width": 1280,
+      "height": 800,
+      "theme": "",
+      "viewport": 1280,
+      "jobId": "1957d1be-9395-43fd-9dd3-748b78b348b2",
+      "download": "validated actual JSON"
+    },
+    {
+      "name": "laptop",
+      "width": 1280,
+      "height": 800,
+      "theme": "",
+      "viewport": 1280,
+      "jobId": "6a5e36b0-055f-4668-960a-266f81ab91e3",
+      "download": "validated actual JSON"
+    },
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900,
+      "theme": "",
+      "viewport": 1440,
+      "jobId": "08959aeb-0442-4ab6-ac4e-190ed9619d5b",
+      "download": "validated actual JSON"
+    },
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900,
+      "theme": "",
+      "viewport": 1440,
+      "jobId": "3d8a49fe-d456-4ff7-96a0-e0016412c49b",
+      "download": "validated actual JSON"
+    }
+  ]
+}
