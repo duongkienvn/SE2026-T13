@@ -165,8 +165,17 @@ export function SignInScreen() {
         disabled={!!cooldown}
         onPress={submit}
       />
-      <AuthText>Don’t have an account?</AuthText>
-      <AuthLink label="Sign up" onPress={() => navigate('/sign-up')} />
+      <View
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <AuthText>Don’t have an account?</AuthText>
+        <AuthLink label="Sign up" onPress={() => navigate('/sign-up')} />
+      </View>
     </AuthFrame>
   );
 }

@@ -99,6 +99,13 @@ export function AuthIcon({
                 height: 10,
                 borderRadius: kind === 'person' ? 5 : 6,
                 top: 1,
+                ...(kind === 'lock'
+                  ? {
+                      borderBottomWidth: 0,
+                      borderBottomLeftRadius: 0,
+                      borderBottomRightRadius: 0,
+                    }
+                  : {}),
               },
             ]}
           />

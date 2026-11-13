@@ -13,6 +13,8 @@ import { ApiError } from '../../infrastructure/api/errors';
 import type { SessionManager } from '../../infrastructure/auth/session-manager';
 import type { AuthApi } from './api';
 import type { AuthFlow } from './flow';
+import { AuthFrame, AuthText } from './components';
+import { Button } from '../../ui';
 
 interface AuthRuntime {
   api: AuthApi;
@@ -79,6 +81,38 @@ export function useAuthSession() {
   );
 }
 
+/** Other public forms stay locked during restore/verification, just like sign in. */
+export function PublicAuthGate({ children }: { children: ReactNode }) {
+  const state = useAuthSession(),
+    { manager } = useAuth();
+  if (
+    state.status === 'restoring' ||
+    state.status === 'verifying' ||
+    state.status === 'authenticated'
+  )
+    return (
+      <AuthFrame
+        title="Checking session"
+        subtitle="Please wait while we securely verify your session."
+      >
+        <AuthText>Checking your account…</AuthText>
+      </AuthFrame>
+    );
+  if (state.status === 'offline-uncertain')
+    return (
+      <AuthFrame
+        title="Connection unavailable"
+        subtitle="Connect to the internet to verify your session."
+      >
+        <Button
+          label="Retry verification"
+          onPress={() => void manager.retryVerification()}
+        />
+      </AuthFrame>
+    );
+  return children;
+}
+
 /** One synchronous in-flight lock per focused form; abort fences late callbacks. */
 export function usePublicRequest() {
   const { manager } = useAuth();
@@ -87,6 +121,7 @@ export function usePublicRequest() {
   const cancel = useCallback(() => {
     current.current?.abort();
     current.current = null;
+    setPending(false);
   }, []);
   useFocusEffect(
     useCallback(() => {

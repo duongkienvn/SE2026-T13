@@ -1,4 +1,4 @@
-/* global jest, test, expect, afterEach */
+/* global jest, test, expect, afterEach, AbortSignal */
 import React from 'react';
 import {
   act,
@@ -232,4 +232,116 @@ test('reset without proof is disabled; valid reset consumes proof and requires f
   expect(next.flow.getSnapshot().notice).toMatch(/Password reset/);
   expect(mockRouter.replace).toHaveBeenCalledWith('/sign-in');
   expect(next.manager.establishSession).not.toHaveBeenCalled();
+});
+
+test('401 and 429 sign in errors are safe, distinct and honor server cooldown', async () => {
+  const ctx = setup({
+    login: jest
+      .fn()
+      .mockRejectedValueOnce(
+        new ApiError('http', { status: 401, message: 'do not show raw' }),
+      )
+      .mockRejectedValueOnce(
+        new ApiError('http', { status: 429, retryAfterMs: 120000 }),
+      ),
+  });
+  await ctx.render(SignInScreen);
+  await fireEvent.changeText(
+    screen.getByLabelText('Email address'),
+    'user@example.test',
+  );
+  await fireEvent.changeText(screen.getByLabelText('Password'), 'password');
+  await fireEvent.press(screen.getByRole('button', { name: 'Sign in' }));
+  expect(screen.getByText('Email or password is incorrect.')).toBeTruthy();
+  expect(screen.queryByText('do not show raw')).toBeNull();
+  await fireEvent.changeText(screen.getByLabelText('Password'), 'password');
+  await fireEvent.press(screen.getByRole('button', { name: 'Sign in' }));
+  expect(screen.getByText(/Too many attempts/)).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: /Try again in 120s/ }).props
+      .accessibilityState.disabled,
+  ).toBe(true);
+});
+
+test('registration conflict and ambiguous network failure offer safe existing-account recovery', async () => {
+  const ctx = setup({
+    register: jest
+      .fn()
+      .mockRejectedValueOnce(new ApiError('http', { status: 409 }))
+      .mockRejectedValueOnce(new ApiError('network')),
+  });
+  await ctx.render(SignUpScreen);
+  await fillRegistration();
+  await fireEvent.press(screen.getByRole('button', { name: 'Sign up' }));
+  expect(screen.getByText(/An account already uses this email/)).toBeTruthy();
+  expect(ctx.manager.establishSession).not.toHaveBeenCalled();
+  await fillRegistration();
+  await fireEvent.press(screen.getByRole('button', { name: 'Sign up' }));
+  expect(
+    screen.getByRole('button', { name: 'Check email or resend verification' }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: 'Sign up' }).props.accessibilityState
+      .disabled,
+  ).toBe(true);
+});
+
+test('a superseding verification proof fences stale success without consuming the new proof', async () => {
+  let finish;
+  const ctx = setup({
+    verify: jest.fn(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    ),
+  });
+  ctx.flow.intake('https://kanvexa.tech/verify-email?token=' + 'a'.repeat(43));
+  await ctx.render(VerifyEmailScreen);
+  await fireEvent.press(screen.getByRole('button', { name: 'Verify email' }));
+  await act(() =>
+    ctx.flow.intake(
+      'https://kanvexa.tech/verify-email?token=' + 'b'.repeat(43),
+    ),
+  );
+  await act(async () => finish());
+  expect(screen.queryByText('Email verified')).toBeNull();
+  expect(ctx.flow.getSnapshot().hasProof).toBe(true);
+  expect(ctx.api.verify.mock.calls[0][1].aborted).toBe(true);
+  expect(
+    screen.getByRole('button', { name: 'Verify email' }).props
+      .accessibilityState.disabled,
+  ).toBe(false);
+});
+
+test('invalid and reused reset proofs give actionable recovery without retrying sensitive payloads', async () => {
+  for (const code of ['INVALID_PASSWORD_RESET_TOKEN', 'PASSWORD_REUSED']) {
+    const ctx = setup({
+      reset: jest.fn(async () => {
+        throw new ApiError('http', { status: 400, code });
+      }),
+    });
+    ctx.flow.intake(
+      'https://kanvexa.tech/reset-password?token=' + 'a'.repeat(43),
+    );
+    const view = await ctx.render(ResetPasswordScreen);
+    await fireEvent.changeText(
+      screen.getByLabelText('New password'),
+      'Password1!',
+    );
+    await fireEvent.changeText(
+      screen.getByLabelText('Confirm password'),
+      'Password1!',
+    );
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Reset password' }),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Request a new reset link' }),
+    ).toBeTruthy();
+    expect(ctx.flow.getSnapshot().hasProof).toBe(false);
+    expect(ctx.api.reset).toHaveBeenCalledTimes(1);
+    expect(ctx.manager.establishSession).not.toHaveBeenCalled();
+    await view.unmount();
+  }
 });

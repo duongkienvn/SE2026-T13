@@ -434,7 +434,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       credential = { ...next, persisted: false };
       const claimed = credential;
       const cancel = () => {
-        if (credential === claimed)
+        if (credential === claimed && snapshot.status !== 'authenticated')
           void endSession('signed-out', (generation) => ({
             status: 'unauthenticated',
             generation,

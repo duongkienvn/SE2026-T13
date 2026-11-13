@@ -10,9 +10,6 @@
     },
     "preview": {
       "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_NAVIGATION_PREVIEW": "1"
-      },
       "android": {
         "buildType": "apk"
       }

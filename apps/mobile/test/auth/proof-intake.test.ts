@@ -57,3 +57,24 @@ test('proofs have a single memory claim, never appear in snapshots, and scrub on
     flow.clear();
   }
 });
+
+test('raw trailing whitespace is rejected and proof expiry is checked even after suspended timers', (t) => {
+  assert.equal(parseTrustedAuthLink(url + '\n'), null);
+  assert.equal(parseTrustedAuthLink(url + '\r\n'), null);
+  assert.equal(parseTrustedAuthLink(' ' + url), null);
+  let now = Date.now();
+  t.mock.method(Date, 'now', () => now);
+  const flow = createAuthFlow();
+  try {
+    flow.intake(url);
+    const version = flow.getSnapshot().proofVersion;
+    flow.intake(url.replace(token, 'b'.repeat(43)));
+    flow.cancelProof('verify-email', version);
+    assert.equal(flow.getSnapshot().hasProof, true);
+    now += 10 * 60_000;
+    assert.equal(flow.takeProof('verify-email'), null);
+    assert.equal(flow.getSnapshot().hasProof, false);
+  } finally {
+    flow.clear();
+  }
+});

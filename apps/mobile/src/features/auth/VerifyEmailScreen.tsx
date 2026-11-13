@@ -1,8 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ApiError } from '../../infrastructure/api/errors';
 import { Button, TextField } from '../../ui';
-import { AuthFrame, AuthIcon, AuthLink, AuthText } from './components';
+import { AuthFrame, AuthIcon, AuthText } from './components';
 import {
   authError,
   retryDelay,
@@ -23,8 +23,18 @@ export function VerifyEmailScreen() {
     [ack, setAck] = useState(''),
     [verified, setVerified] = useState(false);
   const cooldown = useCooldown(state.cooldownUntil);
+  useEffect(() => {
+    request.cancel();
+    setVerified(false);
+    setError('');
+    setAck('');
+    setEmail(state.email);
+  }, [state.proofVersion, request.cancel]);
   useFocusEffect(
-    useCallback(() => () => flow.cancelProof('verify-email'), [flow]),
+    useCallback(
+      () => () => flow.cancelProof('verify-email', state.proofVersion),
+      [flow, state.proofVersion],
+    ),
   );
   const back = () => {
     request.cancel();
@@ -38,15 +48,20 @@ export function VerifyEmailScreen() {
     void request.run(
       async (signal, current) => {
         await api.verify(proof, signal);
-        if (current()) {
+        if (
+          current() &&
+          flow.getSnapshot().proofVersion === state.proofVersion
+        ) {
           setVerified(true);
           setError('');
         }
       },
-      () =>
+      () => {
+        if (flow.getSnapshot().proofVersion !== state.proofVersion) return;
         setError(
           'This verification link is invalid, expired, already used, or could not be confirmed. Request a new link or try signing in.',
-        ),
+        );
+      },
     );
   };
   const resend = () => {
@@ -140,7 +155,6 @@ export function VerifyEmailScreen() {
         loading={request.pending}
         onPress={resend}
       />
-      <AuthLink label="Back to sign in" onPress={back} />
     </AuthFrame>
   );
 }

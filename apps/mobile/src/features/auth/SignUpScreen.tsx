@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState, type ComponentRef } from 'react';
-import { TextInput } from 'react-native';
+import { TextInput, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ApiError } from '../../infrastructure/api/errors';
 import { Button, PasswordField, TextField } from '../../ui';
@@ -187,8 +187,17 @@ export function SignUpScreen() {
         disabled={!!cooldown || uncertain}
         onPress={submit}
       />
-      <AuthText>Already have an account?</AuthText>
-      <AuthLink label="Sign in" onPress={back} />
+      <View
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <AuthText>Already have an account?</AuthText>
+        <AuthLink label="Sign in" onPress={back} />
+      </View>
     </AuthFrame>
   );
 }

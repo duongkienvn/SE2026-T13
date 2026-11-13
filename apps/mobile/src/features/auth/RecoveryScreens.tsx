@@ -1,4 +1,10 @@
-import { useCallback, useRef, useState, type ComponentRef } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentRef,
+} from 'react';
 import { TextInput } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ApiError } from '../../infrastructure/api/errors';
@@ -109,14 +115,21 @@ export function ResetPasswordScreen() {
     [error, setError] = useState('');
   const confirmation = useRef<ComponentRef<typeof TextInput>>(null);
   const valid = state.hasProof && state.proofKind === 'reset-password';
+  useEffect(() => {
+    request.cancel();
+    setPassword('');
+    setConfirm('');
+    setError('');
+    setErrors({});
+  }, [state.proofVersion, request.cancel]);
   useFocusEffect(
     useCallback(
       () => () => {
         setPassword('');
         setConfirm('');
-        flow.cancelProof('reset-password');
+        flow.cancelProof('reset-password', state.proofVersion);
       },
-      [flow],
+      [flow, state.proofVersion],
     ),
   );
   const back = () => {
@@ -150,17 +163,22 @@ export function ResetPasswordScreen() {
     void request.run(
       async (signal, current) => {
         await api.reset(proof, draft, signal);
-        if (current()) {
+        if (
+          current() &&
+          flow.getSnapshot().proofVersion === state.proofVersion
+        ) {
           flow.notice('Password reset. Sign in with your new password.');
           router.replace('/sign-in');
         }
       },
-      (cause) =>
+      (cause) => {
+        if (flow.getSnapshot().proofVersion !== state.proofVersion) return;
         setError(
           cause instanceof ApiError && cause.code === 'PASSWORD_REUSED'
             ? authError(cause)
             : 'This recovery link is invalid, expired, already used, or could not be confirmed. Request a new link. If the reset completed, sign in with your new password.',
-        ),
+        );
+      },
     );
   };
   return (

@@ -3,6 +3,7 @@ import { isProof } from './validation.ts';
 export type ProofKind = 'verify-email' | 'reset-password';
 export interface AuthFlowSnapshot {
   readonly revision: number;
+  readonly proofVersion: number;
   readonly email: string;
   readonly mailFailure: boolean;
   readonly notice: string;
@@ -22,7 +23,8 @@ export function parseTrustedAuthLink(
     /^https:\/\/kanvexa\.tech\/(verify-email|reset-password)\?token=([A-Za-z0-9_-]{43})$/.exec(
       input,
     );
-  if (!match || !isProof(match[2])) return null;
+  if (!match || match[0].length !== input.length || !isProof(match[2]))
+    return null;
   return { kind: match[1] as ProofKind, token: match[2] };
 }
 
@@ -36,8 +38,9 @@ export function createAuthFlow() {
     cooldownUntil: 0,
     recoveryCooldownUntil: 0,
   };
-  let state: AuthFlowSnapshot = { ...empty, revision: 0 };
+  let state: AuthFlowSnapshot = { ...empty, revision: 0, proofVersion: 0 };
   let proof: string | null = null;
+  let expiresAt = 0;
   let expiry: ReturnType<typeof setTimeout> | undefined;
   const listeners = new Set<() => void>();
   function update(patch: Partial<Omit<AuthFlowSnapshot, 'revision'>>) {
@@ -48,6 +51,7 @@ export function createAuthFlow() {
     clearTimeout(expiry);
     expiry = undefined;
     proof = null;
+    expiresAt = 0;
   }
   return {
     getSnapshot: () => state,
@@ -88,11 +92,13 @@ export function createAuthFlow() {
         return parsed.kind;
       clearProof();
       proof = parsed.token;
+      expiresAt = Date.now() + 10 * 60_000;
       update({
         email: '',
         mailFailure: false,
         notice: '',
         proofKind: parsed.kind,
+        proofVersion: state.proofVersion + 1,
         hasProof: true,
       });
       expiry = setTimeout(() => {
@@ -103,14 +109,18 @@ export function createAuthFlow() {
     },
     /** Single claim, consumed before sending; no secret in snapshots or history. */
     takeProof(kind: ProofKind): string | null {
+      if (proof && Date.now() >= expiresAt) {
+        clearProof();
+        update({ hasProof: false });
+      }
       if (state.proofKind !== kind || !proof) return null;
       const result = proof;
       clearProof();
       update({ hasProof: false });
       return result;
     },
-    cancelProof(kind: ProofKind) {
-      if (state.proofKind !== kind) return;
+    cancelProof(kind: ProofKind, version = state.proofVersion) {
+      if (state.proofKind !== kind || version !== state.proofVersion) return;
       clearProof();
       update({ hasProof: false, proofKind: null });
     },
