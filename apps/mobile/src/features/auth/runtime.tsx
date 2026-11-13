@@ -13,6 +13,7 @@ import { ApiError } from '../../infrastructure/api/errors';
 import type { SessionManager } from '../../infrastructure/auth/session-manager';
 import type { AuthApi } from './api';
 import type { AuthFlow } from './flow';
+import type { GoogleIdentityProvider } from './google-identity';
 import { AuthFrame, AuthText } from './components';
 import { Button } from '../../ui';
 
@@ -20,12 +21,15 @@ interface AuthRuntime {
   api: AuthApi;
   manager: SessionManager;
   flow: AuthFlow;
+  /** Native Google Sign-In, or `null` when this build/platform has none. */
+  google?: GoogleIdentityProvider | null;
 }
 const AuthContext = createContext<AuthRuntime | null>(null);
 export function AuthProvider({
   api,
   manager,
   flow,
+  google = null,
   children,
 }: AuthRuntime & { children: ReactNode }) {
   useEffect(() => {
@@ -54,7 +58,7 @@ export function AuthProvider({
     };
   }, [manager, flow]);
   return (
-    <AuthContext.Provider value={{ api, manager, flow }}>
+    <AuthContext.Provider value={{ api, manager, flow, google }}>
       {children}
     </AuthContext.Provider>
   );
