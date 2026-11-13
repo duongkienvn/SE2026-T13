@@ -1,4 +1,10 @@
-import { useState, type ReactElement, type ReactNode, type Ref } from 'react';
+import {
+  useState,
+  type ReactElement,
+  type ReactNode,
+  type Ref,
+  type ComponentRef,
+} from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -102,7 +108,7 @@ export function Button({
 }
 
 type FieldProps = TextInputProps & {
-  ref?: Ref<TextInput>;
+  ref?: Ref<ComponentRef<typeof TextInput>>;
   label: string;
   error?: string;
   hint?: string;

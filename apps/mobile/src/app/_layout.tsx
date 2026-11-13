@@ -9,6 +9,10 @@ import { SessionProvider as AuthSessionProvider } from '../infrastructure/auth/S
 import { createNavigationSessionAdapter } from '../navigation/native-session-adapter';
 import { SessionProvider } from '../navigation/session-context';
 import { RootStack } from '../navigation/root-stack';
+import { AuthProvider } from '../features/auth/runtime';
+import { createAuthApi } from '../features/auth/api';
+import { nativeAuthFlow } from '../features/auth/flow';
+import { nativeTransport } from '../infrastructure/query/native-data';
 import {
   defaultSessionAdapter,
   type SessionAdapter,
@@ -19,6 +23,7 @@ verifySharedCompatibility();
 // MOB-05 owns restore and foreground verification; MOB-03 consumes token-free state.
 const sessionManager = nativeSession;
 const navigationAdapter = createNavigationSessionAdapter(sessionManager);
+const authApi = createAuthApi(nativeTransport);
 
 export function NavigationRoot({
   adapter = defaultSessionAdapter,
@@ -38,14 +43,20 @@ export function NavigationRoot({
 export default function RootLayout() {
   return (
     <AuthSessionProvider manager={sessionManager}>
-      <DataProvider
-        layer={nativeData}
-        onEnvironment={nativeRealtime.setEnvironment}
+      <AuthProvider
+        api={authApi}
+        manager={sessionManager}
+        flow={nativeAuthFlow}
       >
-        <RealtimeProvider client={nativeRealtime}>
-          <NavigationRoot adapter={navigationAdapter} />
-        </RealtimeProvider>
-      </DataProvider>
+        <DataProvider
+          layer={nativeData}
+          onEnvironment={nativeRealtime.setEnvironment}
+        >
+          <RealtimeProvider client={nativeRealtime}>
+            <NavigationRoot adapter={navigationAdapter} />
+          </RealtimeProvider>
+        </DataProvider>
+      </AuthProvider>
     </AuthSessionProvider>
   );
 }

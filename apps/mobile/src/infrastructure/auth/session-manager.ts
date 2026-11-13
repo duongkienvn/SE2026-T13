@@ -113,7 +113,10 @@ export interface SessionManager {
   addLifecycleListener(listener: SessionLifecycleListener): () => void;
   /** Cold-start restore. Safe to call repeatedly; runs once. */
   start(): Promise<void>;
-  establishSession(response: LoginResponseLike): Promise<EstablishResult>;
+  establishSession(
+    response: LoginResponseLike,
+    signal?: AbortSignal,
+  ): Promise<EstablishResult>;
   logout(): Promise<LogoutResult>;
   /** Live bearer for a request about to be sent, or `null`. */
   getAccessCredential(): AccessCredential | null;
@@ -400,7 +403,8 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       return started;
     },
 
-    async establishSession(response) {
+    async establishSession(response, signal) {
+      if (signal?.aborted) return { ok: false, reason: 'superseded' };
       const user = response.user;
       const next =
         response.tokenType === 'Bearer' && user && isUuid(user.id)
@@ -428,7 +432,22 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       }
       started ??= Promise.resolve();
       credential = { ...next, persisted: false };
-      const outcome = await verifyCurrent(next.subject);
+      const claimed = credential;
+      const cancel = () => {
+        if (credential === claimed)
+          void endSession('signed-out', (generation) => ({
+            status: 'unauthenticated',
+            generation,
+            reason: 'signed-out',
+          }));
+      };
+      signal?.addEventListener('abort', cancel, { once: true });
+      let outcome: VerifyOutcome;
+      try {
+        outcome = await verifyCurrent(next.subject);
+      } finally {
+        signal?.removeEventListener('abort', cancel);
+      }
       if (outcome === 'authenticated' && snapshot.status === 'authenticated')
         return {
           ok: true,
