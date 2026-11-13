@@ -30,6 +30,7 @@ import {
 import {
   canRetryWorkspace,
   useWorkspaceOnline,
+  useWorkspaceRetryReady,
   workspaceErrorMessage,
 } from './status';
 import { workspaceMetadata } from './WorkspaceSelector';
@@ -73,11 +74,19 @@ function VerifiedOverview({
     staleTime: 0,
     refetchOnMount: 'always',
   });
-  const confirmed = detail.isFetchedAfterMount && !!detail.data;
+  const confirmed = detail.isFetchedAfterMount && detail.isSuccess;
   const overview = useQuery({
     ...workspaceOverviewOptions(data, identity, id),
     enabled: active && confirmed && readable,
   });
+  const detailRetryReady = useWorkspaceRetryReady(
+    detail.error,
+    detail.errorUpdatedAt,
+  );
+  const overviewRetryReady = useWorkspaceRetryReady(
+    overview.error,
+    overview.errorUpdatedAt,
+  );
   if (
     !readable ||
     isWorkspaceDenied(detail.error) ||
@@ -107,8 +116,13 @@ function VerifiedOverview({
                 <Button
                   label="Retry"
                   variant="secondary"
+                  disabled={!active || detail.isFetching || !detailRetryReady}
                   onPress={() => {
-                    if (canRetryWorkspace(detail.error, detail.errorUpdatedAt))
+                    if (
+                      active &&
+                      online &&
+                      canRetryWorkspace(detail.error, detail.errorUpdatedAt)
+                    )
                       void detail.refetch({ cancelRefetch: false });
                   }}
                 />
@@ -174,8 +188,13 @@ function VerifiedOverview({
                 <Button
                   label="Retry summary"
                   variant="secondary"
+                  disabled={
+                    !active || overview.isFetching || !overviewRetryReady
+                  }
                   onPress={() => {
                     if (
+                      active &&
+                      online &&
                       canRetryWorkspace(overview.error, overview.errorUpdatedAt)
                     )
                       void overview.refetch({ cancelRefetch: false });

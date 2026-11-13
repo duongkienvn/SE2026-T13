@@ -15,7 +15,12 @@ import { WorkspaceSelectionProvider } from '../src/features/workspaces/Workspace
 import { SessionProvider } from '../src/infrastructure/auth/SessionProvider';
 import { DataProvider } from '../src/infrastructure/query/DataProvider';
 import { createMobileDataLayer } from '../src/infrastructure/query/data-layer';
-import { createHttpClient } from '../src/infrastructure/api/client';
+import {
+  createHttpClient,
+  MAX_AUTOMATIC_RETRY_DELAY_MS,
+} from '../src/infrastructure/api/client';
+import { ApiError } from '../src/infrastructure/api/errors';
+import { canRetryWorkspace } from '../src/features/workspaces/status';
 import { createSessionManager } from '../src/infrastructure/auth/session-manager';
 import { createCredentialStore } from '../src/infrastructure/auth/credential-store';
 import { SessionProvider as NavigationProvider } from '../src/navigation/session-context';
@@ -79,12 +84,17 @@ const b = {
 const c = workspace(3);
 const savedA = { ...board(a.id), name: 'Personal planning' };
 const savedB = { ...board(b.id, 2), name: 'Team roadmap' };
-function envelope(result, status = 200) {
+function envelope(result, status = 200, retryAfter = null) {
   return {
     status,
     ok: status === 200,
     headers: {
-      get: (key) => (key === 'content-type' ? 'application/json' : null),
+      get: (key) =>
+        key === 'content-type'
+          ? 'application/json'
+          : key === 'retry-after'
+            ? retryAfter
+            : null,
     },
     text: async () => JSON.stringify(result),
   };
@@ -319,6 +329,93 @@ test('deep Workspace screen verifies detail before fetching overview and denies 
     expect(
       env.fetch.mock.calls.filter(([url]) => String(url).includes(c.id)),
     ).toHaveLength(1);
+  } finally {
+    await env.dispose();
+    mockPath = '/boards';
+  }
+});
+
+test.each([
+  [0, 0],
+  [3000, 3000],
+  [Infinity, MAX_AUTOMATIC_RETRY_DELAY_MS],
+  [NaN, MAX_AUTOMATIC_RETRY_DELAY_MS],
+])(
+  'manual retry with retryAfterMs=%s is available after %s ms',
+  (delay, cooldown) => {
+    const error = new ApiError('http', { status: 429, retryAfterMs: delay });
+    const updatedAt = Date.now();
+    const clock = jest.spyOn(Date, 'now');
+    try {
+      if (cooldown > 0) {
+        clock.mockReturnValue(updatedAt + cooldown - 1);
+        expect(canRetryWorkspace(error, updatedAt)).toBe(false);
+      }
+      clock.mockReturnValue(updatedAt + cooldown);
+      expect(canRetryWorkspace(error, updatedAt)).toBe(true);
+    } finally {
+      clock.mockRestore();
+    }
+  },
+);
+
+test('an invalid Retry-After disables the directory button until the bounded manual cooldown expires', async () => {
+  jest.useFakeTimers();
+  let limited = true;
+  const env = await setup({
+    override: (url) =>
+      url.pathname === '/api/workspaces' && limited
+        ? envelope({}, 429, 'invalid-policy')
+        : null,
+  });
+  try {
+    const retry = () =>
+      screen.getByRole('button', { name: 'Retry workspaces' });
+    await screen.findByRole('button', { name: 'Retry workspaces' });
+    expect(retry()).toBeDisabled();
+    await fireEvent.press(retry());
+    expect(env.fetch).toHaveBeenCalledTimes(1);
+    limited = false;
+    await act(() => jest.advanceTimersByTime(MAX_AUTOMATIC_RETRY_DELAY_MS));
+    expect(retry()).toBeEnabled();
+    await fireEvent.press(retry());
+    await screen.findByText('Personal planning');
+    expect(
+      env.fetch.mock.calls.filter(
+        ([url]) => new URL(url).pathname === '/api/workspaces',
+      ),
+    ).toHaveLength(2);
+  } finally {
+    await env.dispose();
+    jest.useRealTimers();
+  }
+});
+
+test('failed detail verification after remount hides cached Workspace details until a successful retry', async () => {
+  mockPath = '/workspaces/' + b.id;
+  let unavailable = false;
+  const env = await setup({
+    view: 'overview',
+    override: (url) =>
+      url.pathname === '/api/workspaces/' + b.id && unavailable
+        ? fail(503)
+        : null,
+  });
+  try {
+    await screen.findByText('1 visible boards');
+    await env.show(null);
+    unavailable = true;
+    await env.show('overview');
+    await screen.findByText('Workspace unavailable');
+    expect(screen.queryByText(/Design and research/)).toBeNull();
+    expect(screen.queryByText('1 visible boards')).toBeNull();
+    expect(
+      env.fetch.mock.calls.filter(([url]) => String(url).endsWith('/overview')),
+    ).toHaveLength(1);
+    unavailable = false;
+    await fireEvent.press(screen.getByRole('button', { name: 'Retry' }));
+    await screen.findByText(/Design and research/);
+    expect(screen.getByText('1 visible boards')).toBeTruthy();
   } finally {
     await env.dispose();
     mockPath = '/boards';

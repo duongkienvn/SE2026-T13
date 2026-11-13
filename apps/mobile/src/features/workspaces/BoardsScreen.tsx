@@ -33,6 +33,7 @@ import { workspaceBoardOptions, workspaceOverviewOptions } from './queries';
 import {
   canRetryWorkspace,
   useWorkspaceOnline,
+  useWorkspaceRetryReady,
   workspaceErrorMessage,
 } from './status';
 
@@ -61,6 +62,10 @@ function VerifiedBoards() {
     isCurrentSelection,
     workspaces,
   } = useSelectedWorkspace(active);
+  const retryReady = useWorkspaceRetryReady(
+    directory.error,
+    directory.errorUpdatedAt,
+  );
   useEffect(() => {
     if (!active || !selectedId) setPicker(false);
   }, [active, selectedId]);
@@ -156,7 +161,9 @@ function VerifiedBoards() {
                 <Button
                   label="Retry workspaces"
                   variant="secondary"
-                  disabled={directory.isFetching}
+                  disabled={
+                    !active || refreshing || directory.isFetching || !retryReady
+                  }
                   onPress={() => void refresh()}
                 />
               }

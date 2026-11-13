@@ -21,6 +21,7 @@ import { workspaceBoardOptions } from './queries';
 import {
   canRetryWorkspace,
   useWorkspaceOnline,
+  useWorkspaceRetryReady,
   workspaceErrorMessage,
 } from './status';
 
@@ -40,6 +41,7 @@ export function WorkspaceBoards({
   const online = useWorkspaceOnline();
   const options = workspaceBoardOptions(data, identity, workspace);
   const query = useInfiniteQuery({ ...options, enabled: active });
+  const retryReady = useWorkspaceRetryReady(query.error, query.errorUpdatedAt);
   if (!data.resources.readable(queryKeys.workspace(identity, workspace)))
     return null;
   const boards = deduplicatePages(
@@ -121,7 +123,7 @@ export function WorkspaceBoards({
                 label="Retry boards"
                 variant="secondary"
                 onPress={retry}
-                disabled={query.isFetching}
+                disabled={!active || query.isFetching || !retryReady}
               />
             }
           />

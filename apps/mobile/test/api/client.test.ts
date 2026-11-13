@@ -321,10 +321,11 @@ test('bounded GET retry honors Retry-After, while unsafe methods never replay', 
   }
   for (const policy of ['90', 'invalid-policy']) {
     const limited = setup(async () => json({}, 429, { 'retry-after': policy }));
-    await assert.rejects(
-      limited.client.json('/items', identity),
-      failure('http', 429),
-    );
+    await assert.rejects(limited.client.json('/items', identity), {
+      kind: 'http',
+      status: 429,
+      retryAfterMs: policy === 'invalid-policy' ? Infinity : 90_000,
+    });
     assert.equal(limited.requests.length, 1);
   }
 });

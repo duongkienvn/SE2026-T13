@@ -17,6 +17,7 @@ export type Envelope<T> = ApiSuccessResponse<T> & {
   meta?: PaginationMeta | CursorPaginationMeta;
 };
 export type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+export const MAX_AUTOMATIC_RETRY_DELAY_MS = 5000;
 
 /** Expo-compatible multipart body. Use createNativeMultipartUpload for URI files. */
 export interface NativeUpload {
@@ -301,7 +302,7 @@ export function createHttpClient(config: HttpClientOptions): HttpClient {
           if (attempt >= retryCount || !transient || controller.signal.aborted)
             throw error;
           const delay = error.retryAfterMs ?? 250 * 2 ** attempt;
-          if (delay > 5000) throw error;
+          if (delay > MAX_AUTOMATIC_RETRY_DELAY_MS) throw error;
           await abortable(
             () =>
               new Promise<void>((resolve) => {
