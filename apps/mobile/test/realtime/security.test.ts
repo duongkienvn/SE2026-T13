@@ -182,7 +182,7 @@ test('archive and PRIVATE access changes are fenced immediately and only authori
     c.dispose();
   }
 });
-test('REST 403/404 revokes a scoped resource; temporary HTTP failures do not revoke a session', async () => {
+test('REST child denial escalates only after an authoritative Board denial; the session remains valid', async () => {
   const c = await integration();
   try {
     await c.join();
@@ -197,6 +197,10 @@ test('REST 403/404 revokes a scoped resource; temporary HTTP failures do not rev
         resourceKey: c.cardKey,
       }),
     );
+    assert.equal(c.realtime.getBoardSnapshot(BOARD).status, 'live');
+    c.configure({ allowed: false });
+    c.time.advance(50);
+    await flush();
     assert.equal(c.realtime.getBoardSnapshot(BOARD).status, 'unavailable');
     assert.equal(c.manager.getSnapshot().status, 'authenticated');
   } finally {

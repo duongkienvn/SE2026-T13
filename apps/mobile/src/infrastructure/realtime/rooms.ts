@@ -249,6 +249,15 @@ export function createBoardRooms(options: RoomOptions) {
     }
   }
   return {
+    confirmAccess(access: BoardAccess) {
+      const room = rooms.get(access.id);
+      if (room?.state.canRead)
+        state(room, {
+          ...room.state,
+          canWrite: !access.isArchived && access.capabilities.canWriteBoard,
+          workspaceId: access.workspaceId,
+        });
+    },
     getSnapshot(boardId: string) {
       return rooms.get(boardId.toLowerCase())?.state ?? EMPTY_BOARD_STATE;
     },

@@ -1,5 +1,6 @@
 import { ApiError } from '../api/errors.ts';
 import type { PrivateQueryKey } from './keys.ts';
+import { hashKey, partialMatchKey } from '@tanstack/react-query';
 
 /** Local receive/response fence. Only a source-verified REST probe confirms access. */
 export function createResourceAccess() {
@@ -9,7 +10,13 @@ export function createResourceAccess() {
   >();
   const workspaces = new Map<string, number>();
   const revokedWorkspaces = new Set<string>();
-  const deniedListeners = new Set<(boardId: string) => void>();
+  const deniedListeners = new Set<
+    (boardId: string, key: PrivateQueryKey) => void
+  >();
+  const resources = new Map<
+    string,
+    { key: PrivateQueryKey; version: number }
+  >();
   let aggregates = 0;
   function boardId(key: readonly unknown[]) {
     return key[4] === 'boards' && typeof key[5] === 'string'
@@ -18,7 +25,13 @@ export function createResourceAccess() {
   }
   function version(key: PrivateQueryKey): number {
     const id = boardId(key);
-    if (id) return boards.get(id)?.version ?? 0;
+    if (id)
+      return (
+        (boards.get(id)?.version ?? 0) +
+        [...resources.values()]
+          .filter((resource) => partialMatchKey(key, resource.key))
+          .reduce((total, resource) => total + resource.version, 0)
+      );
     if (key[4] === 'workspaces' && typeof key[5] === 'string')
       return workspaces.get(key[5]) ?? 0;
     return key[4] === 'me' ? 0 : aggregates;
@@ -65,22 +78,29 @@ export function createResourceAccess() {
       denied: denied || previous?.denied === true,
     });
   }
+  function bumpKey(key: PrivateQueryKey) {
+    const id = boardId(key);
+    if (id && key.length > 6) {
+      const hash = hashKey(key);
+      resources.set(hash, {
+        key,
+        version: (resources.get(hash)?.version ?? 0) + 1,
+      });
+    } else if (id) {
+      const previous = boards.get(id);
+      boards.set(id, {
+        version: (previous?.version ?? 0) + 1,
+        read: previous?.read ?? true,
+        write: previous?.write ?? true,
+        denied: previous?.denied ?? false,
+      });
+    } else if (key[4] === 'workspaces' && typeof key[5] === 'string')
+      workspaces.set(key[5], (workspaces.get(key[5]) ?? 0) + 1);
+    else aggregates++;
+  }
   return {
     capture,
-    bumpKey(key: PrivateQueryKey) {
-      const id = boardId(key);
-      if (id) {
-        const previous = boards.get(id);
-        boards.set(id, {
-          version: (previous?.version ?? 0) + 1,
-          read: previous?.read ?? true,
-          write: previous?.write ?? true,
-          denied: previous?.denied ?? false,
-        });
-      } else if (key[4] === 'workspaces' && typeof key[5] === 'string')
-        workspaces.set(key[5], (workspaces.get(key[5]) ?? 0) + 1);
-      else aggregates++;
-    },
+    bumpKey,
     readable,
     boardId,
     fenceBoard,
@@ -113,12 +133,14 @@ export function createResourceAccess() {
     },
     denied(key: PrivateQueryKey) {
       const id = boardId(key);
-      if (id && !boards.get(id)?.denied) {
-        fenceBoard(id, true);
-        for (const listener of [...deniedListeners]) listener(id);
+      // Child 403/404 can mean authorship or deletion, not loss of Board access.
+      // Fence only the failed resource; the authoritative probe decides Board loss.
+      if (id && (boards.get(id)?.read ?? true)) {
+        bumpKey(key);
+        for (const listener of [...deniedListeners]) listener(id, key);
       }
     },
-    subscribeDenied(listener: (id: string) => void) {
+    subscribeDenied(listener: (id: string, key: PrivateQueryKey) => void) {
       deniedListeners.add(listener);
       return () => {
         deniedListeners.delete(listener);
@@ -126,6 +148,7 @@ export function createResourceAccess() {
     },
     reset() {
       boards.clear();
+      resources.clear();
       workspaces.clear();
       revokedWorkspaces.clear();
       aggregates++;

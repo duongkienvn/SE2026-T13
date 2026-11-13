@@ -131,6 +131,7 @@ export function createSessionHttpClient(
         [403, 404].includes(error.status) &&
         options.resourceKey
       )
+        // Resource failures request verification; they do not prove Board loss.
         resources?.denied(options.resourceKey);
       if (error instanceof ApiError && error.status === 401)
         manager.handleUnauthorized(identity.generation);

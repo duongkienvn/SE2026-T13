@@ -121,3 +121,57 @@ Those unrelated pins remain unchanged; MOB-06 adds only the existing Socket.IO
 version. A separate dependency maintenance task should assess those recommendations.
 
 No push, PR creation, merge or deployment was performed.
+
+## PR #256 review fixes (2026-11-13)
+
+Both P2 inline comments were read and verified against the clean PR head
+`dc8403d1b9c855be48bf022d8b0d7bd180eb833a` before editing. No backend contracts,
+UI, dependencies or unrelated formatting were changed.
+
+- **Fixed: [aggregate recovery](https://github.com/duongkienvn/SE2026-T13/pull/256#discussion_r4553588911).**
+  Access reconciliation now refreshes the affected aggregate prefixes after its
+  batched Board checks. Confirmed revocation also refreshes safe aggregate REST
+  queries; it never includes denied Board keys. Global checks cover eligible
+  Workspace snapshots and screens without a Board consumer. Confirmed Workspace
+  detail loss stays blocked. Account/connection/access epochs fence stale checks.
+- **Fixed: [child-resource denial](https://github.com/duongkienvn/SE2026-T13/pull/256#discussion_r4553588934).**
+  `CommentsService.requireComment` can return 404 for deletion, and `requireAuthor`
+  returns 403 for a non-author while Board access remains valid. Tagged errors now
+  fence only their resource prefix, including queued edits and delayed responses.
+  Unrelated Board work and the live room remain available. One coalesced Board
+  REST probe confirms capabilities or escalates to revocation. Probes are untagged
+  to avoid recursion, never automatically retry a failed child, work without a room
+  consumer and are canceled on access changes, logout, disconnect and disposal.
+  Network/server failures alone do not revoke the Board. An explicit later retry
+  can issue a new failed-resource request and verification; no polling was added.
+
+New deterministic regression suites are `access-reconciliation.test.ts` and
+`child-access.test.ts`. They use real mobile transport/session/Query owners with
+injected HTTP/socket/time ports and assert actual request counts, live observer
+states, cache contents and cancellation. Ten adjacent access hints require one
+Board probe plus six aggregate reads. Three concurrent child denials share one
+Board probe. Deleted children do not start verification/refetch loops. Tests cover
+archive/restore, role changes, global access loss, confirmed revocation, no active
+room, non-author edits, unrelated work, stale writes/responses and session/disposal
+races. The earlier security test now requires authoritative Board denial before
+expecting whole-Board revocation.
+
+| Review-fix check                                                                                                                                    | Result                                                                                                                                                                                                                   |
+| --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Focused realtime tests: `node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test apps/mobile/test/realtime/*.test.ts` | Pass: 48 tests.                                                                                                                                                                                                          |
+| `pnpm test:mobile`, then final `pnpm --filter @kanban/mobile test`                                                                                  | Pass: final 147 Node tests and 65 component tests across 12 suites.                                                                                                                                                      |
+| `pnpm --filter @kanban/mobile typecheck`                                                                                                            | Pass.                                                                                                                                                                                                                    |
+| `pnpm lint`                                                                                                                                         | Pass, including all mobile source/tests.                                                                                                                                                                                 |
+| `pnpm build`                                                                                                                                        | Pass; existing Vite NODE_ENV/chunk-size warnings. Final mobile typecheck also passed after the race review.                                                                                                              |
+| `pnpm test` with `VITEST_MAX_WORKERS=2`                                                                                                             | Pass: backend 116 suites / 1,283 tests, Web 158 files / 1,677 tests, shared 20 tests, mobile 144 Node + 65 component tests at that point. The final mobile rerun includes three further regressions added during review. |
+| `pnpm --filter @kanban/mobile bundle:android`                                                                                                       | Pass: Android export and native graph verifier, 1,296 native sources, shared ESM and approved logo.                                                                                                                      |
+| `pnpm --filter @kanban/mobile test:realtime:local`                                                                                                  | Pass: local two-client real REST/Socket.IO smoke using repository doubles; no PostgreSQL or production traffic.                                                                                                          |
+| Changed-file `prettier --check` and `git diff --check`                                                                                              | Pass.                                                                                                                                                                                                                    |
+| `pnpm format:check`                                                                                                                                 | Fail: the same 1,425 unchanged files; none is in this review-fix diff. No unrelated files were formatted.                                                                                                                |
+
+Final race review also verifies that a confirmed revocation supersedes an older
+queued access check, that child verification enforces a newly read-only Board,
+and that the Query-cache fallback only treats fresh error actions as failures.
+Native Android/iOS device behavior and PostgreSQL integration were not exercised
+for these client-only fixes. The existing device/database limits above still
+apply. No push, review replies, thread resolution, merge or deployment was done.

@@ -36,14 +36,91 @@ export function createNativeRealtime(options: {
   let checkAll = false;
   let accessEpoch = 0;
   const checks = new Set<string>();
+  const verificationIds = new Set<string>();
+  const verifications = new Map<string, AbortController>();
+  let verificationTimer: unknown;
   let unsubscribeErrors: (() => void) | undefined;
   let unsubscribeDenied: (() => void) | undefined;
+  function cancelVerification(boardId?: string) {
+    if (boardId) {
+      verificationIds.delete(boardId);
+      verifications.get(boardId)?.abort();
+      verifications.delete(boardId);
+    } else {
+      verificationIds.clear();
+      for (const controller of verifications.values()) controller.abort();
+      verifications.clear();
+    }
+    if (!verificationIds.size && verificationTimer !== undefined) {
+      timers.clearTimeout(verificationTimer);
+      verificationTimer = undefined;
+    }
+  }
   function clearChecks() {
     accessEpoch++;
+    cancelVerification();
     if (accessTimer !== undefined) timers.clearTimeout(accessTimer);
     accessTimer = undefined;
     checks.clear();
     checkAll = false;
+  }
+  function resourceFailed(boardId: string, key: PrivateQueryKey) {
+    const identity = data.getIdentity();
+    if (!identity) return;
+    data.cancelResourceRequests(key);
+    data.evict(identity, [key]);
+    if (verificationIds.has(boardId) || verifications.has(boardId)) return;
+    verificationIds.add(boardId);
+    if (verificationTimer !== undefined) return;
+    verificationTimer = timers.setTimeout(() => {
+      verificationTimer = undefined;
+      const ids = [...verificationIds];
+      verificationIds.clear();
+      for (const id of ids) void verify(id, identity);
+    }, 50);
+  }
+  async function verify(boardId: string, identity: SessionIdentity) {
+    const controller = new AbortController();
+    verifications.set(boardId, controller);
+    try {
+      // Untagged: an access-probe 403/404 must not recursively verify itself.
+      const access = await data.api.json(
+        `/boards/${encodeURIComponent(boardId)}`,
+        decodeBoardAccess,
+        {
+          identity,
+          signal: controller.signal,
+          expectedStatus: 200,
+          retries: 0,
+        },
+      );
+      if (controller.signal.aborted) return;
+      data.assertCurrent(identity);
+      if (access.id !== boardId || !access.capabilities.canReadBoard) {
+        rooms.revoke(boardId);
+        return;
+      }
+      data.resources.confirmBoard(
+        boardId,
+        !access.isArchived && access.capabilities.canWriteBoard,
+      );
+      rooms.confirmAccess(access);
+      // Do not refetch the failed child automatically: it may be deleted or a
+      // forbidden operation. Existing room data and other child work stay valid.
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      try {
+        data.assertCurrent(identity);
+      } catch {
+        return;
+      }
+      if (error instanceof ApiError && [403, 404].includes(error.status))
+        rooms.revoke(boardId);
+      // Network failures are not evidence of lost Board access.
+    } finally {
+      if (verifications.get(boardId) === controller)
+        verifications.delete(boardId);
+    }
   }
   function evictAccessSnapshots() {
     const identity = data.getIdentity();
@@ -64,6 +141,7 @@ export function createNativeRealtime(options: {
   }
   function accessCheck(boardId?: string) {
     accessEpoch++;
+    cancelVerification(boardId);
     rooms.suspend(boardId);
     if (boardId) checks.add(boardId);
     else checkAll = true;
@@ -119,6 +197,8 @@ export function createNativeRealtime(options: {
     fence(boardId, revoked) {
       const identity = data.getIdentity();
       if (identity) {
+        cancelVerification(boardId);
+        if (revoked) checks.delete(boardId);
         data.resources.fenceBoard(boardId, revoked);
         data.cancelResourceRequests(queryKeys.board(identity, boardId));
         data.evict(identity, [queryKeys.board(identity, boardId)]);
@@ -238,9 +318,7 @@ export function createNativeRealtime(options: {
   });
   return {
     start() {
-      unsubscribeDenied ??= data.resources.subscribeDenied((id) =>
-        rooms.revoke(id),
-      );
+      unsubscribeDenied ??= data.resources.subscribeDenied(resourceFailed);
       unsubscribeErrors ??= data.queryClient
         .getQueryCache()
         .subscribe((event) => {
@@ -248,6 +326,7 @@ export function createNativeRealtime(options: {
           const key = event.query.queryKey;
           if (
             event.type !== 'updated' ||
+            event.action.type !== 'error' ||
             !identity ||
             !keyBelongsTo(key, identity)
           )

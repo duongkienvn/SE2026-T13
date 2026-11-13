@@ -120,13 +120,25 @@ changes refresh relevant summaries and access.
 Notifications invalidate only the existing notifications prefix. Reconnect recovers
 eligible active queries; confirmed Board rejoin refreshes that Board's active keys.
 
-On access hints, scoped REST 403/404, own membership removal or downgrade, relevant
-receive state is fenced synchronously. Pending resource HTTP is aborted, protected
+On access hints, authoritative Board REST 403/404, own membership removal or
+downgrade, relevant receive state is fenced synchronously. Pending resource HTTP is aborted, protected
 data is evicted, writes stop and stale results/queued optimistic edits cannot put
 it back. Active Query objects retain only empty error state so observers can
 authoritatively recover after a fresh grant; inactive queries are removed. Resource
 epochs supplement the existing session generation. They are local stale-work
 guards, never replacements for server authorization.
+
+A tagged child-resource 403/404 can mean deletion or missing operation permission,
+including Comment authorship. Only that resource's pending HTTP, cached data and
+queued work are fenced. Unrelated Board data and its live room remain available.
+Errors on the same Board share a batched `GET /boards/:boardId` access probe; its
+request is untagged to avoid recursive verification. A successful read confirms
+capabilities but does not automatically refetch the failed child. A failed Board
+probe (403/404 or no read capability) confirms revocation and immediately fences
+all Board work. Network/server failures alone do not establish lost Board access.
+Verification also works without a room consumer and never joins an unused room.
+Access hints, logout, account switches, background/disconnect and disposal abort
+pending probes so a late result cannot grant access to stale state.
 
 Workspace revocation and ID-free access hints conservatively clear access-bearing
 snapshots and recheck active Boards independently. An explicit Board grant can

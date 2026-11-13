@@ -152,6 +152,33 @@ test('global reconciliation recovers mounted aggregates even with no Board consu
   }
 });
 
+test('confirmed revocation supersedes an older queued Board access check', async () => {
+  const c = await integration();
+  try {
+    await c.join();
+    const before = c.requests.length;
+    c.socket.server('board:access-changed', { boardId: BOARD });
+    c.socket.server('board:access-revoked', { boardId: BOARD });
+    c.time.advance(50);
+    await flush();
+    assert.equal(
+      c.requests.length,
+      before,
+      'an obsolete check cannot probe or regrant a revoked Board',
+    );
+    assert.equal(c.realtime.getBoardSnapshot(BOARD).status, 'unavailable');
+    await assert.rejects(
+      c.data.api.json('/protected', (value) => value, {
+        identity: c.identity,
+        resourceKey: c.cardKey,
+      }),
+      { code: 'RESOURCE_ACCESS_CHANGED' },
+    );
+  } finally {
+    c.dispose();
+  }
+});
+
 test('an account switch during access verification cannot refresh or restore old aggregates', async () => {
   const c = await integration();
   try {
