@@ -63,7 +63,7 @@ interface Room {
 export interface RoomOptions {
   socket(): NativeSocket | null;
   probe(boardId: string, signal: AbortSignal): Promise<BoardAccess>;
-  fence(boardId: string, revoked: boolean): void;
+  fence(boardId: string, revoked: boolean, reconcileAggregates?: boolean): void;
   grant(access: BoardAccess): void;
   recovered(boardId: string): void;
   unauthorized(): void;
@@ -115,10 +115,10 @@ export function createBoardRooms(options: RoomOptions) {
       }
     });
   }
-  function unavailable(room: Room) {
+  function unavailable(room: Room, reconcileAggregates = true) {
     cancel(room);
     leave(room);
-    options.fence(room.id, true);
+    options.fence(room.id, true, reconcileAggregates);
     state(room, { ...EMPTY_BOARD_STATE, status: 'unavailable' });
   }
   function join(room: Room) {
@@ -178,6 +178,16 @@ export function createBoardRooms(options: RoomOptions) {
       else retry();
     });
   }
+  function resume(room: Room, access: BoardAccess) {
+    state(room, {
+      status: options.socket()?.connected ? 'joining' : 'paused',
+      canRead: true,
+      canWrite: !access.isArchived && access.capabilities.canWriteBoard,
+      workspaceId: access.workspaceId,
+      userIds: [],
+    });
+    join(room);
+  }
   async function check(room: Room, retry = 0) {
     cancel(room);
     leave(room);
@@ -206,14 +216,7 @@ export function createBoardRooms(options: RoomOptions) {
         return;
       }
       options.grant(access);
-      state(room, {
-        status: 'joining',
-        canRead: true,
-        canWrite: !access.isArchived && access.capabilities.canWriteBoard,
-        workspaceId: access.workspaceId,
-        userIds: [],
-      });
-      join(room);
+      resume(room, access);
     } catch (error) {
       if (
         ticket !== epoch ||
@@ -249,9 +252,11 @@ export function createBoardRooms(options: RoomOptions) {
     }
   }
   return {
-    confirmAccess(access: BoardAccess) {
+    confirmAccess(access: BoardAccess, suspended = false) {
       const room = rooms.get(access.id);
-      if (room?.state.canRead)
+      if (!room) return;
+      if (suspended && !room.state.canRead) resume(room, access);
+      else if (room.state.canRead)
         state(room, {
           ...room.state,
           canWrite: !access.isArchived && access.capabilities.canWriteBoard,
@@ -261,6 +266,7 @@ export function createBoardRooms(options: RoomOptions) {
     getSnapshot(boardId: string) {
       return rooms.get(boardId.toLowerCase())?.state ?? EMPTY_BOARD_STATE;
     },
+    watchedIds: () => rooms.keys(),
     subscribe(listener: () => void) {
       listeners.add(listener);
       return () => {
@@ -299,8 +305,9 @@ export function createBoardRooms(options: RoomOptions) {
         notify();
       };
     },
-    connected() {
-      for (const room of rooms.values()) void check(room);
+    connected(alreadyChecking?: ReadonlySet<string>) {
+      for (const room of rooms.values())
+        if (!alreadyChecking?.has(room.id)) void check(room);
     },
     suspend(boardId?: string) {
       // Access hints can arrive after the last room consumer released its grant.
@@ -317,21 +324,22 @@ export function createBoardRooms(options: RoomOptions) {
           state(room, { ...EMPTY_BOARD_STATE, status: 'checking' });
         }
     },
-    recheck(boardId?: string) {
+    recheck(boardId?: string, alreadyChecking?: ReadonlySet<string>) {
       return Promise.all(
         [...rooms.values()]
           .filter(
             (room) =>
-              (!boardId && room.state.status !== 'unavailable') ||
-              room.id === boardId,
+              !alreadyChecking?.has(room.id) &&
+              ((!boardId && room.state.status !== 'unavailable') ||
+                room.id === boardId),
           )
           .map((room) => check(room)),
       );
     },
-    revoke(boardId: string) {
+    revoke(boardId: string, reconcileAggregates = true) {
       const room = rooms.get(boardId);
-      if (room) unavailable(room);
-      else options.fence(boardId, true);
+      if (room) unavailable(room, reconcileAggregates);
+      else options.fence(boardId, true, reconcileAggregates);
     },
     presence(boardId: string, userIds: readonly string[]) {
       const room = rooms.get(boardId);

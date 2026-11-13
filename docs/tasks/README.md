@@ -97,6 +97,8 @@ chưa triển khai. Mục lục dưới đây liệt kê toàn bộ task documen
 
 ## Frontend tasks
 
+- [MOB-11 Native Workspace discovery and switcher](frontend/mob-11-workspace-discovery.md)
+
 - [MOB-10 Native Home Dashboard and productivity API](frontend/mob-10-native-home.md)
 
 - [MOB-09 Secure native Google Sign-In and ID-token exchange](frontend/mob-09-native-google-auth.md)

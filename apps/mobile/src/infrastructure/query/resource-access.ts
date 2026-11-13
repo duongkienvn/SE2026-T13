@@ -6,13 +6,21 @@ import { hashKey, partialMatchKey } from '@tanstack/react-query';
 export function createResourceAccess() {
   const boards = new Map<
     string,
-    { version: number; read: boolean; write: boolean; denied: boolean }
+    {
+      version: number;
+      read: boolean;
+      write: boolean;
+      denied: boolean;
+      workspaceId?: string;
+    }
   >();
   const workspaces = new Map<string, number>();
   const revokedWorkspaces = new Set<string>();
+  let workspaceDirectory = 0;
   const deniedListeners = new Set<
     (boardId: string, key: PrivateQueryKey) => void
   >();
+  const workspaceDeniedListeners = new Set<(workspaceId: string) => void>();
   const resources = new Map<
     string,
     { key: PrivateQueryKey; version: number }
@@ -23,22 +31,32 @@ export function createResourceAccess() {
       ? key[5].toLowerCase()
       : null;
   }
+  function workspaceId(key: readonly unknown[]) {
+    return (key[4] === 'workspaces' || key[4] === 'board-lists') &&
+      typeof key[5] === 'string'
+      ? key[5]
+      : null;
+  }
   function version(key: PrivateQueryKey): number {
+    const scoped = [...resources.values()]
+      .filter((resource) => partialMatchKey(key, resource.key))
+      .reduce((total, resource) => total + resource.version, 0);
+    if (key[4] === 'workspace-lists')
+      return workspaceDirectory + aggregates + scoped;
     const id = boardId(key);
-    if (id)
+    if (id) return (boards.get(id)?.version ?? 0) + scoped;
+    const workspace = workspaceId(key);
+    if (workspace)
       return (
-        (boards.get(id)?.version ?? 0) +
-        [...resources.values()]
-          .filter((resource) => partialMatchKey(key, resource.key))
-          .reduce((total, resource) => total + resource.version, 0)
+        (workspaces.get(workspace) ?? 0) +
+        (key[4] === 'board-lists' ? aggregates : 0) +
+        scoped
       );
-    if (key[4] === 'workspaces' && typeof key[5] === 'string')
-      return workspaces.get(key[5]) ?? 0;
-    return key[4] === 'me' ? 0 : aggregates;
+    return key[4] === 'me' ? 0 : aggregates + scoped;
   }
   function readable(key: readonly unknown[]) {
-    if (key[4] === 'workspaces' && typeof key[5] === 'string')
-      return !revokedWorkspaces.has(key[5]);
+    const workspace = workspaceId(key);
+    if (workspace) return !revokedWorkspaces.has(workspace);
     const id = boardId(key);
     return !id || !boards.has(id) || boards.get(id)!.read;
   }
@@ -46,12 +64,8 @@ export function createResourceAccess() {
     const id = boardId(key);
     if (id && !boards.has(id))
       boards.set(id, { version: 0, read: true, write: true, denied: false });
-    if (
-      key[4] === 'workspaces' &&
-      typeof key[5] === 'string' &&
-      !workspaces.has(key[5])
-    )
-      workspaces.set(key[5], 0);
+    const workspace = workspaceId(key);
+    if (workspace && !workspaces.has(workspace)) workspaces.set(workspace, 0);
     const revision = version(key);
     const check = () => {
       const board = id ? boards.get(id) : null;
@@ -76,46 +90,74 @@ export function createResourceAccess() {
       read: false,
       write: false,
       denied: denied || previous?.denied === true,
+      workspaceId: previous?.workspaceId,
     });
   }
   function bumpKey(key: PrivateQueryKey) {
     const id = boardId(key);
-    if (id && key.length > 6) {
-      const hash = hashKey(key);
-      resources.set(hash, {
-        key,
-        version: (resources.get(hash)?.version ?? 0) + 1,
-      });
-    } else if (id) {
+    const workspace = workspaceId(key);
+    if (id && key.length === 6) {
       const previous = boards.get(id);
       boards.set(id, {
         version: (previous?.version ?? 0) + 1,
         read: previous?.read ?? true,
         write: previous?.write ?? true,
         denied: previous?.denied ?? false,
+        workspaceId: previous?.workspaceId,
       });
-    } else if (key[4] === 'workspaces' && typeof key[5] === 'string')
-      workspaces.set(key[5], (workspaces.get(key[5]) ?? 0) + 1);
-    else aggregates++;
+    } else if (workspace)
+      workspaces.set(workspace, (workspaces.get(workspace) ?? 0) + 1);
+    else if (key[4] === 'workspace-lists') workspaceDirectory++;
+    else {
+      const hash = hashKey(key);
+      resources.set(hash, {
+        key,
+        version: (resources.get(hash)?.version ?? 0) + 1,
+      });
+    }
   }
   return {
     capture,
     bumpKey,
     readable,
     boardId,
+    workspaceId,
+    trackedWorkspaceIds: () => workspaces.keys(),
     fenceBoard,
-    confirmBoard(id: string, writable: boolean) {
+    boardWorkspace: (id: string) => boards.get(id)?.workspaceId,
+    trackedBoardIds: () => boards.keys(),
+    rememberBoardWorkspace(id: string, workspaceId: string) {
+      const board = boards.get(id);
+      if (board) board.workspaceId = workspaceId;
+    },
+    confirmBoard(id: string, writable: boolean, workspaceId?: string) {
       const previous = boards.get(id);
       boards.set(id, {
         version: previous?.version ?? 0,
         read: true,
         write: writable,
         denied: false,
+        workspaceId: workspaceId ?? previous?.workspaceId,
       });
     },
     fenceWorkspace(id: string, revoked = false) {
       workspaces.set(id, (workspaces.get(id) ?? 0) + 1);
       if (revoked) revokedWorkspaces.add(id);
+    },
+    denyWorkspace(id: string) {
+      workspaces.set(id, (workspaces.get(id) ?? 0) + 1);
+      if (revokedWorkspaces.has(id)) return;
+      revokedWorkspaces.add(id);
+      for (const listener of [...workspaceDeniedListeners]) listener(id);
+    },
+    subscribeWorkspaceDenied(listener: (id: string) => void) {
+      workspaceDeniedListeners.add(listener);
+      return () => {
+        workspaceDeniedListeners.delete(listener);
+      };
+    },
+    confirmWorkspace(id: string) {
+      revokedWorkspaces.delete(id);
     },
     fenceAll() {
       aggregates++;
@@ -151,6 +193,7 @@ export function createResourceAccess() {
       resources.clear();
       workspaces.clear();
       revokedWorkspaces.clear();
+      workspaceDirectory++;
       aggregates++;
     },
   };

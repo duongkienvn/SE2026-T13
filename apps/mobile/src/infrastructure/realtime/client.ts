@@ -7,19 +7,25 @@ import { systemTimers, type Timers } from '../auth/clock.ts';
 import { keyBelongsTo, type PrivateQueryKey } from '../query/keys.ts';
 import { createConnection } from './connection.ts';
 import { createBoardRooms, decodeBoardAccess } from './rooms.ts';
-import { hintTargets } from './reconciliation.ts';
+import { hintTargets, workspaceBoardCandidates } from './reconciliation.ts';
 import { parseHint } from './contracts.ts';
 import type { SocketFactory } from './socket.ts';
 import type { SessionIdentity } from '../api/session-client.ts';
+
+function crossWorkspaceKeys(identity: SessionIdentity): PrivateQueryKey[] {
+  return [
+    queryKeys.notifications(identity),
+    queryKeys.home(identity),
+    queryKeys.tasks(identity),
+    queryKeys.search(identity),
+  ];
+}
 
 function aggregateKeys(identity: SessionIdentity): PrivateQueryKey[] {
   return [
     queryKeys.boardLists(identity),
     queryKeys.workspaces(identity),
-    queryKeys.notifications(identity),
-    queryKeys.home(identity),
-    queryKeys.tasks(identity),
-    queryKeys.search(identity),
+    ...crossWorkspaceKeys(identity),
   ];
 }
 
@@ -38,9 +44,27 @@ export function createNativeRealtime(options: {
   const checks = new Set<string>();
   const verificationIds = new Set<string>();
   const verifications = new Map<string, AbortController>();
+  const workspaceChecks = new Set<string>();
   let verificationTimer: unknown;
   let unsubscribeErrors: (() => void) | undefined;
   let unsubscribeDenied: (() => void) | undefined;
+  let unsubscribeWorkspaceDenied: (() => void) | undefined;
+  function workspaceOverviewKeys(
+    identity: SessionIdentity,
+    workspaceId?: string,
+  ) {
+    const result: PrivateQueryKey[] = [];
+    for (const { queryKey } of data.queryClient.getQueryCache().getAll()) {
+      if (
+        keyBelongsTo(queryKey, identity) &&
+        queryKey[4] === 'workspaces' &&
+        queryKey[6] === 'overview' &&
+        (!workspaceId || queryKey[5] === workspaceId)
+      )
+        result.push(queryKey);
+    }
+    return result;
+  }
   function cancelVerification(boardId?: string) {
     if (boardId) {
       verificationIds.delete(boardId);
@@ -69,6 +93,9 @@ export function createNativeRealtime(options: {
     if (!identity) return;
     data.cancelResourceRequests(key);
     data.evict(identity, [key]);
+    queueVerification(boardId, identity);
+  }
+  function queueVerification(boardId: string, identity: SessionIdentity) {
     if (verificationIds.has(boardId) || verifications.has(boardId)) return;
     verificationIds.add(boardId);
     if (verificationTimer !== undefined) return;
@@ -79,9 +106,40 @@ export function createNativeRealtime(options: {
       for (const id of ids) void verify(id, identity);
     }, 50);
   }
+  function workspaceDenied(workspaceId: string) {
+    const identity = data.getIdentity();
+    if (!identity) return;
+    const boards = workspaceBoardCandidates(
+      data,
+      identity,
+      workspaceId,
+      rooms.watchedIds(),
+    );
+    const keys = [
+      queryKeys.workspaceBoards(identity, null),
+      ...crossWorkspaceKeys(identity),
+    ];
+    for (const key of keys) data.cancelResourceRequests(key);
+    data.evict(identity, keys);
+    // A Board may still be readable through explicit membership. Suspend
+    // local reads and the room until the same REST probe used by MOB-06 settles.
+    for (const id of boards) {
+      rooms.suspend(id);
+      workspaceChecks.add(id);
+      queueVerification(id, identity);
+    }
+    void data.invalidateHints(identity, keys).catch(() => undefined);
+  }
+  function requeueWorkspaceChecks() {
+    const identity = data.getIdentity();
+    if (identity)
+      for (const id of workspaceChecks) queueVerification(id, identity);
+  }
   async function verify(boardId: string, identity: SessionIdentity) {
     const controller = new AbortController();
     verifications.set(boardId, controller);
+    const workspaceCheck = workspaceChecks.has(boardId);
+    const revoke = () => rooms.revoke(boardId, !workspaceCheck);
     try {
       // Untagged: an access-probe 403/404 must not recursively verify itself.
       const access = await data.api.json(
@@ -91,20 +149,27 @@ export function createNativeRealtime(options: {
           identity,
           signal: controller.signal,
           expectedStatus: 200,
-          retries: 0,
+          retries: workspaceCheck ? 1 : 0,
         },
       );
       if (controller.signal.aborted) return;
       data.assertCurrent(identity);
       if (access.id !== boardId || !access.capabilities.canReadBoard) {
-        rooms.revoke(boardId);
+        revoke();
         return;
       }
       data.resources.confirmBoard(
         boardId,
         !access.isArchived && access.capabilities.canWriteBoard,
+        access.workspaceId,
       );
-      rooms.confirmAccess(access);
+      rooms.confirmAccess(access, workspaceCheck);
+      if (workspaceCheck) {
+        workspaceChecks.delete(boardId);
+        void data
+          .invalidateHints(identity, [queryKeys.board(identity, boardId)])
+          .catch(() => undefined);
+      }
       // Do not refetch the failed child automatically: it may be deleted or a
       // forbidden operation. Existing room data and other child work stay valid.
     } catch (error) {
@@ -115,8 +180,8 @@ export function createNativeRealtime(options: {
         return;
       }
       if (error instanceof ApiError && [403, 404].includes(error.status))
-        rooms.revoke(boardId);
-      // Network failures are not evidence of lost Board access.
+        revoke();
+      // Keep suspended Workspace candidates fenced until a later successful check.
     } finally {
       if (verifications.get(boardId) === controller)
         verifications.delete(boardId);
@@ -133,8 +198,8 @@ export function createNativeRealtime(options: {
       if (!keyBelongsTo(key, identity) || key[4] === 'me') continue;
       const boardId = data.resources.boardId(key);
       if (boardId) data.resources.fenceBoard(boardId);
-      if (key[4] === 'workspaces' && typeof key[5] === 'string')
-        data.resources.fenceWorkspace(key[5]);
+      const workspaceId = data.resources.workspaceId(key);
+      if (workspaceId) data.resources.fenceWorkspace(workspaceId);
       keys.push(key);
     }
     data.evict(identity, keys);
@@ -159,14 +224,19 @@ export function createNativeRealtime(options: {
       async function reconcile(identity: SessionIdentity) {
         try {
           data.assertCurrent(identity);
-          if (all) await rooms.recheck();
-          else await Promise.all(ids.map((id) => rooms.recheck(id)));
+          if (all) await rooms.recheck(undefined, workspaceChecks);
+          else
+            await Promise.all(
+              ids.map((id) => rooms.recheck(id, workspaceChecks)),
+            );
           if (ticket !== accessEpoch) return;
           data.assertCurrent(identity);
+          requeueWorkspaceChecks();
           // Aggregate REST endpoints enforce their own access rules. Never include
           // fenced Board keys, or infer access from a successful aggregate read.
           await data.invalidate(identity, [
             ...aggregateKeys(identity),
+            ...workspaceOverviewKeys(identity),
             ...(all
               ? [
                   [
@@ -194,27 +264,35 @@ export function createNativeRealtime(options: {
         { identity, signal, expectedStatus: 200, retries: 0 },
       );
     },
-    fence(boardId, revoked) {
+    fence(boardId, revoked, reconcileAggregates = true) {
       const identity = data.getIdentity();
       if (identity) {
         cancelVerification(boardId);
-        if (revoked) checks.delete(boardId);
+        if (revoked) {
+          checks.delete(boardId);
+          workspaceChecks.delete(boardId);
+        }
         data.resources.fenceBoard(boardId, revoked);
         data.cancelResourceRequests(queryKeys.board(identity, boardId));
         data.evict(identity, [queryKeys.board(identity, boardId)]);
-        if (revoked) {
+        if (revoked && reconcileAggregates) {
+          const workspaceId = rooms.getSnapshot(boardId).workspaceId;
+          const keys = [
+            ...aggregateKeys(identity),
+            ...workspaceOverviewKeys(identity, workspaceId),
+          ];
           data.resources.fenceAggregates();
-          data.evict(identity, aggregateKeys(identity));
-          void data
-            .invalidateHints(identity, aggregateKeys(identity))
-            .catch(() => undefined);
+          data.evict(identity, keys);
+          void data.invalidateHints(identity, keys).catch(() => undefined);
         }
       }
     },
     grant(access) {
+      workspaceChecks.delete(access.id);
       data.resources.confirmBoard(
         access.id,
         !access.isArchived && access.capabilities.canWriteBoard,
+        access.workspaceId,
       );
     },
     recovered(boardId) {
@@ -246,7 +324,8 @@ export function createNativeRealtime(options: {
       if (user.id !== identity.userId) throw new ApiError('invalid-response');
     },
     connected(_socket, identity) {
-      rooms.connected();
+      rooms.connected(workspaceChecks);
+      requeueWorkspaceChecks();
       if (everConnected) void data.recover(identity).catch(() => undefined);
       everConnected = true;
     },
@@ -257,8 +336,11 @@ export function createNativeRealtime(options: {
       // or missed socket events. A failed first connection must not discard
       // a fresh authorized REST read or strand Home in an access error.
       if (everConnected) evictAccessSnapshots();
+      else requeueWorkspaceChecks();
     },
     sessionEnded() {
+      clearChecks();
+      workspaceChecks.clear();
       everConnected = false;
       rooms.reset();
     },
@@ -271,9 +353,10 @@ export function createNativeRealtime(options: {
         return;
       }
       if (event === 'workspace:access-revoked' || event === 'access:changed') {
-        evictAccessSnapshots();
-        if (hint.workspaceId)
+        if (hint.workspaceId) {
           data.resources.fenceWorkspace(hint.workspaceId, true);
+        }
+        evictAccessSnapshots();
         accessCheck();
         return;
       }
@@ -292,7 +375,13 @@ export function createNativeRealtime(options: {
         (event.startsWith('member:') && hint.userId === identity.userId)
       ) {
         data.resources.fenceAggregates();
-        data.evict(identity, aggregateKeys(identity));
+        data.evict(identity, [
+          ...aggregateKeys(identity),
+          ...workspaceOverviewKeys(
+            identity,
+            rooms.getSnapshot(hint.boardId!).workspaceId,
+          ),
+        ]);
         accessCheck(hint.boardId);
         return;
       }
@@ -321,6 +410,8 @@ export function createNativeRealtime(options: {
   return {
     start() {
       unsubscribeDenied ??= data.resources.subscribeDenied(resourceFailed);
+      unsubscribeWorkspaceDenied ??=
+        data.resources.subscribeWorkspaceDenied(workspaceDenied);
       unsubscribeErrors ??= data.queryClient
         .getQueryCache()
         .subscribe((event) => {
@@ -342,13 +433,22 @@ export function createNativeRealtime(options: {
     stop() {
       connection.stop();
       clearChecks();
+      workspaceChecks.clear();
       unsubscribeErrors?.();
       unsubscribeErrors = undefined;
       unsubscribeDenied?.();
       unsubscribeDenied = undefined;
+      unsubscribeWorkspaceDenied?.();
+      unsubscribeWorkspaceDenied = undefined;
     },
     retry: connection.retry,
-    setEnvironment: connection.setEnvironment,
+    setEnvironment(
+      environment: Parameters<typeof connection.setEnvironment>[0],
+    ) {
+      connection.setEnvironment(environment);
+      if (environment.online && environment.foreground)
+        requeueWorkspaceChecks();
+    },
     getSnapshot: connection.getSnapshot,
     subscribe: connection.subscribe,
     watchBoard(boardId: string) {
@@ -357,11 +457,19 @@ export function createNativeRealtime(options: {
     },
     getBoardSnapshot: rooms.getSnapshot,
     subscribeBoards: rooms.subscribe,
-    retryBoard: rooms.recheck,
+    async retryBoard(boardId?: string) {
+      const identity = data.getIdentity();
+      if (!identity) return;
+      const ids = boardId ? [boardId] : [...workspaceChecks];
+      for (const id of ids)
+        if (workspaceChecks.has(id)) queueVerification(id, identity);
+      await rooms.recheck(boardId, workspaceChecks);
+    },
     dispose() {
       clearChecks();
       unsubscribeErrors?.();
       unsubscribeDenied?.();
+      unsubscribeWorkspaceDenied?.();
       connection.dispose();
       rooms.dispose();
     },

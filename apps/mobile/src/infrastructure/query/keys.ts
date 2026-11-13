@@ -43,6 +43,16 @@ function board(identity: SessionIdentity, boardId: string) {
 function notifications(identity: SessionIdentity) {
   return [...scope(identity), 'notifications'] as const;
 }
+function workspaceBoards(
+  identity: SessionIdentity,
+  workspaceId: string | null,
+) {
+  return [
+    ...scope(identity),
+    'board-lists',
+    workspaceId?.toLowerCase() ?? null,
+  ] as const;
+}
 
 /** These are cache identities, not claims that every resource has an adapter. */
 export const queryKeys = {
@@ -59,9 +69,7 @@ export const queryKeys = {
     filters: Filters = {},
   ) =>
     [
-      ...scope(identity),
-      'board-lists',
-      workspaceId?.toLowerCase() ?? null,
+      ...workspaceBoards(identity, workspaceId),
       normalizeFilters(filters),
     ] as const,
   board,
@@ -69,6 +77,7 @@ export const queryKeys = {
     [...board(identity, boardId), 'previews', cardId.toLowerCase()] as const,
   boardLists: (identity: SessionIdentity) =>
     [...scope(identity), 'board-lists'] as const,
+  workspaceBoards,
   columns: (identity: SessionIdentity, id: string) =>
     [...board(identity, id), 'columns'] as const,
   members: (identity: SessionIdentity, id: string) =>

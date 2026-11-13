@@ -1,15 +1,96 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { workspaceDetailOptions } from '../../src/features/workspaces/queries.ts';
 import {
   BOARD,
   CARD,
   WORKSPACE,
   integration,
+  json,
   ok,
   payload,
 } from './integration-support.ts';
 import { deferred, flush, loginResponse, USER_B } from '../auth/support.ts';
 import { queryKeys } from '../../src/infrastructure/query/keys.ts';
+import type { ResourceId } from '../../src/navigation/routes.ts';
+
+test('REST Workspace denial suspends a live room and rejoins it after one authorized probe', async (t) => {
+  const c = await integration();
+  t.after(c.dispose);
+  await c.join();
+  const identity = c.identity;
+  c.respond((url) =>
+    url.endsWith(`/workspaces/${WORKSPACE}`)
+      ? Promise.resolve(json({}, 404))
+      : null,
+  );
+  await assert.rejects(
+    c.data.queryClient.fetchQuery(
+      workspaceDetailOptions(c.data, identity, WORKSPACE as ResourceId),
+    ),
+  );
+  assert.equal(c.realtime.getBoardSnapshot(BOARD).canRead, false);
+  const leave = c.socket.commands.length - 1;
+  assert.equal(c.socket.commands[leave]?.event, 'board:leave');
+  c.socket.ack(leave);
+  const before = c.requests.length;
+  c.time.advance(50);
+  await flush();
+  assert.deepEqual(
+    c.requests.slice(before).map(({ url }) => new URL(url).pathname),
+    [`/api/boards/${BOARD}`],
+  );
+  const join = c.socket.commands.length - 1;
+  assert.equal(c.socket.commands[join]?.event, 'board:join');
+  assert.equal(c.realtime.getBoardSnapshot(BOARD).status, 'joining');
+  c.socket.ack(join);
+  assert.equal(c.realtime.getBoardSnapshot(BOARD).status, 'live');
+});
+
+test('account replacement aborts a Workspace-triggered Board probe before it can restore access', async (t) => {
+  const c = await integration();
+  t.after(c.dispose);
+  const oldIdentity = c.identity;
+  const late = deferred<Response>();
+  const boardPath = `/boards/${BOARD}`;
+  c.respond((url) =>
+    url.endsWith(`/workspaces/${WORKSPACE}`)
+      ? Promise.resolve(json({}, 403))
+      : url.endsWith(boardPath)
+        ? late.promise
+        : null,
+  );
+  c.data.queryClient.setQueryData(c.cardKey, 'private');
+  await assert.rejects(
+    c.data.queryClient.fetchQuery(
+      workspaceDetailOptions(c.data, oldIdentity, WORKSPACE as ResourceId),
+    ),
+  );
+  c.time.advance(50);
+  await flush();
+  const probe = c.requests.find(({ url }) => url.endsWith(boardPath));
+  assert.ok(probe);
+  assert.equal(probe.init.signal?.aborted, false);
+  await c.manager.establishSession(loginResponse(USER_B));
+  assert.equal(probe.init.signal?.aborted, true);
+  const newKey = queryKeys.card(c.identity, BOARD, CARD);
+  c.data.resources.fenceBoard(BOARD, true);
+  late.resolve(
+    ok({
+      id: BOARD,
+      workspaceId: WORKSPACE,
+      isArchived: false,
+      capabilities: { canReadBoard: true, canWriteBoard: true },
+    }),
+  );
+  await flush();
+  assert.equal(c.data.resources.readable(newKey), false);
+  assert.equal(c.data.queryClient.getQueryData(newKey), undefined);
+  assert.equal(
+    c.data.queryClient.getQueryData(queryKeys.card(oldIdentity, BOARD, CARD)),
+    undefined,
+  );
+});
 
 test('revocation clears details and aggregates, aborts queries, fences delayed HTTP and queued optimistic mutations', async () => {
   const c = await integration();

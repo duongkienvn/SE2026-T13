@@ -1,5 +1,6 @@
-import { type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
+  AccessibilityInfo,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -20,6 +21,8 @@ export function Overlay({
   placement = 'center',
   dismissible = true,
   dismissLabel = 'Dismiss',
+  respectReducedMotion = false,
+  showHandle = false,
 }: {
   visible: boolean;
   onDismiss: () => void;
@@ -28,13 +31,37 @@ export function Overlay({
   placement?: 'center' | 'bottom';
   dismissible?: boolean;
   dismissLabel?: string;
+  respectReducedMotion?: boolean;
+  showHandle?: boolean;
 }) {
   const c = useTheme();
+  const [reduceMotion, setReduceMotion] = useState(true);
+  useEffect(() => {
+    if (!respectReducedMotion) return;
+    let active = true;
+    let receivedEvent = false;
+    const subscription = AccessibilityInfo.addEventListener(
+      'reduceMotionChanged',
+      (value) => {
+        receivedEvent = true;
+        setReduceMotion(value);
+      },
+    );
+    void AccessibilityInfo.isReduceMotionEnabled()
+      .then((value) => {
+        if (active && !receivedEvent) setReduceMotion(value);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [respectReducedMotion]);
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType={respectReducedMotion && reduceMotion ? 'none' : 'fade'}
       onRequestClose={() => {
         if (dismissible) onDismiss();
       }}
@@ -68,6 +95,20 @@ export function Overlay({
                 : {}),
             }}
           >
+            {showHandle && (
+              <View
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+                style={{
+                  alignSelf: 'center',
+                  width: 36,
+                  height: 4,
+                  marginTop: spacing.md,
+                  borderRadius: radius.pill,
+                  backgroundColor: c.controlBorder,
+                }}
+              />
+            )}
             <ScrollView
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ padding: spacing.xl, gap: spacing.lg }}
