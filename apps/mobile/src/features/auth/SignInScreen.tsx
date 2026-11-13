@@ -4,6 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { ApiError } from '../../infrastructure/api/errors';
 import { Button, PasswordField, TextField } from '../../ui';
 import { AuthFrame, AuthIcon, AuthLink, AuthText } from './components';
+import { GoogleSignInOption, type GoogleFeedback } from './GoogleSignIn';
 import {
   authError,
   retryDelay,
@@ -28,7 +29,8 @@ export function SignInScreen() {
   );
   const [error, setError] = useState(''),
     [unverified, setUnverified] = useState(false),
-    [until, setUntil] = useState(0);
+    [until, setUntil] = useState(0),
+    [via, setVia] = useState<'email' | 'google'>('email');
   const cooldown = useCooldown(until),
     passwordInput = useRef<ComponentRef<typeof TextInput>>(null);
   useFocusEffect(
@@ -58,6 +60,7 @@ export function SignInScreen() {
     if (validation.email || validation.password || cooldown) return;
     setError('');
     setUnverified(false);
+    setVia('email');
     void request.run(
       async (signal, current) => {
         const response = await api.login(email, password, signal);
@@ -83,6 +86,17 @@ export function SignInScreen() {
           setUntil(Date.now() + retryDelay(cause));
       },
     );
+  };
+  const google: GoogleFeedback = {
+    onStart: () => {
+      setVia('google');
+      setPassword('');
+      setError('');
+      setUnverified(false);
+    },
+    onError: setError,
+    onUnverified: () => setUnverified(true),
+    onCooldown: setUntil,
   };
   if (
     session.status === 'restoring' ||
@@ -161,9 +175,14 @@ export function SignInScreen() {
       )}
       <Button
         label={cooldown ? `Try again in ${cooldown}s` : 'Sign in'}
-        loading={request.pending}
-        disabled={!!cooldown}
+        loading={request.pending && via === 'email'}
+        disabled={!!cooldown || (request.pending && via === 'google')}
         onPress={submit}
+      />
+      <GoogleSignInOption
+        request={request}
+        disabled={!!cooldown}
+        feedback={google}
       />
       <View
         style={{
