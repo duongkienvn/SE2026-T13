@@ -296,10 +296,17 @@ export function UpNext({
               trailing={<Chevron />}
               metadata={
                 <>
-                  <PreviewMeta>
-                    {task.boardName} · {task.workspaceName}
-                  </PreviewMeta>
                   <View style={styles.taskMeta}>
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        typography.supporting,
+                        styles.taskBoard,
+                        { color: c.textSecondary },
+                      ]}
+                    >
+                      {task.boardName} · {task.workspaceName}
+                    </Text>
                     <Text
                       style={[
                         typography.caption,
@@ -309,19 +316,10 @@ export function UpNext({
                     >
                       {due}
                     </Text>
-                    {labelNames.length > 0 && (
-                      <Text
-                        numberOfLines={1}
-                        style={[
-                          typography.supporting,
-                          styles.labels,
-                          { color: c.textSecondary },
-                        ]}
-                      >
-                        {labelNames.join(' · ')}
-                      </Text>
-                    )}
                   </View>
+                  {labelNames.length > 0 && (
+                    <PreviewMeta>{labelNames.join(' · ')}</PreviewMeta>
+                  )}
                 </>
               }
               onPress={() => openCard(task)}
@@ -549,7 +547,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: radius.pill,
   },
-  labels: { flexShrink: 1 },
+  taskBoard: { flexShrink: 1, minWidth: 90 },
   empty: { padding: spacing.lg },
   skeleton: { gap: spacing.lg },
 });

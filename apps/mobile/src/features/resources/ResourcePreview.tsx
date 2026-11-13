@@ -1,5 +1,6 @@
 import { useIsFocused, usePathname } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
+import { ApiError } from '../../infrastructure/api/errors';
 import { useSessionSnapshot } from '../../infrastructure/auth/SessionProvider';
 import type { SessionIdentity } from '../../infrastructure/api/session-client';
 import { useMobileData } from '../../infrastructure/query/DataProvider';
@@ -62,19 +63,37 @@ function AccessCheck({
     gcTime: 0,
     staleTime: 0,
     refetchOnMount: 'always',
-    queryFn: ({ signal }) =>
-      data.api.json(
-        path,
-        (value) => {
-          if (destination.kind === 'board') {
-            const board = decodeBoardAccess(value);
-            return board.id === boardId && board.capabilities.canReadBoard;
-          }
-          const card = value as { id?: unknown; boardId?: unknown } | null;
-          return card?.id === destination.cardId && card?.boardId === boardId;
-        },
-        { identity, signal, resourceKey: key, expectedStatus: 200, retries: 0 },
-      ),
+    async queryFn({ signal }) {
+      const homeKey = queryKeys.home(identity);
+      try {
+        return await data.api.json(
+          path,
+          (value) => {
+            if (destination.kind === 'board') {
+              const board = decodeBoardAccess(value);
+              return board.id === boardId && board.capabilities.canReadBoard;
+            }
+            const card = value as { id?: unknown; boardId?: unknown } | null;
+            return card?.id === destination.cardId && card?.boardId === boardId;
+          },
+          {
+            identity,
+            signal,
+            resourceKey: key,
+            expectedStatus: 200,
+            retries: 0,
+          },
+        );
+      } catch (error) {
+        if (error instanceof ApiError && [403, 404].includes(error.status)) {
+          // Returning to Home must not flash a preview after an authoritative
+          // denial, even while MOB-06 is still checking broader Board access.
+          data.evict(identity, [homeKey]);
+          void data.invalidateHints(identity, [homeKey]).catch(() => undefined);
+        }
+        throw error;
+      }
+    },
   });
   const title = destination.kind === 'board' ? 'Board detail' : 'Card detail';
   if (access.isError || access.isPaused || access.data === false)

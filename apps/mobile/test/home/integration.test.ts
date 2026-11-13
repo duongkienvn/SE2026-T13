@@ -55,7 +55,13 @@ test('the verified bearer owns the Home read, and a late response cannot repopul
     emptyHome(),
   );
   await assert.rejects(
-    options.queryFn!({ signal: new AbortController().signal } as never),
+    async () =>
+      options.queryFn!({
+        client: env.data.queryClient,
+        queryKey: options.queryKey,
+        signal: new AbortController().signal,
+        meta: undefined,
+      }),
     { kind: 'session-changed' },
   );
   assert.equal(
@@ -203,5 +209,24 @@ test('unexpected Home response becomes a safe invalid-response error', async (t)
       error instanceof ApiError &&
       error.kind === 'invalid-response' &&
       !JSON.stringify(error).includes('private-body'),
+  );
+});
+test('failed first socket handshake leaves the authorized Home snapshot available', async (t) => {
+  const env = await integration();
+  t.after(() => env.dispose());
+  env.respond((url) =>
+    url.endsWith(suffix) ? Promise.resolve(ok(fixture())) : null,
+  );
+  const options = homeOptions(env.data, env.identity);
+  await env.data.queryClient.fetchQuery(options);
+  env.socket.server('connect_error', new Error('Socket unavailable'));
+  await flush();
+  assert.deepEqual(
+    env.data.queryClient.getQueryData(options.queryKey),
+    fixture(),
+  );
+  assert.equal(
+    env.requests.filter((request) => request.url.endsWith(suffix)).length,
+    1,
   );
 });
