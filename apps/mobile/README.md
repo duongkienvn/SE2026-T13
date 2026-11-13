@@ -16,7 +16,7 @@ pnpm dev:mobile:android
 The root wrappers build `@kanban/shared` before starting Metro. For direct commands
 in this package, first run `pnpm --filter @kanban/shared build` at the root.
 
-`pnpm build` checks mobile TypeScript; native bundles are explicit opt-in commands.
+`pnpm build` checks mobile TypeScript and exports an Android JS bundle; native builds are explicit opt-in commands.
 MOB-05 adds the SecureStore-backed session owner (`src/infrastructure/auth/`);
 its contract for navigation, REST/Query and realtime is in the
 [session guide](../../docs/mobile/session.md). The REST/Query
@@ -24,3 +24,6 @@ foundation now shares one transport with the session owner; see the
 [network and MOB-06 integration guide](../../docs/mobile/network.md).
 MOB-03 supplies the navigation shell. Feature screens, auth forms, realtime and
 release signing remain in their respective issues.
+
+See the [testing and local APK guide](../../docs/mobile/testing.md) for harness,
+CI and Android validation instructions.

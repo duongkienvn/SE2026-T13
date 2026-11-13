@@ -1,9 +1,6 @@
 # Kanvexa Mobile development — Windows and Android
 
-This guide covers **MOB-01** only. The app renders the authentic Kanvexa logo,
-wordmark and “Mobile foundation” text. It makes no network requests. Product UI,
-auth, transport/session infrastructure, navigation stacks/tabs and EAS profiles
-remain in their respective roadmap issues. See the
+This guide describes the current mobile foundation. Navigation, session and REST/Query infrastructure now exist; feature screens remain separately scoped. See the
 [MOB-01 record](../tasks/frontend/mob-01-expo-foundation.md) for verification evidence.
 
 ## Pinned foundation
@@ -54,7 +51,7 @@ Never put JWTs, passwords, server keys, signing credentials or other secrets the
 
 ## Android emulator on Windows
 
-1. Install Android Studio. In SDK Manager install Android SDK Platform **37**,
+1. Install Android Studio. In SDK Manager install Android SDK Platform **37.0**,
    Android SDK Build-Tools, SDK Platform-Tools, Android Emulator and an API 37
    Google APIs emulator image suitable for your machine. Enable hardware
    virtualization in firmware and the Windows hypervisor support required by the
@@ -68,7 +65,7 @@ Never put JWTs, passwords, server keys, signing credentials or other secrets the
    compatible Android client on the emulator; older SDK builds are also available
    from [Expo Go downloads](https://expo.dev/go).
 5. At the repository root run `pnpm dev:mobile:android`, or `pnpm dev:mobile` and
-   press **a**. Expect the logo, “Kanvexa” and “Mobile foundation”.
+   press **a**. Reload JavaScript with **r** in the Metro terminal.
 
 For the current PowerShell session only, SDK paths can be configured as follows:
 
@@ -133,11 +130,8 @@ Run these from the repository root:
 | `pnpm lint` / `pnpm test` / `pnpm build` / `pnpm format:check` | Existing root checks; mobile test/type checking included                           |
 
 `pnpm -r build` topologically builds `@kanban/shared`, then mobile's `build` runs
-**type checking only**. Native bundles/Gradle/Xcode/EAS never run implicitly in
-root builds. `pnpm -r test` includes the Node/Metro compatibility smoke, rather
-than installing a component/E2E runner reserved for MOB-07. Existing CI commands,
-permissions, jobs and CD service matrix stay unchanged; no signing secrets or
-native tooling are required by the quality job. Existing Dockerfiles explicitly
+**type checking and an Android JS bundle**. Gradle/Xcode/EAS never run implicitly in
+root builds. `pnpm -r test` includes Node/Metro smoke and Jest component tests. CI also exports an Android JS bundle; no signing secrets or native SDK are required by the quality job. See [testing and local APK builds](testing.md). Existing Dockerfiles explicitly
 copy/build only backend/frontend/shared and use filtered installs.
 
 Run builds that rewrite `packages/shared/dist` **before**, not concurrently with,
@@ -197,6 +191,5 @@ Windows cannot compile/run an iOS simulator. Use a Mac with compatible Xcode for
 `ios:native` / the simulator, or a separately authorized cloud workflow later.
 Development package/bundle IDs `tech.kanvexa.mobile.dev` and scheme `kanvexa-dev`
 are local development identifiers. Release IDs, universal/app links, native icon
-exports (including opaque iOS/adaptive Android variants), signing and EAS profiles
-need their later release issue decisions. The in-app PNG is a byte-identical copy
+exports (including opaque iOS/adaptive Android variants), and signing need their later release issue decisions. The in-app PNG is a byte-identical copy
 of the supplied transparent logo; it is not redrawn or recolored.
