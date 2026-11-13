@@ -119,37 +119,43 @@ export function createWorkspaceApi(
     );
   }
 
-  return {
-    personal,
-    async directory(signal: AbortSignal) {
-      const pages: WorkspaceSummary[][] = [];
-      const first = await readPage(
+  async function readDirectory(signal: AbortSignal) {
+    const read = (page: number) =>
+      readPage(
         '/workspaces',
         decodeWorkspace,
-        1,
+        page,
         workspacePageLimit,
         {},
         signal,
         directoryKey,
       );
-      pages.push(first.data);
-      // Bound the walk by the first snapshot. If rows disappear while walking,
-      // the later response can shorten it; arrivals are picked up on refresh.
-      let end = first.meta.totalPages;
-      for (let page = 2; page <= end; page++) {
-        const result = await readPage(
-          '/workspaces',
-          decodeWorkspace,
-          page,
-          workspacePageLimit,
-          {},
-          signal,
-          directoryKey,
-        );
-        pages.push(result.data);
-        end = Math.min(end, result.meta.totalPages);
+    const first = await read(1);
+    const pages: WorkspaceSummary[][] = [first.data];
+    for (let page = 2; page <= first.meta.totalPages; page++) {
+      const result = await read(page);
+      // Each backend page has its own snapshot. An offset can shift between
+      // reads, so a change in totals invalidates the entire traversal.
+      if (
+        result.meta.total !== first.meta.total ||
+        result.meta.totalPages !== first.meta.totalPages
+      )
+        return null;
+      pages.push(result.data);
+    }
+    return deduplicatePages(pages);
+  }
+
+  return {
+    personal,
+    async directory(signal: AbortSignal) {
+      const result =
+        (await readDirectory(signal)) ?? (await readDirectory(signal));
+      if (!result) {
+        throw new ApiError('invalid-response', {
+          code: 'WORKSPACE_DIRECTORY_CHANGED',
+        });
       }
-      const result = deduplicatePages(pages);
       if (!result.length) result.push(await personal(signal, directoryKey));
       return result.sort(
         (a, b) =>

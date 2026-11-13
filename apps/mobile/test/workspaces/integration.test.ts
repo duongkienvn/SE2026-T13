@@ -98,6 +98,113 @@ test('empty discovery uses one authenticated Personal recovery, cached within th
   );
 });
 
+for (const change of ['decrease', 'increase'] as const) {
+  test(`directory restarts after a total ${change} shifts the offset boundary`, async (t) => {
+    const env = await integration();
+    t.after(env.dispose);
+    const original = [
+      team,
+      ...Array.from({ length: 39 }, (_, i) => workspace(i + 10)),
+      personal,
+    ];
+    const latest =
+      change === 'decrease' ? original.slice(1) : [workspace(999), ...original];
+    // Preserve an overlapping ID in the server result after the restart.
+    latest[25] = latest[3]!;
+    const calls: string[] = [];
+    env.respond((url) => {
+      if (!listCall(url)) return null;
+      calls.push(new URL(url).searchParams.get('page')!);
+      return Promise.resolve(
+        pageAt(url, calls.length === 1 ? original : latest),
+      );
+    });
+    const result = await createWorkspaceApi(
+      env.data.api,
+      env.identity,
+    ).directory(signal());
+    assert.deepEqual(calls, [
+      '1',
+      '2',
+      '1',
+      '2',
+      ...(change === 'increase' ? ['3'] : []),
+    ]);
+    assert.deepEqual(result, [
+      personal,
+      ...new Map(
+        latest
+          .filter((row) => row.id !== personal.id)
+          .map((row) => [row.id, row]),
+      ).values(),
+    ]);
+  });
+}
+
+test('repeated total changes fail closed and preserve the last complete authorized directory', async (t) => {
+  const env = await integration();
+  t.after(env.dispose);
+  const rows = [
+    team,
+    personal,
+    ...Array.from({ length: 20 }, (_, i) => workspace(i + 10)),
+  ];
+  const options = workspaceDirectoryOptions(env.data, env.identity);
+  const key = queryKeys.workspace(env.identity, team.id);
+  env.data.queryClient.setQueryData(options.queryKey, [personal, team]);
+  env.data.queryClient.setQueryData(key, team);
+  const calls: string[] = [];
+  env.respond((url) => {
+    if (!listCall(url)) return null;
+    const number = new URL(url).searchParams.get('page')!;
+    calls.push(number);
+    return Promise.resolve(pageAt(url, number === '1' ? rows : rows.slice(1)));
+  });
+  await assert.rejects(
+    env.data.queryClient.fetchQuery({ ...options, staleTime: 0 }),
+    {
+      kind: 'invalid-response',
+      code: 'WORKSPACE_DIRECTORY_CHANGED',
+    },
+  );
+  assert.deepEqual(calls, ['1', '2', '1', '2']);
+  assert.deepEqual(env.data.queryClient.getQueryData(options.queryKey), [
+    personal,
+    team,
+  ]);
+  assert.equal(env.data.queryClient.getQueryData(key), team);
+  assert.equal(env.data.resources.readable(key), true);
+});
+
+test('cancellation stops an in-progress directory restart', async (t) => {
+  const env = await integration();
+  t.after(env.dispose);
+  const controller = new AbortController();
+  const restart = deferred<Response>();
+  const rows = [
+    team,
+    personal,
+    ...Array.from({ length: 20 }, (_, i) => workspace(i + 10)),
+  ];
+  let calls = 0;
+  env.respond((url) => {
+    if (!listCall(url)) return null;
+    calls++;
+    if (calls === 3) return restart.promise;
+    return Promise.resolve(pageAt(url, calls === 1 ? rows : rows.slice(1)));
+  });
+  const result = assert.rejects(
+    createWorkspaceApi(env.data.api, env.identity).directory(controller.signal),
+    { kind: 'aborted' },
+  );
+  await flush();
+  assert.equal(calls, 3);
+  controller.abort();
+  restart.resolve(pageAt('https://test.invalid/?page=1&limit=20', rows));
+  await result;
+  assert.equal(calls, 3);
+});
+
 test('decoders keep server capabilities and withhold private roster counts', () => {
   assert.equal(decodeWorkspace({ ...team, canManage: true }).canManage, true);
   assert.equal(
