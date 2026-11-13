@@ -263,6 +263,8 @@ test('large directory is fully selectable and Board pagination remains explicit'
 });
 
 test('pull refresh surfaces recoverable directory errors and retains only verified same-session data', async () => {
+  let now = Date.now();
+  const clock = jest.spyOn(Date, 'now').mockImplementation(() => now);
   let error = 0;
   const env = await setup({
     override: (url) =>
@@ -271,6 +273,7 @@ test('pull refresh surfaces recoverable directory errors and retains only verifi
   try {
     await screen.findByText('Personal planning');
     for (const status of [429, 503]) {
+      now += 1_000;
       error = status;
       await fireEvent(screen.getByTestId('workspace-refresh'), 'touchEnd');
       await screen.findByText(
@@ -294,6 +297,7 @@ test('pull refresh surfaces recoverable directory errors and retains only verifi
     await act(() => onlineManager.setOnline(true));
   } finally {
     await env.dispose();
+    clock.mockRestore();
   }
 });
 
@@ -318,5 +322,32 @@ test('deep Workspace screen verifies detail before fetching overview and denies 
   } finally {
     await env.dispose();
     mockPath = '/boards';
+  }
+});
+test('a selected Workspace denied during its Board request falls back without exposing the old selection', async () => {
+  let resolveDenied;
+  const held = new Promise((resolve) => {
+    resolveDenied = resolve;
+  });
+  const env = await setup({
+    override: (url) =>
+      url.pathname === '/api/workspaces/' + b.id + '/boards' ? held : null,
+  });
+  try {
+    await screen.findByText('Personal planning');
+    await switchTo(/Select Design and research/);
+    await screen.findByRole('progressbar', { name: 'Loading boards' });
+    expect(screen.queryByText('Personal planning')).toBeNull();
+    await act(() => resolveDenied(fail(403)));
+    await screen.findByText('Personal planning');
+    expect((await trigger()).props.accessibilityLabel).toMatch(
+      /Personal Workspace/,
+    );
+    await fireEvent.press(await trigger());
+    expect(
+      screen.queryByRole('button', { name: /Select Design and research/ }),
+    ).toBeNull();
+  } finally {
+    await env.dispose();
   }
 });

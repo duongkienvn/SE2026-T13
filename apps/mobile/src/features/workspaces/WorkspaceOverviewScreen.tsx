@@ -73,7 +73,7 @@ function VerifiedOverview({
     staleTime: 0,
     refetchOnMount: 'always',
   });
-  const confirmed = detail.isFetchedAfterMount && detail.isSuccess;
+  const confirmed = detail.isFetchedAfterMount && !!detail.data;
   const overview = useQuery({
     ...workspaceOverviewOptions(data, identity, id),
     enabled: active && confirmed && readable,

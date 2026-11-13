@@ -27,7 +27,6 @@ import {
   useTheme,
 } from '../../ui';
 import { useSelectedWorkspace } from './WorkspaceSelection';
-import { workspaceDirectoryFilters } from './api';
 import { WorkspaceBoards } from './WorkspaceBoards';
 import { WorkspaceSelector } from './WorkspaceSelector';
 import { workspaceBoardOptions, workspaceOverviewOptions } from './queries';
@@ -59,6 +58,7 @@ function VerifiedBoards() {
     selected,
     selectedId,
     setSelectedId,
+    isCurrentSelection,
     workspaces,
   } = useSelectedWorkspace(active);
   useEffect(() => {
@@ -83,12 +83,7 @@ function VerifiedBoards() {
     setRefreshing(true);
     try {
       const latest = await directory.refetch({ cancelRefetch: false });
-      if (
-        !latest.isSuccess ||
-        !selectedId ||
-        !latest.data.some((row) => row.id === selectedId) ||
-        !sameIdentity(identity, data.getIdentity())
-      )
+      if (!latest.isSuccess || !selectedId || !isCurrentSelection(selectedId))
         return;
       const boardKey = workspaceBoardOptions(
         data,
@@ -182,6 +177,7 @@ function VerifiedBoards() {
             picker={picker}
             setPicker={setPicker}
             workspaces={workspaces ?? []}
+            isCurrentSelection={isCurrentSelection}
             select={(id) => {
               if (setSelectedId(id)) setPicker(false);
             }}
@@ -201,6 +197,7 @@ function SelectedWorkspace({
   setPicker,
   workspaces,
   select,
+  isCurrentSelection,
   navigate,
 }: {
   selected: NonNullable<ReturnType<typeof useSelectedWorkspace>['selected']>;
@@ -212,18 +209,15 @@ function SelectedWorkspace({
     ReturnType<typeof useSelectedWorkspace>['workspaces']
   >;
   select: (id: string) => void;
+  isCurrentSelection: ReturnType<
+    typeof useSelectedWorkspace
+  >['isCurrentSelection'];
   navigate: (path: ReturnType<typeof destinationPath>) => void;
 }) {
   const data = useMobileData();
   const options = workspaceOverviewOptions(data, identity, selected.id);
   const overview = useQuery({ ...options, enabled: active });
-  const directory = queryKeys.workspaces(identity, workspaceDirectoryFilters);
-  const safe = () =>
-    sameIdentity(identity, data.getIdentity()) &&
-    data.resources.readable(queryKeys.workspace(identity, selected.id)) &&
-    data.queryClient
-      .getQueryData<typeof workspaces>(directory)
-      ?.some((row) => row.id === selected.id);
+  const safe = () => active && isCurrentSelection(selected.id);
   return (
     <>
       <WorkspaceSelector

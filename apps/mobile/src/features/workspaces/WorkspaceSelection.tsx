@@ -119,6 +119,17 @@ export function useSelectedWorkspace(active = true) {
     }
   }
 
+  function isCurrentSelection(id: ResourceId) {
+    return (
+      sameIdentity(identity, data.getIdentity()) &&
+      resolveWorkspace(
+        data.queryClient.getQueryData(options.queryKey),
+        currentPreference(),
+        readable,
+      )?.id === id
+    );
+  }
+
   function setSelectedId(value: string): boolean {
     const id = workspaceId(value);
     if (!id || !sameIdentity(identity, data.getIdentity()) || !readable(id))
@@ -137,6 +148,7 @@ export function useSelectedWorkspace(active = true) {
     selectedId: selected?.id ?? null,
     workspaces: directory.data?.filter((row) => readable(row.id)),
     setSelectedId,
+    isCurrentSelection,
     directory,
   };
 }

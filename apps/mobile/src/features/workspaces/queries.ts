@@ -5,6 +5,7 @@ import type { MobileDataLayer } from '../../infrastructure/query/data-layer.ts';
 import { queryKeys } from '../../infrastructure/query/keys.ts';
 import { nextPage } from '../../infrastructure/query/pagination.ts';
 import type { ResourceId } from '../../navigation/routes.ts';
+import type { WorkspaceSummary } from './decoder.ts';
 import {
   createWorkspaceApi,
   workspaceDirectoryFilters,
@@ -44,10 +45,7 @@ export function workspaceDirectoryOptions(
       current();
       if (signal.aborted) throw new ApiError('aborted');
       const visible = new Set(rows.map((workspace) => workspace.id));
-      const previous =
-        data.queryClient.getQueryData<
-          Awaited<ReturnType<typeof api.directory>>
-        >(key);
+      const previous = data.queryClient.getQueryData<WorkspaceSummary[]>(key);
       for (const workspace of previous ?? []) {
         if (!visible.has(workspace.id))
           evictWorkspaceResources(data, identity, workspace.id);
@@ -79,7 +77,18 @@ function evictWorkspace(
 ) {
   evictWorkspaceResources(data, identity, id);
   const directory = queryKeys.workspaces(identity);
-  data.evict(identity, [directory]);
+  // The denial identifies one Workspace. Drop its row synchronously so an
+  // already verified Personal/Team fallback stays usable during reconciliation.
+  const key = queryKeys.workspaces(identity, workspaceDirectoryFilters);
+  const previous = data.queryClient.getQueryData<WorkspaceSummary[]>(key);
+  data.cancelResourceRequests(directory);
+  void data.queryClient.cancelQueries({ queryKey: directory });
+  data.resources.bumpKey(directory);
+  if (previous) {
+    const remaining = previous.filter((row) => row.id !== id);
+    if (remaining.length) data.queryClient.setQueryData(key, remaining);
+    else data.evict(identity, [key]);
+  }
   void data.invalidateHints(identity, [directory]).catch(() => undefined);
 }
 
