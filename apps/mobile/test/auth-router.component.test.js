@@ -135,6 +135,13 @@ test('real auth adapters and session owner resume a canonical return target, iso
   const data = createMobileDataLayer(manager, http),
     api = createAuthApi(http),
     adapter = createNavigationSessionAdapter(manager);
+  data.queryClient.setDefaultOptions({
+    ...data.queryClient.getDefaultOptions(),
+    queries: {
+      ...data.queryClient.getDefaultOptions().queries,
+      gcTime: Infinity,
+    },
+  });
   const routes = {
     _layout: () => (
       <SessionProvider manager={manager}>

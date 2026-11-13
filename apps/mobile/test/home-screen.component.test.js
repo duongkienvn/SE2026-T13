@@ -115,6 +115,13 @@ async function setup(fetch, { authenticated = true, theme = 'light' } = {}) {
     fetch,
   });
   const layer = createMobileDataLayer(manager, transport);
+  layer.queryClient.setDefaultOptions({
+    ...layer.queryClient.getDefaultOptions(),
+    queries: {
+      ...layer.queryClient.getDefaultOptions().queries,
+      gcTime: Infinity,
+    },
+  });
   if (authenticated) await manager.establishSession(loginResponse(USER_A));
   const view = await render(
     <SessionProvider manager={manager}>
