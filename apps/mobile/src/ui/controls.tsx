@@ -1,4 +1,4 @@
-import { useState, type ReactElement, type ReactNode } from 'react';
+import { useState, type ReactElement, type ReactNode, type Ref } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -21,7 +21,10 @@ export type ButtonProps = {
   loading?: boolean;
 } & (
   | { variant: 'icon'; icon: ReactElement }
-  | { variant?: 'primary' | 'secondary' | 'destructive'; icon?: ReactNode }
+  | {
+      variant?: 'primary' | 'secondary' | 'destructive' | 'link';
+      icon?: ReactNode;
+    }
 );
 
 export function Button({
@@ -40,13 +43,17 @@ export function Button({
       ? c.primary
       : variant === 'destructive'
         ? c.danger
-        : c.surface;
+        : variant === 'link'
+          ? 'transparent'
+          : c.surface;
   const foreground =
     variant === 'primary'
       ? c.onPrimary
       : variant === 'destructive'
         ? c.surface
-        : c.text;
+        : variant === 'link'
+          ? c.primaryPressed
+          : c.text;
   return (
     <Pressable
       accessibilityRole="button"
@@ -95,6 +102,7 @@ export function Button({
 }
 
 type FieldProps = TextInputProps & {
+  ref?: Ref<TextInput>;
   label: string;
   error?: string;
   hint?: string;
@@ -168,9 +176,60 @@ export function SearchField(props: FieldProps) {
 export function PasswordField({
   showPasswordLabel = 'Show password',
   hidePasswordLabel = 'Hide password',
+  inlineToggle,
   ...props
-}: FieldProps & { showPasswordLabel?: string; hidePasswordLabel?: string }) {
+}: FieldProps & {
+  showPasswordLabel?: string;
+  hidePasswordLabel?: string;
+  inlineToggle?: boolean;
+}) {
   const [visible, setVisible] = useState(false);
+  const c = useTheme();
+  const toggle = (
+    <Button
+      variant="icon"
+      label={visible ? hidePasswordLabel : showPasswordLabel}
+      onPress={() => setVisible(!visible)}
+      icon={
+        <View
+          accessible={false}
+          style={{
+            width: 22,
+            height: 14,
+            borderRadius: 10,
+            borderWidth: 2,
+            borderColor: c.textSecondary,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <View
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: c.textSecondary,
+            }}
+          />
+          {visible && (
+            <View
+              style={{
+                position: 'absolute',
+                width: 24,
+                height: 2,
+                backgroundColor: c.textSecondary,
+                transform: [{ rotate: '-40deg' }],
+              }}
+            />
+          )}
+        </View>
+      }
+    />
+  );
+  if (inlineToggle)
+    return (
+      <TextField {...props} secureTextEntry={!visible} trailing={toggle} />
+    );
   return (
     <View>
       <TextField {...props} secureTextEntry={!visible} />
