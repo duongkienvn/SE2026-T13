@@ -14,28 +14,23 @@ import { SessionProvider } from '../src/navigation/session-context';
 import { RootStack } from '../src/navigation/root-stack';
 import Index from '../src/app/index';
 import PrivateLayout from '../src/app/(private)/_layout';
-import SignIn from '../src/app/sign-in';
+import { PublicScaffold } from '../src/navigation/public-scaffold';
 import { redirectSystemPath } from '../src/app/+native-intent';
-import Card from '../src/app/(private)/boards/[boardId]/cards/[cardId]';
+import { ResourceBoundary } from '../src/navigation/resource-boundary';
 
 const cardPath =
   '/boards/01234567-89ab-cdef-0123-456789abcdef/cards/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 
-test('the Kanvexa preview APK opens its shell without creating an authenticated session', async () => {
+test('the retired preview flag cannot open the protected shell', async () => {
   const previous = process.env.EXPO_PUBLIC_NAVIGATION_PREVIEW;
   process.env.EXPO_PUBLIC_NAVIGATION_PREVIEW = '1';
   const adapter = createAdapter({ status: 'unauthenticated' });
   try {
     await renderRouter(routesFor(adapter), { initialUrl: '/' });
-    await waitFor(() => expect(screen).toHavePathname('/home'));
-    for (const path of ['/tasks', '/boards', '/inbox']) {
-      await act(() => router.navigate(path));
-      await waitFor(() => expect(screen).toHavePathname(path));
-    }
+    await waitFor(() => expect(screen).toHavePathname('/sign-in'));
     await act(() => router.push('/search'));
-    await waitFor(() => expect(screen).toHavePathname('/search'));
-    await act(() => router.back());
-    await waitFor(() => expect(screen).toHavePathname('/inbox'));
+    await waitFor(() => expect(screen).toHavePathname('/sign-in'));
+    expect(screen.queryByText('Search content')).toBeNull();
     expect(adapter.getSnapshot()).toEqual({ status: 'unauthenticated' });
     await act(() => router.push(cardPath));
     await waitFor(() => expect(screen).toHavePathname('/sign-in'));
@@ -92,7 +87,7 @@ function routesFor(adapter) {
       </SessionProvider>
     ),
     index: Index,
-    'sign-in': SignIn,
+    'sign-in': () => <PublicScaffold title="Sign in" />,
     'sign-up': () => <Text>Sign up</Text>,
     'forgot-password': () => <Text>Forgot password</Text>,
     'reset-password': () => <Text>Reset password</Text>,
@@ -115,7 +110,11 @@ function routesFor(adapter) {
     '(private)/(tabs)/inbox': () => <Text>Inbox content</Text>,
     '(private)/search': () => <Text>Search content</Text>,
     '(private)/invitation': () => <Text>Invitation content</Text>,
-    '(private)/boards/[boardId]/cards/[cardId]': Card,
+    // This suite supplies only a navigation session, with no REST access grant.
+    // The auth router integration exercises the actual Board and Card entries.
+    '(private)/boards/[boardId]/cards/[cardId]': () => (
+      <ResourceBoundary access="unavailable" />
+    ),
   };
 }
 

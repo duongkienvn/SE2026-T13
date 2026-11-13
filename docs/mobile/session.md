@@ -49,7 +49,7 @@ session.getAccessCredential(); // { accessToken, generation } | null — call pe
 session.isCurrent(generation); // drop responses from older sessions
 session.handleUnauthorized(generation); // a 401 seen by a request with this tag
 session.handleSecurityInvalidation(generation); // after a server-confirmed password/email change
-session.establishSession(loginResponseData); // MOB-08/09 after a successful login API call
+session.establishSession(loginResponseData, signal); // MOB-08/09; optional AbortSignal
 session.logout(); // local teardown first, then best-effort POST /auth/logout
 session.retryVerification(); // Retry button for offline-uncertain
 session.handleNetworkRestored(); // MOB-04: call when the network comes back
@@ -59,6 +59,12 @@ session.addLifecycleListener({ onSessionEnd, onSessionStart });
 `SessionProvider` (mounted in `src/app/_layout.tsx`) starts the restore once and
 re-checks expiry on every return to the foreground. `SessionGate` renders its
 children only while authenticated and remounts them when `generation` changes.
+
+MOB-08 adds optional establishment cancellation. Leaving a pending login can
+cancel that credential's verification/storage without affecting a newer generation
+or an already authenticated session. See the
+[native auth implementation record](../tasks/frontend/mob-08-native-auth.md) for
+public forms and the separate trusted email-link intake.
 
 ## What each owner plugs in
 
@@ -79,12 +85,13 @@ port still takes an explicit bearer and never recursively calls session guards.
   is true only for `authenticated`, `isResolving` for the two loading states,
   `canRetry` for `offline-uncertain`. Reset the protected stack in
   `onSessionEnd`. The pending deep-link target stays MOB-03's.
-- **MOB-06 realtime:** connect in `onSessionStart` (or when a subscriber needs
-  it) with a token from `getAccessCredential()` taken at each connect or
-  reconnect. Disconnect and drop listeners/rooms in `onSessionEnd`. Ignore any
-  socket callback whose captured `generation` is no longer current. A
-  `connect_error` that means auth failure should call
-  `handleUnauthorized(generation)`.
+- **MOB-06 realtime:** the [native realtime owner](realtime.md) connects only
+  for verified authentication, foreground and online state. It reads
+  `getAccessCredential()` at every handshake, verifies `/users/me` after a
+  connection gap and disconnects/drops listeners and rooms in `onSessionEnd`.
+  Callback epochs also check session generation. Only explicit UNAUTHORIZED
+  handshake/room errors or REST 401 call `handleUnauthorized(generation)`;
+  generic server disconnects preserve credentials.
 
 `onSessionEnd` runs before the new state is published, so nothing from the old
 session is visible when the next screen renders.

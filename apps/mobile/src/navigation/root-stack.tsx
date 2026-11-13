@@ -62,19 +62,19 @@ export function RootStack() {
         <Stack.Screen name="sign-in" />
         <Stack.Screen
           name="sign-up"
-          options={{ headerShown: true, title: '' }}
+          options={{ headerShown: false, title: '' }}
         />
         <Stack.Screen
           name="forgot-password"
-          options={{ headerShown: true, title: '' }}
+          options={{ headerShown: false, title: '' }}
         />
         <Stack.Screen
           name="reset-password"
-          options={{ headerShown: true, title: '' }}
+          options={{ headerShown: false, title: '' }}
         />
         <Stack.Screen
           name="verify-email"
-          options={{ headerShown: true, title: '' }}
+          options={{ headerShown: false, title: '' }}
         />
       </Stack.Protected>
     </Stack>

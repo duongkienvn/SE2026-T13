@@ -52,7 +52,7 @@ export async function setup(
           );
     }) as typeof fetch,
   });
-  const layer = createMobileDataLayer(manager, transport);
+  const layer = createMobileDataLayer(manager, transport, time);
   layer.queryClient.setDefaultOptions({
     ...layer.queryClient.getDefaultOptions(),
     queries: {

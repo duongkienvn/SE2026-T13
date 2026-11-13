@@ -1,4 +1,9 @@
-import { PublicScaffold } from '../navigation/public-scaffold';
-export default function ForgotPassword() {
-  return <PublicScaffold title="Forgot password" header />;
+import { ForgotPasswordScreen } from '../features/auth/RecoveryScreens';
+import { PublicAuthGate } from '../features/auth/runtime';
+export default function AuthRoute() {
+  return (
+    <PublicAuthGate>
+      <ForgotPasswordScreen />
+    </PublicAuthGate>
+  );
 }

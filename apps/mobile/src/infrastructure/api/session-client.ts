@@ -1,3 +1,6 @@
+import { partialMatchKey } from '@tanstack/react-query';
+import { keyBelongsTo, type PrivateQueryKey } from '../query/keys.ts';
+import type { ResourceAccess } from '../query/resource-access.ts';
 import type {
   BinaryResult,
   Decoder,
@@ -15,6 +18,8 @@ export interface SessionIdentity {
 }
 export type SessionRequestOptions = Omit<RequestOptions, 'accessToken'> & {
   readonly identity?: SessionIdentity;
+  /** Bind resource HTTP work to the same key used by its query/mutation. */
+  readonly resourceKey?: PrivateQueryKey;
 };
 export interface SessionHttpClient {
   envelope<T>(
@@ -73,11 +78,12 @@ export function sameIdentity(
 export function createSessionHttpClient(
   http: HttpClient,
   manager: SessionManager,
+  resources?: ResourceAccess,
 ) {
-  const pending = new Set<AbortController>();
+  const pending = new Map<AbortController, PrivateQueryKey | undefined>();
   let disposed = false;
   function cancelRequests() {
-    for (const controller of pending) controller.abort();
+    for (const controller of pending.keys()) controller.abort();
     pending.clear();
   }
   const unbind = manager.addLifecycleListener({ onSessionEnd: cancelRequests });
@@ -94,11 +100,19 @@ export function createSessionHttpClient(
     const credential = manager.getAccessCredential();
     if (!credential || !sameIdentity(identity, currentIdentity(manager)))
       throw new ApiError('session-changed');
+    if (options.resourceKey && !keyBelongsTo(options.resourceKey, identity))
+      throw new ApiError('session-changed');
+    const resourceCurrent = options.resourceKey
+      ? resources?.capture(
+          options.resourceKey,
+          (options.method ?? 'GET') !== 'GET',
+        )
+      : undefined;
     const controller = new AbortController();
     const cancel = () => controller.abort();
     options.signal?.addEventListener('abort', cancel, { once: true });
     if (options.signal?.aborted) cancel();
-    pending.add(controller);
+    pending.set(controller, options.resourceKey);
     try {
       const value = await operation({
         ...options,
@@ -107,12 +121,24 @@ export function createSessionHttpClient(
       });
       if (disposed || !sameIdentity(identity, currentIdentity(manager)))
         throw new ApiError('session-changed');
+      resourceCurrent?.();
       return value;
     } catch (error) {
       if (disposed || !sameIdentity(identity, currentIdentity(manager)))
         throw new ApiError('session-changed');
+      if (
+        error instanceof ApiError &&
+        [403, 404].includes(error.status) &&
+        options.resourceKey
+      )
+        // Resource failures request verification; they do not prove Board loss.
+        resources?.denied(options.resourceKey);
       if (error instanceof ApiError && error.status === 401)
         manager.handleUnauthorized(identity.generation);
+      else if (!(
+        error instanceof ApiError && [403, 404].includes(error.status)
+      ))
+        resourceCurrent?.();
       throw error;
     } finally {
       pending.delete(controller);
@@ -135,6 +161,11 @@ export function createSessionHttpClient(
   return {
     client,
     cancelRequests,
+    cancelResourceRequests(key: PrivateQueryKey) {
+      for (const [controller, resourceKey] of pending)
+        if (resourceKey && partialMatchKey(resourceKey, key))
+          controller.abort();
+    },
     dispose() {
       disposed = true;
       cancelRequests();

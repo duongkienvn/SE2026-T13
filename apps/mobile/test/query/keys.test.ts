@@ -27,6 +27,10 @@ test('query identity includes user, generation, resource, filters and pagination
   ])
     assert.notEqual(hashKey(first), hashKey(other));
   assert.ok(keyBelongsTo(queryKeys.card(a, 'b', 'c'), a));
+  assert.equal(
+    hashKey(queryKeys.card(a, 'ABCDEF', 'ABCDEF')),
+    hashKey(queryKeys.card(a, 'abcdef', 'abcdef')),
+  );
   assert.ok(
     !keyBelongsTo(queryKeys.card(a, 'b', 'c'), { ...a, generation: 2 }),
   );

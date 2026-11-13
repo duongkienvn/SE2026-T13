@@ -1,4 +1,1 @@
-import { PublicScaffold } from '../navigation/public-scaffold';
-export default function SignIn() {
-  return <PublicScaffold title="Sign in" />;
-}
+export { SignInScreen as default } from '../features/auth/SignInScreen';

@@ -24,22 +24,29 @@ export function bindQueryLifecycle(
   manager: SessionManager,
   app: NativeAppState,
   network: NativeNetwork,
+  onEnvironment?: (state: { foreground: boolean; online: boolean }) => void,
 ): () => void {
   let disposed = false;
   let receivedEvent = false;
+  let foreground = false;
+  let connected = false;
+  const notify = () => onEnvironment?.({ foreground, online: connected });
   function focus(state: string | null | undefined) {
     if (disposed) return;
     if (state === 'active') manager.checkExpiry();
-    focusManager.setFocused(state === 'active');
+    foreground = state === 'active';
+    focusManager.setFocused(foreground);
+    notify();
   }
   function online(state: NetworkState) {
     if (disposed) return;
     const wasOnline = onlineManager.isOnline();
-    const connected =
+    connected =
       state.isConnected !== false && state.isInternetReachable !== false;
     manager.checkExpiry();
     onlineManager.setOnline(connected);
     if (!wasOnline && connected) manager.handleNetworkRestored();
+    notify();
   }
   focus(app.currentState);
   const appSubscription = app.addEventListener('change', focus);
@@ -57,6 +64,7 @@ export function bindQueryLifecycle(
     });
   return () => {
     disposed = true;
+    onEnvironment?.({ foreground: false, online: false });
     appSubscription.remove();
     networkSubscription.remove();
     focusManager.setFocused(undefined);
