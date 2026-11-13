@@ -220,7 +220,7 @@ test('pull refresh reuses an in-flight request, retains content on 503, then rec
     await pull();
     await pull();
     expect(fetch).toHaveBeenCalledTimes(2);
-    expect(env.refresh()).toBeBusy();
+    await waitFor(() => expect(env.refresh()).toBeBusy());
     expect(screen.getByText('Review release notes')).toBeTruthy();
     await act(() => settle(response(null, 503)));
     await screen.findByText(
