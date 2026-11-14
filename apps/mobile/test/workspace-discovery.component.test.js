@@ -138,7 +138,11 @@ async function setup({
     if (endpoint === 'boards')
       return envelope(
         page(
-          boards.filter((item) => item.workspaceId === id),
+          boards.filter(
+            (item) =>
+              item.workspaceId === id &&
+              (url.searchParams.get('starred') !== 'true' || item.isStarred),
+          ),
           Number(url.searchParams.get('page')),
           20,
         ),
@@ -197,10 +201,12 @@ test('Board search, status and sort are sent to the server', async () => {
     override: (url) => {
       if (url.pathname !== `/api/workspaces/${a.id}/boards`) return null;
       const rows =
-        url.searchParams.get('search') ||
-        url.searchParams.get('status') === 'archived'
+        url.searchParams.get('starred') === 'true'
           ? []
-          : [savedA];
+          : url.searchParams.get('search') ||
+              url.searchParams.get('status') === 'archived'
+            ? []
+            : [savedA];
       return envelope(page(rows, Number(url.searchParams.get('page')), 20));
     },
   });
@@ -236,6 +242,54 @@ test('Board search, status and sort are sent to the server', async () => {
     expect(screen.getByLabelText('Search boards').props.value).toBe(
       ' roadmap ',
     );
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('starring a row sends its own request without navigating', async () => {
+  const env = await setup({
+    override: (url, init) =>
+      url.pathname === `/api/boards/${savedA.id}/star` && init.method === 'PUT'
+        ? ok({ isStarred: true, lastViewedAt: null })
+        : null,
+  });
+  try {
+    await screen.findByText('Personal planning');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Star Personal planning' }),
+    );
+    await screen.findByRole('button', { name: 'Unstar Personal planning' });
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(
+      env.fetch.mock.calls.filter(
+        ([url, init]) =>
+          new URL(url).pathname.endsWith('/star') && init.method === 'PUT',
+      ),
+    ).toHaveLength(1);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('starred section queries the selected Workspace without inventing stars', async () => {
+  const env = await setup({ boards: [{ ...savedA, isStarred: true }, savedB] });
+  try {
+    await waitFor(() =>
+      expect(screen.getAllByText('Personal planning')).toHaveLength(2),
+    );
+    const starredCalls = env.fetch.mock.calls
+      .map(([url]) => new URL(url))
+      .filter(
+        (url) =>
+          url.pathname.endsWith('/boards') &&
+          url.searchParams.get('starred') === 'true',
+      );
+    expect(starredCalls[0].pathname).toBe(`/api/workspaces/${a.id}/boards`);
+    await switchTo(/Select Design and research/);
+    await screen.findByText('Team roadmap');
+    expect(screen.queryByText('Personal planning')).toBeNull();
+    expect(screen.getByText('No starred boards yet')).toBeTruthy();
   } finally {
     await env.dispose();
   }

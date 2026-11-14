@@ -19,6 +19,7 @@ import {
   useTheme,
 } from '../../ui';
 import { BoardArtwork } from '../home/BoardArtwork';
+import { BoardStar } from '../boards/BoardStar';
 import { workspaceBoardOptions } from './queries';
 import {
   canRetryWorkspace,
@@ -177,6 +178,18 @@ export function WorkspaceBoards({
               subtitle={meta || undefined}
               accessibilityLabel={`Open board ${board.name}${meta ? ', ' + meta : ''}`}
               leading={<BoardArtwork preset={board.backgroundPreset} />}
+              trailing={
+                board.isStarred === undefined ? undefined : (
+                  <BoardStar
+                    identity={identity}
+                    id={board.id}
+                    name={board.name}
+                    starred={board.isStarred}
+                    updatedAt={query.dataUpdatedAt}
+                    disabled={!active || !online}
+                  />
+                )
+              }
               onPress={() => {
                 const current = data.queryClient.getQueryData(options.queryKey);
                 if (active && online && query.data && current === query.data)

@@ -34,6 +34,7 @@ import {
   type BoardFilters,
 } from './WorkspaceBoards';
 import { WorkspaceSelector } from './WorkspaceSelector';
+import { StarredBoards } from '../boards/StarredBoards';
 import { WorkspaceForm } from './WorkspaceForm';
 import { createWorkspaceApi } from './api';
 import { workspaceDirectoryOptions, workspaceOverviewOptions } from './queries';
@@ -406,6 +407,14 @@ function SelectedWorkspace({
           }}
         />
       </View>
+      <StarredBoards
+        identity={identity}
+        workspace={selected.id}
+        active={active}
+        onBoard={(id) => {
+          if (safe()) navigate(destinationPath({ kind: 'board', boardId: id }));
+        }}
+      />
       <WorkspaceBoards
         identity={identity}
         workspace={selected.id}

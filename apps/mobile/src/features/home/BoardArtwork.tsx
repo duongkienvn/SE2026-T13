@@ -10,12 +10,30 @@ import { boardPresetColor, isBoardPreset } from './presets';
 
 const photos = { mountains, forest, coast, lake };
 
-export function BoardArtwork({ preset }: { preset: string }) {
+export function BoardArtwork({
+  preset,
+  width,
+  height,
+}: {
+  preset: string;
+  width?: number;
+  height?: number;
+}) {
   // Remount on preset changes so a failed decode cannot hide a new photo.
-  return <PresetArtwork key={preset} preset={preset} />;
+  return (
+    <PresetArtwork key={preset} preset={preset} width={width} height={height} />
+  );
 }
 
-function PresetArtwork({ preset }: { preset: string }) {
+function PresetArtwork({
+  preset,
+  width,
+  height,
+}: {
+  preset: string;
+  width?: number;
+  height?: number;
+}) {
   const c = useTheme();
   const [failed, setFailed] = useState(false);
   const photo = Object.hasOwn(photos, preset)
@@ -27,7 +45,14 @@ function PresetArtwork({ preset }: { preset: string }) {
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={[styles.thumbnail, { backgroundColor: color }]}
+      style={[
+        styles.thumbnail,
+        {
+          backgroundColor: color,
+          ...(width === undefined ? {} : { width }),
+          ...(height === undefined ? {} : { height }),
+        },
+      ]}
     >
       <Image
         source={boardsIcon}
