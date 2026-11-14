@@ -10,11 +10,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { useSessionSnapshot } from '../../infrastructure/auth/SessionProvider';
+import { ApiError } from '../../infrastructure/api/errors';
 import { sameIdentity } from '../../infrastructure/api/session-client';
 import { useMobileData } from '../../infrastructure/query/DataProvider';
 import { queryKeys } from '../../infrastructure/query/keys';
 import { TabHeader } from '../../navigation/scaffold';
-import { destinationPath } from '../../navigation/routes';
+import { destinationPath, type ResourceId } from '../../navigation/routes';
 import {
   Button,
   EmptyState,
@@ -29,7 +30,13 @@ import {
 import { useSelectedWorkspace } from './WorkspaceSelection';
 import { WorkspaceBoards } from './WorkspaceBoards';
 import { WorkspaceSelector } from './WorkspaceSelector';
-import { workspaceBoardOptions, workspaceOverviewOptions } from './queries';
+import { WorkspaceForm } from './WorkspaceForm';
+import { createWorkspaceApi } from './api';
+import {
+  workspaceBoardOptions,
+  workspaceDirectoryOptions,
+  workspaceOverviewOptions,
+} from './queries';
 import {
   canRetryWorkspace,
   useWorkspaceOnline,
@@ -49,8 +56,17 @@ function VerifiedBoards() {
   const c = useTheme();
   const router = useRouter();
   const active = useIsFocused();
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  useEffect(() => {
+    activeRef.current = active;
+    return () => {
+      activeRef.current = false;
+    };
+  }, [active]);
   const online = useWorkspaceOnline();
   const [picker, setPicker] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const lastRefresh = useRef(-Infinity);
   const {
@@ -62,6 +78,23 @@ function VerifiedBoards() {
     isCurrentSelection,
     workspaces,
   } = useSelectedWorkspace(active);
+  // Keep the duplicate-submission fence in session-scoped memory even if this
+  // screen unmounts while a create response is uncertain.
+  const createFenceKey = [
+    ...queryKeys.scope(identity),
+    'workspace-create-fence',
+  ] as const;
+  const [createBlocked, setCreateBlocked] = useState(
+    () => data.queryClient.getQueryData<boolean>(createFenceKey) === true,
+  );
+  const createdId = useRef<ResourceId | null>(null);
+  const creationOrigin = useRef<ResourceId | null>(null);
+  function fenceCreate(blocked: boolean) {
+    data.assertCurrent(identity);
+    data.queryClient.setQueryDefaults(createFenceKey, { gcTime: Infinity });
+    data.queryClient.setQueryData(createFenceKey, blocked);
+    setCreateBlocked(blocked);
+  }
   const retryReady = useWorkspaceRetryReady(
     directory.error,
     directory.errorUpdatedAt,
@@ -69,6 +102,30 @@ function VerifiedBoards() {
   useEffect(() => {
     if (!active || !selectedId) setPicker(false);
   }, [active, selectedId]);
+
+  async function selectCreated(id: ResourceId) {
+    data.assertCurrent(identity);
+    const directoryKey = queryKeys.workspaces(identity);
+    data.cancelResourceRequests(directoryKey);
+    await data.queryClient.cancelQueries({ queryKey: directoryKey });
+    data.assertCurrent(identity);
+    data.resources.bumpKey(directoryKey);
+    await data.queryClient.fetchQuery({
+      ...workspaceDirectoryOptions(data, identity),
+      staleTime: 0,
+    });
+    data.assertCurrent(identity);
+    if (
+      !activeRef.current ||
+      (creationOrigin.current && !isCurrentSelection(creationOrigin.current))
+    )
+      throw new Error('selection changed');
+    if (!setSelectedId(id)) throw new Error('selection unavailable');
+    createdId.current = null;
+    fenceCreate(false);
+    setCreating(false);
+    router.navigate(destinationPath({ kind: 'workspace', workspaceId: id }));
+  }
 
   async function refresh() {
     const now = Date.now();
@@ -173,6 +230,20 @@ function VerifiedBoards() {
         {directory.isSuccess && !selected && (
           <Surface>
             <EmptyState title="No workspaces available" />
+            <Button
+              label="Create new workspace"
+              variant="secondary"
+              disabled={!active || !online}
+              onPress={() => {
+                if (
+                  !activeRef.current ||
+                  !sameIdentity(identity, data.getIdentity())
+                )
+                  return;
+                creationOrigin.current = null;
+                setCreating(true);
+              }}
+            />
           </Surface>
         )}
         {selected && (
@@ -183,12 +254,79 @@ function VerifiedBoards() {
             active={active}
             picker={picker}
             setPicker={setPicker}
+            onCreate={() => {
+              setPicker(false);
+              creationOrigin.current = selectedId;
+              setCreating(true);
+            }}
             workspaces={workspaces ?? []}
             isCurrentSelection={isCurrentSelection}
             select={(id) => {
               if (setSelectedId(id)) setPicker(false);
             }}
             navigate={router.navigate}
+          />
+        )}
+        {creating && (
+          <WorkspaceForm
+            blocked={createBlocked}
+            onConfirmChecked={() => fenceCreate(false)}
+            onRetryLookup={
+              createdId.current
+                ? () => selectCreated(createdId.current!)
+                : undefined
+            }
+            onDismiss={() => setCreating(false)}
+            onSubmit={async (input) => {
+              if (
+                !activeRef.current ||
+                !sameIdentity(identity, data.getIdentity()) ||
+                (selectedId && !isCurrentSelection(selectedId))
+              )
+                throw new Error(
+                  'Workspace access changed. Close this form and try again.',
+                );
+              const api = createWorkspaceApi(data.api, identity);
+              if (input.name === undefined) return;
+              let committed = false;
+              try {
+                fenceCreate(true);
+                const created = await api.create(
+                  { ...input, name: input.name },
+                  new AbortController().signal,
+                );
+                committed = true;
+                createdId.current = created.id;
+                void data
+                  .invalidate(identity, [queryKeys.home(identity)])
+                  .catch(() => undefined);
+                await selectCreated(created.id);
+              } catch (error) {
+                if (!sameIdentity(identity, data.getIdentity())) return;
+                if (
+                  committed ||
+                  !(error instanceof ApiError) ||
+                  error.status >= 500 ||
+                  [
+                    'timeout',
+                    'network',
+                    'aborted',
+                    'invalid-response',
+                  ].includes(error.kind)
+                ) {
+                  fenceCreate(true);
+                  void data
+                    .invalidate(identity, [queryKeys.workspaces(identity)])
+                    .catch(() => undefined);
+                  throw new Error(
+                    'The result could not be confirmed. Close this form and check your workspace list before trying again.',
+                    { cause: error },
+                  );
+                }
+                fenceCreate(false);
+                throw new Error(workspaceErrorMessage(error), { cause: error });
+              }
+            }}
           />
         )}
       </ScrollView>
@@ -202,6 +340,7 @@ function SelectedWorkspace({
   active,
   picker,
   setPicker,
+  onCreate,
   workspaces,
   select,
   isCurrentSelection,
@@ -212,6 +351,7 @@ function SelectedWorkspace({
   active: boolean;
   picker: boolean;
   setPicker: (value: boolean) => void;
+  onCreate: () => void;
   workspaces: NonNullable<
     ReturnType<typeof useSelectedWorkspace>['workspaces']
   >;
@@ -237,6 +377,9 @@ function SelectedWorkspace({
         }}
         onDismiss={() => setPicker(false)}
         onSelect={select}
+        onCreate={() => {
+          if (safe()) onCreate();
+        }}
       />
       <View style={{ alignSelf: 'flex-start' }}>
         <Button

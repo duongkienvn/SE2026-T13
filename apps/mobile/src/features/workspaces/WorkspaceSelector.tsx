@@ -29,7 +29,7 @@ export function workspaceMetadata(
   return `${type} · ${role}${count}`;
 }
 
-function WorkspaceIcon({ type }: { type: WorkspaceSummary['type'] }) {
+export function WorkspaceIcon({ type }: { type: WorkspaceSummary['type'] }) {
   const c = useTheme();
   const personal = type === WorkspaceType.PERSONAL;
   return (
@@ -141,6 +141,7 @@ export function WorkspaceSelector({
   onOpen,
   onDismiss,
   onSelect,
+  onCreate,
 }: {
   selected: WorkspaceSummary;
   workspaces: readonly WorkspaceSummary[];
@@ -149,6 +150,7 @@ export function WorkspaceSelector({
   onOpen: () => void;
   onDismiss: () => void;
   onSelect: (id: string) => void;
+  onCreate: () => void;
 }) {
   return (
     <>
@@ -179,6 +181,11 @@ export function WorkspaceSelector({
               />
             ))}
           </View>
+          <Button
+            label="Create new workspace"
+            variant="secondary"
+            onPress={onCreate}
+          />
           <Button label="Close" variant="link" onPress={onDismiss} />
         </BottomSheet>
       )}
