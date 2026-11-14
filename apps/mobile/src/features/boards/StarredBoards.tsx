@@ -82,8 +82,8 @@ export function StarredBoards({
           <View key={board.id} style={{ width: 180 }}>
             <Surface>
               <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Open board ${board.name}`}
+                accessible={false}
+                importantForAccessibility="no-hide-descendants"
                 disabled={!active || !online}
                 onPress={() => {
                   if (
@@ -99,30 +99,52 @@ export function StarredBoards({
                 <BoardArtwork
                   preset={board.backgroundPreset}
                   width={146}
-                  height={80}
+                  height={64}
                 />
-                <Text style={[typography.strong, { color: c.text }]}>
-                  {board.name}
-                </Text>
-                {board.memberCount !== null && (
-                  <Text
-                    style={[typography.supporting, { color: c.textSecondary }]}
-                  >
-                    {board.memberCount}{' '}
-                    {board.memberCount === 1 ? 'member' : 'members'}
-                  </Text>
-                )}
               </Pressable>
-              {board.isStarred !== undefined && (
-                <BoardStar
-                  identity={identity}
-                  id={board.id}
-                  name={board.name}
-                  starred={board.isStarred}
-                  updatedAt={query.dataUpdatedAt}
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open board ${board.name}`}
                   disabled={!active || !online}
-                />
-              )}
+                  style={{ flex: 1 }}
+                  onPress={() => {
+                    if (
+                      active &&
+                      online &&
+                      query.data &&
+                      data.queryClient.getQueryData(options.queryKey) ===
+                        query.data
+                    )
+                      onBoard(board.id);
+                  }}
+                >
+                  <Text style={[typography.strong, { color: c.text }]}>
+                    {board.name}
+                  </Text>
+                  {board.memberCount !== null && (
+                    <Text
+                      style={[
+                        typography.supporting,
+                        { color: c.textSecondary },
+                      ]}
+                    >
+                      {board.memberCount}{' '}
+                      {board.memberCount === 1 ? 'member' : 'members'}
+                    </Text>
+                  )}
+                </Pressable>
+                {board.isStarred !== undefined && (
+                  <BoardStar
+                    identity={identity}
+                    id={board.id}
+                    name={board.name}
+                    starred={board.isStarred}
+                    updatedAt={query.dataUpdatedAt}
+                    disabled={!active || !online}
+                  />
+                )}
+              </View>
             </Surface>
           </View>
         ))}
