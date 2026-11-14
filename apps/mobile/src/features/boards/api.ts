@@ -42,6 +42,8 @@ export function decodeBoardUserState(value: unknown) {
   };
 }
 
+export type BoardUserState = ReturnType<typeof decodeBoardUserState>;
+
 export function decodeBackgroundCatalog(value: unknown) {
   if (!Array.isArray(value) || value.length > 12)
     throw new Error('Invalid background catalog');
@@ -140,11 +142,13 @@ export function createBoardApi(
       api.json(`${path(id)}/star`, decodeBoardUserState, {
         ...opts(id, signal),
         method: starred ? 'PUT' : 'DELETE',
+        resourceAccess: 'read',
       }),
     view: (id: string, signal: AbortSignal) =>
       api.json(`${path(id)}/views`, decodeBoardUserState, {
         ...opts(id, signal),
         method: 'POST',
+        resourceAccess: 'read',
       }),
   };
 }
