@@ -192,6 +192,55 @@ const switchTo = async (label) => {
   await fireEvent.press(await screen.findByRole('button', { name: label }));
 };
 
+test('Board search, status and sort are sent to the server', async () => {
+  const env = await setup({
+    override: (url) => {
+      if (url.pathname !== `/api/workspaces/${a.id}/boards`) return null;
+      const rows =
+        url.searchParams.get('search') ||
+        url.searchParams.get('status') === 'archived'
+          ? []
+          : [savedA];
+      return envelope(page(rows, Number(url.searchParams.get('page')), 20));
+    },
+  });
+  try {
+    await screen.findByText('Personal planning');
+    await fireEvent.changeText(
+      screen.getByLabelText('Search boards'),
+      ' roadmap ',
+    );
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Apply board search' }),
+    );
+    await screen.findByText('No boards match your search');
+    await fireEvent.press(screen.getByRole('button', { name: 'Archived' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Sort by name' }));
+    await waitFor(() =>
+      expect(
+        env.fetch.mock.calls.some(([url]) => {
+          const query = new URL(url).searchParams;
+          return (
+            query.get('search') === 'roadmap' &&
+            query.get('status') === 'archived' &&
+            query.get('sort') === 'name' &&
+            query.get('page') === '1'
+          );
+        }),
+      ).toBe(true),
+    );
+    await switchTo(/Select Design and research/);
+    await screen.findByText('Team roadmap');
+    await switchTo(/Select Product team/);
+    await screen.findByText('No boards match your search');
+    expect(screen.getByLabelText('Search boards').props.value).toBe(
+      ' roadmap ',
+    );
+  } finally {
+    await env.dispose();
+  }
+});
+
 test('Personal first, selected outline semantics, Android modal close, tab return and new account reset', async () => {
   const env = await setup();
   try {

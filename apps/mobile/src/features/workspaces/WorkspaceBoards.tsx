@@ -7,9 +7,11 @@ import { deduplicatePages } from '../../infrastructure/query/pagination';
 import type { ResourceId } from '../../navigation/routes';
 import {
   Button,
+  Chip,
   EmptyState,
   ErrorState,
   ListRow,
+  SearchField,
   Skeleton,
   Surface,
   spacing,
@@ -25,21 +27,45 @@ import {
   workspaceErrorMessage,
 } from './status';
 
+export type BoardFilters = {
+  search: string;
+  submittedSearch: string;
+  status: 'active' | 'archived';
+  sort: 'updatedAt' | 'createdAt' | 'name' | 'recent';
+};
+export const defaultBoardFilters: BoardFilters = {
+  search: '',
+  submittedSearch: '',
+  status: 'active',
+  sort: 'updatedAt',
+};
+
 export function WorkspaceBoards({
   identity,
   workspace,
   active,
   onBoard,
+  filters,
+  onFiltersChange,
 }: {
   identity: SessionIdentity;
   workspace: ResourceId;
   active: boolean;
   onBoard: (id: ResourceId) => void;
+  filters: BoardFilters;
+  onFiltersChange: (filters: BoardFilters) => void;
 }) {
   const data = useMobileData();
   const c = useTheme();
   const online = useWorkspaceOnline();
-  const options = workspaceBoardOptions(data, identity, workspace);
+  const { search, submittedSearch, status, sort } = filters;
+  const change = (next: Partial<BoardFilters>) =>
+    onFiltersChange({ ...filters, ...next });
+  const options = workspaceBoardOptions(data, identity, workspace, {
+    status,
+    sort,
+    ...(submittedSearch ? { search: submittedSearch } : {}),
+  });
   const query = useInfiniteQuery({ ...options, enabled: active });
   const retryReady = useWorkspaceRetryReady(query.error, query.errorUpdatedAt);
   if (!data.resources.readable(queryKeys.workspace(identity, workspace)))
@@ -70,6 +96,45 @@ export function WorkspaceBoards({
       >
         All boards
       </Text>
+      <SearchField
+        label="Search boards"
+        value={search}
+        maxLength={120}
+        onChangeText={(search) => change({ search })}
+        onSubmitEditing={() => change({ submittedSearch: search.trim() })}
+      />
+      <Button
+        label="Apply board search"
+        variant="secondary"
+        onPress={() => change({ submittedSearch: search.trim() })}
+      />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+        <Chip
+          label="Active"
+          selected={status === 'active'}
+          onPress={() => change({ status: 'active' })}
+        />
+        <Chip
+          label="Archived"
+          selected={status === 'archived'}
+          onPress={() => change({ status: 'archived' })}
+        />
+        {(
+          [
+            ['updatedAt', 'Updated'],
+            ['createdAt', 'Created'],
+            ['name', 'Name'],
+            ['recent', 'Recent'],
+          ] as const
+        ).map(([value, label]) => (
+          <Chip
+            key={value}
+            label={`Sort by ${label.toLowerCase()}`}
+            selected={sort === value}
+            onPress={() => change({ sort: value })}
+          />
+        ))}
+      </View>
       {query.isPending &&
         online &&
         !query.isPaused &&
@@ -83,7 +148,15 @@ export function WorkspaceBoards({
         ))}
       {query.data && boards.length === 0 && !query.isError && (
         <Surface>
-          <EmptyState title="No boards in this workspace" />
+          <EmptyState
+            title={
+              submittedSearch
+                ? 'No boards match your search'
+                : status === 'archived'
+                  ? 'No archived boards'
+                  : 'No boards in this workspace'
+            }
+          />
         </Surface>
       )}
       {boards.map((board) => {

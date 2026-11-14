@@ -28,15 +28,15 @@ import {
   useTheme,
 } from '../../ui';
 import { useSelectedWorkspace } from './WorkspaceSelection';
-import { WorkspaceBoards } from './WorkspaceBoards';
+import {
+  WorkspaceBoards,
+  defaultBoardFilters,
+  type BoardFilters,
+} from './WorkspaceBoards';
 import { WorkspaceSelector } from './WorkspaceSelector';
 import { WorkspaceForm } from './WorkspaceForm';
 import { createWorkspaceApi } from './api';
-import {
-  workspaceBoardOptions,
-  workspaceDirectoryOptions,
-  workspaceOverviewOptions,
-} from './queries';
+import { workspaceDirectoryOptions, workspaceOverviewOptions } from './queries';
 import {
   canRetryWorkspace,
   useWorkspaceOnline,
@@ -68,6 +68,9 @@ function VerifiedBoards() {
   const [picker, setPicker] = useState(false);
   const [creating, setCreating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [boardFilters, setBoardFilters] = useState<
+    Record<string, BoardFilters>
+  >({});
   const lastRefresh = useRef(-Infinity);
   const {
     directory,
@@ -147,11 +150,7 @@ function VerifiedBoards() {
       const latest = await directory.refetch({ cancelRefetch: false });
       if (!latest.isSuccess || !selectedId || !isCurrentSelection(selectedId))
         return;
-      const boardKey = workspaceBoardOptions(
-        data,
-        identity,
-        selectedId,
-      ).queryKey;
+      const boardKey = queryKeys.workspaceBoards(identity, selectedId);
       const overviewKey = workspaceOverviewOptions(
         data,
         identity,
@@ -265,6 +264,13 @@ function VerifiedBoards() {
               if (setSelectedId(id)) setPicker(false);
             }}
             navigate={router.navigate}
+            filters={boardFilters[selected.id] ?? defaultBoardFilters}
+            onFiltersChange={(filters) =>
+              setBoardFilters((previous) => ({
+                ...previous,
+                [selected.id]: filters,
+              }))
+            }
           />
         )}
         {creating && (
@@ -345,6 +351,8 @@ function SelectedWorkspace({
   select,
   isCurrentSelection,
   navigate,
+  filters,
+  onFiltersChange,
 }: {
   selected: NonNullable<ReturnType<typeof useSelectedWorkspace>['selected']>;
   identity: ReturnType<typeof useSelectedWorkspace>['identity'];
@@ -360,6 +368,8 @@ function SelectedWorkspace({
     typeof useSelectedWorkspace
   >['isCurrentSelection'];
   navigate: (path: ReturnType<typeof destinationPath>) => void;
+  filters: BoardFilters;
+  onFiltersChange: (filters: BoardFilters) => void;
 }) {
   const data = useMobileData();
   const options = workspaceOverviewOptions(data, identity, selected.id);
@@ -400,6 +410,8 @@ function SelectedWorkspace({
         identity={identity}
         workspace={selected.id}
         active={active}
+        filters={filters}
+        onFiltersChange={onFiltersChange}
         onBoard={(id) => {
           if (safe()) navigate(destinationPath({ kind: 'board', boardId: id }));
         }}
