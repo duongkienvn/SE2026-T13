@@ -39,6 +39,92 @@ function listCall(url: string) {
   return new URL(url).pathname === '/api/workspaces';
 }
 
+test('lifecycle requests use the server methods, status codes and nullable payloads', async (t) => {
+  const env = await integration();
+  t.after(env.dispose);
+  env.respond((_url, init) => {
+    if (init.method === 'POST' && !_url.endsWith('/leave'))
+      return Promise.resolve(
+        json(
+          { success: true, statusCode: 201, message: 'Created', data: team },
+          201,
+        ),
+      );
+    if (init.method === 'PATCH') return Promise.resolve(ok(team));
+    if (init.method === 'DELETE' || _url.endsWith('/leave'))
+      return Promise.resolve(new Response(null, { status: 204 }));
+    return null;
+  });
+  const api = createWorkspaceApi(env.data.api, env.identity);
+  await api.create({ name: 'Team', icon: 'code' }, signal());
+  await api.update(team.id, { description: null }, signal());
+  await api.leave(team.id, signal());
+  await api.remove(team.id, 'Team', signal());
+  const calls = env.requests.filter(({ init }) => init.method !== 'GET');
+  assert.deepEqual(
+    calls.map(({ init }) => init.method),
+    ['POST', 'PATCH', 'POST', 'DELETE'],
+  );
+  assert.deepEqual(
+    calls.map(({ init }) => (init.body ? JSON.parse(String(init.body)) : null)),
+    [
+      { name: 'Team', icon: 'code' },
+      { description: null },
+      null,
+      { confirmationName: 'Team' },
+    ],
+  );
+});
+
+for (const operation of ['create', 'update', 'leave', 'remove'] as const) {
+  for (const status of [400, 401, 403, 404, 409, 429, 503]) {
+    test(`${operation} propagates HTTP ${status} without replaying the mutation`, async (t) => {
+      const env = await integration();
+      t.after(env.dispose);
+      env.respond((_url, init) =>
+        init.method !== 'GET'
+          ? Promise.resolve(
+              json(
+                {
+                  success: false,
+                  statusCode: status,
+                  code: 'TEST_ERROR',
+                  message: 'Request rejected',
+                },
+                status,
+              ),
+            )
+          : null,
+      );
+      const api = createWorkspaceApi(env.data.api, env.identity);
+      const request = () => {
+        switch (operation) {
+          case 'create':
+            return api.create({ name: 'Team' }, signal());
+          case 'update':
+            return api.update(team.id, { icon: null }, signal());
+          case 'leave':
+            return api.leave(team.id, signal());
+          case 'remove':
+            return api.remove(team.id, team.name, signal());
+        }
+      };
+      await assert.rejects(request(), (error: unknown) => {
+        assert.ok(error instanceof ApiError);
+        assert.equal(error.status, status);
+        return true;
+      });
+      const mutations = env.requests.filter(
+        ({ init }) => init.method !== 'GET',
+      );
+      assert.equal(mutations.length, 1);
+      if (status === 401)
+        assert.notEqual(env.manager.getSnapshot().status, 'authenticated');
+      else assert.equal(env.manager.getSnapshot().status, 'authenticated');
+    });
+  }
+}
+
 test('walks all 100+ memberships, deduplicates and keeps Personal first and Teams in server order', async (t) => {
   const env = await integration();
   t.after(env.dispose);

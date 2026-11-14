@@ -1,7 +1,13 @@
 /* global jest, test, expect */
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
+import { WorkspaceForm } from '../src/features/workspaces/WorkspaceForm';
 import { Button, ListRow } from '../src/ui';
 
 jest.mock('react-native', () => {
@@ -47,4 +53,34 @@ test('row stacks the secondary action when available width is small for the font
   await fireEvent.press(screen.getByRole('button', { name: 'More' }));
   expect(more).toHaveBeenCalledTimes(1);
   expect(open).not.toHaveBeenCalled();
+});
+
+test('Workspace creation controls remain operable at 320 dp with a large font scale', async () => {
+  const submit = jest.fn().mockResolvedValue(undefined);
+  await render(<WorkspaceForm onDismiss={jest.fn()} onSubmit={submit} />);
+
+  await fireEvent.changeText(
+    screen.getByLabelText('Name'),
+    '  Small screen team  ',
+  );
+  await fireEvent.changeText(
+    screen.getByLabelText('Description (optional)'),
+    'A description',
+  );
+  await fireEvent.press(screen.getByRole('button', { name: 'palette' }));
+  expect(
+    screen.getByRole('button', { name: 'palette' }).props.accessibilityState
+      .selected,
+  ).toBe(true);
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Create workspace' }),
+  );
+
+  await waitFor(() =>
+    expect(submit).toHaveBeenCalledWith({
+      name: 'Small screen team',
+      description: 'A description',
+      icon: 'palette',
+    }),
+  );
 });

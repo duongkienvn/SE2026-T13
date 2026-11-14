@@ -78,7 +78,7 @@ function evictWorkspaceResources(
   data.evict(identity, keys);
 }
 
-function evictWorkspace(
+export function evictWorkspace(
   data: MobileDataLayer,
   identity: SessionIdentity,
   id: ResourceId,

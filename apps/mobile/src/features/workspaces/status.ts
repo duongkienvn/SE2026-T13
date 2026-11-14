@@ -12,6 +12,7 @@ export function useWorkspaceOnline() {
 
 export function workspaceErrorMessage(error: unknown) {
   if (error instanceof ApiError) {
+    if ([400, 409].includes(error.status)) return error.message;
     if (error.status === 429) return 'Too many requests. Try again shortly.';
     if (error.kind === 'timeout')
       return 'The request took too long. Try again.';

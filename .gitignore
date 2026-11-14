@@ -18,6 +18,7 @@ Thumbs.db
 .vscode/
 .codex/
 .codegraph/
+.worktrees/
 .agents/*
 !.agents/skills/
 .agents/skills/*

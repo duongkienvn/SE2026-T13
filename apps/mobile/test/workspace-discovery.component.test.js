@@ -172,6 +172,7 @@ async function setup({
   return {
     time,
     manager,
+    data,
     fetch,
     show: (shown) => mounted.rerender(tree(shown)),
     async dispose() {
@@ -316,6 +317,10 @@ test('deep Workspace screen verifies detail before fetching overview and denies 
   const env = await setup({ view: 'overview' });
   try {
     await screen.findByText('1 visible boards');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Open board Board 1' }),
+    );
+    expect(mockNavigate).toHaveBeenLastCalledWith('/boards/' + board(b.id).id);
     const urls = env.fetch.mock.calls.map(([url]) => new URL(url).pathname);
     expect(urls).toEqual([
       '/api/workspaces/' + b.id,
@@ -332,6 +337,1349 @@ test('deep Workspace screen verifies detail before fetching overview and denies 
   } finally {
     await env.dispose();
     mockPath = '/boards';
+  }
+});
+
+test('Workspace overview announces archived recent boards as read only', async () => {
+  mockPath = '/workspaces/' + b.id;
+  const env = await setup({
+    view: 'overview',
+    override: (url) =>
+      url.pathname === `/api/workspaces/${b.id}/overview`
+        ? ok({
+            ...overview(b),
+            activeBoardCount: 0,
+            archivedBoardCount: 1,
+            recentBoards: [
+              {
+                ...board(b.id),
+                isArchived: true,
+                archivedAt: '2026-11-13T09:00:00.000Z',
+              },
+            ],
+          })
+        : null,
+  });
+  try {
+    expect(
+      await screen.findByRole('button', {
+        name: 'Open board Board 1, archived, read only',
+      }),
+    ).toBeTruthy();
+  } finally {
+    await env.dispose();
+    mockPath = '/boards';
+  }
+});
+
+test('Workspace overview renders the server-provided icon accessibly', async () => {
+  const withIcon = { ...b, icon: 'code' };
+  mockPath = '/workspaces/' + withIcon.id;
+  const env = await setup({ first: [withIcon], view: 'overview' });
+  try {
+    expect(await screen.findByLabelText('Workspace icon: code')).toBeTruthy();
+  } finally {
+    await env.dispose();
+    mockPath = '/boards';
+  }
+});
+
+test('reopening Overview refreshes Board counts inside the cache stale window', async () => {
+  const admin = { ...b, role: 'ADMIN', canManage: true };
+  mockPath = '/workspaces/' + admin.id;
+  let archived = false;
+  const env = await setup({
+    first: [admin],
+    view: 'overview',
+    override: (url) =>
+      url.pathname === '/api/workspaces/' + admin.id + '/overview'
+        ? ok({
+            ...overview(admin),
+            activeBoardCount: archived ? 0 : 1,
+            archivedBoardCount: archived ? 1 : 0,
+            recentBoards: [],
+          })
+        : null,
+  });
+  try {
+    await screen.findByText('1 active · 0 archived');
+    await env.show(null);
+    archived = true;
+    await env.show('overview');
+    await screen.findByText('0 active · 1 archived');
+    expect(
+      env.fetch.mock.calls.filter(([url]) =>
+        new URL(url).pathname.endsWith('/overview'),
+      ),
+    ).toHaveLength(2);
+  } finally {
+    mockPath = '/boards';
+    await env.dispose();
+  }
+});
+
+test('refocusing a mounted Overview refreshes Board counts', async () => {
+  const admin = { ...b, role: 'ADMIN', canManage: true };
+  mockPath = '/workspaces/' + admin.id;
+  let archived = false;
+  const env = await setup({
+    first: [admin],
+    view: 'overview',
+    override: (url) =>
+      url.pathname === '/api/workspaces/' + admin.id + '/overview'
+        ? ok({
+            ...overview(admin),
+            activeBoardCount: archived ? 0 : 1,
+            archivedBoardCount: archived ? 1 : 0,
+            recentBoards: [],
+          })
+        : null,
+  });
+  try {
+    await screen.findByText('1 active · 0 archived');
+    mockFocused = false;
+    await env.show('overview');
+    archived = true;
+    mockFocused = true;
+    await env.show('overview');
+    await screen.findByText('0 active · 1 archived');
+    expect(
+      env.fetch.mock.calls.filter(([url]) =>
+        new URL(url).pathname.endsWith('/overview'),
+      ),
+    ).toHaveLength(2);
+  } finally {
+    mockFocused = true;
+    mockPath = '/boards';
+    await env.dispose();
+  }
+});
+
+test('creates a Team Workspace once and selects its verified directory entry', async () => {
+  const rows = [a];
+  const created = {
+    ...workspace(8),
+    name: 'New team',
+    role: 'ADMIN',
+    canManage: true,
+  };
+  const env = await setup({
+    first: rows,
+    override: (url, init) => {
+      if (url.pathname === '/api/workspaces' && init.method === 'POST') {
+        rows.push(created);
+        return {
+          ...envelope(
+            {
+              success: true,
+              statusCode: 201,
+              message: 'Created',
+              data: created,
+            },
+            201,
+          ),
+          ok: true,
+        };
+      }
+      return null;
+    },
+  });
+  try {
+    await fireEvent.press(await trigger());
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create new workspace' }),
+    );
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create workspace' }),
+    );
+    expect(screen.getByText(/Enter a name/)).toBeTruthy();
+    await fireEvent.changeText(screen.getByLabelText('Name'), ' New team ');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create workspace' }),
+    );
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith('/workspaces/' + created.id),
+    );
+    expect(
+      env.fetch.mock.calls.filter(([, init]) => init.method === 'POST'),
+    ).toHaveLength(1);
+    expect((await trigger()).props.accessibilityLabel).toMatch(/New team/);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('the empty directory offers creation and selects the verified result', async () => {
+  const rows = [a];
+  const created = {
+    ...workspace(8),
+    name: 'New team',
+    role: 'ADMIN',
+    canManage: true,
+  };
+  const env = await setup({
+    first: rows,
+    override: (url, init) => {
+      if (url.pathname === '/api/workspaces' && init.method === 'POST') {
+        rows.push(created);
+        return {
+          ...envelope(
+            {
+              success: true,
+              statusCode: 201,
+              message: 'Created',
+              data: created,
+            },
+            201,
+          ),
+          ok: true,
+        };
+      }
+      return null;
+    },
+  });
+  try {
+    await screen.findByText('Personal planning');
+    rows.splice(0);
+    await act(() =>
+      env.data.queryClient.setQueryData(
+        [
+          'mobile',
+          'private',
+          USER_A,
+          env.manager.getSnapshot().generation,
+          'workspace-lists',
+          { limit: 20 },
+        ],
+        [],
+      ),
+    );
+    await screen.findByText('No workspaces available');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create new workspace' }),
+    );
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'New team');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create workspace' }),
+    );
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith('/workspaces/' + created.id),
+    );
+    expect((await trigger()).props.accessibilityLabel).toMatch(/New team/);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('Android back guards a Workspace creation draft', async () => {
+  const env = await setup();
+  try {
+    await fireEvent.press(await trigger());
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create new workspace' }),
+    );
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'Draft');
+    await fireEvent(screen.getByTestId('native-modal'), 'touchEnd');
+    expect(screen.getByText('Discard changes?')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(screen.getByLabelText('Name').props.value).toBe('Draft');
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('rate-limited creation preserves the draft and waits for Retry-After', async () => {
+  const env = await setup({
+    override: (url, init) =>
+      url.pathname === '/api/workspaces' && init.method === 'POST'
+        ? envelope({}, 429, '3')
+        : null,
+  });
+  try {
+    await fireEvent.press(await trigger());
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create new workspace' }),
+    );
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'Draft team');
+    jest.useFakeTimers();
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create workspace' }),
+    );
+    await screen.findByText('Too many requests. Try again shortly.');
+    expect(screen.getByLabelText('Name').props.value).toBe('Draft team');
+    expect(
+      screen.getByRole('button', { name: 'Create workspace' }),
+    ).toBeDisabled();
+    await act(() => jest.advanceTimersByTime(3000));
+    expect(
+      screen.getByRole('button', { name: 'Create workspace' }),
+    ).toBeEnabled();
+  } finally {
+    jest.useRealTimers();
+    await env.dispose();
+  }
+});
+
+test('an uncertain creation result blocks duplicate requests and retains the draft', async () => {
+  const env = await setup({
+    override: (url, init) =>
+      url.pathname === '/api/workspaces' && init.method === 'POST'
+        ? envelope({}, 503)
+        : null,
+  });
+  try {
+    await fireEvent.press(await trigger());
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create new workspace' }),
+    );
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'Uncertain team');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create workspace' }),
+    );
+    await screen.findByText(/result could not be confirmed/);
+    expect(screen.getByLabelText('Name').props.value).toBe('Uncertain team');
+    expect(
+      screen.getByRole('button', { name: 'Create workspace' }),
+    ).toBeDisabled();
+    expect(
+      env.fetch.mock.calls.filter(([, init]) => init.method === 'POST'),
+    ).toHaveLength(1);
+    await fireEvent.press(
+      screen.getByRole('button', { name: "I've checked the workspace list" }),
+    );
+    expect(
+      screen.getByText(/trying again could create a duplicate/i),
+    ).toBeTruthy();
+    await fireEvent.press(
+      screen.getByRole('button', { name: "I've checked, allow retry" }),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Create workspace' }),
+    ).toBeEnabled();
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('an uncertain creation remains fenced after the Boards screen remounts', async () => {
+  const env = await setup({
+    override: (url, init) =>
+      url.pathname === '/api/workspaces' && init.method === 'POST'
+        ? envelope({}, 503)
+        : null,
+  });
+  try {
+    await fireEvent.press(await trigger());
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create new workspace' }),
+    );
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'Uncertain team');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create workspace' }),
+    );
+    await screen.findByText(/result could not be confirmed/);
+    await env.show(null);
+    await env.show('boards');
+    await fireEvent.press(await trigger());
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create new workspace' }),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Create workspace' }),
+    ).toBeDisabled();
+    expect(
+      env.fetch.mock.calls.filter(([, init]) => init.method === 'POST'),
+    ).toHaveLength(1);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('an uncertain creation fence does not carry into another account', async () => {
+  const env = await setup({
+    override: (url, init) =>
+      url.pathname === '/api/workspaces' && init.method === 'POST'
+        ? envelope({}, 503)
+        : null,
+  });
+  try {
+    await fireEvent.press(await trigger());
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create new workspace' }),
+    );
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'Uncertain team');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create workspace' }),
+    );
+    await screen.findByText(/result could not be confirmed/);
+    await act(() => env.manager.establishSession(loginResponse(USER_B)));
+    await fireEvent.press(await trigger());
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create new workspace' }),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Create workspace' }),
+    ).toBeEnabled();
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('rapid creation presses send one request while the first is pending', async () => {
+  let finish;
+  const pending = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const env = await setup({
+    override: (url, init) =>
+      url.pathname === '/api/workspaces' && init.method === 'POST'
+        ? pending
+        : null,
+  });
+  try {
+    await fireEvent.press(await trigger());
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create new workspace' }),
+    );
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'One team');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create workspace' }),
+    );
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create workspace' }),
+    );
+    expect(
+      env.fetch.mock.calls.filter(([, init]) => init.method === 'POST'),
+    ).toHaveLength(1);
+    await act(() => finish(envelope({}, 409)));
+    await screen.findByText('The request failed.');
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('creation cancels an older directory read before selecting the new Workspace', async () => {
+  const rows = [a];
+  const created = {
+    ...workspace(8),
+    name: 'New team',
+    role: 'ADMIN',
+    canManage: true,
+  };
+  let finishOld;
+  const oldRead = new Promise((resolve) => {
+    finishOld = resolve;
+  });
+  let holdNext = false;
+  let held = false;
+  const env = await setup({
+    first: rows,
+    override: (url, init) => {
+      if (url.pathname !== '/api/workspaces') return null;
+      if (init.method === 'POST') {
+        rows.push(created);
+        return {
+          ...envelope(
+            {
+              success: true,
+              statusCode: 201,
+              message: 'Created',
+              data: created,
+            },
+            201,
+          ),
+          ok: true,
+        };
+      }
+      if (holdNext && !held) {
+        held = true;
+        return oldRead;
+      }
+      return null;
+    },
+  });
+  try {
+    await screen.findByText('Personal planning');
+    holdNext = true;
+    await fireEvent(screen.getByTestId('workspace-refresh'), 'touchEnd');
+    await waitFor(() => expect(held).toBe(true));
+    await fireEvent.press(await trigger());
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create new workspace' }),
+    );
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'New team');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create workspace' }),
+    );
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith('/workspaces/' + created.id),
+    );
+    await act(() => finishOld(envelope(page([a], 1, 20))));
+    expect((await trigger()).props.accessibilityLabel).toMatch(/New team/);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('a create response after leaving Boards does not change the selected Workspace', async () => {
+  const rows = [a];
+  const created = {
+    ...workspace(8),
+    name: 'Late team',
+    role: 'ADMIN',
+    canManage: true,
+  };
+  let finish;
+  const pending = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const env = await setup({
+    first: rows,
+    override: (url, init) =>
+      url.pathname === '/api/workspaces' && init.method === 'POST'
+        ? pending
+        : null,
+  });
+  try {
+    await fireEvent.press(await trigger());
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create new workspace' }),
+    );
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'Late team');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create workspace' }),
+    );
+    mockFocused = false;
+    await env.show('boards');
+    rows.push(created);
+    await act(() =>
+      finish({
+        ...envelope(
+          { success: true, statusCode: 201, message: 'Created', data: created },
+          201,
+        ),
+        ok: true,
+      }),
+    );
+    await screen.findByText(/The result could not be confirmed/);
+    expect(mockNavigate).not.toHaveBeenCalledWith('/workspaces/' + created.id);
+    mockFocused = true;
+    await env.show('boards');
+    expect((await trigger()).props.accessibilityLabel).not.toMatch(/Late team/);
+    expect(
+      env.fetch.mock.calls.filter(([, init]) => init.method === 'POST'),
+    ).toHaveLength(1);
+  } finally {
+    mockFocused = true;
+    await env.dispose();
+  }
+});
+
+test('a create response after Boards unmounts does not navigate or select', async () => {
+  const rows = [a];
+  const created = {
+    ...workspace(8),
+    name: 'Unmounted team',
+    role: 'ADMIN',
+    canManage: true,
+  };
+  let finish;
+  const pending = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const env = await setup({
+    first: rows,
+    override: (url, init) =>
+      url.pathname === '/api/workspaces' && init.method === 'POST'
+        ? pending
+        : null,
+  });
+  try {
+    await fireEvent.press(await trigger());
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create new workspace' }),
+    );
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'Unmounted team');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create workspace' }),
+    );
+    await env.show(null);
+    const directoryReads = () =>
+      env.fetch.mock.calls.filter(
+        ([url, init]) =>
+          new URL(url).pathname === '/api/workspaces' && init.method === 'GET',
+      ).length;
+    const beforeResponse = directoryReads();
+    rows.push(created);
+    await act(() =>
+      finish({
+        ...envelope(
+          { success: true, statusCode: 201, message: 'Created', data: created },
+          201,
+        ),
+        ok: true,
+      }),
+    );
+    await waitFor(() =>
+      expect(directoryReads()).toBeGreaterThan(beforeResponse),
+    );
+    expect(mockNavigate).not.toHaveBeenCalledWith('/workspaces/' + created.id);
+    await env.show('boards');
+    expect((await trigger()).props.accessibilityLabel).not.toMatch(
+      /Unmounted team/,
+    );
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('a committed creation retries directory lookup without posting twice', async () => {
+  const rows = [a];
+  const created = {
+    ...workspace(8),
+    name: 'New team',
+    role: 'ADMIN',
+    canManage: true,
+  };
+  let failLookup = false;
+  const env = await setup({
+    first: rows,
+    override: (url, init) => {
+      if (url.pathname !== '/api/workspaces') return null;
+      if (init.method === 'POST') {
+        rows.push(created);
+        failLookup = true;
+        return {
+          ...envelope(
+            {
+              success: true,
+              statusCode: 201,
+              message: 'Created',
+              data: created,
+            },
+            201,
+          ),
+          ok: true,
+        };
+      }
+      if (failLookup) {
+        failLookup = false;
+        return fail(503);
+      }
+      return null;
+    },
+  });
+  try {
+    await fireEvent.press(await trigger());
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create new workspace' }),
+    );
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'New team');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create workspace' }),
+    );
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Retry workspace lookup' }),
+    );
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith('/workspaces/' + created.id),
+    );
+    expect(
+      env.fetch.mock.calls.filter(([, init]) => init.method === 'POST'),
+    ).toHaveLength(1);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('admin edits nullable metadata and an eligible Team deletion requires the exact name', async () => {
+  const admin = {
+    ...b,
+    role: 'ADMIN',
+    canManage: true,
+    description: 'Old description',
+  };
+  mockPath = '/workspaces/' + admin.id;
+  const env = await setup({
+    first: [a, admin],
+    view: 'overview',
+    override: (url, init) => {
+      if (url.pathname === '/api/workspaces/' + admin.id + '/overview')
+        return ok({
+          ...overview(admin),
+          visibleBoardCount: 0,
+          activeBoardCount: 0,
+          recentBoards: [],
+        });
+      if (
+        url.pathname === '/api/workspaces/' + admin.id &&
+        init.method === 'PATCH'
+      )
+        return ok({ ...admin, description: null });
+      if (
+        url.pathname === '/api/workspaces/' + admin.id &&
+        init.method === 'DELETE'
+      )
+        return { status: 204, ok: true, headers: { get: () => null } };
+      return null;
+    },
+  });
+  try {
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Edit workspace' }),
+    );
+    await fireEvent.changeText(
+      screen.getByLabelText('Description (optional)'),
+      '',
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() =>
+      expect(
+        env.fetch.mock.calls.some(([, init]) => init.method === 'PATCH'),
+      ).toBe(true),
+    );
+    const patch = env.fetch.mock.calls.find(
+      ([, init]) => init.method === 'PATCH',
+    )[1];
+    expect(JSON.parse(patch.body)).toEqual({ description: null });
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Delete workspace' }),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Delete workspace', disabled: true }),
+    ).toBeTruthy();
+    await fireEvent.changeText(
+      screen.getByLabelText('Workspace name'),
+      admin.name,
+    );
+    const buttons = screen.getAllByRole('button', { name: 'Delete workspace' });
+    await fireEvent.press(buttons[buttons.length - 1]);
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/boards'));
+    const deletion = env.fetch.mock.calls.find(
+      ([, init]) => init.method === 'DELETE',
+    )[1];
+    expect(JSON.parse(deletion.body)).toEqual({ confirmationName: admin.name });
+  } finally {
+    await env.dispose();
+    mockPath = '/boards';
+  }
+});
+
+test('last admin cannot leave and the workspace remains visible after a 409', async () => {
+  const admin = { ...b, role: 'ADMIN', canManage: true };
+  mockPath = '/workspaces/' + admin.id;
+  const env = await setup({
+    first: [a, admin],
+    view: 'overview',
+    override: (url, init) => {
+      if (
+        url.pathname === '/api/workspaces/' + admin.id + '/leave' &&
+        init.method === 'POST'
+      )
+        return envelope(
+          {
+            success: false,
+            statusCode: 409,
+            code: 'CONFLICT',
+            message: 'The last admin cannot leave',
+          },
+          409,
+        );
+      return null;
+    },
+  });
+  try {
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Leave workspace' }),
+    );
+    const buttons = screen.getAllByRole('button', { name: 'Leave workspace' });
+    await fireEvent.press(buttons[buttons.length - 1]);
+    await screen.findByText('The last admin cannot leave');
+    expect(screen.getByText(/Design and research/)).toBeTruthy();
+    expect(mockNavigate).not.toHaveBeenCalledWith('/boards');
+  } finally {
+    await env.dispose();
+    mockPath = '/boards';
+  }
+});
+
+test('a hidden Board blocker returns 409 without deleting the Workspace', async () => {
+  const admin = { ...b, role: 'ADMIN', canManage: true };
+  mockPath = '/workspaces/' + admin.id;
+  const env = await setup({
+    first: [admin],
+    view: 'overview',
+    override: (url, init) => {
+      if (url.pathname === '/api/workspaces/' + admin.id + '/overview')
+        return ok({
+          ...overview(admin),
+          visibleBoardCount: 0,
+          activeBoardCount: 0,
+          recentBoards: [],
+        });
+      if (
+        url.pathname === '/api/workspaces/' + admin.id &&
+        init.method === 'DELETE'
+      )
+        return envelope(
+          {
+            success: false,
+            statusCode: 409,
+            code: 'CONFLICT',
+            message: 'Workspace must be empty before deletion',
+          },
+          409,
+        );
+      return null;
+    },
+  });
+  try {
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Delete workspace' }),
+    );
+    await fireEvent.changeText(
+      screen.getByLabelText('Workspace name'),
+      admin.name,
+    );
+    const buttons = screen.getAllByRole('button', { name: 'Delete workspace' });
+    await fireEvent.press(buttons[buttons.length - 1]);
+    await screen.findByText('Workspace must be empty before deletion');
+    expect(mockNavigate).not.toHaveBeenCalledWith('/boards');
+    expect(screen.getByText(/Design and research/)).toBeTruthy();
+  } finally {
+    await env.dispose();
+    mockPath = '/boards';
+  }
+});
+
+test.each(['active', 'archived'])(
+  'an admin cannot delete a Team with a visible %s Board',
+  async (status) => {
+    const admin = { ...b, role: 'ADMIN', canManage: true };
+    mockPath = '/workspaces/' + admin.id;
+    const env = await setup({
+      first: [admin],
+      view: 'overview',
+      override: (url) =>
+        url.pathname === '/api/workspaces/' + admin.id + '/overview'
+          ? ok({
+              ...overview(admin),
+              activeBoardCount: status === 'active' ? 1 : 0,
+              archivedBoardCount: status === 'archived' ? 1 : 0,
+              recentBoards: [],
+            })
+          : null,
+    });
+    try {
+      await screen.findByText(/must have no boards before it can be deleted/i);
+      expect(
+        screen.queryByRole('button', { name: 'Delete workspace' }),
+      ).toBeNull();
+      expect(
+        env.fetch.mock.calls.some(([, init]) => init.method === 'DELETE'),
+      ).toBe(false);
+    } finally {
+      await env.dispose();
+      mockPath = '/boards';
+    }
+  },
+);
+
+test('successful Team leave returns to Boards and removes Workspace access', async () => {
+  mockPath = '/workspaces/' + b.id;
+  const env = await setup({
+    first: [a, b],
+    view: 'overview',
+    override: (url, init) =>
+      url.pathname === '/api/workspaces/' + b.id + '/leave' &&
+      init.method === 'POST'
+        ? { status: 204, ok: true, headers: { get: () => null } }
+        : null,
+  });
+  try {
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Leave workspace' }),
+    );
+    const buttons = screen.getAllByRole('button', { name: 'Leave workspace' });
+    await fireEvent.press(buttons[buttons.length - 1]);
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/boards'));
+    expect(
+      env.fetch.mock.calls.filter(([url]) => String(url).endsWith('/leave')),
+    ).toHaveLength(1);
+  } finally {
+    await env.dispose();
+    mockPath = '/boards';
+  }
+});
+
+test('a late successful leave evicts access without navigating away from the current screen', async () => {
+  mockPath = '/workspaces/' + b.id;
+  let finish;
+  const pending = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const env = await setup({
+    first: [a, b],
+    view: 'overview',
+    override: (url, init) =>
+      url.pathname === '/api/workspaces/' + b.id + '/leave' &&
+      init.method === 'POST'
+        ? pending
+        : null,
+  });
+  try {
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Leave workspace' }),
+    );
+    const buttons = screen.getAllByRole('button', { name: 'Leave workspace' });
+    await fireEvent.press(buttons[buttons.length - 1]);
+    mockFocused = false;
+    await env.show('overview');
+    await act(() =>
+      finish({ status: 204, ok: true, headers: { get: () => null } }),
+    );
+    await screen.findByText('Resource unavailable');
+    expect(mockNavigate).not.toHaveBeenCalledWith('/boards');
+  } finally {
+    mockFocused = true;
+    mockPath = '/boards';
+    await env.dispose();
+  }
+});
+
+test('a late successful delete evicts access without navigating away after focus changes', async () => {
+  const admin = { ...b, role: 'ADMIN', canManage: true };
+  mockPath = '/workspaces/' + admin.id;
+  let finish;
+  const pending = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const env = await setup({
+    first: [a, admin],
+    view: 'overview',
+    override: (url, init) => {
+      if (url.pathname === '/api/workspaces/' + admin.id + '/overview')
+        return ok({
+          ...overview(admin),
+          visibleBoardCount: 0,
+          activeBoardCount: 0,
+          recentBoards: [],
+        });
+      if (
+        url.pathname === '/api/workspaces/' + admin.id &&
+        init.method === 'DELETE'
+      )
+        return pending;
+      return null;
+    },
+  });
+  try {
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Delete workspace' }),
+    );
+    await fireEvent.changeText(
+      screen.getByLabelText('Workspace name'),
+      admin.name,
+    );
+    const buttons = screen.getAllByRole('button', { name: 'Delete workspace' });
+    await fireEvent.press(buttons[buttons.length - 1]);
+    mockFocused = false;
+    await env.show('overview');
+    await act(() =>
+      finish({ status: 204, ok: true, headers: { get: () => null } }),
+    );
+    await screen.findByText('Resource unavailable');
+    expect(mockNavigate).not.toHaveBeenCalledWith('/boards');
+    expect(
+      env.fetch.mock.calls.filter(([, init]) => init.method === 'DELETE'),
+    ).toHaveLength(1);
+  } finally {
+    mockFocused = true;
+    mockPath = '/boards';
+    await env.dispose();
+  }
+});
+
+test('an uncertain leave hides the workspace until access is rechecked', async () => {
+  mockPath = '/workspaces/' + b.id;
+  let lost = false;
+  const env = await setup({
+    first: [a, b],
+    view: 'overview',
+    override: (url, init) => {
+      if (
+        url.pathname === '/api/workspaces/' + b.id + '/leave' &&
+        init.method === 'POST'
+      ) {
+        lost = true;
+        return fail(503);
+      }
+      if (url.pathname === '/api/workspaces/' + b.id && lost) return fail(404);
+      return null;
+    },
+  });
+  try {
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Leave workspace' }),
+    );
+    const buttons = screen.getAllByRole('button', { name: 'Leave workspace' });
+    await fireEvent.press(buttons[buttons.length - 1]);
+    await screen.findByText('Verify workspace access');
+    expect(screen.queryByText(/Design and research/)).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Check access' }));
+    await screen.findByText('Resource unavailable');
+    expect(screen.queryByText(/Design and research/)).toBeNull();
+  } finally {
+    await env.dispose();
+    mockPath = '/boards';
+  }
+});
+
+test('a forbidden edit hides protected content until membership is rechecked', async () => {
+  const admin = { ...b, role: 'ADMIN', canManage: true };
+  mockPath = '/workspaces/' + admin.id;
+  let downgraded = false;
+  const env = await setup({
+    first: [admin],
+    view: 'overview',
+    override: (url, init) => {
+      if (url.pathname !== '/api/workspaces/' + admin.id) return null;
+      if (init.method === 'PATCH') {
+        downgraded = true;
+        return fail(403);
+      }
+      if (downgraded) return ok({ ...admin, role: 'MEMBER', canManage: false });
+      return null;
+    },
+  });
+  try {
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Edit workspace' }),
+    );
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'Draft');
+    await fireEvent.press(screen.getByRole('button', { name: 'Save changes' }));
+    await screen.findByText('Verify workspace access');
+    expect(screen.queryByText(/Design and research/)).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Check access' }));
+    await screen.findByText(/Design and research/);
+    expect(screen.queryByRole('button', { name: 'Edit workspace' })).toBeNull();
+  } finally {
+    await env.dispose();
+    mockPath = '/boards';
+  }
+});
+
+test('a forbidden edit retains its draft if admin access is reconfirmed', async () => {
+  const admin = { ...b, role: 'ADMIN', canManage: true };
+  mockPath = '/workspaces/' + admin.id;
+  const env = await setup({
+    first: [admin],
+    view: 'overview',
+    override: (url, init) =>
+      url.pathname === '/api/workspaces/' + admin.id && init.method === 'PATCH'
+        ? fail(403)
+        : null,
+  });
+  try {
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Edit workspace' }),
+    );
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'My draft');
+    await fireEvent.press(screen.getByRole('button', { name: 'Save changes' }));
+    await screen.findByText('Verify workspace access');
+    expect(screen.queryByDisplayValue('My draft')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Check access' }));
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Edit workspace' }),
+    );
+    expect(screen.getByLabelText('Name').props.value).toBe('My draft');
+  } finally {
+    await env.dispose();
+    mockPath = '/boards';
+  }
+});
+
+test.each([400, 409, 503])(
+  'edit preserves the draft after HTTP %s and retries only on user action',
+  async (status) => {
+    const admin = {
+      ...b,
+      role: 'ADMIN',
+      canManage: true,
+      description: 'Original',
+    };
+    mockPath = '/workspaces/' + admin.id;
+    let rejected = true;
+    const env = await setup({
+      first: [admin],
+      view: 'overview',
+      override: (url, init) => {
+        if (
+          url.pathname !== '/api/workspaces/' + admin.id ||
+          init.method !== 'PATCH'
+        )
+          return null;
+        return rejected
+          ? fail(status)
+          : ok({ ...admin, description: 'Draft description' });
+      },
+    });
+    try {
+      await fireEvent.press(
+        await screen.findByRole('button', { name: 'Edit workspace' }),
+      );
+      await fireEvent.changeText(
+        screen.getByLabelText('Description (optional)'),
+        'Draft description',
+      );
+      await fireEvent.press(
+        screen.getByRole('button', { name: 'Save changes' }),
+      );
+      await screen.findByText(
+        status === 503
+          ? 'Couldn’t load the latest data. Try again.'
+          : 'The request failed.',
+      );
+      expect(screen.getByLabelText('Description (optional)').props.value).toBe(
+        'Draft description',
+      );
+      expect(
+        env.fetch.mock.calls.filter(([, init]) => init.method === 'PATCH'),
+      ).toHaveLength(1);
+      rejected = false;
+      await fireEvent.press(
+        screen.getByRole('button', { name: 'Save changes' }),
+      );
+      await waitFor(() =>
+        expect(
+          env.fetch.mock.calls.filter(([, init]) => init.method === 'PATCH'),
+        ).toHaveLength(2),
+      );
+    } finally {
+      await env.dispose();
+      mockPath = '/boards';
+    }
+  },
+);
+
+test('a missing workspace on leave immediately evicts its protected content', async () => {
+  mockPath = '/workspaces/' + b.id;
+  const env = await setup({
+    first: [a, b],
+    view: 'overview',
+    override: (url, init) =>
+      url.pathname === '/api/workspaces/' + b.id + '/leave' &&
+      init.method === 'POST'
+        ? fail(404)
+        : null,
+  });
+  try {
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Leave workspace' }),
+    );
+    const buttons = screen.getAllByRole('button', { name: 'Leave workspace' });
+    await fireEvent.press(buttons[buttons.length - 1]);
+    await screen.findByText('Resource unavailable');
+    expect(screen.queryByText(/Design and research/)).toBeNull();
+    expect(screen.queryByText('1 visible boards')).toBeNull();
+  } finally {
+    await env.dispose();
+    mockPath = '/boards';
+  }
+});
+
+test('editing the name leaves an untouched description out of PATCH', async () => {
+  const admin = {
+    ...b,
+    role: 'ADMIN',
+    canManage: true,
+    description: '  retained  ',
+  };
+  mockPath = '/workspaces/' + admin.id;
+  const env = await setup({
+    first: [admin],
+    view: 'overview',
+    override: (url, init) =>
+      url.pathname === '/api/workspaces/' + admin.id && init.method === 'PATCH'
+        ? ok(admin)
+        : null,
+  });
+  try {
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Edit workspace' }),
+    );
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'Renamed');
+    await fireEvent.press(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() =>
+      expect(
+        env.fetch.mock.calls.some(([, init]) => init.method === 'PATCH'),
+      ).toBe(true),
+    );
+    expect(
+      JSON.parse(
+        env.fetch.mock.calls.find(([, init]) => init.method === 'PATCH')[1]
+          .body,
+      ),
+    ).toEqual({ name: 'Renamed' });
+  } finally {
+    await env.dispose();
+    mockPath = '/boards';
+  }
+});
+
+test('a remote rename while editing does not get overwritten by an untouched name', async () => {
+  const admin = {
+    ...b,
+    role: 'ADMIN',
+    canManage: true,
+    description: 'Original',
+  };
+  mockPath = '/workspaces/' + admin.id;
+  const env = await setup({
+    first: [admin],
+    view: 'overview',
+    override: (url, init) =>
+      url.pathname === '/api/workspaces/' + admin.id && init.method === 'PATCH'
+        ? ok(admin)
+        : null,
+  });
+  try {
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Edit workspace' }),
+    );
+    await fireEvent.changeText(
+      screen.getByLabelText('Description (optional)'),
+      'New description',
+    );
+    await act(() =>
+      env.data.queryClient.setQueryData(
+        [
+          'mobile',
+          'private',
+          USER_A,
+          env.manager.getSnapshot().generation,
+          'workspaces',
+          admin.id,
+        ],
+        { ...admin, name: 'Remote rename' },
+      ),
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() =>
+      expect(
+        env.fetch.mock.calls.some(([, init]) => init.method === 'PATCH'),
+      ).toBe(true),
+    );
+    expect(
+      JSON.parse(
+        env.fetch.mock.calls.find(([, init]) => init.method === 'PATCH')[1]
+          .body,
+      ),
+    ).toEqual({ description: 'New description' });
+  } finally {
+    await env.dispose();
+    mockPath = '/boards';
+  }
+});
+
+test('a server-confirmed admin downgrade closes the editing controls', async () => {
+  const admin = { ...b, role: 'ADMIN', canManage: true };
+  mockPath = '/workspaces/' + admin.id;
+  const env = await setup({ first: [admin], view: 'overview' });
+  try {
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Edit workspace' }),
+    );
+    await act(() =>
+      env.data.queryClient.setQueryData(
+        [
+          'mobile',
+          'private',
+          USER_A,
+          env.manager.getSnapshot().generation,
+          'workspaces',
+          admin.id,
+        ],
+        { ...admin, role: 'MEMBER', canManage: false },
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Save changes' })).toBeNull(),
+    );
+    expect(screen.queryByRole('button', { name: 'Edit workspace' })).toBeNull();
+  } finally {
+    await env.dispose();
+    mockPath = '/boards';
+  }
+});
+
+test('Personal and non-admin workspaces do not expose Team management actions', async () => {
+  mockPath = '/workspaces/' + a.id;
+  const env = await setup({ first: [a, b], view: 'overview' });
+  try {
+    await screen.findByText('1 visible boards');
+    expect(
+      screen.queryByRole('button', { name: 'Leave workspace' }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Delete workspace' }),
+    ).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Edit workspace' })).toBeNull();
+    await env.show(null);
+    mockPath = '/workspaces/' + b.id;
+    await env.show('overview');
+    await screen.findByRole('button', { name: 'Leave workspace' });
+    expect(
+      screen.queryByRole('button', { name: 'Delete workspace' }),
+    ).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Edit workspace' })).toBeNull();
+  } finally {
+    await env.dispose();
+    mockPath = '/boards';
+  }
+});
+
+test('a late create response cannot select a workspace after an account switch', async () => {
+  let finish;
+  const pending = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const env = await setup({
+    override: (url, init) =>
+      url.pathname === '/api/workspaces' && init.method === 'POST'
+        ? pending
+        : null,
+  });
+  try {
+    await fireEvent.press(await trigger());
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create new workspace' }),
+    );
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'Late team');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create workspace' }),
+    );
+    await act(() => env.manager.establishSession(loginResponse(USER_B)));
+    const created = {
+      ...workspace(9),
+      name: 'Late team',
+      role: 'ADMIN',
+      canManage: true,
+    };
+    await act(() =>
+      finish({
+        ...envelope(
+          { success: true, statusCode: 201, message: 'Created', data: created },
+          201,
+        ),
+        ok: true,
+      }),
+    );
+    await screen.findByText('No boards in this workspace');
+    expect(mockNavigate).not.toHaveBeenCalledWith('/workspaces/' + created.id);
+    expect(screen.queryByText('Late team')).toBeNull();
+  } finally {
+    await env.dispose();
   }
 });
 

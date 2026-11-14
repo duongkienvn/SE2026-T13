@@ -34,6 +34,12 @@ export interface WorkspaceBoardFilters {
   sort?: 'updatedAt' | 'createdAt' | 'name' | 'recent';
 }
 
+export interface WorkspaceInput {
+  name: string;
+  description?: string | null;
+  icon?: WorkspaceSummary['icon'];
+}
+
 function validatePage(page: number, limit: number) {
   if (
     !Number.isSafeInteger(page) ||
@@ -148,6 +154,55 @@ export function createWorkspaceApi(
 
   return {
     personal,
+    create(input: WorkspaceInput, signal: AbortSignal) {
+      return api.json('/workspaces', decodeWorkspace, {
+        identity,
+        signal,
+        resourceKey: directoryKey,
+        method: 'POST',
+        body: input,
+        expectedStatus: 201,
+      });
+    },
+    update(
+      id: ResourceId,
+      input: Partial<WorkspaceInput>,
+      signal: AbortSignal,
+    ) {
+      return api.json(
+        `/workspaces/${id}`,
+        (value) => {
+          const workspace = decodeWorkspace(value);
+          if (workspace.id !== id) throw invalidResponse(200);
+          return workspace;
+        },
+        {
+          identity,
+          signal,
+          resourceKey: queryKeys.workspace(identity, id),
+          method: 'PATCH',
+          body: input,
+          expectedStatus: 200,
+        },
+      );
+    },
+    leave(id: ResourceId, signal: AbortSignal) {
+      return api.empty(`/workspaces/${id}/leave`, {
+        identity,
+        signal,
+        resourceKey: queryKeys.workspace(identity, id),
+        method: 'POST',
+      });
+    },
+    remove(id: ResourceId, confirmationName: string, signal: AbortSignal) {
+      return api.empty(`/workspaces/${id}`, {
+        identity,
+        signal,
+        resourceKey: queryKeys.workspace(identity, id),
+        method: 'DELETE',
+        body: { confirmationName },
+      });
+    },
     async directory(signal: AbortSignal) {
       const result =
         (await readDirectory(signal)) ?? (await readDirectory(signal));
