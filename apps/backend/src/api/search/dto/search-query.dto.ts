@@ -3,6 +3,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsString,
+  isUUID,
   ValidateBy,
   type ValidationArguments,
 } from 'class-validator';
@@ -92,6 +93,26 @@ export class SearchQueryDto {
       'type=all: default 5, max 10 per group. Specific type: default 20, max 50.',
   })
   limit?: number;
+
+  @ValidateBy({
+    name: 'searchBoardScope',
+    validator: {
+      validate: (value: unknown, args?: ValidationArguments) =>
+        value === undefined ||
+        ((args!.object as SearchQueryDto).type === 'cards' &&
+          typeof value === 'string' &&
+          isUUID(value, '4')),
+      defaultMessage: () =>
+        'boardId is an optional UUIDv4, allowed only for type=cards',
+    },
+  })
+  @ApiPropertyOptional({
+    type: String,
+    format: 'uuid',
+    description:
+      'Optional Board filter for type=cards only. Omit to preserve legacy results.',
+  })
+  boardId?: string;
 }
 
 export function searchWindow(input: SearchQueryDto) {

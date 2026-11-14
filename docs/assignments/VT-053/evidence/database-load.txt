@@ -1,0 +1,26 @@
+
+> @kanban/backend@0.0.0 test:search:database D:\NAM_BON\KI_I\Software_Engineering\Projects\SE2026-T13\apps\backend
+> pnpm build && node test/search/search.integration.mjs
+
+
+> @kanban/backend@0.0.0 build D:\NAM_BON\KI_I\Software_Engineering\Projects\SE2026-T13\apps\backend
+> nest build
+
+(node:39728) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS: VT-053 Board-filtered Cards, legacy wire shape, authorization and invalid scopes
+PASS: full Workspace/Board ACL matrix, Guest directory privacy, cross-Workspace isolation, deduplication and deep-link/discovery parity
+PASS: visibility changes, independent Board grants after Workspace removal, revoked membership, assignment independence and archive/restore
+PASS: VT-053 scoped multi-page rank/ties, filtered totals and beyond-last boundary
+PASS: exact/prefix/title-substring/description-only rank, timestamp and UUID ties, independent grouped totals and stable pagination
+PASS: literal wildcard/backslash and injection strings, Unicode case, long matched snippets and empty-query behavior
+PASS: zero business queries for empty search and consistent snapshot during committed revocation, directory loss and archive
+Search query sanity: 4,000 Cards / 40 Boards; grouped 6 SELECTs, single type 2 SELECTs; workspaces count=0.08ms, workspaces page=0.092ms, boards count=0.295ms, boards page=0.416ms, cards count=7.34ms, cards page=68.721ms
+PASS: 4,000-row stable page traversal, grouped caps/defaults, constant query count, unauthorized assignments and actual EXPLAIN plans
+VT053_LOAD_legacy: {"kind":"VT-053 local SEARCH HTTP workload","endpoint":"http://127.0.0.1:49989/api/search","requests":400,"successful":400,"failed":0,"concurrency":40,"maxActive":40,"errorRatePercent":0,"minMs":354.88,"p50Ms":473.13,"p95Ms":579.12,"p99Ms":740.2,"maxMs":778.52,"elapsedMs":5011.14,"requestsPerSecond":79.82,"targetMs":1500,"expectedTotal":4000,"meetsTarget":true,"limitation":"One local closed-loop run; a synthetic server validates only the harness. Not production capacity evidence."}
+VT053_LOAD_scoped: {"kind":"VT-053 local SEARCH HTTP workload","endpoint":"http://127.0.0.1:49989/api/search","requests":400,"successful":400,"failed":0,"concurrency":40,"maxActive":40,"errorRatePercent":0,"minMs":183.53,"p50Ms":387,"p95Ms":435.83,"p99Ms":472.3,"maxMs":480.96,"elapsedMs":3930.17,"requestsPerSecond":101.78,"targetMs":1500,"expectedTotal":100,"meetsTarget":true,"limitation":"One local closed-loop run; a synthetic server validates only the harness. Not production capacity evidence."}
+PASS: VT-053 real local AppModule/PostgreSQL load, legacy and scoped workloads
+PASS: VT-053 real PostgreSQL query failure remains sanitized HTTP 500, then recovers
+PASS: compiled AppModule HTTP, exact allowlisted fields, JWT/session invalidation, validation, no-store and Swagger
+Global Search PostgreSQL integration: 11 groups passed
+EXIT_CODE=0

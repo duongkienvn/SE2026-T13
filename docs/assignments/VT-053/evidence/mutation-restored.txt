@@ -1,0 +1,28 @@
+HEAD=654cbb2d9e2c48b2e057b7793075d9a810f77788
+Node=v22.17.0
+COMMAND=node --test apps/backend/test/search/search-error.contract.mjs
+VT053_SERVICE_SOURCE=D:\NAM_BON\KI_I\Software_Engineering\Projects\SE2026-T13\apps\backend\src\api\search\search.service.ts
+TAP version 13
+# Subtest: VT053-C08: DB failure must not become empty success
+ok 1 - VT053-C08: DB failure must not become empty success
+  ---
+  duration_ms: 1.1911
+  type: 'test'
+  ...
+# Subtest: VT053-C09: query failure inside the transaction must propagate
+ok 2 - VT053-C09: query failure inside the transaction must propagate
+  ---
+  duration_ms: 0.2956
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 370.1962
+
+EXIT_CODE=0

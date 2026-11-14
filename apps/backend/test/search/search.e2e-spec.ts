@@ -199,6 +199,13 @@ describe('global search authenticated HTTP contract', () => {
   });
 
   it.each([
+    '?q=x&type=all&boardId=' + id,
+    '?q=x&type=boards&boardId=' + id,
+    '?q=x&type=workspaces&boardId=' + id,
+    '?q=x&type=cards&boardId=not-a-uuid',
+    '?q=x&type=cards&boardId=',
+    '?q=x&type=cards&boardId=' + id + '&boardId=' + id,
+    '?q=x&type=cards&boardId[x]=y',
     '?page=1',
     '?type=all&page=1',
     '?limit=11',
@@ -217,6 +224,20 @@ describe('global search authenticated HTTP contract', () => {
     const response = await send(query).expect(400);
     expect(response.body.code).toBe('VALIDATION_FAILED');
     expect(service.search).not.toHaveBeenCalled();
+  });
+
+  it('forwards optional Board scope with transformed pagination through the HTTP boundary', async () => {
+    await send(`?q=needle&type=cards&boardId=${id}&page=2&limit=1`).expect(200);
+    expect(service.search).toHaveBeenCalledWith(
+      id,
+      expect.objectContaining({
+        q: 'needle',
+        type: 'cards',
+        boardId: id,
+        page: 2,
+        limit: 1,
+      }),
+    );
   });
 
   it('accepts supplementary Unicode at the 120-character boundary', async () => {
@@ -293,7 +314,14 @@ describe('global search authenticated HTTP contract', () => {
     expect(get.security).toEqual([{ bearer: [] }]);
     expect(
       get.parameters!.map((p) => ('name' in p ? p.name : '')).sort(),
-    ).toEqual(['limit', 'page', 'q', 'type']);
+    ).toEqual(['boardId', 'limit', 'page', 'q', 'type']);
+    expect(get.parameters).toContainEqual(
+      expect.objectContaining({
+        name: 'boardId',
+        in: 'query',
+        required: false,
+      }),
+    );
     for (const status of ['200', '400', '401', '429', '500'])
       expect(get.responses[status]).toBeDefined();
     expect(doc.components!.schemas!.CardSearchResultDto).toMatchObject({

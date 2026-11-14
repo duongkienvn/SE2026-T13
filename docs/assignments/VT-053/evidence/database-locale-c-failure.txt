@@ -1,0 +1,28 @@
+
+> @kanban/backend@0.0.0 test:search:database D:\NAM_BON\KI_I\Software_Engineering\Projects\SE2026-T13\apps\backend
+> pnpm build && node test/search/search.integration.mjs
+
+
+> @kanban/backend@0.0.0 build D:\NAM_BON\KI_I\Software_Engineering\Projects\SE2026-T13\apps\backend
+> nest build
+
+(node:10140) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS: VT-053 Board-filtered Cards, legacy wire shape, authorization and invalid scopes
+PASS: full Workspace/Board ACL matrix, Guest directory privacy, cross-Workspace isolation, deduplication and deep-link/discovery parity
+PASS: visibility changes, independent Board grants after Workspace removal, revoked membership, assignment independence and archive/restore
+PASS: VT-053 scoped multi-page rank/ties, filtered totals and beyond-last boundary
+PASS: exact/prefix/title-substring/description-only rank, timestamp and UUID ties, independent grouped totals and stable pagination
+file:///D:/NAM_BON/KI_I/Software_Engineering/Projects/SE2026-T13/apps/backend/test/search/search.integration.mjs:635
+      (await search('owner', { q, type: 'cards' })).groups.cards.items[0].id,
+                                                                          ^
+
+TypeError: Cannot read properties of undefined (reading 'id')
+    at file:///D:/NAM_BON/KI_I/Software_Engineering/Projects/SE2026-T13/apps/backend/test/search/search.integration.mjs:635:75
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+
+Node.js v22.17.0
+D:\NAM_BON\KI_I\Software_Engineering\Projects\SE2026-T13\apps\backend:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @kanban/backend@0.0.0 test:search:database: `pnpm build && node test/search/search.integration.mjs`
+Exit status 1
+EXIT_CODE=1

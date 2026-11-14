@@ -1,0 +1,455 @@
+
+> realtime-collaborative-kanban@ test D:\NAM_BON\KI_I\Software_Engineering\Projects\SE2026-T13
+> pnpm --filter @kanban/shared build && pnpm -r test
+
+
+> @kanban/shared@0.0.0 build D:\NAM_BON\KI_I\Software_Engineering\Projects\SE2026-T13\packages\shared
+> node scripts/build.mjs
+
+Scope: 4 of 5 workspace projects
+packages/shared test$ node --test test/exports.test.mjs test/realtime.test.mjs test/workspace.test.mjs test/card-dates.test.mjs test/card-attachments.test.mjs
+packages/shared test: TAP version 13
+packages/shared test: # Subtest: attachment lifecycle contracts match ESM/CommonJS and reuse Card invalidation
+packages/shared test: ok 1 - attachment lifecycle contracts match ESM/CommonJS and reuse Card invalidation
+packages/shared test:   ---
+packages/shared test:   duration_ms: 12.3326
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: strict Card instants normalize offsets, leap years, optional seconds and legacy fractions
+packages/shared test: ok 2 - strict Card instants normalize offsets, leap years, optional seconds and legacy fractions
+packages/shared test:   ---
+packages/shared test:   duration_ms: 10.9933
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: invalid civil/local dates, offsets, component overflow and non-finite inputs fail
+packages/shared test: ok 3 - invalid civil/local dates, offsets, component overflow and non-finite inputs fail
+packages/shared test:   ---
+packages/shared test:   duration_ms: 0.892
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: due status has explicit reference-clock boundaries and never infers completion
+packages/shared test: ok 4 - due status has explicit reference-clock boundaries and never infers completion
+packages/shared test:   ---
+packages/shared test:   duration_ms: 20.289
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: IANA calendar days handle spring gaps, fall folds and 23/25-hour days without arithmetic offsets
+packages/shared test: ok 5 - IANA calendar days handle spring gaps, fall folds and 23/25-hour days without arithmetic offsets
+packages/shared test:   ---
+packages/shared test:   duration_ms: 1.2798
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: projection validates reference instants and named zones even without a deadline
+packages/shared test: ok 6 - projection validates reference instants and named zones even without a deadline
+packages/shared test:   ---
+packages/shared test:   duration_ms: 0.7493
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: zone projection preserves ISO calendar years at supported UTC boundaries
+packages/shared test: ok 7 - zone projection preserves ISO calendar years at supported UTC boundaries
+packages/shared test:   ---
+packages/shared test:   duration_ms: 0.4619
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: date helpers preserve ISO years with present ISO era parts
+packages/shared test: ok 8 - date helpers preserve ISO years with present ISO era parts
+packages/shared test:   ---
+packages/shared test:   duration_ms: 10.896
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: date helpers preserve ISO years with absent ISO era parts
+packages/shared test: ok 9 - date helpers preserve ISO years with absent ISO era parts
+packages/shared test:   ---
+packages/shared test:   duration_ms: 14.0058
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: exports notification kinds and separate ID-free invalidation in both formats
+packages/shared test: ok 10 - exports notification kinds and separate ID-free invalidation in both formats
+packages/shared test:   ---
+packages/shared test:   duration_ms: 10.7114
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: exports global search types to ESM and CommonJS
+packages/shared test: ok 11 - exports global search types to ESM and CommonJS
+packages/shared test:   ---
+packages/shared test:   duration_ms: 0.397
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: exports exhaustive productivity groups to both module formats
+packages/shared test: ok 12 - exports exhaustive productivity groups to both module formats
+packages/shared test:   ---
+packages/shared test:   duration_ms: 0.2399
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: exports the same realtime event names for both module formats
+packages/shared test: ok 13 - exports the same realtime event names for both module formats
+packages/shared test:   ---
+packages/shared test:   duration_ms: 0.3632
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: provides the same named export to ESM and CommonJS consumers
+packages/shared test: ok 14 - provides the same named export to ESM and CommonJS consumers
+packages/shared test:   ---
+packages/shared test:   duration_ms: 0.3006
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: provides the shared domain values to ESM and CommonJS consumers
+packages/shared test: ok 15 - provides the shared domain values to ESM and CommonJS consumers
+packages/shared test:   ---
+packages/shared test:   duration_ms: 0.3462
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: exports the separate presence contract in ESM and CommonJS
+packages/shared test: ok 16 - exports the separate presence contract in ESM and CommonJS
+packages/shared test:   ---
+packages/shared test:   duration_ms: 9.9039
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: exports the reviewed Board events in ESM and CommonJS
+packages/shared test: ok 17 - exports the reviewed Board events in ESM and CommonJS
+packages/shared test:   ---
+packages/shared test:   duration_ms: 0.2592
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: typechecks key/payload mapping and rejects invalid contracts
+packages/shared test: ok 18 - typechecks key/payload mapping and rejects invalid contracts
+packages/shared test:   ---
+packages/shared test:   duration_ms: 640.1624
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: typechecks Board discovery contracts and rejects unsupported values
+packages/shared test: ok 19 - typechecks Board discovery contracts and rejects unsupported values
+packages/shared test:   ---
+packages/shared test:   duration_ms: 521.8236
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: # Subtest: workspace values have the same ESM and CommonJS contract
+packages/shared test: ok 20 - workspace values have the same ESM and CommonJS contract
+packages/shared test:   ---
+packages/shared test:   duration_ms: 9.8669
+packages/shared test:   type: 'test'
+packages/shared test:   ...
+packages/shared test: 1..20
+packages/shared test: # tests 20
+packages/shared test: # suites 0
+packages/shared test: # pass 20
+packages/shared test: # fail 0
+packages/shared test: # cancelled 0
+packages/shared test: # skipped 0
+packages/shared test: # todo 0
+packages/shared test: # duration_ms 1305.9441
+packages/shared test: Done
+apps/backend test$ jest --runInBand
+apps/frontend test$ vitest run
+apps/mobile test$ node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/*.test.mjs test/**/*.test.ts && jest --runInBand
+apps/mobile test: TAP version 13
+apps/mobile test: # (node:36576) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+apps/mobile test: # (Use `node --trace-warnings ...` to show where the warning was created)
+apps/mobile test: # Subtest: login credential uses expiresIn on the device clock and the JWT subject
+apps/mobile test: ok 1 - login credential uses expiresIn on the device clock and the JWT subject
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 2.8883
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: login credential rejects bad tokens and lifetimes
+apps/mobile test: ok 2 - login credential rejects bad tokens and lifetimes
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.7663
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: JWT subject needs a UUID sub and integer exp
+apps/mobile test: ok 3 - JWT subject needs a UUID sub and integer exp
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.5667
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: stored record round-trips and holds only version, token and expiry
+apps/mobile test: ok 4 - stored record round-trips and holds only version, token and expiry
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.7697
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: corrupted, foreign or future-version records do not decode
+apps/mobile test: ok 5 - corrupted, foreign or future-version records do not decode
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.4561
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: read reports none, valid, and removes invalid values
+apps/mobile test: ok 6 - read reports none, valid, and removes invalid values
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.9589
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: read failure is reported, cleaned up and never thrown
+apps/mobile test: ok 7 - read failure is reported, cleaned up and never thrown
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.407
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: failed or partial writes leave nothing behind
+apps/mobile test: ok 8 - failed or partial writes leave nothing behind
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.4791
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: clear reports platform refusal instead of throwing
+apps/mobile test: ok 9 - clear reports platform refusal instead of throwing
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.1105
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # (node:10524) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+apps/mobile test: # (Use `node --trace-warnings ...` to show where the warning was created)
+apps/mobile test: # Subtest: verify calls GET /users/me with the bearer and keeps identity fields only
+apps/mobile test: ok 10 - verify calls GET /users/me with the bearer and keeps identity fields only
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 44.3513
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: only 401 means unauthorized; other failures are unavailable
+apps/mobile test: ok 11 - only 401 means unauthorized; other failures are unavailable
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 4.3196
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: verify times out through the injected timer and aborts fetch
+apps/mobile test: ok 12 - verify times out through the injected timer and aborts fetch
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.698
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: logout posts once and never throws
+apps/mobile test: ok 13 - logout posts once and never throws
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.0035
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: base URL requires HTTPS outside local development hosts
+apps/mobile test: ok 14 - base URL requires HTTPS outside local development hosts
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.8572
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # (node:17940) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+apps/mobile test: # (Use `node --trace-warnings ...` to show where the warning was created)
+apps/mobile test: # Subtest: foreground is reported once per return to active
+apps/mobile test: ok 15 - foreground is reported once per return to active
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 2.3772
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: guard state exposes no token and unlocks only when authenticated
+apps/mobile test: ok 16 - guard state exposes no token and unlocks only when authenticated
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 2.2253
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: account switch aborts old work and a late answer cannot repopulate the cache
+apps/mobile test: ok 17 - account switch aborts old work and a late answer cannot repopulate the cache
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 6.3487
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: late 401 from the previous account does not sign out the new one
+apps/mobile test: ok 18 - late 401 from the previous account does not sign out the new one
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 2.1727
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: expiry and logout block requests and tear down sockets
+apps/mobile test: ok 19 - expiry and logout block requests and tear down sockets
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 9.2962
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # (node:18956) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+apps/mobile test: # (Use `node --trace-warnings ...` to show where the warning was created)
+apps/mobile test: # Subtest: cold start without a credential settles signed out with no network call
+apps/mobile test: ok 20 - cold start without a credential settles signed out with no network call
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 4.3284
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: stored token is never usable before /users/me verifies it
+apps/mobile test: ok 21 - stored token is never usable before /users/me verifies it
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 10.401
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: start runs once even when called concurrently
+apps/mobile test: ok 22 - start runs once even when called concurrently
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.7418
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: expired, corrupted and unreadable credentials sign out safely
+apps/mobile test: ok 23 - expired, corrupted and unreadable credentials sign out safely
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.9186
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: 401 during restore signs out and removes the stored token
+apps/mobile test: ok 24 - 401 during restore signs out and removes the stored token
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 2.1037
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: timeout is offline-uncertain: credential kept, content locked, retry works
+apps/mobile test: ok 25 - timeout is offline-uncertain: credential kept, content locked, retry works
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.507
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: retry while a retry is running reuses the same request
+apps/mobile test: ok 26 - retry while a retry is running reuses the same request
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.2175
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: /users/me identity that differs from the token subject is rejected
+apps/mobile test: ok 27 - /users/me identity that differs from the token subject is rejected
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.3591
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: establishSession verifies, persists and starts the session
+apps/mobile test: ok 28 - establishSession verifies, persists and starts the session
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.1103
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: malformed login responses never touch the current session
+apps/mobile test: ok 29 - malformed login responses never touch the current session
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.7693
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: login verification outcomes: rejected, unavailable, unsaved
+apps/mobile test: ok 30 - login verification outcomes: rejected, unavailable, unsaved
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.9224
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: login during cold restore drops the late restore answer
+apps/mobile test: ok 31 - login during cold restore drops the late restore answer
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 2.3543
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: logout during login verification wins and leaves no stored token
+apps/mobile test: ok 32 - logout during login verification wins and leaves no stored token
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 2.1447
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: logout queued behind a slow credential write still removes it
+apps/mobile test: ok 33 - logout queued behind a slow credential write still removes it
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.1353
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: logout tears down before publishing, then calls the API with the old token
+apps/mobile test: ok 34 - logout tears down before publishing, then calls the API with the old token
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.7073
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: logout still signs out locally when the keychain refuses deletion
+apps/mobile test: ok 35 - logout still signs out locally when the keychain refuses deletion
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.3835
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: stale 401 and security events from older generations are ignored
+apps/mobile test: ok 36 - stale 401 and security events from older generations are ignored
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.5192
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: security invalidation ends the current session with its own reason
+apps/mobile test: ok 37 - security invalidation ends the current session with its own reason
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.5353
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: expiry timer ends the session at the absolute expiry
+apps/mobile test: ok 38 - expiry timer ends the session at the absolute expiry
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.0324
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: clock jump while backgrounded expires on next access or foreground
+apps/mobile test: ok 39 - clock jump while backgrounded expires on next access or foreground
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.7351
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: token expiring while /users/me is pending ends as expired, not authenticated
+apps/mobile test: ok 40 - token expiring while /users/me is pending ends as expired, not authenticated
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.8219
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: a throwing listener does not stop teardown for the others
+apps/mobile test: ok 41 - a throwing listener does not stop teardown for the others
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 0.4331
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: dispose stops timers and ignores late answers
+apps/mobile test: ok 42 - dispose stops timers and ignores late answers
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 1.8904
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: production bundle audit rejects development gallery sources
+apps/mobile test: ok 43 - production bundle audit rejects development gallery sources
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 202.7512
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/frontend test:  RUN  v5.0.3 D:/NAM_BON/KI_I/Software_Engineering/Projects/SE2026-T13/apps/frontend
+apps/mobile test: # Subtest: Metro evaluates shared ESM runtime exports for Android without source aliases
+apps/mobile test: ok 44 - Metro evaluates shared ESM runtime exports for Android without source aliases
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 25061.7085
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: native logo is the unmodified approved transparent PNG
+apps/mobile test: ok 45 - native logo is the unmodified approved transparent PNG
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 7.2846
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # (node:14932) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+apps/mobile test: # (Use `node --trace-warnings ...` to show where the warning was created)
+apps/mobile test: # Subtest: explicit and system theme selection
+apps/mobile test: ok 46 - explicit and system theme selection
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 2.654
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: # Subtest: core text, status and button pairs have readable contrast
+apps/mobile test: ok 47 - core text, status and button pairs have readable contrast
+apps/mobile test:   ---
+apps/mobile test:   duration_ms: 3.0909
+apps/mobile test:   type: 'test'
+apps/mobile test:   ...
+apps/mobile test: 1..47
+apps/mobile test: # tests 47
+apps/mobile test: # suites 0
+apps/mobile test: # pass 47
+apps/mobile test: # fail 0
+apps/mobile test: # cancelled 0
+apps/mobile test: # skipped 0
+apps/mobile test: # todo 0
+apps/mobile test: # duration_ms 26386.8484
+apps/mobile test: 'jest' is not recognized as an internal or external command,
+apps/mobile test: operable program or batch file.
+apps/mobile test: Failed
+D:\NAM_BON\KI_I\Software_Engineering\Projects\SE2026-T13\apps\mobile:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @kanban/mobile@0.0.0 test: `node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/*.test.mjs test/**/*.test.ts && jest --runInBand`
+Exit status 1
+ ELIFECYCLE  Test failed. See above for more details.
+EXIT_CODE=1
