@@ -1,4 +1,6 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { BoardRole } from '@kanban/shared';
 import { View, Text } from 'react-native';
 import type { SessionIdentity } from '../../infrastructure/api/session-client';
 import { useMobileData } from '../../infrastructure/query/DataProvider';
@@ -20,6 +22,7 @@ import {
 } from '../../ui';
 import { BoardArtwork } from '../home/BoardArtwork';
 import { BoardStar } from '../boards/BoardStar';
+import { BoardEditor } from '../boards/BoardEditor';
 import { workspaceBoardOptions } from './queries';
 import {
   canRetryWorkspace,
@@ -61,6 +64,7 @@ export function WorkspaceBoards({
   const data = useMobileData();
   const c = useTheme();
   const online = useWorkspaceOnline();
+  const [editing, setEditing] = useState<ResourceId | null>(null);
   const { search, submittedSearch, status, sort } = filters;
   const change = (next: Partial<BoardFilters>) =>
     onFiltersChange({ ...filters, ...next });
@@ -189,16 +193,35 @@ export function WorkspaceBoards({
               accessibilityLabel={`Open board ${board.name}${meta ? ', ' + meta : ''}`}
               leading={<BoardArtwork preset={board.backgroundPreset} />}
               trailing={
-                board.isStarred === undefined ? undefined : (
-                  <BoardStar
-                    identity={identity}
-                    id={board.id}
-                    name={board.name}
-                    starred={board.isStarred}
-                    updatedAt={query.dataUpdatedAt}
-                    disabled={!active || !online}
-                  />
-                )
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {board.isStarred === undefined ? null : (
+                    <BoardStar
+                      identity={identity}
+                      id={board.id}
+                      name={board.name}
+                      starred={board.isStarred}
+                      updatedAt={query.dataUpdatedAt}
+                      disabled={!active || !online}
+                    />
+                  )}
+                  {!board.isArchived &&
+                    board.currentUserRole === BoardRole.OWNER && (
+                      <Button
+                        label={`Edit ${board.name}`}
+                        variant="link"
+                        disabled={!active || !online}
+                        onPress={() => {
+                          if (
+                            active &&
+                            online &&
+                            data.queryClient.getQueryData(options.queryKey) ===
+                              query.data
+                          )
+                            setEditing(board.id);
+                        }}
+                      />
+                    )}
+                </View>
               }
               onPress={() => {
                 const current = data.queryClient.getQueryData(options.queryKey);
@@ -209,6 +232,14 @@ export function WorkspaceBoards({
           </Surface>
         );
       })}
+      {editing && (
+        <BoardEditor
+          identity={identity}
+          id={editing}
+          active={active}
+          onDismiss={() => setEditing(null)}
+        />
+      )}
       {query.isError && online && (
         <Surface>
           <ErrorState

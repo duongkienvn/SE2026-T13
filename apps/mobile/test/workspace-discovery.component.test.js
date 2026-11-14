@@ -400,6 +400,77 @@ test('uncertain Board creation keeps the draft and blocks a duplicate', async ()
   }
 });
 
+test('only an explicit active Board owner can open the editor and save metadata', async () => {
+  const owner = {
+    ...savedA,
+    currentUserRole: 'OWNER',
+    capabilities: {
+      ...savedA.capabilities,
+      canManageBoard: true,
+      canWriteBoard: true,
+    },
+    createdById: a.id,
+  };
+  const env = await setup({
+    boards: [owner, savedB],
+    override: (url) =>
+      url.pathname === `/api/boards/${owner.id}` ? ok(owner) : null,
+  });
+  try {
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Edit Personal planning' }),
+    );
+    await screen.findByLabelText('Board name');
+    await fireEvent.changeText(screen.getByLabelText('Board name'), 'Renamed');
+    await fireEvent.press(screen.getByRole('button', { name: 'Save board' }));
+    await waitFor(() =>
+      expect(
+        env.fetch.mock.calls.some(([, init]) => init.method === 'PATCH'),
+      ).toBe(true),
+    );
+    expect(
+      JSON.parse(
+        env.fetch.mock.calls.find(([, init]) => init.method === 'PATCH')[1]
+          .body,
+      ),
+    ).toEqual({ name: 'Renamed' });
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('a downgraded Board role is rechecked before showing the editor', async () => {
+  const listed = {
+    ...savedA,
+    currentUserRole: 'OWNER',
+    capabilities: { ...savedA.capabilities, canManageBoard: true },
+  };
+  const env = await setup({
+    boards: [listed],
+    override: (url) =>
+      url.pathname === `/api/boards/${listed.id}`
+        ? ok({
+            ...listed,
+            currentUserRole: 'MEMBER',
+            createdById: a.id,
+            capabilities: { ...listed.capabilities, canManageBoard: false },
+          })
+        : null,
+  });
+  try {
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Edit Personal planning' }),
+    );
+    await screen.findByText('Board editing is unavailable.');
+    expect(screen.queryByLabelText('Board name')).toBeNull();
+    expect(
+      env.fetch.mock.calls.some(([, init]) => init.method === 'PATCH'),
+    ).toBe(false);
+  } finally {
+    await env.dispose();
+  }
+});
+
 test('Personal first, selected outline semantics, Android modal close, tab return and new account reset', async () => {
   const env = await setup();
   try {
