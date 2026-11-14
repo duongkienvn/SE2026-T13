@@ -35,6 +35,8 @@ import {
 } from './WorkspaceBoards';
 import { WorkspaceSelector } from './WorkspaceSelector';
 import { StarredBoards } from '../boards/StarredBoards';
+import { BoardForm } from '../boards/BoardForm';
+import { createBoardApi } from '../boards/api';
 import { WorkspaceForm } from './WorkspaceForm';
 import { createWorkspaceApi } from './api';
 import { workspaceDirectoryOptions, workspaceOverviewOptions } from './queries';
@@ -376,6 +378,20 @@ function SelectedWorkspace({
   const options = workspaceOverviewOptions(data, identity, selected.id);
   const overview = useQuery({ ...options, enabled: active });
   const safe = () => active && isCurrentSelection(selected.id);
+  const [creatingBoard, setCreatingBoard] = useState(false);
+  const fenceKey = [
+    ...queryKeys.scope(identity),
+    'board-create-fence',
+  ] as const;
+  const [boardBlocked, setBoardBlocked] = useState(
+    () => data.queryClient.getQueryData<boolean>(fenceKey) === true,
+  );
+  const fence = (value: boolean) => {
+    data.assertCurrent(identity);
+    data.queryClient.setQueryDefaults(fenceKey, { gcTime: Infinity });
+    data.queryClient.setQueryData(fenceKey, value);
+    setBoardBlocked(value);
+  };
   return (
     <>
       <WorkspaceSelector
@@ -421,10 +437,86 @@ function SelectedWorkspace({
         active={active}
         filters={filters}
         onFiltersChange={onFiltersChange}
+        onCreateBoard={
+          selected.canCreateBoards
+            ? () => {
+                if (safe()) setCreatingBoard(true);
+              }
+            : undefined
+        }
         onBoard={(id) => {
           if (safe()) navigate(destinationPath({ kind: 'board', boardId: id }));
         }}
       />
+      {creatingBoard && (
+        <BoardForm
+          identity={identity}
+          selected={selected}
+          workspaces={workspaces}
+          blocked={boardBlocked}
+          onConfirmChecked={() => fence(false)}
+          onDismiss={() => setCreatingBoard(false)}
+          onSubmit={async (input) => {
+            if (
+              !safe() ||
+              !sameIdentity(identity, data.getIdentity()) ||
+              !workspaces.some(
+                (workspace) =>
+                  workspace.id === input.workspaceId &&
+                  workspace.canCreateBoards,
+              )
+            )
+              throw new Error(
+                'Workspace access changed. Close this form and try again.',
+              );
+            let confirmed = false;
+            try {
+              fence(true);
+              const created = await createBoardApi(data.api, identity).create(
+                input,
+                new AbortController().signal,
+              );
+              confirmed = true;
+              if (
+                created.workspaceId !== input.workspaceId ||
+                created.visibility !== 'PRIVATE'
+              )
+                throw new Error('Unexpected board response');
+              data.assertCurrent(identity);
+              fence(false);
+              void data
+                .invalidate(identity, [
+                  queryKeys.workspaceBoards(identity, input.workspaceId),
+                  queryKeys.home(identity),
+                ])
+                .catch(() => undefined);
+              setCreatingBoard(false);
+            } catch (error) {
+              if (!sameIdentity(identity, data.getIdentity())) return;
+              if (
+                confirmed ||
+                !(error instanceof ApiError) ||
+                error.status >= 500 ||
+                ['timeout', 'network', 'aborted', 'invalid-response'].includes(
+                  error.kind,
+                )
+              ) {
+                void data
+                  .invalidate(identity, [
+                    queryKeys.workspaceBoards(identity, input.workspaceId),
+                  ])
+                  .catch(() => undefined);
+                throw new Error(
+                  'The result could not be confirmed. Check the board list before trying again.',
+                  { cause: error },
+                );
+              }
+              fence(false);
+              throw new Error(workspaceErrorMessage(error), { cause: error });
+            }
+          }}
+        />
+      )}
     </>
   );
 }

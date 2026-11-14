@@ -295,6 +295,111 @@ test('starred section queries the selected Workspace without inventing stars', a
   }
 });
 
+test('creates a private Board in an authorized Workspace once', async () => {
+  const permitted = { ...a, canCreateBoards: true };
+  let finish;
+  const pending = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const env = await setup({
+    first: [permitted],
+    override: (url, init) => {
+      if (url.pathname === '/api/boards/background-presets')
+        return ok([
+          { id: 'blue', kind: 'color', value: '#2563EB', foreground: 'light' },
+        ]);
+      if (url.pathname === '/api/boards' && init.method === 'POST')
+        return pending;
+      return null;
+    },
+  });
+  try {
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Create board' }),
+    );
+    await fireEvent.changeText(
+      screen.getByLabelText('Board name'),
+      '  New board  ',
+    );
+    const create = screen
+      .getAllByRole('button', { name: 'Create board' })
+      .at(-1);
+    await fireEvent.press(create);
+    await fireEvent.press(create);
+    await waitFor(() =>
+      expect(
+        env.fetch.mock.calls.filter(([, init]) => init.method === 'POST'),
+      ).toHaveLength(1),
+    );
+    const call = env.fetch.mock.calls.find(
+      ([, init]) => init.method === 'POST',
+    );
+    expect(JSON.parse(call[1].body)).toEqual({
+      name: 'New board',
+      workspaceId: a.id,
+      description: null,
+    });
+    await act(() =>
+      finish({
+        ...envelope(
+          {
+            success: true,
+            statusCode: 201,
+            message: 'Created',
+            data: {
+              ...board(a.id, 11),
+              currentUserRole: 'OWNER',
+              visibility: 'PRIVATE',
+              createdById: a.id,
+            },
+          },
+          201,
+        ),
+        ok: true,
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByLabelText('Board name')).toBeNull(),
+    );
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('uncertain Board creation keeps the draft and blocks a duplicate', async () => {
+  const env = await setup({
+    first: [{ ...a, canCreateBoards: true }],
+    override: (url, init) =>
+      url.pathname === '/api/boards' && init.method === 'POST'
+        ? fail(503)
+        : url.pathname === '/api/boards/background-presets'
+          ? ok([])
+          : null,
+  });
+  try {
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Create board' }),
+    );
+    await fireEvent.changeText(
+      screen.getByLabelText('Board name'),
+      'Draft board',
+    );
+    await fireEvent.press(
+      screen.getAllByRole('button', { name: 'Create board' }).at(-1),
+    );
+    await screen.findByText(/previous result is uncertain/i);
+    expect(screen.getByLabelText('Board name').props.value).toBe('Draft board');
+    expect(
+      screen.getAllByRole('button', { name: 'Create board' }).at(-1),
+    ).toBeDisabled();
+    expect(
+      env.fetch.mock.calls.filter(([, init]) => init.method === 'POST'),
+    ).toHaveLength(1);
+  } finally {
+    await env.dispose();
+  }
+});
+
 test('Personal first, selected outline semantics, Android modal close, tab return and new account reset', async () => {
   const env = await setup();
   try {

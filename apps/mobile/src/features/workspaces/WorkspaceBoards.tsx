@@ -48,6 +48,7 @@ export function WorkspaceBoards({
   onBoard,
   filters,
   onFiltersChange,
+  onCreateBoard,
 }: {
   identity: SessionIdentity;
   workspace: ResourceId;
@@ -55,6 +56,7 @@ export function WorkspaceBoards({
   onBoard: (id: ResourceId) => void;
   filters: BoardFilters;
   onFiltersChange: (filters: BoardFilters) => void;
+  onCreateBoard?: () => void;
 }) {
   const data = useMobileData();
   const c = useTheme();
@@ -97,6 +99,14 @@ export function WorkspaceBoards({
       >
         All boards
       </Text>
+      {onCreateBoard && (
+        <Button
+          label="Create board"
+          variant="secondary"
+          disabled={!active || !online}
+          onPress={onCreateBoard}
+        />
+      )}
       <SearchField
         label="Search boards"
         value={search}
