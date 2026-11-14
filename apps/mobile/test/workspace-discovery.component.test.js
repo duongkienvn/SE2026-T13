@@ -849,6 +849,25 @@ test('Board paging keeps at most five pages and can return to earlier results', 
   }
 });
 
+test('directory does not fetch user-state or record views for every row', async () => {
+  const rows = Array.from({ length: 20 }, (_, index) => board(a.id, index + 1));
+  const env = await setup({ first: [a], boards: rows });
+  try {
+    await screen.findByText('Board 20');
+    const paths = env.fetch.mock.calls.map(([url]) => new URL(url).pathname);
+    expect(
+      paths.some(
+        (path) => path.endsWith('/user-state') || path.endsWith('/views'),
+      ),
+    ).toBe(false);
+    expect(
+      paths.filter((path) => path === `/api/workspaces/${a.id}/boards`),
+    ).toHaveLength(2);
+  } finally {
+    await env.dispose();
+  }
+});
+
 test('pull refresh surfaces recoverable directory errors and retains only verified same-session data', async () => {
   let now = Date.now();
   const clock = jest.spyOn(Date, 'now').mockImplementation(() => now);
