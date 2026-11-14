@@ -4,6 +4,24 @@ import { queryKeys } from '../../infrastructure/query/keys.ts';
 import { createBoardApi, type BoardUserState } from './api.ts';
 
 const pending = new WeakMap<MobileDataLayer, Map<string, number>>();
+const listeners = new WeakMap<MobileDataLayer, Set<() => void>>();
+export function subscribeBoardStars(
+  data: MobileDataLayer,
+  listener: () => void,
+) {
+  let set = listeners.get(data);
+  if (!set) {
+    set = new Set();
+    listeners.set(data, set);
+  }
+  set.add(listener);
+  return () => {
+    set.delete(listener);
+  };
+}
+function notify(data: MobileDataLayer) {
+  for (const listener of listeners.get(data) ?? []) listener();
+}
 function marker(identity: SessionIdentity, id: string) {
   return `${identity.userId}:${identity.generation}:${id.toLowerCase()}`;
 }
@@ -34,6 +52,7 @@ export function setBoardStar(
   }
   const markerKey = marker(identity, id);
   counts.set(markerKey, (counts.get(markerKey) ?? 0) + 1);
+  notify(data);
   const current = counts;
   return data
     .optimistic<BoardUserState, BoardUserState>({
@@ -61,5 +80,6 @@ export function setBoardStar(
       const remaining = (current.get(markerKey) ?? 1) - 1;
       if (remaining) current.set(markerKey, remaining);
       else current.delete(markerKey);
+      notify(data);
     });
 }

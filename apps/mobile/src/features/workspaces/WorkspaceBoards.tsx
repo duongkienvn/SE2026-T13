@@ -91,26 +91,38 @@ export function WorkspaceBoards({
       !canRetryWorkspace(query.error, query.errorUpdatedAt)
     )
       return;
-    if (query.isFetchNextPageError)
+    if (query.isFetchPreviousPageError)
+      void query.fetchPreviousPage({ cancelRefetch: false });
+    else if (query.isFetchNextPageError)
       void query.fetchNextPage({ cancelRefetch: false });
     else void query.refetch({ cancelRefetch: false });
   };
   return (
     <View style={{ gap: spacing.md }}>
-      <Text
-        accessibilityRole="header"
-        style={[typography.section, { color: c.text }]}
+      <View
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: spacing.sm,
+        }}
       >
-        All boards
-      </Text>
-      {onCreateBoard && (
-        <Button
-          label="Create board"
-          variant="secondary"
-          disabled={!active || !online}
-          onPress={onCreateBoard}
-        />
-      )}
+        <Text
+          accessibilityRole="header"
+          style={[typography.section, { color: c.text }]}
+        >
+          All boards
+        </Text>
+        {onCreateBoard && (
+          <Button
+            label="Create board"
+            variant="secondary"
+            disabled={!active || !online}
+            onPress={onCreateBoard}
+          />
+        )}
+      </View>
       <SearchField
         label="Search boards"
         value={search}
@@ -150,6 +162,14 @@ export function WorkspaceBoards({
           />
         ))}
       </View>
+      {query.hasPreviousPage && (
+        <Button
+          label="Load previous boards"
+          variant="secondary"
+          disabled={!active || !online || query.isFetching}
+          onPress={() => void query.fetchPreviousPage({ cancelRefetch: false })}
+        />
+      )}
       {query.isPending &&
         online &&
         !query.isPaused &&

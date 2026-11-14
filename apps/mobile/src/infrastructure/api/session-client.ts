@@ -109,7 +109,8 @@ export function createSessionHttpClient(
           options.resourceKey,
           options.resourceAccess === 'read'
             ? false
-            : (options.method ?? 'GET') !== 'GET',
+            : options.resourceAccess === 'write' ||
+                (options.method ?? 'GET') !== 'GET',
         )
       : undefined;
     const controller = new AbortController();

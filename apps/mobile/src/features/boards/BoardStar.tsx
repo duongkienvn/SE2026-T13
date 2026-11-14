@@ -1,10 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Pressable, Text, View } from 'react-native';
 import type { SessionIdentity } from '../../infrastructure/api/session-client';
 import { useMobileData } from '../../infrastructure/query/DataProvider';
 import { sizes, typography, useTheme } from '../../ui';
-import { boardStarKey, isBoardStarPending, setBoardStar } from './star';
+import {
+  canRetryWorkspace,
+  useWorkspaceRetryReady,
+  workspaceErrorMessage,
+} from '../workspaces/status';
+import {
+  boardStarKey,
+  isBoardStarPending,
+  setBoardStar,
+  subscribeBoardStars,
+} from './star';
 
 export function BoardStar({
   identity,
@@ -25,8 +35,16 @@ export function BoardStar({
   const c = useTheme();
   const key = boardStarKey(identity, id);
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState(false);
+  const [failure, setFailure] = useState<{ error: unknown; at: number } | null>(
+    null,
+  );
+  const retryReady = useWorkspaceRetryReady(failure?.error, failure?.at ?? 0);
   const busy = useRef(false);
+  const sharedPending = useSyncExternalStore(
+    (listener) => subscribeBoardStars(data, listener),
+    () => isBoardStarPending(data, identity, id),
+    () => false,
+  );
   const state = useQuery({
     queryKey: key,
     queryFn: () => Promise.resolve({ isStarred: starred, lastViewedAt: null }),
@@ -51,15 +69,23 @@ export function BoardStar({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${selected ? 'Unstar' : 'Star'} ${name}`}
-        accessibilityState={{ selected, disabled: disabled || pending }}
-        disabled={disabled || pending}
+        accessibilityState={{
+          selected,
+          disabled: disabled || pending || sharedPending || !retryReady,
+        }}
+        disabled={disabled || pending || sharedPending || !retryReady}
         onPress={() => {
-          if (busy.current || isBoardStarPending(data, identity, id)) return;
+          if (
+            busy.current ||
+            !canRetryWorkspace(failure?.error, failure?.at ?? 0) ||
+            isBoardStarPending(data, identity, id)
+          )
+            return;
           busy.current = true;
           setPending(true);
-          setError(false);
+          setFailure(null);
           void setBoardStar(data, identity, id, !selected)
-            .catch(() => setError(true))
+            .catch((error: unknown) => setFailure({ error, at: Date.now() }))
             .finally(() => {
               busy.current = false;
               setPending(false);
@@ -70,6 +96,8 @@ export function BoardStar({
           minHeight: sizes.touch,
           alignItems: 'center',
           justifyContent: 'center',
+          opacity:
+            disabled || pending || sharedPending || !retryReady ? 0.55 : 1,
         }}
       >
         <Text
@@ -81,12 +109,12 @@ export function BoardStar({
           {selected ? '★' : '☆'}
         </Text>
       </Pressable>
-      {error && (
+      {failure && (
         <Text
           accessibilityLiveRegion="polite"
           style={[typography.caption, { color: c.danger }]}
         >
-          Star unavailable
+          {workspaceErrorMessage(failure.error)}
         </Text>
       )}
     </View>

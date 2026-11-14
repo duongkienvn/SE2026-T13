@@ -1,10 +1,8 @@
 import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
 import type { BoardBackgroundPresetId } from '@kanban/shared';
 import type { SessionIdentity } from '../../infrastructure/api/session-client';
-import { useMobileData } from '../../infrastructure/query/DataProvider';
-import { queryKeys } from '../../infrastructure/query/keys';
+import { ApiError } from '../../infrastructure/api/errors';
 import {
   BottomSheet,
   Button,
@@ -16,7 +14,13 @@ import {
   useTheme,
 } from '../../ui';
 import type { WorkspaceSummary } from '../workspaces/decoder';
-import { createBoardApi, type BoardInput } from './api';
+import {
+  canRetryWorkspace,
+  useWorkspaceOnline,
+  useWorkspaceRetryReady,
+} from '../workspaces/status';
+import type { BoardInput } from './api';
+import { BackgroundPicker } from './BackgroundPicker';
 
 export function BoardForm({
   identity,
@@ -35,8 +39,8 @@ export function BoardForm({
   blocked: boolean;
   onConfirmChecked: () => void;
 }) {
-  const data = useMobileData();
   const c = useTheme();
+  const online = useWorkspaceOnline();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [workspaceId, setWorkspaceId] = useState(selected.id);
@@ -44,11 +48,12 @@ export function BoardForm({
   const [discard, setDiscard] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
+  const [failure, setFailure] = useState<{
+    error: ApiError;
+    at: number;
+  } | null>(null);
+  const retryReady = useWorkspaceRetryReady(failure?.error, failure?.at ?? 0);
   const busy = useRef(false);
-  const catalog = useQuery({
-    queryKey: [...queryKeys.scope(identity), 'board-background-presets'],
-    queryFn: ({ signal }) => createBoardApi(data.api, identity).catalog(signal),
-  });
   const choices = workspaces.filter((workspace) => workspace.canCreateBoards);
   const dirty =
     !!name || !!description || !!preset || workspaceId !== selected.id;
@@ -68,13 +73,16 @@ export function BoardForm({
     }
     if (
       busy.current ||
+      !online ||
       blocked ||
+      !canRetryWorkspace(failure?.error, failure?.at ?? 0) ||
       !choices.some((workspace) => workspace.id === workspaceId)
     )
       return;
     busy.current = true;
     setPending(true);
     setError('');
+    setFailure(null);
     try {
       await onSubmit({
         name: trimmed,
@@ -83,6 +91,8 @@ export function BoardForm({
         ...(preset ? { backgroundPreset: preset } : {}),
       });
     } catch (cause) {
+      if (cause instanceof Error && cause.cause instanceof ApiError)
+        setFailure({ error: cause.cause, at: Date.now() });
       setError(
         cause instanceof Error
           ? cause.message
@@ -132,30 +142,12 @@ export function BoardForm({
             />
           ))}
         </View>
-        <Text style={[typography.strong, { color: c.text }]}>Background</Text>
-        {catalog.isPending && (
-          <Text style={{ color: c.textSecondary }}>Loading backgrounds…</Text>
-        )}
-        {catalog.isError && (
-          <Button
-            label="Retry backgrounds"
-            variant="secondary"
-            onPress={() => void catalog.refetch()}
-          />
-        )}
-        <View
-          style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}
-        >
-          {catalog.data?.map((item) => (
-            <Chip
-              key={item.id}
-              label={item.id}
-              selected={preset === item.id}
-              disabled={pending}
-              onPress={() => setPreset(item.id)}
-            />
-          ))}
-        </View>
+        <BackgroundPicker
+          identity={identity}
+          value={preset}
+          onChange={setPreset}
+          disabled={pending || !online}
+        />
         {!!error && (
           <Text
             accessibilityLiveRegion="polite"
@@ -183,7 +175,9 @@ export function BoardForm({
           loading={pending}
           disabled={
             pending ||
+            !online ||
             blocked ||
+            !retryReady ||
             !choices.some((workspace) => workspace.id === workspaceId)
           }
         />

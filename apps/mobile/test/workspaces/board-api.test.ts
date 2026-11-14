@@ -2,11 +2,12 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   createBoardApi,
+  decodeBoard,
   decodeBackgroundCatalog,
   decodeBoardUserState,
 } from '../../src/features/boards/api.ts';
 import { integration, json, ok } from '../realtime/integration-support.ts';
-import { board, uuid } from './fixtures.ts';
+import { board, page, uuid } from './fixtures.ts';
 
 test('Board mutations use the source-verified methods, bodies and response statuses', async (t) => {
   const env = await integration();
@@ -44,11 +45,19 @@ test('Board mutations use the source-verified methods, bodies and response statu
   });
 });
 
-test('user state and catalog reject malformed and unknown values', () => {
+test('user state rejects malformed values and catalog ignores unknown presets', () => {
+  assert.equal(
+    decodeBoard({
+      ...board(),
+      createdById: uuid(2),
+      backgroundPreset: 'future-preset',
+    }).backgroundPreset,
+    'future-preset',
+  );
   assert.throws(() =>
     decodeBoardUserState({ isStarred: true, lastViewedAt: 'yesterday' }),
   );
-  assert.throws(() =>
+  assert.deepEqual(
     decodeBackgroundCatalog([
       {
         id: 'external',
@@ -57,6 +66,7 @@ test('user state and catalog reject malformed and unknown values', () => {
         foreground: 'light',
       },
     ]),
+    [],
   );
   assert.throws(() =>
     decodeBackgroundCatalog([
@@ -64,4 +74,31 @@ test('user state and catalog reject malformed and unknown values', () => {
       { id: 'blue', kind: 'color', value: '#fff', foreground: 'light' },
     ]),
   );
+});
+
+test('global Board list sends page and archived status and validates the response', async (t) => {
+  const env = await integration();
+  t.after(env.dispose);
+  const rows = Array.from({ length: 21 }, (_, i) => ({
+    ...board(uuid(1), i + 1),
+    isArchived: true,
+    archivedAt: '2026-11-13T09:00:00.000Z',
+    currentUserRole: 'MEMBER',
+    createdById: uuid(2),
+  }));
+  env.respond((url) =>
+    Promise.resolve(
+      json(page(rows, Number(new URL(url).searchParams.get('page')), 20)),
+    ),
+  );
+  const result = await createBoardApi(env.data.api, env.identity).list(
+    2,
+    'archived',
+    new AbortController().signal,
+  );
+  assert.equal(result.data.length, 1);
+  const url = new URL(env.requests.at(-1)!.url);
+  assert.equal(url.searchParams.get('status'), 'archived');
+  assert.equal(url.searchParams.get('page'), '2');
+  assert.equal(url.searchParams.get('limit'), '20');
 });

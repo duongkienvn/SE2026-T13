@@ -128,6 +128,8 @@ async function setup({
     const url = new URL(input);
     const custom = override?.(url, init);
     if (custom) return custom;
+    if (url.pathname === '/api/boards' && init.method === 'GET')
+      return envelope(page([], Number(url.searchParams.get('page')), 20));
     const [, , , id, endpoint] = url.pathname.split('/');
     const joined = manager.getSnapshot().user?.id === USER_B ? [c] : first;
     if (!id)
@@ -295,6 +297,126 @@ test('starred section queries the selected Workspace without inventing stars', a
   }
 });
 
+test('two visible copies share one pending star operation', async () => {
+  let resolveStar;
+  const pending = new Promise((resolve) => {
+    resolveStar = resolve;
+  });
+  const env = await setup({
+    boards: [{ ...savedA, isStarred: true }],
+    override: (url, init) =>
+      url.pathname === `/api/boards/${savedA.id}/star` &&
+      init.method === 'DELETE'
+        ? pending
+        : null,
+  });
+  try {
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('button', { name: 'Unstar Personal planning' }),
+      ).toHaveLength(2),
+    );
+    const controls = screen.getAllByRole('button', {
+      name: 'Unstar Personal planning',
+    });
+    await fireEvent.press(controls[0]);
+    expect(controls[1]).toBeDisabled();
+    await fireEvent.press(controls[1]);
+    expect(
+      env.fetch.mock.calls.filter(
+        ([url, init]) =>
+          new URL(url).pathname.endsWith('/star') && init.method === 'DELETE',
+      ),
+    ).toHaveLength(1);
+    await act(() => resolveStar(ok({ isStarred: false, lastViewedAt: null })));
+  } finally {
+    resolveStar(ok({ isStarred: false, lastViewedAt: null }));
+    await env.dispose();
+  }
+});
+
+test('Board-only guest access appears separately without inventing a Workspace', async () => {
+  const guest = {
+    ...board(c.id, 99),
+    name: 'Guest board',
+    visibility: 'PRIVATE',
+    currentUserRole: 'MEMBER',
+    createdById: c.id,
+  };
+  const env = await setup({
+    override: (url, init) =>
+      url.pathname === '/api/boards' && init.method === 'GET'
+        ? envelope(page([guest], Number(url.searchParams.get('page')), 20))
+        : null,
+  });
+  try {
+    await screen.findByRole('button', {
+      name: 'Open shared board Guest board',
+    });
+    await fireEvent.press(await trigger());
+    expect(
+      screen.queryByRole('button', { name: /Select Workspace 3/ }),
+    ).toBeNull();
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('a removed Workspace cannot expose an old Board as a guest during recheck', async () => {
+  const oldBoard = {
+    ...board(b.id, 85),
+    name: 'Former private board',
+    visibility: 'PRIVATE',
+    currentUserRole: 'MEMBER',
+    createdById: b.id,
+  };
+  let removed = false;
+  let resolveRecheck;
+  const recheck = new Promise((resolve) => {
+    resolveRecheck = resolve;
+  });
+  const env = await setup({
+    first: [a, b],
+    override: (url, init) => {
+      if (url.pathname === '/api/workspaces' && removed)
+        return envelope(page([a], Number(url.searchParams.get('page')), 20));
+      if (url.pathname === '/api/boards' && init.method === 'GET')
+        return removed
+          ? recheck
+          : envelope(
+              page([oldBoard], Number(url.searchParams.get('page')), 20),
+            );
+      return null;
+    },
+  });
+  try {
+    await screen.findByText('Personal planning');
+    await screen.findByText('No shared boards.');
+    expect(screen.queryByText('Former private board')).toBeNull();
+    removed = true;
+    await act(async () => {
+      const refreshing = fireEvent(
+        screen.getByTestId('workspace-refresh'),
+        'touchEnd',
+      );
+      await waitFor(() =>
+        expect(
+          env.fetch.mock.calls.filter(
+            ([url]) => new URL(url).pathname === '/api/boards',
+          ).length,
+        ).toBeGreaterThan(1),
+      );
+      expect(screen.queryByText('Former private board')).toBeNull();
+      resolveRecheck(envelope(page([], 1, 20)));
+      await refreshing;
+    });
+    await screen.findByText('No shared boards.');
+    expect(screen.queryByText('Former private board')).toBeNull();
+  } finally {
+    await env.dispose();
+  }
+});
+
 test('creates a private Board in an authorized Workspace once', async () => {
   const permitted = { ...a, canCreateBoards: true };
   let finish;
@@ -400,6 +522,36 @@ test('uncertain Board creation keeps the draft and blocks a duplicate', async ()
   }
 });
 
+test('going offline disables Board creation without losing the draft', async () => {
+  const env = await setup({
+    first: [{ ...a, canCreateBoards: true }],
+    override: (url) =>
+      url.pathname === '/api/boards/background-presets' ? ok([]) : null,
+  });
+  try {
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Create board' }),
+    );
+    await fireEvent.changeText(
+      screen.getByLabelText('Board name'),
+      'Offline draft',
+    );
+    await act(() => onlineManager.setOnline(false));
+    expect(
+      screen.getAllByRole('button', { name: 'Create board' }).at(-1),
+    ).toBeDisabled();
+    expect(screen.getByLabelText('Board name').props.value).toBe(
+      'Offline draft',
+    );
+    expect(
+      env.fetch.mock.calls.some(([, init]) => init.method === 'POST'),
+    ).toBe(false);
+  } finally {
+    await act(() => onlineManager.setOnline(true));
+    await env.dispose();
+  }
+});
+
 test('only an explicit active Board owner can open the editor and save metadata', async () => {
   const owner = {
     ...savedA,
@@ -466,6 +618,127 @@ test('a downgraded Board role is rechecked before showing the editor', async () 
     expect(
       env.fetch.mock.calls.some(([, init]) => init.method === 'PATCH'),
     ).toBe(false);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('background conflict refreshes the version before an explicit retry', async () => {
+  const owner = {
+    ...savedA,
+    currentUserRole: 'OWNER',
+    createdById: a.id,
+    capabilities: {
+      ...savedA.capabilities,
+      canManageBoard: true,
+      canWriteBoard: true,
+    },
+  };
+  let latest = owner;
+  let writes = 0;
+  const env = await setup({
+    boards: [owner],
+    override: (url) => {
+      if (url.pathname === '/api/boards/background-presets')
+        return ok([
+          { id: 'blue', kind: 'color', value: '#2563EB', foreground: 'light' },
+        ]);
+      if (url.pathname === `/api/boards/${owner.id}`) return ok(latest);
+      if (url.pathname === `/api/boards/${owner.id}/background`) {
+        writes++;
+        if (writes === 1) {
+          latest = { ...owner, backgroundVersion: 2 };
+          return envelope(
+            {
+              success: false,
+              statusCode: 409,
+              code: 'BACKGROUND_CONFLICT',
+              message: 'Changed',
+            },
+            409,
+          );
+        }
+        return ok({
+          ...latest,
+          backgroundPreset: 'blue',
+          backgroundVersion: 3,
+        });
+      }
+      return null;
+    },
+  });
+  try {
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Edit Personal planning' }),
+    );
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Background blue' }),
+    );
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Apply background' }),
+    );
+    await screen.findByText(
+      'The background changed elsewhere. Review it and apply your choice again.',
+    );
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Apply background' }),
+    );
+    await waitFor(() => expect(writes).toBe(2));
+    const calls = env.fetch.mock.calls.filter(([url]) =>
+      new URL(url).pathname.endsWith('/background'),
+    );
+    expect(
+      calls.map(([, init]) => JSON.parse(init.body).expectedVersion),
+    ).toEqual([1, 2]);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('saving metadata preserves a pending background selection', async () => {
+  const owner = {
+    ...savedA,
+    currentUserRole: 'OWNER',
+    createdById: a.id,
+    capabilities: {
+      ...savedA.capabilities,
+      canManageBoard: true,
+      canWriteBoard: true,
+    },
+  };
+  const env = await setup({
+    boards: [owner],
+    override: (url, init) => {
+      if (url.pathname === '/api/boards/background-presets')
+        return ok([
+          { id: 'blue', kind: 'color', value: '#2563EB', foreground: 'light' },
+        ]);
+      if (url.pathname === `/api/boards/${owner.id}`)
+        return ok(
+          init.method === 'PATCH' ? { ...owner, name: 'Renamed' } : owner,
+        );
+      return null;
+    },
+  });
+  try {
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Edit Personal planning' }),
+    );
+    await fireEvent.changeText(
+      await screen.findByLabelText('Board name'),
+      'Renamed',
+    );
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Background blue' }),
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Save board' }));
+    await screen.findByText(
+      'Board details saved. Apply or discard the background choice.',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Background blue' }).props
+        .accessibilityState.selected,
+    ).toBe(true);
   } finally {
     await env.dispose();
   }
@@ -547,6 +820,30 @@ test('large directory is fully selectable and Board pagination remains explicit'
     expect(
       env.fetch.mock.calls.filter(([url]) => String(url).endsWith('/overview')),
     ).toHaveLength(1);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('Board paging keeps at most five pages and can return to earlier results', async () => {
+  const boards = Array.from({ length: 101 }, (_, index) =>
+    board(a.id, index + 1),
+  );
+  const env = await setup({ first: [a], boards });
+  try {
+    await screen.findByText('Board 1');
+    for (const last of [21, 41, 61, 81, 101]) {
+      await fireEvent.press(
+        screen.getByRole('button', { name: 'Load more boards' }),
+      );
+      await screen.findByText(`Board ${last}`);
+    }
+    expect(screen.queryByText('Board 1')).toBeNull();
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Load previous boards' }),
+    );
+    await screen.findByText('Board 1');
+    expect(screen.queryByText('Board 101')).toBeNull();
   } finally {
     await env.dispose();
   }

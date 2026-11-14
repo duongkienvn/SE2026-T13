@@ -4,6 +4,8 @@ import type {
   SessionIdentity,
 } from '../../infrastructure/api/session-client.ts';
 import { queryKeys } from '../../infrastructure/query/keys.ts';
+import { requirePage } from '../../infrastructure/query/pagination.ts';
+import { invalidResponse } from '../../infrastructure/api/errors.ts';
 import { workspaceId, decodeWorkspaceBoard } from '../workspaces/decoder.ts';
 import { isBoardPreset } from '../home/presets.ts';
 
@@ -45,13 +47,14 @@ export function decodeBoardUserState(value: unknown) {
 export type BoardUserState = ReturnType<typeof decodeBoardUserState>;
 
 export function decodeBackgroundCatalog(value: unknown) {
-  if (!Array.isArray(value) || value.length > 12)
+  if (!Array.isArray(value) || value.length > 100)
     throw new Error('Invalid background catalog');
   const seen = new Set<string>();
-  return value.map((entry) => {
+  return value.flatMap((entry) => {
     const row = record(entry);
     if (
-      !isBoardPreset(row.id) ||
+      typeof row.id !== 'string' ||
+      !/^[a-z0-9-]{1,64}$/.test(row.id) ||
       seen.has(row.id) ||
       (row.kind !== 'color' && row.kind !== 'photo') ||
       typeof row.value !== 'string' ||
@@ -59,12 +62,15 @@ export function decodeBackgroundCatalog(value: unknown) {
     )
       throw new Error('Invalid background catalog');
     seen.add(row.id);
-    return {
-      id: row.id,
-      kind: row.kind,
-      value: row.value,
-      foreground: row.foreground,
-    };
+    if (!isBoardPreset(row.id)) return [];
+    return [
+      {
+        id: row.id,
+        kind: row.kind,
+        value: row.value,
+        foreground: row.foreground,
+      },
+    ];
   });
 }
 
@@ -93,6 +99,41 @@ export function createBoardApi(
     return board;
   };
   return {
+    async list(
+      page: number,
+      status: 'active' | 'archived',
+      signal: AbortSignal,
+    ) {
+      const limit = 20;
+      if (!Number.isSafeInteger(page) || page < 1) throw invalidResponse(200);
+      const result = requirePage(
+        await api.envelope(
+          '/boards',
+          (value) => {
+            if (!Array.isArray(value) || value.length > limit)
+              throw invalidResponse(200);
+            return value.map(decodeBoard);
+          },
+          {
+            identity,
+            signal,
+            resourceKey: queryKeys.boards(identity, null, { status, limit }),
+            query: { page, limit, status },
+            expectedStatus: 200,
+          },
+        ),
+      );
+      if (
+        result.meta.page !== page ||
+        result.meta.limit !== limit ||
+        result.meta.totalPages !== Math.ceil(result.meta.total / limit) ||
+        result.data.some(
+          (board) => board.isArchived !== (status === 'archived'),
+        )
+      )
+        throw invalidResponse(200);
+      return result;
+    },
     detail: (id: string, signal: AbortSignal) =>
       api.json(path(id), boardResult(id), opts(id, signal)),
     catalog: (signal: AbortSignal) =>

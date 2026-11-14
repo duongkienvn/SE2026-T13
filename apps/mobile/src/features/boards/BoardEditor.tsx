@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Text } from 'react-native';
-import { BoardRole } from '@kanban/shared';
+import { BoardRole, type BoardBackgroundPresetId } from '@kanban/shared';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError } from '../../infrastructure/api/errors';
 import type { SessionIdentity } from '../../infrastructure/api/session-client';
@@ -16,6 +16,14 @@ import {
   useTheme,
 } from '../../ui';
 import { createBoardApi, type decodeBoard } from './api';
+import { BackgroundPicker } from './BackgroundPicker';
+import { isBoardPreset } from '../home/presets';
+import {
+  canRetryWorkspace,
+  useWorkspaceOnline,
+  useWorkspaceRetryReady,
+  workspaceErrorMessage,
+} from '../workspaces/status';
 
 type Board = ReturnType<typeof decodeBoard>;
 export function BoardEditor({
@@ -31,12 +39,19 @@ export function BoardEditor({
 }) {
   const data = useMobileData();
   const c = useTheme();
+  const online = useWorkspaceOnline();
   const [board, setBoard] = useState<Board | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [preset, setPreset] = useState<BoardBackgroundPresetId | undefined>();
   const [pending, setPending] = useState(false);
   const [discard, setDiscard] = useState(false);
   const [error, setError] = useState('');
+  const [failure, setFailure] = useState<{
+    error: ApiError;
+    at: number;
+  } | null>(null);
+  const retryReady = useWorkspaceRetryReady(failure?.error, failure?.at ?? 0);
   const busy = useRef(false);
   const api = createBoardApi(data.api, identity);
   const detailKey = [...queryKeys.board(identity, id), 'edit-detail'] as const;
@@ -44,12 +59,16 @@ export function BoardEditor({
     queryKey: detailKey,
     enabled: active,
     retry: false,
+    staleTime: 0,
+    refetchOnMount: 'always',
     queryFn: ({ signal }) => api.detail(id, signal),
   });
   useEffect(() => {
     const result = detail.data;
     if (
       !result ||
+      !detail.isFetchedAfterMount ||
+      detail.isFetching ||
       board ||
       result.isArchived ||
       result.currentUserRole !== BoardRole.OWNER ||
@@ -59,9 +78,15 @@ export function BoardEditor({
     setBoard(result);
     setName(result.name);
     setDescription(result.description ?? '');
-  }, [detail.data, board]);
+    setPreset(
+      isBoardPreset(result.backgroundPreset)
+        ? result.backgroundPreset
+        : undefined,
+    );
+  }, [detail.data, detail.isFetchedAfterMount, detail.isFetching, board]);
   const permitted =
     active &&
+    detail.isFetchedAfterMount &&
     !detail.isFetching &&
     !detail.isError &&
     data.resources.readable(detailKey) &&
@@ -69,9 +94,12 @@ export function BoardEditor({
     !detail.data.isArchived &&
     detail.data.currentUserRole === BoardRole.OWNER &&
     detail.data.capabilities.canManageBoard;
-  const dirty =
+  const dirtyMetadata =
     !!board &&
     (name !== board.name || description !== (board.description ?? ''));
+  const dirtyBackground =
+    !!detail.data && !!preset && preset !== detail.data.backgroundPreset;
+  const dirty = dirtyMetadata || dirtyBackground;
   const close = () => {
     if (!busy.current) {
       if (dirty) setDiscard(true);
@@ -79,7 +107,14 @@ export function BoardEditor({
     }
   };
   async function save() {
-    if (!board || busy.current || !permitted) return;
+    if (
+      !board ||
+      busy.current ||
+      !online ||
+      !permitted ||
+      !canRetryWorkspace(failure?.error, failure?.at ?? 0)
+    )
+      return;
     const trimmed = name.trim();
     if (!trimmed || trimmed.length > 120 || description.length > 2000) {
       setError(
@@ -97,9 +132,12 @@ export function BoardEditor({
     busy.current = true;
     setPending(true);
     setError('');
+    setFailure(null);
     try {
-      await api.update(id, input, new AbortController().signal);
+      const updated = await api.update(id, input, new AbortController().signal);
       data.assertCurrent(identity);
+      setBoard(updated);
+      data.queryClient.setQueryData(detailKey, updated);
       void data
         .invalidate(identity, [
           queryKeys.boardLists(identity),
@@ -107,8 +145,14 @@ export function BoardEditor({
           queryKeys.board(identity, id),
         ])
         .catch(() => undefined);
-      onDismiss();
+      if (dirtyBackground)
+        setError(
+          'Board details saved. Apply or discard the background choice.',
+        );
+      else onDismiss();
     } catch (cause) {
+      if (cause instanceof ApiError)
+        setFailure({ error: cause, at: Date.now() });
       if (cause instanceof ApiError && [403, 404].includes(cause.status)) {
         data.evict(identity, [queryKeys.board(identity, id)]);
         void data
@@ -118,7 +162,65 @@ export function BoardEditor({
           ])
           .catch(() => undefined);
       }
-      setError('Could not save board changes. Check access and try again.');
+      setError(
+        cause instanceof ApiError
+          ? workspaceErrorMessage(cause)
+          : 'Could not save board changes. Check access and try again.',
+      );
+    } finally {
+      busy.current = false;
+      setPending(false);
+    }
+  }
+  async function saveBackground() {
+    if (
+      !permitted ||
+      !online ||
+      !detail.data ||
+      !preset ||
+      !dirtyBackground ||
+      busy.current ||
+      !canRetryWorkspace(failure?.error, failure?.at ?? 0)
+    )
+      return;
+    busy.current = true;
+    setPending(true);
+    setError('');
+    setFailure(null);
+    try {
+      const updated = await api.background(
+        id,
+        preset,
+        detail.data.backgroundVersion,
+        new AbortController().signal,
+      );
+      data.assertCurrent(identity);
+      data.queryClient.setQueryData(detailKey, updated);
+      void data
+        .invalidate(identity, [
+          queryKeys.boardLists(identity),
+          queryKeys.home(identity),
+        ])
+        .catch(() => undefined);
+    } catch (cause) {
+      if (cause instanceof ApiError)
+        setFailure({ error: cause, at: Date.now() });
+      if (
+        cause instanceof ApiError &&
+        cause.status === 409 &&
+        cause.code === 'BACKGROUND_CONFLICT'
+      ) {
+        await detail.refetch();
+        setError(
+          'The background changed elsewhere. Review it and apply your choice again.',
+        );
+      } else {
+        if (cause instanceof ApiError && [403, 404].includes(cause.status))
+          data.evict(identity, [queryKeys.board(identity, id)]);
+        setError(
+          'Could not change the background. Check access and try again.',
+        );
+      }
     } finally {
       busy.current = false;
       setPending(false);
@@ -158,7 +260,22 @@ export function BoardEditor({
               label="Save board"
               onPress={() => void save()}
               loading={pending}
-              disabled={!dirty || !permitted}
+              disabled={!dirtyMetadata || !permitted || !online || !retryReady}
+            />
+            <BackgroundPicker
+              identity={identity}
+              value={preset}
+              onChange={setPreset}
+              disabled={pending || !online}
+            />
+            <Button
+              label="Apply background"
+              variant="secondary"
+              onPress={() => void saveBackground()}
+              loading={pending}
+              disabled={
+                !dirtyBackground || !permitted || !online || !retryReady
+              }
             />
           </>
         )}
@@ -170,7 +287,7 @@ export function BoardEditor({
             <Button
               label="Check board access"
               variant="secondary"
-              disabled={!active || detail.isFetching}
+              disabled={!active || !online || detail.isFetching}
               onPress={() => void detail.refetch()}
             />
           </>

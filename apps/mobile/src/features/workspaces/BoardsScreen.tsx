@@ -37,6 +37,7 @@ import { WorkspaceSelector } from './WorkspaceSelector';
 import { StarredBoards } from '../boards/StarredBoards';
 import { BoardForm } from '../boards/BoardForm';
 import { createBoardApi } from '../boards/api';
+import { SharedBoards } from '../boards/SharedBoards';
 import { WorkspaceForm } from './WorkspaceForm';
 import { createWorkspaceApi } from './api';
 import { workspaceDirectoryOptions, workspaceOverviewOptions } from './queries';
@@ -274,6 +275,23 @@ function VerifiedBoards() {
                 [selected.id]: filters,
               }))
             }
+          />
+        )}
+        {directory.isSuccess && workspaces && (
+          <SharedBoards
+            identity={identity}
+            workspaces={workspaces}
+            membershipUpdatedAt={directory.dataUpdatedAt}
+            active={active}
+            onBoard={(id) => {
+              if (
+                activeRef.current &&
+                sameIdentity(identity, data.getIdentity())
+              )
+                router.navigate(
+                  destinationPath({ kind: 'board', boardId: id }),
+                );
+            }}
           />
         )}
         {creating && (

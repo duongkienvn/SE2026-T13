@@ -68,6 +68,16 @@ export function StarredBoards({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ gap: spacing.md }}
       >
+        {query.hasPreviousPage && (
+          <Button
+            label="Load previous starred boards"
+            variant="secondary"
+            disabled={!active || !online || query.isFetching}
+            onPress={() =>
+              void query.fetchPreviousPage({ cancelRefetch: false })
+            }
+          />
+        )}
         {boards.map((board) => (
           <View key={board.id} style={{ width: 180 }}>
             <Surface>
@@ -142,7 +152,9 @@ export function StarredBoards({
                   !canRetryWorkspace(query.error, query.errorUpdatedAt)
                 )
                   return;
-                if (query.isFetchNextPageError)
+                if (query.isFetchPreviousPageError)
+                  void query.fetchPreviousPage({ cancelRefetch: false });
+                else if (query.isFetchNextPageError)
                   void query.fetchNextPage({ cancelRefetch: false });
                 else void query.refetch({ cancelRefetch: false });
               }}
