@@ -1,4 +1,12 @@
-import { ResourcePreview } from '../../../../features/resources/ResourcePreview';
+import { useLocalSearchParams } from 'expo-router';
+import { BoardDetailScreen } from '../../../../features/boards/BoardDetailScreen';
+import { parseResourceId } from '../../../../navigation/routes';
+
 export default function Board() {
-  return <ResourcePreview kind="board" />;
+  const { boardId } = useLocalSearchParams();
+  return (
+    <BoardDetailScreen
+      boardId={typeof boardId === 'string' ? parseResourceId(boardId) : null}
+    />
+  );
 }

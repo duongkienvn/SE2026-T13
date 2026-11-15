@@ -18,6 +18,7 @@ export function Overlay({
   onDismiss,
   title,
   children,
+  footer,
   placement = 'center',
   dismissible = true,
   dismissLabel = 'Dismiss',
@@ -28,6 +29,7 @@ export function Overlay({
   onDismiss: () => void;
   title: string;
   children: ReactNode;
+  footer?: ReactNode;
   placement?: 'center' | 'bottom';
   dismissible?: boolean;
   dismissLabel?: string;
@@ -86,6 +88,7 @@ export function Overlay({
               backgroundColor: c.surface,
               borderTopLeftRadius: radius.surface,
               borderTopRightRadius: radius.surface,
+              ...(footer ? { flexShrink: 1 } : {}),
               ...(placement === 'center'
                 ? {
                     marginHorizontal: spacing.lg,
@@ -111,6 +114,7 @@ export function Overlay({
             )}
             <ScrollView
               keyboardShouldPersistTaps="handled"
+              style={footer ? { flexShrink: 1 } : undefined}
               contentContainerStyle={{ padding: spacing.xl, gap: spacing.lg }}
             >
               <Text
@@ -121,6 +125,18 @@ export function Overlay({
               </Text>
               {children}
             </ScrollView>
+            {footer && (
+              <View
+                style={{
+                  paddingHorizontal: spacing.xl,
+                  paddingVertical: spacing.sm,
+                  borderTopWidth: 1,
+                  borderTopColor: c.border,
+                }}
+              >
+                {footer}
+              </View>
+            )}
           </SafeAreaView>
         </View>
         {placement === 'center' && (
