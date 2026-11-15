@@ -75,6 +75,16 @@ export const queryKeys = {
   board,
   cardPreview: (identity: SessionIdentity, boardId: string, cardId: string) =>
     [...board(identity, boardId), 'previews', cardId.toLowerCase()] as const,
+  previewBatch: (
+    identity: SessionIdentity,
+    boardId: string,
+    cardIds: readonly string[],
+  ) =>
+    [
+      ...board(identity, boardId),
+      'previews',
+      Object.fromEntries(cardIds.map((id) => [id.toLowerCase(), true])),
+    ] as const,
   boardLists: (identity: SessionIdentity) =>
     [...scope(identity), 'board-lists'] as const,
   workspaceBoards,

@@ -188,11 +188,11 @@ export function createBoardRooms(options: RoomOptions) {
     });
     join(room);
   }
-  async function check(room: Room, retry = 0) {
+  async function check(room: Room, retry = 0, fence = true) {
     cancel(room);
     leave(room);
     room.retries = 0;
-    options.fence(room.id, false);
+    if (fence) options.fence(room.id, false);
     state(room, { ...EMPTY_BOARD_STATE, status: 'checking' });
     if (!options.socket()?.connected) {
       state(room, EMPTY_BOARD_STATE);
@@ -233,7 +233,7 @@ export function createBoardRooms(options: RoomOptions) {
           room.timer = timers.setTimeout(
             () => {
               room.timer = undefined;
-              void check(room, retry + 1);
+              void check(room, retry + 1, fence);
             },
             250 * 2 ** retry,
           );
@@ -273,7 +273,7 @@ export function createBoardRooms(options: RoomOptions) {
         listeners.delete(listener);
       };
     },
-    watch(boardId: string) {
+    watch(boardId: string, preserveSnapshot = false) {
       if (!isUuid(boardId)) throw new Error('A Board UUID is required');
       const id = boardId.toLowerCase();
       let room = rooms.get(id);
@@ -291,7 +291,9 @@ export function createBoardRooms(options: RoomOptions) {
       const target = room;
       const consumer = Symbol();
       target.consumers.add(consumer);
-      if (target.consumers.size === 1) void check(target);
+      // A guarded screen can keep its paginated snapshot during a fresh focus probe.
+      // Reconnect, access events and a denied probe still fence and evict it.
+      if (target.consumers.size === 1) void check(target, 0, !preserveSnapshot);
       return () => {
         if (
           rooms.get(id) !== target ||

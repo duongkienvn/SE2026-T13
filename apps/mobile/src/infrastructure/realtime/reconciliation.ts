@@ -81,6 +81,12 @@ export function hintTargets(
   const board = hint.boardId;
   if (!board) return [];
   const card = hint.cardId;
+  const previews = card
+    ? [
+        queryKeys.cardPreview(identity, board, card),
+        queryKeys.previewBatch(identity, board, [card]),
+      ]
+    : [];
   if (event.startsWith('column:')) return [queryKeys.columns(identity, board)];
   if (event === 'labels:changed')
     return [
@@ -94,26 +100,17 @@ export function hintTargets(
   if (event.startsWith('comment:'))
     return event === 'comment:updated'
       ? [queryKeys.comments(identity, board, card!)]
-      : [
-          queryKeys.comments(identity, board, card!),
-          queryKeys.cardPreview(identity, board, card!),
-        ];
+      : [queryKeys.comments(identity, board, card!), ...previews];
   if (event === 'card:updated' && hint.changeScope === 'attachments')
-    return [
-      queryKeys.attachments(identity, board, card!),
-      queryKeys.cardPreview(identity, board, card!),
-    ];
+    return [queryKeys.attachments(identity, board, card!), ...previews];
   if (event === 'card:updated' && hint.changeScope === 'checklists')
-    return [
-      queryKeys.checklists(identity, board, card!),
-      queryKeys.cardPreview(identity, board, card!),
-    ];
+    return [queryKeys.checklists(identity, board, card!), ...previews];
   const result: PrivateQueryKey[] = [];
   if (event.startsWith('card:'))
     result.push(
       queryKeys.cards(identity, board),
       queryKeys.card(identity, board, card!),
-      queryKeys.cardPreview(identity, board, card!),
+      ...previews,
       queryKeys.tasks(identity),
       queryKeys.home(identity),
       queryKeys.search(identity),
