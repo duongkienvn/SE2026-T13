@@ -250,25 +250,35 @@ test('Board search, status and sort are sent to the server', async () => {
 });
 
 test('starring a row sends its own request without navigating', async () => {
+  const personalBoard = { ...savedA };
+  const starPath = `/api/boards/${personalBoard.id}/star`;
   const env = await setup({
-    override: (url, init) =>
-      url.pathname === `/api/boards/${savedA.id}/star` && init.method === 'PUT'
-        ? ok({ isStarred: true, lastViewedAt: null })
-        : null,
+    boards: [personalBoard, savedB],
+    override: (url, init) => {
+      if (url.pathname !== starPath || init.method !== 'PUT') return null;
+      personalBoard.isStarred = true;
+      return ok({ isStarred: personalBoard.isStarred, lastViewedAt: null });
+    },
   });
   try {
     await screen.findByText('Personal planning');
     await fireEvent.press(
       screen.getByRole('button', { name: 'Star Personal planning' }),
     );
-    await screen.findByRole('button', { name: 'Unstar Personal planning' });
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('button', { name: 'Unstar Personal planning' }),
+      ).toHaveLength(2),
+    );
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(
-      env.fetch.mock.calls.filter(
-        ([url, init]) =>
-          new URL(url).pathname.endsWith('/star') && init.method === 'PUT',
-      ),
-    ).toHaveLength(1);
+      env.fetch.mock.calls
+        .filter(
+          ([url, init]) =>
+            new URL(url).pathname.endsWith('/star') && init.method === 'PUT',
+        )
+        .map(([url]) => new URL(url).pathname),
+    ).toEqual([starPath]);
   } finally {
     await env.dispose();
   }
