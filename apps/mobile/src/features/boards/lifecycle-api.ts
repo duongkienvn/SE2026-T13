@@ -169,14 +169,17 @@ export function createBoardLifecycleApi(
       api.json(`${path(id)}/policy-capabilities`, decodeBoardPolicy, {
         identity,
         signal,
-        resourceKey: resourceKey(id),
+        // A child key: a policy denial asks for an access probe without
+        // discarding the rest of the Board's verified state.
+        resourceKey: [...resourceKey(id), 'settings', 'policy'],
         expectedStatus: 200,
       }),
     samplePreview: (id: string, signal: AbortSignal) =>
       api.json(`${path(id)}/sample-removal`, decodeSamplePreview, {
         identity,
         signal,
-        resourceKey: resourceKey(id),
+        // STARTER_BOARD_NOT_FOUND is a child 404, not proof of Board loss.
+        resourceKey: [...resourceKey(id), 'settings', 'sample-removal'],
         expectedStatus: 200,
       }),
     removeSample: (
