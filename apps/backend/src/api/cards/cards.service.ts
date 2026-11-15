@@ -243,6 +243,15 @@ export class CardsService {
     const result = await this.mutate(userId, boardId, async (manager) => {
       const cards = manager.getRepository(Card);
       const card = await this.requireCard(cards, boardId, cardId, true);
+      if (
+        input.expectedTitle !== undefined &&
+        input.expectedTitle !== card.title
+      )
+        throw new ApplicationException(
+          HttpStatus.CONFLICT,
+          'CARD_TITLE_CHANGED',
+          'This card’s title changed. Keep your draft or reopen Rename to see the latest title.',
+        );
       const { startDate, dueDate } = resolveCardDates(input, card);
       changed =
         (input.title !== undefined && input.title !== card.title) ||

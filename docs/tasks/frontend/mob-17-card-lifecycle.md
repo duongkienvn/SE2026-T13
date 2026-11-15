@@ -16,7 +16,7 @@ MOB-18.
 | --------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Read      | `GET /` with supported filters or `GET /:cardId`, 200          | Uses the existing filtered Kanban reader and scoped Card query. Archive uses `status=archived` in server order.                                                                           |
 | Create    | `POST /` with `{ columnId, title }`, 201                       | Trim 1–120 characters. The adapter also handles optional nullable description and dates for later editors.                                                                                |
-| Rename    | `PATCH /:cardId` with `{ title }`, 200                         | Skip unchanged titles. Preserve the draft through failure and refuse a detected intervening title edit.                                                                                   |
+| Rename    | `PATCH /:cardId` with `{ title, expectedTitle }`, 200          | Skip unchanged titles. Preserve the draft on conflict. The backend checks the original title under its existing lock.                                                                     |
 | Move      | `PATCH /:cardId/move` with `{ toColumnId, beforeCardId }`, 200 | Uses a same-Board Column and a UUID anchor. Explicit `null` appends.                                                                                                                      |
 | Duplicate | `POST /:cardId/duplicate` with `{}` or `{ columnId }`, 201     | The server appends a new Card and copies title, description, dates, labels and checklists with fresh unchecked items. Assignees, comments, attachments and activity stay with the source. |
 | Archive   | `POST /:cardId/archive` with no body, 200                      | Confirm before removing from the active feed. Readable content remains available via the archive.                                                                                         |
@@ -28,16 +28,21 @@ The command rechecks the source and compares a fresh destination snapshot
 with the one offered in the picker. Filtered or sorted Kanban views offer
 append. The client preserves exact server positions and never supplies a
 numeric rank. The backend transaction resolves races after the preflight.
-The existing API has no compare-and-swap field for title edits or a
-snapshot token for ordering across multiple requests.
+Quick rename sends the original title as `expectedTitle`. The backend
+checks it inside the existing Board-locked transaction and returns
+`409 CARD_TITLE_CHANGED` on conflict. Existing updates can omit the
+precondition. Ordering still has no snapshot token across requests.
 
 Writes use the verified Board capability and resource grant, a per-Board
 Card write lock, and an abortable authenticated transport with no retries.
 The Board read gate remains available to authorized viewers and archived
 Boards, while a confirmed revocation or session change removes protected
-state. A child 404 prompts the existing Board access check. An ambiguous
-create or duplicate requires a Board review before another POST. An
-ambiguous move requires reopening the picker. The client keeps pending
+state. A child 404 prompts the existing Board access check. Pending and
+ambiguous creates and duplicates survive Board navigation in the current
+session. An ambiguous POST requires a fresh, unfiltered Board read and
+explicit acknowledgement before another POST. The transport preserves
+offline feedback and records whether fetch began. An ambiguous move
+requires reopening the picker. The client keeps pending
 changes pessimistic. Success and recoverable failures invalidate scoped
 Card lists, affected detail and previews, and Home, My Tasks, and Search.
 Existing Socket.IO hints and reconnect reconciliation use the same keys.

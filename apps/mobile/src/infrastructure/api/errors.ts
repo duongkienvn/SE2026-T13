@@ -19,6 +19,8 @@ export class ApiError extends Error {
   readonly details: readonly string[];
   readonly requestId?: string;
   readonly retryAfterMs?: number;
+  /** Whether this attempt reached fetch. True does not prove server execution. */
+  readonly requestStarted?: boolean;
 
   constructor(
     kind: ApiErrorKind,
@@ -29,6 +31,7 @@ export class ApiError extends Error {
       details?: readonly string[];
       requestId?: string;
       retryAfterMs?: number;
+      requestStarted?: boolean;
     } = {},
   ) {
     super(
@@ -52,6 +55,7 @@ export class ApiError extends Error {
     this.details = options.details ?? [];
     this.requestId = options.requestId;
     this.retryAfterMs = options.retryAfterMs;
+    this.requestStarted = options.requestStarted;
   }
 }
 

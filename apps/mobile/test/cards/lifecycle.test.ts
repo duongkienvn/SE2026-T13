@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { QueryObserver } from '@tanstack/react-query';
 import { cardTitle, createCardApi } from '../../src/features/cards/api.ts';
 import { runCardMutation } from '../../src/features/cards/mutations.ts';
+import { cardPosts } from '../../src/features/cards/card-posts.ts';
 import {
   moveAnchor,
   readCardOrder,
@@ -41,6 +42,56 @@ const writable = {
   id: BOARD,
   capabilities: { ...boardDetail.capabilities, canWriteBoard: true },
 };
+
+test('pending and uncertain posts are isolated by Board and session and cleared on confirmed teardown', async () => {
+  const env = await integration();
+  try {
+    const store = cardPosts(env.data);
+    const identity = env.identity;
+    const other = uuid(999);
+    const finish = store.begin(identity, BOARD, {
+      kind: 'create',
+      title: 'Private title',
+    })!;
+    assert.equal(store.read(identity, BOARD)?.status, 'pending');
+    assert.equal(
+      store.begin(identity, BOARD, { kind: 'duplicate' }),
+      undefined,
+    );
+    assert.equal(store.read(identity, other), undefined);
+    env.data.resources.fenceBoard(BOARD);
+    finish(true);
+    const uncertain = store.read(identity, BOARD);
+    assert.equal(uncertain?.status, 'uncertain');
+    store.acknowledge(identity, BOARD);
+    assert.equal(store.read(identity, BOARD), uncertain);
+    if (uncertain?.status !== 'uncertain')
+      assert.fail('Expected uncertain post');
+    store.reviewed(identity, BOARD, uncertain);
+    store.acknowledge(identity, BOARD);
+    assert.equal(store.read(identity, BOARD), undefined);
+
+    const revoked = store.begin(identity, BOARD, { kind: 'duplicate' })!;
+    store.begin(identity, other, { kind: 'duplicate' })!(true);
+    env.data.resources.fenceBoard(BOARD, true);
+    env.data.resources.confirmBoard(BOARD, true);
+    revoked(true);
+    assert.equal(store.read(identity, BOARD), undefined);
+    assert.equal(store.read(identity, other)?.status, 'uncertain');
+
+    const oldSession = store.begin(identity, BOARD, {
+      kind: 'create',
+      title: 'Old session',
+    })!;
+    await env.manager.establishSession(loginResponse(USER_B));
+    oldSession(true);
+    assert.equal(store.read(env.identity, BOARD), undefined);
+    assert.equal(store.read(identity, BOARD), undefined);
+    assert.equal(store.read(identity, other), undefined);
+  } finally {
+    env.dispose();
+  }
+});
 
 test('Card adapter enforces method, status, response relationships, allowed fields, nullable dates and anchors', async () => {
   const env = await integration();
@@ -259,6 +310,14 @@ test('revalidates stale ranks, fences pending moves and reconciles socket hints 
     if (path.endsWith('/cards'))
       return Promise.resolve(json(page(rows, 1, 100)));
     if (path.endsWith(`/${first.id}`)) {
+      if (init.method === 'PATCH') {
+        assert.deepEqual(JSON.parse(String(init.body)), {
+          title: 'Local draft',
+          expectedTitle: first.title,
+        });
+        assert.equal(rows[0]?.title, 'Changed in Web');
+        return Promise.resolve(failure(409, 'CARD_TITLE_CHANGED'));
+      }
       assert.equal(init.method, 'GET');
       return Promise.resolve(success(rows.find(({ id }) => id === first.id)));
     }

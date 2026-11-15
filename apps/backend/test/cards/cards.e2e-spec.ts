@@ -327,6 +327,38 @@ describe('Card HTTP API with real JWT, authorization, services and envelopes', (
         .set('Authorization', `Bearer ${token[actor]}`),
   });
 
+  it('accepts a title precondition and rejects stale or invalid expectations', async () => {
+    const api = http();
+    const created = await api
+      .post(base)
+      .send({ columnId: ID.column, title: 'Original' })
+      .expect(201);
+    const path = `${base}/${created.body.data.id}`;
+    await api
+      .patch(path)
+      .send({ title: 'First', expectedTitle: 'Original' })
+      .expect(200);
+    const stale = await api
+      .patch(path)
+      .send({ title: 'Second', expectedTitle: 'Original' })
+      .expect(409);
+    expect(stale.body.code).toBe('CARD_TITLE_CHANGED');
+    await api
+      .patch(path)
+      .send({ title: 'Second', expectedTitle: null })
+      .expect(400);
+    await api.patch(path).send({ expectedTitle: 'First' }).expect(400);
+    const legacy = await api
+      .patch(path)
+      .send({ description: 'Legacy edit', dueDate: null })
+      .expect(200);
+    expect(legacy.body.data).toMatchObject({
+      title: 'First',
+      description: 'Legacy edit',
+      dueDate: null,
+    });
+  });
+
   it.each([ID.user, ID.target])(
     'supports all eight endpoints for OWNER/MEMBER %s',
     async (actor) => {

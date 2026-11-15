@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { ApiError } from '../../infrastructure/api/errors';
 import {
   sameIdentity,
@@ -7,6 +7,7 @@ import {
 import { useMobileData } from '../../infrastructure/query/DataProvider';
 import type { KanbanCard, KanbanColumn } from '../boards/kanban-api';
 import { isUncertainColumnWrite } from '../columns/mutations';
+import { cardPosts } from './card-posts';
 import { runCardMutation, type CardCommand } from './mutations';
 
 type CardSheet =
@@ -53,11 +54,11 @@ export function useCardLifecycle({
     null,
   );
   const [notice, setNotice] = useState('');
-  const [uncertain, setUncertain] = useState<{
-    kind: 'create' | 'duplicate';
-    title?: string;
-    reviewed: boolean;
-  } | null>(null);
+  const posts = cardPosts(data);
+  const post = useSyncExternalStore(posts.subscribe, () =>
+    posts.read(identity, boardId),
+  );
+  const uncertain = post?.status === 'uncertain' ? post : undefined;
 
   useEffect(() => () => active.current?.abort(), []);
   useEffect(() => {
@@ -71,7 +72,6 @@ export function useCardLifecycle({
     setTitle('');
     setFailure(null);
     setNotice('');
-    setUncertain(null);
   }, [discard, discardWrites]);
 
   function open(next: CardSheet) {
@@ -101,7 +101,8 @@ export function useCardLifecycle({
     if (
       !writable ||
       active.current ||
-      (uncertain && (command.kind === 'create' || command.kind === 'duplicate'))
+      (posts.read(identity, boardId) &&
+        (command.kind === 'create' || command.kind === 'duplicate'))
     )
       return;
     const controller = new AbortController();
@@ -124,15 +125,6 @@ export function useCardLifecycle({
       if (result) setNotice(success[command.kind]);
     } catch (error) {
       if (!stillCurrent()) return;
-      if (
-        (command.kind === 'create' || command.kind === 'duplicate') &&
-        isUncertainColumnWrite(error)
-      )
-        setUncertain({
-          kind: command.kind,
-          title: command.kind === 'create' ? command.input.title : undefined,
-          reviewed: false,
-        });
       setFailure({ error, at: Date.now() });
       if (
         error instanceof ApiError &&
@@ -150,7 +142,7 @@ export function useCardLifecycle({
   return {
     sheet,
     title,
-    pending,
+    pending: pending || post?.status === 'pending',
     failure,
     notice,
     uncertain,
@@ -163,13 +155,18 @@ export function useCardLifecycle({
       setFailure(null);
     },
     acknowledge() {
-      if (!uncertain?.reviewed) return;
-      setUncertain(null);
+      posts.acknowledge(identity, boardId);
       setFailure(null);
     },
-    reviewBoard() {
-      setUncertain((previous) => previous && { ...previous, reviewed: true });
+    async reviewBoard(refresh: () => Promise<unknown>) {
+      if (!uncertain || active.current) return;
       close();
+      try {
+        await refresh();
+        posts.reviewed(identity, boardId, uncertain);
+      } catch {
+        // The Board shows its read error. Keep the gate until a refresh succeeds.
+      }
     },
   };
 }
@@ -196,6 +193,7 @@ export function cardActionMessage(error: unknown) {
     case 'CARD_ORDER_CHANGED':
     case 'CARD_TITLE_CHANGED':
     case 'CARD_WRITE_PENDING':
+    case 'CARD_POST_REVIEW_REQUIRED':
       return error.message;
   }
   if (error.kind === 'offline') return 'Reconnect to save the card.';

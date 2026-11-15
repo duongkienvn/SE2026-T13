@@ -21,6 +21,7 @@ export function createResourceAccess() {
     (boardId: string, key: PrivateQueryKey) => void
   >();
   const workspaceDeniedListeners = new Set<(workspaceId: string) => void>();
+  const boardTeardownListeners = new Set<(boardId?: string) => void>();
   const resources = new Map<
     string,
     { key: PrivateQueryKey; version: number }
@@ -92,6 +93,7 @@ export function createResourceAccess() {
       denied: denied || previous?.denied === true,
       workspaceId: previous?.workspaceId,
     });
+    if (denied) for (const listener of boardTeardownListeners) listener(id);
   }
   function bumpKey(key: PrivateQueryKey) {
     const id = boardId(key);
@@ -148,6 +150,8 @@ export function createResourceAccess() {
         denied: false,
         workspaceId: workspaceId ?? previous?.workspaceId,
       });
+      if (!writable)
+        for (const listener of boardTeardownListeners) listener(id);
     },
     fenceWorkspace(id: string, revoked = false) {
       workspaces.set(id, (workspaces.get(id) ?? 0) + 1);
@@ -197,7 +201,11 @@ export function createResourceAccess() {
         deniedListeners.delete(listener);
       };
     },
+    subscribeBoardTeardown(listener: (boardId?: string) => void) {
+      boardTeardownListeners.add(listener);
+    },
     reset() {
+      for (const listener of boardTeardownListeners) listener();
       boards.clear();
       resources.clear();
       workspaces.clear();

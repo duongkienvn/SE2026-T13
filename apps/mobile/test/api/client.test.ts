@@ -43,6 +43,47 @@ const failure = (kind: string, status?: number) => (error: unknown) =>
   error.kind === kind &&
   (status === undefined || error.status === status);
 
+test('write transport errors retain the offline kind and record whether fetch started', async () => {
+  let online = false;
+  const timers = new FakeTime();
+  let sends = 0;
+  let offlineAfterSend = true;
+  const client = createHttpClient({
+    baseUrl: new URL('https://example.test/api'),
+    timers,
+    timeoutMs: 100,
+    isOnline: () => online,
+    fetch: async () => {
+      sends++;
+      if (offlineAfterSend) {
+        online = false;
+        throw new Error('Connection lost after send');
+      }
+      return new Promise<Response>(() => {});
+    },
+  });
+  const send = (signal?: AbortSignal) =>
+    client.json('/items', identity, { method: 'POST', signal });
+  await assert.rejects(send(), { kind: 'offline', requestStarted: false });
+  assert.equal(sends, 0);
+  online = true;
+  await assert.rejects(send(), { kind: 'offline', requestStarted: true });
+  online = true;
+  offlineAfterSend = false;
+  const controller = new AbortController();
+  const aborted = send(controller.signal);
+  controller.abort();
+  await assert.rejects(aborted, { kind: 'aborted', requestStarted: true });
+  await assert.rejects(send(controller.signal), {
+    kind: 'aborted',
+    requestStarted: false,
+  });
+  const timedOut = send();
+  timers.advance(100);
+  await assert.rejects(timedOut, { kind: 'timeout', requestStarted: true });
+  assert.equal(sends, 3);
+});
+
 test('wrapped JSON preserves typed data and page/cursor metadata; request headers and JSON serialization', async () => {
   const { client, requests } = setup(async () =>
     ok([1], { meta: { page: 1, limit: 20, total: 1, totalPages: 1 } }),

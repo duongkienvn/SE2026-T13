@@ -113,6 +113,19 @@ export function createSessionHttpClient(
                 (options.method ?? 'GET') !== 'GET',
         )
       : undefined;
+    function checkResource(requestStarted?: boolean) {
+      try {
+        resourceCurrent?.();
+      } catch (error) {
+        if (error instanceof ApiError && requestStarted !== undefined)
+          throw new ApiError(error.kind, {
+            ...error,
+            message: error.message,
+            requestStarted,
+          });
+        throw error;
+      }
+    }
     const controller = new AbortController();
     const cancel = () => controller.abort();
     options.signal?.addEventListener('abort', cancel, { once: true });
@@ -126,7 +139,7 @@ export function createSessionHttpClient(
       });
       if (disposed || !sameIdentity(identity, currentIdentity(manager)))
         throw new ApiError('session-changed');
-      resourceCurrent?.();
+      checkResource(true);
       return value;
     } catch (error) {
       if (disposed || !sameIdentity(identity, currentIdentity(manager)))
@@ -143,7 +156,9 @@ export function createSessionHttpClient(
       else if (!(
         error instanceof ApiError && [403, 404].includes(error.status)
       ))
-        resourceCurrent?.();
+        checkResource(
+          error instanceof ApiError ? error.requestStarted : undefined,
+        );
       throw error;
     } finally {
       pending.delete(controller);

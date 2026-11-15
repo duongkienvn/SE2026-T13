@@ -156,7 +156,11 @@ async function setup({
   };
   const data = createMobileDataLayer(
     manager,
-    createHttpClient({ baseUrl: new URL('https://example.test/api'), fetch }),
+    createHttpClient({
+      baseUrl: new URL('https://example.test/api'),
+      fetch,
+      isOnline: () => onlineManager.isOnline(),
+    }),
     time,
   );
   data.queryClient.setDefaultOptions({
@@ -172,13 +176,13 @@ async function setup({
     timers: time,
   });
   const adapter = createNavigationSessionAdapter(manager);
-  const tree = () => (
+  const tree = (showBoard = true) => (
     <SessionProvider manager={manager}>
       <DataProvider layer={data}>
         <RealtimeProvider client={realtime}>
           <NavigationProvider adapter={adapter}>
             <ThemeContext.Provider value={mode}>
-              <BoardRoute />
+              {showBoard && <BoardRoute />}
             </ThemeContext.Provider>
           </NavigationProvider>
         </RealtimeProvider>
@@ -192,6 +196,7 @@ async function setup({
     realtime,
     time,
     reads: (suffix) => requests.filter(({ path }) => path.endsWith(suffix)),
+    showBoard: (show) => mounted.rerender(tree(show)),
     focus: async (focused) => {
       mockFocus = focused;
       await mounted.rerender(tree());
@@ -752,7 +757,10 @@ test('creates, renames, reorders, moves, duplicates, archives and restores a Car
         .reads(`/${card(2).id}`)
         .filter(({ method }) => method === 'PATCH')
         .map(({ body }) => body),
-    ).toEqual([{ title: 'Release ready' }]);
+    ).toEqual([{ title: 'Release ready', expectedTitle: 'Ship release' }]);
+    expect(
+      env.reads(`/${card(2).id}`).some(({ method }) => method === 'GET'),
+    ).toBe(false);
 
     await selectCard('Release ready');
     await pressColumn('Move to…');
@@ -819,13 +827,16 @@ test('creates, renames, reorders, moves, duplicates, archives and restores a Car
 
 test('an ambiguous create prevents repeat POSTs until explicit Board review and retains the long title', async () => {
   let posts = 0;
+  const responseLost = deferred();
   const title = 'x'.repeat(120);
   const env = await setup({
     board: writableBoard,
     override(url, _session, request) {
       if (url.pathname.endsWith('/cards') && request.method === 'POST') {
         posts++;
-        return Promise.reject(new Error('Connection lost after send'));
+        return responseLost.promise.then(() => {
+          throw new Error('Connection lost after send');
+        });
       }
       return null;
     },
@@ -836,6 +847,12 @@ test('an ambiguous create prevents repeat POSTs until explicit Board review and 
     const save = columnSheet().getByRole('button', { name: 'Create card' });
     await fireEvent.press(save);
     await fireEvent.press(save);
+    await waitFor(() => expect(posts).toBe(1));
+    await act(async () => {
+      onlineManager.setOnline(false);
+      responseLost.resolve();
+    });
+    await act(() => onlineManager.setOnline(true));
     await screen.findByText(/server may have created a card/);
     expect(posts).toBe(1);
     expect(
@@ -845,6 +862,12 @@ test('an ambiguous create prevents repeat POSTs until explicit Board review and 
     await pressColumn('Review board');
     await fireEvent.press(await button('Add card'));
     expect(screen.getByLabelText('Card title').props.value).toBe(title);
+    await waitFor(() =>
+      expect(
+        columnSheet().getByRole('button', { name: 'I checked the board' }).props
+          .accessibilityState.disabled,
+      ).toBe(false),
+    );
     await pressColumn('I checked the board');
     expect(
       columnSheet().getByRole('button', { name: 'Create card' }).props
@@ -905,6 +928,102 @@ test('an archived Board can page archived Cards and open the guarded Card route 
         .map(({ params }) => params.get('page')),
     ).toEqual(['1', '2']);
   } finally {
+    await env.dispose();
+  }
+});
+
+test('a shrinking archive keeps Previous available from an empty later page', async () => {
+  const archived = Array.from({ length: 101 }, (_, index) => ({
+    ...card(index + 1),
+    isArchived: true,
+    archivedAt: boardDetail.createdAt,
+  }));
+  let shrunk = false;
+  const env = await setup({
+    board: writableBoard,
+    override(url) {
+      if (url.searchParams.get('status') !== 'archived') return null;
+      const requested = Number(url.searchParams.get('page'));
+      if (requested === 2) shrunk = true;
+      return response(
+        page(shrunk ? archived.slice(0, 100) : archived, requested, 100),
+      );
+    },
+  });
+  try {
+    await fireEvent.press(await button('Board actions'));
+    await pressColumn('Archived cards');
+    await pressColumn('Next archive page');
+    await screen.findByText(/no cards on this page/i);
+    await pressColumn('Previous archive page');
+    await columnSheet().findByRole('button', { name: 'Card 1' });
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Next archive page' }),
+      ).toBeNull(),
+    );
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('a committed create with a lost response stays gated after Board unmount', async () => {
+  const post = deferred();
+  const readback = deferred();
+  let committed = false;
+  let reviewing = false;
+  const created = { ...card(1), title: 'Committed before disconnect' };
+  const env = await setup({
+    board: writableBoard,
+    override(url, _session, request) {
+      if (!url.pathname.endsWith('/cards')) return null;
+      if (request.method === 'POST') {
+        committed = true;
+        return post.promise;
+      }
+      if (reviewing) return readback.promise;
+      return response(page(committed ? [created] : [], 1, 100));
+    },
+  });
+  try {
+    await fireEvent.press(await button('Add card'));
+    await fireEvent.changeText(
+      screen.getByLabelText('Card title'),
+      created.title,
+    );
+    await pressColumn('Create card');
+    await waitFor(() => expect(committed).toBe(true));
+    await env.showBoard(false);
+    post.resolve(result(created, 201));
+    await env.showBoard(true);
+    await fireEvent.press(await button('Add card'));
+    await screen.findByText(/server may have created a card/);
+    expect(screen.getByLabelText('Card title').props.value).toBe(created.title);
+    reviewing = true;
+    await pressColumn('Review board');
+    await fireEvent.press(await button('Add card'));
+    expect(
+      columnSheet().getByRole('button', { name: 'I checked the board' }).props
+        .accessibilityState.disabled,
+    ).toBe(true);
+    readback.resolve(response(page([created], 1, 100)));
+    await waitFor(() =>
+      expect(
+        columnSheet().getByRole('button', { name: 'I checked the board' }).props
+          .accessibilityState.disabled,
+      ).toBe(false),
+    );
+    await pressColumn('I checked the board');
+    expect(
+      columnSheet().getByRole('button', { name: 'Create card' }).props
+        .accessibilityState.disabled,
+    ).toBe(false);
+    expect(
+      env.reads('/cards').filter(({ method }) => method === 'POST'),
+    ).toHaveLength(1);
+  } finally {
+    post.resolve(result(created, 201));
+    readback.resolve(response(page([created], 1, 100)));
     await env.dispose();
   }
 });

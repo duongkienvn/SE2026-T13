@@ -602,6 +602,28 @@ try {
       await runner.release();
     }
   };
+  const renameCard = await create(destination.id, 'Original title');
+  const rename = (title) =>
+    service.update(owner.id, board.id, renameCard.id, {
+      title,
+      expectedTitle: 'Original title',
+    });
+  const renames = await race(
+    () => rename('First title'),
+    () => rename('Second title'),
+  );
+  assert.equal(renames[0].status, 'fulfilled');
+  assert.equal(renames[1].status, 'rejected');
+  assert.equal(renames[1].reason.getStatus(), 409);
+  assert.equal(renames[1].reason.getResponse().code, 'CARD_TITLE_CHANGED');
+  assert.equal(
+    (await cards.findOneByOrFail({ id: renameCard.id })).title,
+    'First title',
+  );
+  pass(
+    'concurrent title preconditions compare against the committed title under the Board lock',
+  );
+
   for (const removeFirst of [false, true]) {
     const target = await user(removeFirst ? 'remove-first' : 'assign-first');
     await memberService.add(owner.id, board.id, { email: target.email });

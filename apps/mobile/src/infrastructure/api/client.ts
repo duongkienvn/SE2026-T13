@@ -227,7 +227,9 @@ export function createHttpClient(config: HttpClientOptions): HttpClient {
     }
     const controller = new AbortController();
     let timedOut = false;
-    const abortError = () => new ApiError(timedOut ? 'timeout' : 'aborted');
+    let requestStarted = false;
+    const abortError = () =>
+      new ApiError(timedOut ? 'timeout' : 'aborted', { requestStarted });
     const cancel = () => controller.abort();
     options.signal?.addEventListener('abort', cancel, { once: true });
     if (options.signal?.aborted) cancel();
@@ -239,11 +241,13 @@ export function createHttpClient(config: HttpClientOptions): HttpClient {
       method === 'GET' ? Math.min(2, Math.max(0, options.retries ?? 1)) : 0;
     try {
       for (let attempt = 0; ; attempt++) {
+        requestStarted = false;
         try {
           if (controller.signal.aborted) throw abortError();
           if (config.isOnline?.() === false) throw new ApiError('offline');
           return await abortable(
             async () => {
+              requestStarted = true;
               const response = await config.fetch(url, {
                 method,
                 headers,
@@ -290,9 +294,14 @@ export function createHttpClient(config: HttpClientOptions): HttpClient {
           const error = controller.signal.aborted
             ? abortError()
             : cause instanceof ApiError
-              ? cause
+              ? new ApiError(cause.kind, {
+                  ...cause,
+                  message: cause.message,
+                  requestStarted,
+                })
               : new ApiError(
                   config.isOnline?.() === false ? 'offline' : 'network',
+                  { requestStarted },
                 );
           const transient =
             error.kind === 'network' ||

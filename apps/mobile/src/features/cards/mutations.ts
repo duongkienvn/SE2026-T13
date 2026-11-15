@@ -7,9 +7,13 @@ import {
 import type { MobileDataLayer } from '../../infrastructure/query/data-layer.ts';
 import { queryKeys } from '../../infrastructure/query/keys.ts';
 import type { KanbanBoard } from '../boards/kanban-api.ts';
-import { canMutateColumns } from '../columns/mutations.ts';
+import {
+  canMutateColumns,
+  isUncertainColumnWrite,
+} from '../columns/mutations.ts';
 import { createCardApi, type CardPatch, type CreateCard } from './api.ts';
 import type { Card } from './decoder.ts';
+import { cardPosts } from './card-posts.ts';
 import {
   cardOrderChanged,
   moveAnchor,
@@ -87,6 +91,19 @@ export async function runCardMutation(
       code: 'CARD_WRITE_PENDING',
       message: 'A card change is already saving.',
     });
+  let finishPost: ((uncertain: boolean) => void) | undefined;
+  if (command.kind === 'create' || command.kind === 'duplicate') {
+    finishPost = cardPosts(data).begin(identity, boardId, {
+      kind: command.kind,
+      title: command.kind === 'create' ? command.input.title : undefined,
+    });
+    if (!finishPost)
+      throw new ApiError('http', {
+        status: 409,
+        code: 'CARD_POST_REVIEW_REQUIRED',
+        message: 'Check the board before sending another card request.',
+      });
+  }
   pending.add(lock);
   const ids = 'id' in command ? [command.id] : [];
   let refresh = false;
@@ -96,20 +113,14 @@ export async function runCardMutation(
       case 'create':
         result = await api.create(command.input, signal);
         break;
-      case 'update': {
-        if (command.expectedTitle !== undefined) {
-          const latest = await api.getCard(command.id, signal);
-          if (latest.isArchived || latest.title !== command.expectedTitle)
-            throw new ApiError('http', {
-              status: 409,
-              code: 'CARD_TITLE_CHANGED',
-              message:
-                'This card changed. Keep your draft or reopen Rename to see the latest title.',
-            });
-        }
-        result = await api.update(command.id, command.patch, signal);
+      case 'update':
+        result = await api.update(
+          command.id,
+          command.patch,
+          signal,
+          command.expectedTitle,
+        );
         break;
-      }
       case 'move': {
         const source = await api.getCard(command.id, signal);
         if (source.isArchived || source.columnId !== command.fromColumnId)
@@ -152,6 +163,12 @@ export async function runCardMutation(
     refresh = true;
     return result;
   } catch (error) {
+    if (
+      error instanceof ApiError &&
+      error.requestStarted &&
+      isUncertainColumnWrite(error)
+    )
+      finishPost?.(true);
     refresh = !(
       error instanceof ApiError && error.code === 'INVALID_CARD_INPUT'
     );
@@ -168,6 +185,7 @@ export async function runCardMutation(
         );
     } finally {
       pending.delete(lock);
+      finishPost?.(false);
     }
     data.assertCurrent(identity);
     current();

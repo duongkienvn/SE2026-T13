@@ -131,7 +131,12 @@ export function createCardApi(
         body,
       );
     },
-    update(cardId: string, patch: CardPatch, signal: AbortSignal) {
+    update(
+      cardId: string,
+      patch: CardPatch,
+      signal: AbortSignal,
+      expectedTitle?: string,
+    ) {
       const id = uuid(cardId);
       const body = fields(patch);
       if (!Object.keys(body).length)
@@ -143,7 +148,7 @@ export function createCardApi(
         id,
         signal,
         (card) => card.id === id && !card.isArchived,
-        body,
+        expectedTitle === undefined ? body : { ...body, expectedTitle },
       );
     },
     move(cardId: string, input: MoveCard, signal: AbortSignal) {

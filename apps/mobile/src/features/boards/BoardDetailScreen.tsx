@@ -822,6 +822,18 @@ function BoardContent({
             onOpen(card);
             cardManagement.close();
           }}
+          refreshBoardForReview={async () => {
+            const options = kanbanCardOptions(data.api, identity, boardId, {});
+            apply({});
+            await data.queryClient.cancelQueries({
+              queryKey: options.queryKey,
+              exact: true,
+            });
+            return data.queryClient.fetchInfiniteQuery({
+              ...options,
+              retry: false,
+            });
+          }}
         />
       )}
     </>

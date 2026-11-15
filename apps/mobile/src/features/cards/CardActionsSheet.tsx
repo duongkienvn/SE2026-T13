@@ -172,6 +172,7 @@ export function CardActionsSheet({
   allowPrecision,
   columnsPending,
   onLoadColumns,
+  refreshBoardForReview,
   onOpenCard,
 }: {
   management: CardLifecycle;
@@ -181,6 +182,7 @@ export function CardActionsSheet({
   allowPrecision: boolean;
   columnsPending: boolean;
   onLoadColumns?: () => void;
+  refreshBoardForReview: () => Promise<unknown>;
   onOpenCard: (card: KanbanCard) => void;
 }) {
   const c = useTheme();
@@ -270,13 +272,15 @@ export function CardActionsSheet({
                 accessibilityLiveRegion="polite"
                 style={[typography.body, { color: c.danger }]}
               >
-                The server may have created a card. Check the refreshed board
-                and clear filters if needed.
+                The server may have created a card. Review board refreshes the
+                Card list without filters.
               </Text>
               <Button
                 label="Review board"
                 variant="secondary"
-                onPress={management.reviewBoard}
+                onPress={() =>
+                  void management.reviewBoard(refreshBoardForReview)
+                }
               />
               <Button
                 label="I checked the board"

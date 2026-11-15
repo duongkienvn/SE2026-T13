@@ -30,6 +30,7 @@ export function ArchivedCardsList({
   const latestPage = Math.max(0, pages.length - 1);
   const currentPage = Math.min(selectedPage, latestPage);
   const page = isAccessDenied(archive.error) ? undefined : pages[currentPage];
+  const outOfRange = !!page && page.meta.page > page.meta.totalPages;
   const retryReady = useWorkspaceRetryReady(
     archive.error,
     archive.errorUpdatedAt,
@@ -65,9 +66,11 @@ export function ArchivedCardsList({
           />
         </>
       )}
-      {!archive.isError && page?.meta.total === 0 && (
+      {!archive.isError && page?.data.length === 0 && (
         <Text style={[typography.body, { color: c.textSecondary }]}>
-          No archived cards.
+          {page.meta.total === 0
+            ? 'No archived cards.'
+            : 'No cards on this page.'}
         </Text>
       )}
       {page?.data.map((card) => (
@@ -99,16 +102,21 @@ export function ArchivedCardsList({
           )}
         </View>
       ))}
-      {page && page.meta.totalPages > 1 && (
+      {page && (page.meta.totalPages > 1 || currentPage > 0) && (
         <>
-          <Text style={[typography.caption, { color: c.textSecondary }]}>
-            Page {page.meta.page} of {page.meta.totalPages}
-          </Text>
+          {!outOfRange && (
+            <Text style={[typography.caption, { color: c.textSecondary }]}>
+              Page {page.meta.page} of {page.meta.totalPages}
+            </Text>
+          )}
           {currentPage > 0 && (
             <Button
               label="Previous archive page"
               variant="link"
-              onPress={() => setSelectedPage(currentPage - 1)}
+              onPress={() => {
+                setSelectedPage(currentPage - 1);
+                if (outOfRange) void archive.refetch();
+              }}
             />
           )}
           {(currentPage < latestPage || archive.hasNextPage) &&
