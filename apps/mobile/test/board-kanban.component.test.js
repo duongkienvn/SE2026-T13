@@ -668,10 +668,14 @@ test('creates from an empty Board, validates drafts, rejects duplicate taps, and
     await pressColumn('Keep editing');
     expect(screen.getByLabelText('Column name').props.value).toHaveLength(121);
     await pressColumn('Cancel');
+    await screen.findByText('Discard changes?');
+    await pressColumn('Discard changes');
+    expect(screen.queryByTestId('filter-modal')).toBeNull();
     expect(
       env.reads('/columns').filter(({ method }) => method === 'POST'),
     ).toHaveLength(0);
     await fireEvent.press(await button('Add column'));
+    expect(screen.getByLabelText('Column name').props.value).toBe('');
     await fireEvent.changeText(
       screen.getByLabelText('Column name'),
       '  In progress  ',
@@ -760,6 +764,10 @@ test('renames with a retained draft and moves using the current server order wit
       screen.getByLabelText('Column name'),
       '  Ready  ',
     );
+    await pressColumn('Cancel');
+    await screen.findByText('Discard changes?');
+    await pressColumn('Keep editing');
+    expect(screen.getByLabelText('Column name').props.value).toBe('  Ready  ');
     await pressColumn('Save column');
     await screen.findByText('Couldn’t save the column. Try again.');
     expect(screen.getByLabelText('Column name').props.value).toBe('  Ready  ');

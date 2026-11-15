@@ -43,6 +43,13 @@ export function ColumnActionsSheet({
           ? `Delete “${currentName}”?`
           : currentName;
 
+  const requestDismiss = () => {
+    if (discardPrompt) setDiscardPrompt(false);
+    else if (editing && !createdUncertain && sheet.draft !== currentName)
+      setDiscardPrompt(true);
+    else dismiss();
+  };
+
   return (
     <BottomSheet
       visible
@@ -50,12 +57,7 @@ export function ColumnActionsSheet({
       showHandle
       respectReducedMotion
       dismissible={!pending}
-      onDismiss={() => {
-        if (discardPrompt) setDiscardPrompt(false);
-        else if (editing && !createdUncertain && sheet.draft !== currentName)
-          setDiscardPrompt(true);
-        else dismiss();
-      }}
+      onDismiss={requestDismiss}
       dismissLabel="Dismiss column sheet"
     >
       {discardPrompt ? (
@@ -203,7 +205,7 @@ export function ColumnActionsSheet({
             label="Cancel"
             variant="link"
             disabled={pending}
-            onPress={dismiss}
+            onPress={requestDismiss}
           />
         </>
       )}
