@@ -265,6 +265,20 @@ export function CardDocument({
           <Text style={[typography.supporting, { color: c.primaryPressed }]}>
             {board.name} › {column?.name ?? 'Column unavailable'}
           </Text>
+          {(board.isArchived ||
+            card.isArchived ||
+            !board.capabilities.canWriteBoard) && (
+            <StatusChip
+              label={
+                board.isArchived
+                  ? 'Archived board · Read-only'
+                  : card.isArchived
+                    ? 'Archived card · Read-only'
+                    : 'Read-only'
+              }
+              tone="info"
+            />
+          )}
           <View style={{ gap: spacing.sm }}>
             <Text
               selectable
@@ -289,20 +303,6 @@ export function CardDocument({
               </View>
             )}
           </View>
-          {(board.isArchived ||
-            card.isArchived ||
-            !board.capabilities.canWriteBoard) && (
-            <StatusChip
-              label={
-                board.isArchived
-                  ? 'Archived board · Read-only'
-                  : card.isArchived
-                    ? 'Archived card · Read-only'
-                    : 'Read-only'
-              }
-              tone="info"
-            />
-          )}
           {readError ? (
             <Text
               accessibilityLiveRegion="polite"

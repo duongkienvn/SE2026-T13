@@ -183,7 +183,6 @@ function BaseMetadata({
     <View
       style={{
         flexDirection: stacked ? 'column' : 'row',
-        flexWrap: 'wrap',
         gap: spacing.sm,
       }}
       testID="card-detail-metadata"
