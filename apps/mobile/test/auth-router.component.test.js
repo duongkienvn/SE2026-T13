@@ -50,6 +50,7 @@ import {
   fixture,
   workspaceId,
 } from './home/fixtures';
+import { boardDetail } from './workspaces/kanban-fixtures';
 
 jest.mock('expo-network', () => ({
   getNetworkStateAsync: async () => ({ isConnected: true }),
@@ -120,10 +121,15 @@ test('real auth adapters and session owner resume a canonical return target, iso
               }
             : path === `/api/boards/${boardId}`
               ? {
+                  ...boardDetail,
                   id: boardId,
                   workspaceId,
                   isArchived: false,
-                  capabilities: { canReadBoard: true, canWriteBoard: false },
+                  capabilities: {
+                    ...boardDetail.capabilities,
+                    canReadBoard: true,
+                    canWriteBoard: false,
+                  },
                 }
               : user(USER_A);
       // The real transport consumes this controlled network response.
@@ -233,8 +239,8 @@ test('real auth adapters and session owner resume a canonical return target, iso
     await waitFor(() =>
       expect(screen).toHavePathname(`/boards/${boardId}/cards/${cardId}`),
     );
-    await screen.findByText('Card detail is coming soon.');
-    expect(screen.queryByText('Detail payload stays private')).toBeNull();
+    await screen.findByText('Detail payload stays private');
+    expect(screen.queryByText('Card detail is coming soon.')).toBeNull();
     await act(() => router.back());
     await waitFor(() => expect(screen).toHavePathname('/home'));
     boardReadable = false;

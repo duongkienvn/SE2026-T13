@@ -18,6 +18,8 @@ export function decodeCard(value: unknown, boardId: string) {
   if (
     !dto ||
     !isUuid(dto.createdById) ||
+    [...card.title].length > 120 ||
+    (card.description !== null && [...card.description].length > 2000) ||
     (!card.isArchived && dto.archivedAt !== null)
   )
     throw invalidResponse(200);
