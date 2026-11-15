@@ -1,4 +1,8 @@
-# MOB-13 — Native Board discovery (work in progress)
+# MOB-13 — Native Board discovery
+
+Implementation is committed on `feat/mobile-board-discovery`. On 2026-11-15,
+the owner requested stopping further mobile verification and committing the
+result. The unverified items below remain explicit delivery limitations.
 
 The existing Boards tab uses the MOB-11 session-scoped Workspace selection. Its
 All Boards query sends search, status and sort to the Workspace Board endpoint;
@@ -36,11 +40,16 @@ joined Workspace directory; the directory is not fabricated for guests.
 The approved `docs/mobile/assets/02-boards-and-workspace-switcher.png` was
 opened directly. The existing branded header, four-tab shell and Workspace
 selector are reused; this change adds Starred, All, create, search, filters,
-and Board actions. **Visual parity is not verified**: no current APK screenshot
-or device comparison exists. In particular, layout, 320dp, typography,
-touch targets, theme, font scaling, keyboard and Android Back need real-device
-review against the approved image before acceptance. Appllama MCP was not
-available, so its external reference and motion workflow was not performed.
+and Board actions. The first standalone APK was opened on a Samsung SM-A507FN
+and its Boards screenshot was inspected against the reference. It showed an
+overly tall Starred tile; commit `cafb4cb` reduced the artwork height and placed
+the star alongside the title. Mobile typecheck and the focused Starred/duplicate
+star component tests passed after that change. The corrected APK's appearance
+was not verified before the owner stopped further checks. Complete visual parity,
+320dp, theme/font-scale matrix, TalkBack and motion remain **NOT VERIFIED**.
+Appllama MCP was unavailable, so external reference research and its full
+motion workflow were not performed. The four requested design skills were read;
+their available guidance was applied without replacing the approved design.
 The implementation currently presents search, sort and status controls inline;
 the reference does not show those controls. This is an unverified layout
 adaptation for the issue's required server filters, not an approved visual
@@ -49,18 +58,35 @@ variance. The Board Detail route remains a coming-soon preview.
 ADB was found at `D:/Tools/AndroidPlatformTools/platform-tools/adb.exe` and a
 Samsung SM-A507FN running Android 11 was connected; an Android SDK was not
 found in the checked locations. The existing package
-`tech.kanvexa.mobile.dev.mob12qa` was observed and has not been removed. ADB
+`tech.kanvexa.mobile.dev.mob12qa` was removed with the owner's authorization. ADB
 reverse forwards device port 3443 to an HTTPS proxy bound to host loopback; a
 device TCP connection and certificate-verified host readiness check passed. Local
 `gradlew.bat assembleRelease --offline` first failed on the sandboxed Gradle
 cache lock; outside the sandbox it failed to establish a daemon loopback
-connection, including with `--no-daemon`. No MOB-13 APK was built or installed.
-No production service was used. The user later authorized EAS cloud; the
-automatic approval review rejected the source upload because explicit approval
-for exporting the private repository payload was not recorded. The QA build
-archive is prepared separately, with a public test certificate and an explicit
-loopback API URL; its private key and test accounts are excluded. No EAS build
-was started and no application was removed from the device at this point.
+connection, including with `--no-daemon`.
+
+The owner subsequently authorized EAS cloud and explicitly approved source
+upload after automatic review requested that clarification. The isolated QA
+source includes a public test certificate trusted only for localhost and the
+URL `https://localhost:3443/api`; private keys and test credentials are excluded.
+The application's committed release security configuration is unchanged.
+The first submitted build failed because staging's workspace root was wrong;
+the corrected build
+[`f1f7d404-74b9-451b-8322-ef0e6b0c710a`](https://expo.dev/accounts/nanromiis-team/projects/kanvexa-mobile/builds/f1f7d404-74b9-451b-8322-ef0e6b0c710a)
+finished successfully. Its standalone APK is stored locally at
+`apps/mobile/apk/kanvexa-mob13-qa.apk` (ignored), SHA-256
+`9C8F54C6C1DC1373DA0AA406628FD0DB8F2698F647EADF1DDCECF24802CD45F7`.
+ADB installed package `tech.kanvexa.mobile.dev` successfully. Real device checks
+confirmed login, Board directory, unstar without navigation, PRIVATE Board
+creation, owner rename, preset application and Android Back's dirty-form prompt.
+The screenshot/XML evidence remains in ignored `apps/mobile/apk/mob13-*` files.
+These checks used the original APK before the compact-tile correction.
+
+The updated build
+[`62bd04ac-a54c-4ef9-b8da-3d9077fe87b9`](https://expo.dev/accounts/nanromiis-team/projects/kanvexa-mobile/builds/62bd04ac-a54c-4ef9-b8da-3d9077fe87b9)
+was still `IN_PROGRESS` at the last observation. Its artifact, installation and
+visual result were not checked after the owner stopped mobile verification.
+No production service was used.
 
 ## MOB-14 handoff
 
@@ -91,6 +117,9 @@ joined the Board and received its post-commit background-change event through
 the certificate-verified local HTTPS proxy. This is backend/proxy evidence, not
 proof that the native app reconciles the event. No production requests were made.
 
-Record final command outcomes and device screenshots after verification. The
-feature must not be considered complete while the required native visual/device
-checks are unavailable.
+The owner also requested no further backend/frontend suite reruns; later work
+was restricted to mobile verification and the local services it requires.
+The final tile change passed mobile typecheck, focused Starred tests and scoped
+ESLint. Full mobile suite/build reruns after that tile change were not performed.
+Further mobile checks were explicitly waived for this delivery on 2026-11-15;
+this does not turn the unverified scenarios into passing results.
