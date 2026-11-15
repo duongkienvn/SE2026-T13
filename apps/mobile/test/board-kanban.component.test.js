@@ -1,5 +1,6 @@
 /* global jest, test, expect */
 import { URL } from 'node:url';
+import { FlatList } from 'react-native';
 import {
   act,
   fireEvent,
@@ -10,6 +11,7 @@ import {
 } from '@testing-library/react-native';
 import { onlineManager } from '@tanstack/react-query';
 import BoardRoute from '../src/app/(private)/boards/[boardId]/index';
+import { BoardKanban } from '../src/features/boards/BoardKanban';
 import { createHttpClient } from '../src/infrastructure/api/client';
 import { SessionProvider } from '../src/infrastructure/auth/SessionProvider';
 import { createSessionManager } from '../src/infrastructure/auth/session-manager';
@@ -202,6 +204,131 @@ async function setup({
 }
 
 const button = (name) => screen.findByRole('button', { name });
+
+test('Card previews keep known labels and announce labels beyond the loaded catalog page', async () => {
+  const labels = Array.from({ length: 101 }, (_, index) => ({
+    id: uuid(5000 + index),
+    boardId,
+    name: index === 0 ? 'Planning' : `Label ${index + 1}`,
+    color: '#615CF7',
+  }));
+  const firstCard = card(1);
+  const env = await setup({
+    cards: [firstCard],
+    override(url) {
+      if (url.pathname.endsWith('/labels'))
+        return response(
+          page(labels, Number(url.searchParams.get('page')), 100),
+        );
+      if (url.pathname.endsWith('/card-preview-summaries'))
+        return result({
+          summaries: [
+            {
+              ...preview(firstCard.id),
+              labelIds: [labels[0].id, labels[100].id],
+            },
+          ],
+        });
+      return null;
+    },
+  });
+  try {
+    await screen.findByRole(
+      'button',
+      { name: /^Card 1, Planning, 1 unresolved label,/ },
+      { timeout: 5000 },
+    );
+    expect(screen.getByText('Planning')).toBeTruthy();
+    expect(screen.getByText('1 unresolved label')).toBeTruthy();
+    expect(env.reads('/labels')).toHaveLength(1);
+
+    await fireEvent.press(await button('Labels'));
+    const sheet = within(screen.getByTestId('filter-modal'));
+    await fireEvent.press(
+      await sheet.findByRole('button', { name: 'More labels' }),
+    );
+    await button(/^Card 1, Planning, Label 101,/);
+    await fireEvent.press(await sheet.findByRole('button', { name: 'Cancel' }));
+    expect(screen.getByText('Planning')).toBeTruthy();
+    expect(screen.getByText('Label 101')).toBeTruthy();
+    expect(screen.queryByText('1 unresolved label')).toBeNull();
+    expect(
+      env.reads('/labels').map(({ params }) => params.get('page')),
+    ).toEqual(['1', '2']);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test.each([false, true])(
+  'restores both scroll axes after content grows or loading completes (complete: %s)',
+  async (complete) => {
+    const renderList = jest.spyOn(FlatList.prototype, 'render');
+    const scrollToOffset = jest.spyOn(FlatList.prototype, 'scrollToOffset');
+    scrollToOffset.mockImplementation(() => {});
+    const firstColumn = column(1);
+    const scroll = { x: 1000, cards: new Map([[firstColumn.id, 1000]]) };
+    const props = {
+      columns: [firstColumn],
+      groups: new Map([[firstColumn.id, [card(1)]]]),
+      cardsReady: true,
+      cardsComplete: true,
+      previews: new Map(),
+      labels: [],
+      members: [],
+      scroll,
+      onOpen: jest.fn(),
+    };
+    const view = (settled) => (
+      <BoardKanban
+        {...props}
+        columnsComplete={settled}
+        cardsLoading={!settled}
+      />
+    );
+    const mounted = await render(view(false));
+    try {
+      const horizontal = renderList.mock.contexts.find(
+        (list) => list.props.horizontal,
+      );
+      const vertical = renderList.mock.contexts.find(
+        (list) => !list.props.horizontal,
+      );
+      await act(() => {
+        horizontal.props.onLayout({ nativeEvent: { layout: { width: 500 } } });
+        vertical.props.onLayout({ nativeEvent: { layout: { height: 500 } } });
+        horizontal.props.onContentSizeChange(1200, 0);
+        vertical.props.onContentSizeChange(0, 350);
+      });
+      expect(scrollToOffset).not.toHaveBeenCalled();
+
+      if (complete) {
+        // Loading can finish without another native size event.
+        await mounted.rerender(view(true));
+      } else {
+        await act(() => {
+          horizontal.props.onContentSizeChange(1600, 0);
+          vertical.props.onContentSizeChange(0, 1600);
+        });
+      }
+      await waitFor(() => expect(scrollToOffset).toHaveBeenCalledTimes(2));
+      expect(scrollToOffset).toHaveBeenCalledWith({
+        offset: complete ? 700 : 1000,
+        animated: false,
+      });
+      expect(scrollToOffset).toHaveBeenCalledWith({
+        offset: complete ? 0 : 1000,
+        animated: false,
+      });
+      expect(scroll.x).toBe(complete ? 700 : 1000);
+      expect(scroll.cards.get(firstColumn.id)).toBe(complete ? 0 : 1000);
+    } finally {
+      await mounted.unmount();
+      scrollToOffset.mockRestore();
+      renderList.mockRestore();
+    }
+  },
+);
 
 test.each([
   [0, 1],

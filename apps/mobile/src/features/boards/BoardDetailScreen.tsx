@@ -516,9 +516,11 @@ function BoardContent({
         <BoardKanban
           key={hashKey([normalizeKanbanFilters(filters)])}
           columns={columns.items}
+          columnsComplete={columns.complete && !columnQuery.isFetching}
           groups={cards.groups}
           cardsReady={cards.total !== undefined}
           cardsComplete={complete}
+          cardsLoading={cardQuery.isFetching}
           previews={previews.byCard}
           labels={catalogs.labelItems}
           members={catalogs.memberItems}

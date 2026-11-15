@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   FlatList,
   Pressable,
@@ -55,6 +55,10 @@ const Preview = memo(function Preview({
       : `${card.dueDate.slice(0, 10)} UTC`);
   const knownLabels =
     summary?.labelIds.flatMap((id) => labels.get(id) ?? []) ?? [];
+  const unresolvedLabels = (summary?.labelIds.length ?? 0) - knownLabels.length;
+  const labelFallback = unresolvedLabels
+    ? `${unresolvedLabels} unresolved ${unresolvedLabels === 1 ? 'label' : 'labels'}`
+    : '';
   const people = card.assignees.flatMap(({ userId }) => {
     const member = members.get(userId);
     return member
@@ -81,6 +85,7 @@ const Preview = memo(function Preview({
     card.isArchived && 'Archived',
     due && `Due ${due}`,
     ...knownLabels.map(({ name }) => name),
+    labelFallback,
     checked,
     attachments,
     comments,
@@ -113,6 +118,7 @@ const Preview = memo(function Preview({
               }}
             />
           ))}
+          {!!labelFallback && <LabelChip label={labelFallback} compact />}
           {due && (
             <DueChip
               label={`Due ${due}`}
@@ -159,31 +165,59 @@ const Preview = memo(function Preview({
   );
 });
 
-function useScrollRestore<T>(offset: number) {
+function useScrollRestore<T>(
+  offset: number,
+  complete: boolean,
+  saveOffset: (offset: number) => void,
+) {
   const list = useRef<FlatList<T>>(null);
   const pending = useRef(offset);
   const viewport = useRef(0);
-  const content = useRef(0);
-  function restore() {
-    if (
-      pending.current &&
-      viewport.current &&
-      content.current >= viewport.current + pending.current
-    ) {
-      const target = pending.current;
+  const content = useRef<number | null>(null);
+  const frame = useRef<number | null>(null);
+  const restore = useCallback(
+    (clamp: boolean) => {
+      if (
+        !pending.current ||
+        !viewport.current ||
+        content.current === null ||
+        !list.current
+      )
+        return;
+      const maxOffset = Math.max(0, content.current - viewport.current);
+      if (!clamp && pending.current > maxOffset) return;
+      const target = Math.min(Math.max(0, pending.current), maxOffset);
       pending.current = 0;
-      list.current?.scrollToOffset({ offset: target, animated: false });
-    }
-  }
+      saveOffset(target);
+      list.current.scrollToOffset({ offset: target, animated: false });
+    },
+    [saveOffset],
+  );
+  const scheduleRestore = useCallback(() => {
+    restore(false);
+    if (!complete || !pending.current || frame.current !== null) return;
+    // Give the final page's native layout a chance to report its content size.
+    frame.current = requestAnimationFrame(() => {
+      frame.current = null;
+      restore(true);
+    });
+  }, [complete, restore]);
+  useEffect(() => {
+    scheduleRestore();
+    return () => {
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+      frame.current = null;
+    };
+  }, [scheduleRestore]);
   return {
     list,
     setViewport: (size: number) => {
       viewport.current = size;
-      restore();
+      scheduleRestore();
     },
     setContent: (size: number) => {
       content.current = size;
-      restore();
+      scheduleRestore();
     },
     userScroll: () => {
       pending.current = 0;
@@ -198,6 +232,7 @@ const ColumnPanel = memo(function ColumnPanel({
   width,
   cards,
   complete,
+  loading,
   ready,
   previews,
   labels,
@@ -211,6 +246,7 @@ const ColumnPanel = memo(function ColumnPanel({
   width: number;
   cards: readonly KanbanCard[];
   complete: boolean;
+  loading: boolean;
   ready: boolean;
   previews: ReadonlyMap<string, CardPreviewSummary>;
   labels: ReadonlyMap<string, KanbanLabel>;
@@ -220,8 +256,16 @@ const ColumnPanel = memo(function ColumnPanel({
   onOpen: (card: KanbanCard) => void;
 }) {
   const c = useTheme();
+  const saveOffset = useCallback(
+    (offset: number) => {
+      scroll.cards.set(column.id, offset);
+    },
+    [column.id, scroll],
+  );
   const position = useScrollRestore<KanbanCard>(
     scroll.cards.get(column.id) ?? 0,
+    complete && !loading,
+    saveOffset,
   );
   return (
     <View
@@ -269,7 +313,7 @@ const ColumnPanel = memo(function ColumnPanel({
         onScrollBeginDrag={position.userScroll}
         onScroll={(event) => {
           if (position.restored())
-            scroll.cards.set(column.id, event.nativeEvent.contentOffset.y);
+            saveOffset(event.nativeEvent.contentOffset.y);
         }}
         contentContainerStyle={styles.cards}
         ItemSeparatorComponent={CardGap}
@@ -306,9 +350,11 @@ function ColumnGap() {
 
 export function BoardKanban({
   columns,
+  columnsComplete,
   groups,
   cardsReady,
   cardsComplete,
+  cardsLoading,
   previews,
   labels,
   members,
@@ -317,9 +363,11 @@ export function BoardKanban({
   onOpen,
 }: {
   columns: readonly KanbanColumn[];
+  columnsComplete: boolean;
   groups: ReadonlyMap<string, KanbanCard[]>;
   cardsReady: boolean;
   cardsComplete: boolean;
+  cardsLoading: boolean;
   previews: ReadonlyMap<string, CardPreviewSummary>;
   labels: readonly KanbanLabel[];
   members: readonly KanbanAssignee[];
@@ -329,7 +377,17 @@ export function BoardKanban({
 }) {
   const { width } = useWindowDimensions();
   const panelWidth = Math.min(280, Math.max(180, Math.round(width * 0.65)));
-  const position = useScrollRestore<KanbanColumn>(scroll.x);
+  const saveOffset = useCallback(
+    (offset: number) => {
+      scroll.x = offset;
+    },
+    [scroll],
+  );
+  const position = useScrollRestore<KanbanColumn>(
+    scroll.x,
+    columnsComplete,
+    saveOffset,
+  );
   const labelMap = useMemo(
     () => new Map(labels.map((label) => [label.id, label])),
     [labels],
@@ -376,7 +434,7 @@ export function BoardKanban({
       scrollEventThrottle={32}
       onScrollBeginDrag={position.userScroll}
       onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
-        if (position.restored()) scroll.x = event.nativeEvent.contentOffset.x;
+        if (position.restored()) saveOffset(event.nativeEvent.contentOffset.x);
       }}
       renderItem={({ item, index }) => (
         <ColumnPanel
@@ -385,6 +443,7 @@ export function BoardKanban({
           width={panelWidth}
           cards={groups.get(item.id) ?? emptyCards}
           complete={cardsComplete}
+          loading={cardsLoading}
           ready={cardsReady}
           previews={previews}
           labels={labelMap}
