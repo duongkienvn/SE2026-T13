@@ -97,6 +97,7 @@ chưa triển khai. Mục lục dưới đây liệt kê toàn bộ task documen
 
 ## Frontend tasks
 
+- [MOB-18 Native Card Detail](frontend/mob-18-card-detail.md)
 - [MOB-17 Native Card lifecycle](frontend/mob-17-card-lifecycle.md)
 - [MOB-16 Native Column management](frontend/mob-16-column-management.md)
 - [MOB-15 Native Board Detail and filters](frontend/mob-15-board-kanban.md)
