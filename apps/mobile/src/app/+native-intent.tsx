@@ -12,6 +12,9 @@ export function redirectSystemPath({
   const authKind = nativeAuthFlow.intake(path);
   if (authKind) return `/${authKind}`;
   const destination = parseLink(path);
-  if (destination && !initial) notifyIncomingLink(destination);
+  if (destination && !initial) {
+    const heldPath = notifyIncomingLink(destination);
+    if (heldPath) return heldPath;
+  }
   return destination ? destinationPath(destination) : '/';
 }
