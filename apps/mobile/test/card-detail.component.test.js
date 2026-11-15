@@ -888,6 +888,7 @@ test('multiline editor exposes native scrolling, does not truncate long values, 
   const env = await setup();
   try {
     await editDescription('long line '.repeat(190));
+    expect(screen.getAllByText('Description')).toHaveLength(1);
     const input = screen.getByLabelText('Description');
     expect(input.props.multiline).toBe(true);
     expect(input.props.scrollEnabled).toBe(false);

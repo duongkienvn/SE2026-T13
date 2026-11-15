@@ -332,21 +332,6 @@ export function CardDocument({
                 editorY.current = e.nativeEvent.layout.y;
             }}
           >
-            <View style={cardDetailStyles.sectionHeading}>
-              <Text
-                accessibilityRole="header"
-                style={[typography.strong, { color: c.text }]}
-              >
-                Description
-              </Text>
-              {canEdit && !editor.draft && (
-                <Button
-                  label="Edit description"
-                  variant="link"
-                  onPress={() => editor.start('description')}
-                />
-              )}
-            </View>
             {editor.draft?.field === 'description' ? (
               <CardTextEditor
                 editor={editor}
@@ -354,18 +339,37 @@ export function CardDocument({
                 onFocus={focusEditor}
               />
             ) : (
-              <Surface>
-                <Text
-                  selectable
-                  dataDetectorType="none"
-                  style={[
-                    typography.body,
-                    { color: card.description ? c.textSecondary : c.textMuted },
-                  ]}
-                >
-                  {card.description || 'No description'}
-                </Text>
-              </Surface>
+              <>
+                <View style={cardDetailStyles.sectionHeading}>
+                  <Text
+                    accessibilityRole="header"
+                    style={[typography.strong, { color: c.text }]}
+                  >
+                    Description
+                  </Text>
+                  {canEdit && !editor.draft && (
+                    <Button
+                      label="Edit description"
+                      variant="link"
+                      onPress={() => editor.start('description')}
+                    />
+                  )}
+                </View>
+                <Surface>
+                  <Text
+                    selectable
+                    dataDetectorType="none"
+                    style={[
+                      typography.body,
+                      {
+                        color: card.description ? c.textSecondary : c.textMuted,
+                      },
+                    ]}
+                  >
+                    {card.description || 'No description'}
+                  </Text>
+                </Surface>
+              </>
             )}
           </View>
           <CardChecklistsSection
