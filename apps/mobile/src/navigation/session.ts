@@ -66,7 +66,8 @@ export function guardDecision(
     (destination.kind !== 'workspace' &&
       destination.kind !== 'board' &&
       destination.kind !== 'card' &&
-      destination.kind !== 'boardView')
+      destination.kind !== 'boardView' &&
+      destination.kind !== 'boardSettings')
   )
     return 'unavailable';
   if (access === 'checking') return 'wait';
