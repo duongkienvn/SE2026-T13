@@ -165,6 +165,7 @@ export function decodeKanbanCard(
     title: name(item.title),
     position: position(item.position),
     isArchived: item.isArchived,
+    archivedAt: item.isArchived ? date(item.archivedAt) : null,
     description: item.description,
     startDate: item.startDate === null ? null : date(item.startDate),
     dueDate: item.dueDate === null ? null : date(item.dueDate),

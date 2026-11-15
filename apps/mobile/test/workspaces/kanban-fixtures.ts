@@ -24,11 +24,16 @@ export const card = (index: number, columnId = column(1).id) => ({
   position: `${index}.0000000000`,
   description: null,
   isArchived: false,
+  archivedAt: null,
   startDate: null,
   dueDate: null,
   createdAt: timestamp,
   updatedAt: timestamp,
   assignees: [],
+});
+export const cardDto = (index: number, columnId?: string) => ({
+  ...card(index, columnId),
+  createdById: USER_A,
 });
 export const preview = (cardId: string) => ({
   cardId,

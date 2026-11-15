@@ -40,6 +40,8 @@ const Preview = memo(function Preview({
   members,
   dateFormat,
   onOpen,
+  onCardActions,
+  cardActionsDisabled,
 }: {
   card: KanbanCard;
   summary?: CardPreviewSummary;
@@ -47,6 +49,8 @@ const Preview = memo(function Preview({
   members: ReadonlyMap<string, KanbanAssignee>;
   dateFormat?: Intl.DateTimeFormat;
   onOpen: (card: KanbanCard) => void;
+  onCardActions?: (card: KanbanCard) => void;
+  cardActionsDisabled?: boolean;
 }) {
   const c = useTheme();
   const due =
@@ -96,73 +100,87 @@ const Preview = memo(function Preview({
     .filter(Boolean)
     .join(', ');
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      onPress={() => onOpen(card)}
-      style={({ pressed }) => ({
-        opacity: pressed ? 0.72 : 1,
-        minHeight: sizes.touch,
-      })}
-    >
-      <CardPreview title={card.title} compact>
-        <View style={styles.badges}>
-          {knownLabels.map((label) => (
-            <LabelChip
-              key={label.id}
-              label={label.name}
-              compact
-              colors={{
-                foreground: c.text,
-                background: c.primaryTint,
-                border: label.color,
-              }}
-            />
-          ))}
-          {!!labelFallback && <LabelChip label={labelFallback} compact />}
-          {due && (
-            <DueChip
-              label={`Due ${due}`}
-              compact
-              tone={Date.parse(card.dueDate!) < Date.now() ? 'danger' : 'info'}
-            />
-          )}
-        </View>
-        {!!checklist?.totalItems && (
-          <View style={{ gap: spacing.xs }}>
-            <Text style={[typography.caption, { color: c.textSecondary }]}>
-              {checked}
-            </Text>
-            <ProgressBar
-              label={checked}
-              value={(100 * checklist.checkedItems) / checklist.totalItems}
-            />
-          </View>
-        )}
-        {!!(attachments || comments || card.assignees.length) && (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        onPress={() => onOpen(card)}
+        style={({ pressed }) => ({
+          flex: 1,
+          opacity: pressed ? 0.72 : 1,
+          minHeight: sizes.touch,
+        })}
+      >
+        <CardPreview title={card.title} compact>
           <View style={styles.badges}>
-            {people.length > 0 && (
-              <AvatarStack size={24} people={people.slice(0, 3)} />
-            )}
-            {card.assignees.length > Math.min(people.length, 3) && (
-              <Text style={[typography.caption, { color: c.textSecondary }]}>
-                {card.assignees.length} assigned
-              </Text>
-            )}
-            {!!attachments && (
-              <Text style={[typography.caption, { color: c.textSecondary }]}>
-                {attachments}
-              </Text>
-            )}
-            {!!comments && (
-              <Text style={[typography.caption, { color: c.textSecondary }]}>
-                {comments}
-              </Text>
+            {knownLabels.map((label) => (
+              <LabelChip
+                key={label.id}
+                label={label.name}
+                compact
+                colors={{
+                  foreground: c.text,
+                  background: c.primaryTint,
+                  border: label.color,
+                }}
+              />
+            ))}
+            {!!labelFallback && <LabelChip label={labelFallback} compact />}
+            {due && (
+              <DueChip
+                label={`Due ${due}`}
+                compact
+                tone={
+                  Date.parse(card.dueDate!) < Date.now() ? 'danger' : 'info'
+                }
+              />
             )}
           </View>
-        )}
-      </CardPreview>
-    </Pressable>
+          {!!checklist?.totalItems && (
+            <View style={{ gap: spacing.xs }}>
+              <Text style={[typography.caption, { color: c.textSecondary }]}>
+                {checked}
+              </Text>
+              <ProgressBar
+                label={checked}
+                value={(100 * checklist.checkedItems) / checklist.totalItems}
+              />
+            </View>
+          )}
+          {!!(attachments || comments || card.assignees.length) && (
+            <View style={styles.badges}>
+              {people.length > 0 && (
+                <AvatarStack size={24} people={people.slice(0, 3)} />
+              )}
+              {card.assignees.length > Math.min(people.length, 3) && (
+                <Text style={[typography.caption, { color: c.textSecondary }]}>
+                  {card.assignees.length} assigned
+                </Text>
+              )}
+              {!!attachments && (
+                <Text style={[typography.caption, { color: c.textSecondary }]}>
+                  {attachments}
+                </Text>
+              )}
+              {!!comments && (
+                <Text style={[typography.caption, { color: c.textSecondary }]}>
+                  {comments}
+                </Text>
+              )}
+            </View>
+          )}
+        </CardPreview>
+      </Pressable>
+      {onCardActions && !card.isArchived && (
+        <Button
+          variant="icon"
+          label={`Card actions for ${card.title}`}
+          disabled={cardActionsDisabled}
+          onPress={() => onCardActions(card)}
+          icon={<Text style={[typography.section, { color: c.text }]}>⋯</Text>}
+        />
+      )}
+    </View>
   );
 });
 
@@ -244,6 +262,9 @@ const ColumnPanel = memo(function ColumnPanel({
   onOpen,
   onColumnActions,
   columnActionsDisabled,
+  onAddCard,
+  onCardActions,
+  cardActionsDisabled,
 }: {
   column: KanbanColumn;
   index: number;
@@ -260,6 +281,9 @@ const ColumnPanel = memo(function ColumnPanel({
   onOpen: (card: KanbanCard) => void;
   onColumnActions?: (column: KanbanColumn) => void;
   columnActionsDisabled?: boolean;
+  onAddCard?: (column: KanbanColumn) => void;
+  onCardActions?: (card: KanbanCard) => void;
+  cardActionsDisabled?: boolean;
 }) {
   const c = useTheme();
   const saveOffset = useCallback(
@@ -313,6 +337,14 @@ const ColumnPanel = memo(function ColumnPanel({
           />
         )}
       </View>
+      {onAddCard && (
+        <Button
+          label="Add card"
+          variant="link"
+          disabled={cardActionsDisabled}
+          onPress={() => onAddCard(column)}
+        />
+      )}
       <FlatList
         ref={position.list}
         style={{ flex: 1 }}
@@ -353,6 +385,8 @@ const ColumnPanel = memo(function ColumnPanel({
             members={members}
             dateFormat={dateFormat}
             onOpen={onOpen}
+            onCardActions={onCardActions}
+            cardActionsDisabled={cardActionsDisabled}
           />
         )}
       />
@@ -381,6 +415,9 @@ export function BoardKanban({
   scroll,
   onOpen,
   onColumnActions,
+  onAddCard,
+  onCardActions,
+  cardActionsDisabled,
   columnActionsDisabled,
   revealColumnIndex = -1,
   onColumnRevealed,
@@ -398,6 +435,9 @@ export function BoardKanban({
   scroll: KanbanScroll;
   onOpen: (card: KanbanCard) => void;
   onColumnActions?: (column: KanbanColumn) => void;
+  onAddCard?: (column: KanbanColumn) => void;
+  onCardActions?: (card: KanbanCard) => void;
+  cardActionsDisabled?: boolean;
   columnActionsDisabled?: boolean;
   revealColumnIndex?: number;
   onColumnRevealed?: () => void;
@@ -515,6 +555,9 @@ export function BoardKanban({
           scroll={scroll}
           onOpen={onOpen}
           onColumnActions={onColumnActions}
+          onAddCard={onAddCard}
+          onCardActions={onCardActions}
+          cardActionsDisabled={cardActionsDisabled}
           columnActionsDisabled={columnActionsDisabled}
         />
       )}

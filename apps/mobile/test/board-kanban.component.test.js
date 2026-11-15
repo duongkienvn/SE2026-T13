@@ -36,7 +36,7 @@ import {
 } from './auth/support';
 import {
   column,
-  card,
+  cardDto as card,
   boardId,
   boardDetail,
   preview,
@@ -635,6 +635,279 @@ const pressColumn = async (name) =>
   fireEvent.press(await columnSheet().findByRole('button', { name }));
 const selectColumn = async (name) =>
   fireEvent.press(await button(`Column actions for ${name}`));
+const selectCard = async (name) =>
+  fireEvent.press(await button(`Card actions for ${name}`));
+
+test('creates, renames, reorders, moves, duplicates, archives and restores a Card through accessible Board actions', async () => {
+  const first = column(1);
+  const second = column(2);
+  const keep = card(1);
+  let rows = [keep];
+  let restoreUnavailable = true;
+  const env = await setup({
+    board: writableBoard,
+    columns: [first, second],
+    override(url, _session, request) {
+      const [, cardId, action] =
+        url.pathname.match(/\/cards\/([^/]+)(?:\/([^/]+))?$/) ?? [];
+      if (url.pathname.endsWith('/cards')) {
+        if (request.method === 'POST') {
+          const added = {
+            ...card(2, request.body.columnId),
+            title: request.body.title,
+          };
+          rows.push(added);
+          return result(added, 201);
+        }
+        const archived = url.searchParams.get('status') === 'archived';
+        const columnId = url.searchParams.get('columnId');
+        const matching = rows.filter(
+          (item) =>
+            item.isArchived === archived &&
+            (!columnId || item.columnId === columnId),
+        );
+        return response(
+          page(matching, Number(url.searchParams.get('page')), 100),
+        );
+      }
+      if (!cardId) return null;
+      const item = rows.find((row) => row.id === cardId);
+      if (!item) return columnError(404, 'CARD_NOT_FOUND');
+      if (request.method === 'GET') return result(item);
+      if (action === 'restore' && restoreUnavailable)
+        return columnError(409, 'CARD_COLUMN_UNAVAILABLE');
+      if (action === 'duplicate') {
+        const copy = {
+          ...item,
+          id: uuid(3100),
+          columnId: request.body.columnId ?? item.columnId,
+          position: '10.0000000000',
+        };
+        rows.push(copy);
+        return result(copy, 201);
+      }
+      const next = {
+        ...item,
+        ...(action === 'move'
+          ? {
+              columnId: request.body.toColumnId,
+              position: request.body.beforeCardId
+                ? '0.0000000000'
+                : '8.0000000000',
+            }
+          : {}),
+        ...(action === 'archive'
+          ? { isArchived: true, archivedAt: boardDetail.createdAt }
+          : {}),
+        ...(action === 'restore'
+          ? { isArchived: false, archivedAt: null, position: '11.0000000000' }
+          : {}),
+        ...(!action ? { title: request.body.title } : {}),
+      };
+      rows = [...rows.filter(({ id }) => id !== cardId), next].sort(
+        (a, b) => Number(a.position) - Number(b.position),
+      );
+      return result(next);
+    },
+  });
+  try {
+    await button('Card actions for Card 1');
+    await fireEvent.press(
+      screen.getAllByRole('button', { name: 'Add card' })[0],
+    );
+    await pressColumn('Create card');
+    await screen.findByText('Enter a card title.');
+    await fireEvent.changeText(
+      screen.getByLabelText('Card title'),
+      '  Ship release  ',
+    );
+    await pressColumn('Create card');
+    await button('Card actions for Ship release');
+    expect(
+      env
+        .reads('/cards')
+        .filter(({ method }) => method === 'POST')
+        .map(({ body }) => body),
+    ).toEqual([{ columnId: first.id, title: 'Ship release' }]);
+
+    await selectCard('Ship release');
+    await pressColumn('Rename');
+    expect(screen.getByLabelText('Card title').props.value).toBe(
+      'Ship release',
+    );
+    await fireEvent.changeText(
+      screen.getByLabelText('Card title'),
+      'Release ready',
+    );
+    await pressColumn('Cancel');
+    await screen.findByText('Discard changes?');
+    await pressColumn('Keep editing');
+    expect(screen.getByLabelText('Card title').props.value).toBe(
+      'Release ready',
+    );
+    await pressColumn('Save title');
+    await button('Card actions for Release ready');
+    expect(
+      env
+        .reads(`/${card(2).id}`)
+        .filter(({ method }) => method === 'PATCH')
+        .map(({ body }) => body),
+    ).toEqual([{ title: 'Release ready' }]);
+
+    await selectCard('Release ready');
+    await pressColumn('Move to…');
+    await pressColumn('Move up');
+    await screen.findByText('Card moved.');
+    expect(env.reads('/move').at(-1).body).toEqual({
+      toColumnId: first.id,
+      beforeCardId: keep.id,
+    });
+    await selectCard('Release ready');
+    await pressColumn('Move to…');
+    await pressColumn('Column 2');
+    await pressColumn('Move to end of column');
+    await screen.findByText('Card moved.');
+    expect(env.reads('/move').at(-1).body).toEqual({
+      toColumnId: second.id,
+      beforeCardId: null,
+    });
+
+    await selectCard('Release ready');
+    await pressColumn('Duplicate');
+    await screen.findByText(
+      /Assignees, comments, activity and attachments stay with the original/,
+    );
+    await pressColumn('Column 1');
+    await pressColumn('Duplicate card');
+    await screen.findByText('Card duplicated.');
+    expect(env.reads('/duplicate')[0].body).toEqual({ columnId: first.id });
+
+    // The first-column duplicate has the same name. Archive it while keeping the cross-column source active.
+    await fireEvent.press(
+      screen.getAllByRole('button', {
+        name: 'Card actions for Release ready',
+      })[0],
+    );
+    await pressColumn('Archive');
+    expect(env.reads('/archive')).toHaveLength(0);
+    await pressColumn('Archive card');
+    await screen.findByText('Card archived.');
+    expect(env.reads('/archive')[0].body).toBeUndefined();
+    await fireEvent.press(await button('Board actions'));
+    await pressColumn('Archived cards');
+    await pressColumn('Restore Release ready');
+    await pressColumn('Restore card');
+    await screen.findByText(
+      'The original column is unavailable. This card is still archived.',
+    );
+    restoreUnavailable = false;
+    await pressColumn('Restore card');
+    await screen.findByText('No archived cards.');
+    expect(env.reads('/restore').map(({ body }) => body)).toEqual([
+      undefined,
+      undefined,
+    ]);
+    expect(rows.at(-1)).toMatchObject({
+      id: uuid(3100),
+      columnId: first.id,
+      isArchived: false,
+    });
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('an ambiguous create prevents repeat POSTs until explicit Board review and retains the long title', async () => {
+  let posts = 0;
+  const title = 'x'.repeat(120);
+  const env = await setup({
+    board: writableBoard,
+    override(url, _session, request) {
+      if (url.pathname.endsWith('/cards') && request.method === 'POST') {
+        posts++;
+        return Promise.reject(new Error('Connection lost after send'));
+      }
+      return null;
+    },
+  });
+  try {
+    await fireEvent.press(await button('Add card'));
+    await fireEvent.changeText(screen.getByLabelText('Card title'), title);
+    const save = columnSheet().getByRole('button', { name: 'Create card' });
+    await fireEvent.press(save);
+    await fireEvent.press(save);
+    await screen.findByText(/server may have created a card/);
+    expect(posts).toBe(1);
+    expect(
+      columnSheet().getByRole('button', { name: 'I checked the board' }).props
+        .accessibilityState.disabled,
+    ).toBe(true);
+    await pressColumn('Review board');
+    await fireEvent.press(await button('Add card'));
+    expect(screen.getByLabelText('Card title').props.value).toBe(title);
+    await pressColumn('I checked the board');
+    expect(
+      columnSheet().getByRole('button', { name: 'Create card' }).props
+        .accessibilityState.disabled,
+    ).toBe(false);
+    expect(posts).toBe(1);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('an archived Board can page archived Cards and open the guarded Card route without write controls', async () => {
+  const archived = Array.from({ length: 101 }, (_, index) => ({
+    ...card(index + 1),
+    isArchived: true,
+    archivedAt: boardDetail.createdAt,
+  })).reverse();
+  const env = await setup({
+    board: {
+      ...writableBoard,
+      isArchived: true,
+      archivedAt: boardDetail.createdAt,
+    },
+    override(url) {
+      if (url.pathname.endsWith('/cards'))
+        return response(
+          page(
+            url.searchParams.get('status') === 'archived'
+              ? archived
+              : [card(110)],
+            Number(url.searchParams.get('page')),
+            100,
+          ),
+        );
+      return null;
+    },
+  });
+  try {
+    await button(/^Card 110,/);
+    expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Card actions for Card 110' }),
+    ).toBeNull();
+    await fireEvent.press(await button('Board actions'));
+    await pressColumn('Archived cards');
+    await screen.findByText('Page 1 of 2');
+    expect(screen.queryByRole('button', { name: /^Restore / })).toBeNull();
+    await pressColumn('Next archive page');
+    await screen.findByText('Page 2 of 2');
+    await pressColumn('Card 1');
+    expect(mockPush).toHaveBeenCalledWith(
+      `/boards/${boardId}/cards/${archived.at(-1).id}`,
+    );
+    expect(
+      env
+        .reads('/cards')
+        .filter(({ params }) => params.get('status') === 'archived')
+        .map(({ params }) => params.get('page')),
+    ).toEqual(['1', '2']);
+  } finally {
+    await env.dispose();
+  }
+});
 
 test('creates from an empty Board, validates drafts, rejects duplicate taps, and reveals the new Column', async () => {
   const create = deferred();
@@ -814,7 +1087,14 @@ test.each(['active', 'archived'])(
         if (url.pathname.endsWith('/cards')) {
           const cards =
             containsCard && url.searchParams.get('status') === status
-              ? [{ ...card(1), isArchived: status === 'archived' }]
+              ? [
+                  {
+                    ...card(1),
+                    isArchived: status === 'archived',
+                    archivedAt:
+                      status === 'archived' ? boardDetail.createdAt : null,
+                  },
+                ]
               : [];
           return response(page(cards, 1, 100));
         }
@@ -938,15 +1218,97 @@ test.each([
     'archived owner',
     { ...writableBoard, isArchived: true, archivedAt: boardDetail.createdAt },
   ],
-])('%s cannot access Column mutation controls', async (_role, board) => {
-  const env = await setup({ board });
+])(
+  '%s cannot access Column or Card mutation controls',
+  async (_role, board) => {
+    const env = await setup({ board, cards: [card(1)] });
+    try {
+      await button(/^Card 1,/);
+      expect(screen.queryByRole('button', { name: 'Add column' })).toBeNull();
+      expect(
+        screen.queryByRole('button', { name: 'Column actions for Column 1' }),
+      ).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
+      expect(
+        screen.queryByRole('button', { name: 'Card actions for Card 1' }),
+      ).toBeNull();
+    } finally {
+      await env.dispose();
+    }
+  },
+);
+
+test('filtered Kanban offers append only and does not insert a moved Card that the next server page omits', async () => {
+  const source = card(1);
+  let moved = false;
+  const env = await setup({
+    board: writableBoard,
+    columns: [column(1), column(2)],
+    override(url) {
+      if (url.pathname.endsWith('/cards'))
+        return response(page(moved ? [] : [source], 1, 100));
+      if (url.pathname.endsWith(`/${source.id}`)) return result(source);
+      if (url.pathname.endsWith('/move')) {
+        moved = true;
+        return result({ ...source, columnId: column(2).id });
+      }
+      return null;
+    },
+  });
   try {
-    await screen.findByText('Column 1');
-    expect(screen.queryByRole('button', { name: 'Add column' })).toBeNull();
+    await fireEvent.press(await button('Due today'));
+    await button('Filters (1)');
+    await selectCard('Card 1');
+    await pressColumn('Move to…');
+    await screen.findByText(
+      'Clear filters and sorting to choose a precise position.',
+    );
+    expect(screen.queryByRole('button', { name: 'Move up' })).toBeNull();
+    await pressColumn('Column 2');
+    await pressColumn('Move to end of column');
+    await screen.findByText('No cards match these filters.');
     expect(
-      screen.queryByRole('button', { name: 'Column actions for Column 1' }),
-    ).toBeNull();
+      env.reads('/cards').some(({ params }) => params.has('columnId')),
+    ).toBe(false);
+    expect(env.reads('/cards').at(-1).params.get('dueStatus')).toBe(
+      'DUE_TODAY',
+    );
+    expect(env.reads('/move').at(-1).body).toEqual({
+      toColumnId: column(2).id,
+      beforeCardId: null,
+    });
   } finally {
+    await env.dispose();
+  }
+});
+
+test('revocation closes a pending duplicate, drops its eventual result, and fences rapid repeats', async () => {
+  const duplicate = deferred();
+  const env = await setup({
+    board: writableBoard,
+    cards: [card(1)],
+    override(url) {
+      return url.pathname.endsWith('/duplicate') ? duplicate.promise : null;
+    },
+  });
+  try {
+    await selectCard('Card 1');
+    await pressColumn('Duplicate');
+    const action = columnSheet().getByRole('button', {
+      name: 'Duplicate card',
+    });
+    await fireEvent.press(action);
+    await fireEvent.press(action);
+    await waitFor(() => expect(env.reads('/duplicate')).toHaveLength(1));
+    await act(() => env.realtime.revokeBoard(boardId));
+    await screen.findByText('Board unavailable');
+    await act(() =>
+      duplicate.resolve(result({ ...card(2), title: 'Private copy' }, 201)),
+    );
+    expect(screen.queryByTestId('filter-modal')).toBeNull();
+    expect(screen.queryByText('Private copy')).toBeNull();
+  } finally {
+    duplicate.resolve(result(card(2), 201));
     await env.dispose();
   }
 });

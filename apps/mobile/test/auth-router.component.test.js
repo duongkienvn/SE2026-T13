@@ -102,7 +102,22 @@ test('real auth adapters and session owner resume a canonical return target, iso
             ? fixture()
             : emptyHome()
           : path === `/api/boards/${boardId}/cards/${cardId}`
-            ? { id: cardId, boardId, title: 'Detail payload stays private' }
+            ? {
+                id: cardId,
+                boardId,
+                columnId: boardId,
+                createdById: USER_A,
+                title: 'Detail payload stays private',
+                description: null,
+                position: '1.0000000000',
+                isArchived: false,
+                archivedAt: null,
+                startDate: null,
+                dueDate: null,
+                createdAt: '2026-11-15T08:00:00.000Z',
+                updatedAt: '2026-11-15T08:00:00.000Z',
+                assignees: [],
+              }
             : path === `/api/boards/${boardId}`
               ? {
                   id: boardId,
