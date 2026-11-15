@@ -174,6 +174,7 @@ export function CardActionsSheet({
   onLoadColumns,
   refreshBoardForReview,
   onOpenCard,
+  onEditTitle,
 }: {
   management: CardLifecycle;
   identity: SessionIdentity;
@@ -184,6 +185,7 @@ export function CardActionsSheet({
   onLoadColumns?: () => void;
   refreshBoardForReview: () => Promise<unknown>;
   onOpenCard: (card: KanbanCard) => void;
+  onEditTitle?: () => void;
 }) {
   const c = useTheme();
   const [discard, setDiscard] = useState(false);
@@ -364,7 +366,9 @@ export function CardActionsSheet({
               <Button
                 label="Rename"
                 variant="secondary"
-                onPress={() => open({ kind: 'rename', card })}
+                onPress={() =>
+                  onEditTitle ? onEditTitle() : open({ kind: 'rename', card })
+                }
               />
               <Button
                 label="Move to…"

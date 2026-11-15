@@ -37,6 +37,7 @@ export function useCardLifecycle({
   discard,
   discardWrites,
   recheckBoard,
+  restoreToArchive = true,
 }: {
   boardId: string;
   identity: SessionIdentity;
@@ -44,6 +45,7 @@ export function useCardLifecycle({
   discard: boolean;
   discardWrites: boolean;
   recheckBoard: () => void;
+  restoreToArchive?: boolean;
 }) {
   const data = useMobileData();
   const active = useRef<AbortController | null>(null);
@@ -91,7 +93,9 @@ export function useCardLifecycle({
   function close() {
     if (active.current) return;
     setSheet((previous) =>
-      previous?.kind === 'restore' ? { kind: 'archived' } : null,
+      previous?.kind === 'restore' && restoreToArchive
+        ? { kind: 'archived' }
+        : null,
     );
     setFailure(null);
     setTitle('');
@@ -120,7 +124,11 @@ export function useCardLifecycle({
         controller.signal,
       );
       if (!stillCurrent()) return;
-      setSheet(command.kind === 'restore' ? { kind: 'archived' } : null);
+      setSheet(
+        command.kind === 'restore' && restoreToArchive
+          ? { kind: 'archived' }
+          : null,
+      );
       setTitle('');
       if (result) setNotice(success[command.kind]);
     } catch (error) {
