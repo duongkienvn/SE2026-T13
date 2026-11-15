@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Pressable,
@@ -12,6 +12,7 @@ import {
 import type { CardPreviewSummary } from '@kanban/shared';
 import {
   AvatarStack,
+  Button,
   CardPreview,
   DueChip,
   LabelChip,
@@ -209,6 +210,9 @@ function useScrollRestore<T>(
       frame.current = null;
     };
   }, [scheduleRestore]);
+  const userScroll = useCallback(() => {
+    pending.current = 0;
+  }, []);
   return {
     list,
     setViewport: (size: number) => {
@@ -219,9 +223,7 @@ function useScrollRestore<T>(
       content.current = size;
       scheduleRestore();
     },
-    userScroll: () => {
-      pending.current = 0;
-    },
+    userScroll,
     restored: () => !pending.current,
   };
 }
@@ -240,6 +242,8 @@ const ColumnPanel = memo(function ColumnPanel({
   dateFormat,
   scroll,
   onOpen,
+  onColumnActions,
+  columnActionsDisabled,
 }: {
   column: KanbanColumn;
   index: number;
@@ -254,6 +258,8 @@ const ColumnPanel = memo(function ColumnPanel({
   dateFormat?: Intl.DateTimeFormat;
   scroll: KanbanScroll;
   onOpen: (card: KanbanCard) => void;
+  onColumnActions?: (column: KanbanColumn) => void;
+  columnActionsDisabled?: boolean;
 }) {
   const c = useTheme();
   const saveOffset = useCallback(
@@ -281,6 +287,8 @@ const ColumnPanel = memo(function ColumnPanel({
       <View style={styles.columnHeader}>
         <Text
           accessibilityRole="header"
+          accessibilityLabel={column.name}
+          numberOfLines={2}
           style={[typography.strong, { color: c.text, flex: 1 }]}
         >
           {column.name}
@@ -292,6 +300,17 @@ const ColumnPanel = memo(function ColumnPanel({
           >
             {complete ? cards.length : `${cards.length} loaded`}
           </Text>
+        )}
+        {onColumnActions && (
+          <Button
+            variant="icon"
+            label={`Column actions for ${column.name}`}
+            disabled={columnActionsDisabled}
+            onPress={() => onColumnActions(column)}
+            icon={
+              <Text style={[typography.section, { color: c.text }]}>⋯</Text>
+            }
+          />
         )}
       </View>
       <FlatList
@@ -361,6 +380,10 @@ export function BoardKanban({
   timeZone,
   scroll,
   onOpen,
+  onColumnActions,
+  columnActionsDisabled,
+  revealColumnIndex = -1,
+  onColumnRevealed,
 }: {
   columns: readonly KanbanColumn[];
   columnsComplete: boolean;
@@ -374,6 +397,10 @@ export function BoardKanban({
   timeZone?: string;
   scroll: KanbanScroll;
   onOpen: (card: KanbanCard) => void;
+  onColumnActions?: (column: KanbanColumn) => void;
+  columnActionsDisabled?: boolean;
+  revealColumnIndex?: number;
+  onColumnRevealed?: () => void;
 }) {
   const { width } = useWindowDimensions();
   const panelWidth = Math.min(280, Math.max(180, Math.round(width * 0.65)));
@@ -388,6 +415,35 @@ export function BoardKanban({
     columnsComplete,
     saveOffset,
   );
+  const [listWidth, setListWidth] = useState(0);
+  const [contentWidth, setContentWidth] = useState(0);
+  const { list, userScroll } = position;
+  useEffect(() => {
+    const columnEnd =
+      (revealColumnIndex + 1) * panelWidth + revealColumnIndex * spacing.sm;
+    if (
+      !listWidth ||
+      revealColumnIndex < 0 ||
+      contentWidth < columnEnd ||
+      !list.current
+    )
+      return;
+    const frame = requestAnimationFrame(() => {
+      if (!list.current) return;
+      userScroll();
+      list.current.scrollToIndex({ index: revealColumnIndex, animated: false });
+      onColumnRevealed?.();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [
+    list,
+    listWidth,
+    contentWidth,
+    panelWidth,
+    userScroll,
+    revealColumnIndex,
+    onColumnRevealed,
+  ]);
   const labelMap = useMemo(
     () => new Map(labels.map((label) => [label.id, label])),
     [labels],
@@ -415,8 +471,15 @@ export function BoardKanban({
       style={{ flex: 1 }}
       horizontal
       data={columns}
-      onLayout={(event) => position.setViewport(event.nativeEvent.layout.width)}
-      onContentSizeChange={(contentWidth) => position.setContent(contentWidth)}
+      onLayout={(event) => {
+        const width = event.nativeEvent.layout.width;
+        position.setViewport(width);
+        setListWidth(width);
+      }}
+      onContentSizeChange={(width) => {
+        position.setContent(width);
+        setContentWidth(width);
+      }}
       initialNumToRender={Math.ceil(width / panelWidth) + 1}
       maxToRenderPerBatch={3}
       windowSize={3}
@@ -451,6 +514,8 @@ export function BoardKanban({
           dateFormat={dateFormat}
           scroll={scroll}
           onOpen={onOpen}
+          onColumnActions={onColumnActions}
+          columnActionsDisabled={columnActionsDisabled}
         />
       )}
     />
