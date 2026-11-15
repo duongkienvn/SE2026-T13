@@ -1,0 +1,180 @@
+{
+  "date": "2026-11-15",
+  "sourceCommit": "8a54b96",
+  "branch": "feat/mobile-card-detail",
+  "mobileNode": {
+    "command": "pnpm --filter @kanban/mobile test",
+    "tests": 253,
+    "passed": 253,
+    "failed": 0,
+    "evidence": "apps/mobile/apk/mob18-mobile-test-copy-fix.log"
+  },
+  "mobileJest": {
+    "command": "pnpm --filter @kanban/mobile exec jest --runInBand",
+    "suites": 23,
+    "tests": 243,
+    "passed": 243,
+    "failed": 0,
+    "evidence": "apps/mobile/apk/mob18-jest-copy-fix-rerun.log",
+    "firstPass": "242 passed, 1 failed: Workspace Discovery star button did not update before its assertion. Full Jest rerun passed unchanged."
+  },
+  "focusedCardAndIntent": {
+    "command": "pnpm --filter @kanban/mobile exec jest --runInBand test/card-detail.component.test.js test/navigation-intent.component.test.js",
+    "tests": 30,
+    "passed": 30,
+    "failed": 0
+  },
+  "lint": {
+    "command": "pnpm --filter @kanban/mobile lint",
+    "exitCode": 0
+  },
+  "typecheck": {
+    "command": "pnpm --filter @kanban/mobile typecheck",
+    "exitCode": 0
+  },
+  "androidBundle": {
+    "command": "pnpm --filter @kanban/mobile bundle:android",
+    "exitCode": 0,
+    "nativeSources": 1373,
+    "hermes": true,
+    "sharedEsmAndApprovedLogo": true,
+    "apiOrigin": "https://example.test",
+    "execution": "outside sandbox after sandbox Hermes failure",
+    "evidence": "apps/mobile/apk/mob18-bundle-copy-fix.log"
+  },
+  "format": {
+    "command": "pnpm exec prettier --check -- <changed files>",
+    "exitCode": 0
+  },
+  "diffCheck": {
+    "command": "git diff --check",
+    "exitCode": 0
+  },
+  "apkSourceAgreement": {
+    "checked": 140,
+    "changed": [],
+    "comparison": "Both sources formatted with repository Prettier options; QA app.config/plugin excluded"
+  },
+  "device": {
+    "model": "Samsung SM-A507FN",
+    "android": "11",
+    "physicalPixels": "1080x2340",
+    "initialDensity": 450,
+    "initialFontScale": 1.1,
+    "connected": true,
+    "nativeAcceptance": "Android phone PASS against the Mobile HTTPS and Socket.IO fixture. Real Web/backend integration and iOS NOT VERIFIED.",
+    "firstBuildObserved": [
+      "Cold kanvexa-dev link resumed after fixture sign-in, resolved authorized Board, Column, Card, assignee and dates",
+      "Android keyboard visible with typed multiline draft and no app crash",
+      "Hardware Back prompted and Keep editing preserved text",
+      "Warm link was held by draft guard and Discard resumed the Home target",
+      "Socket.IO conflict showed Load latest and Keep mine and save. Confirmation caused one PATCH",
+      "Mine filter remained selected and Card horizontal position changed by at most one pixel after returning from detail",
+      "320 dp and 160% system font wrapped title and scrolled long content",
+      "Archived Card hid Edit and offered Restore. Restore succeeded",
+      "Board access-revoked hint cleared protected UI",
+      "401 returned to Sign in",
+      "Zero AndroidRuntime:E or ReactNativeJS:E log entries for the inspected process",
+      "Unchanged Save sent zero PATCH. Clearing sent one PATCH and server stored explicit null.",
+      "HTTP 429 retained draft. Manual retry after cooldown succeeded.",
+      "Move refreshed the Column breadcrumb, Duplicate used the existing command, Archive made the card read-only."
+    ],
+    "firstBuildProblems": [
+      "Metadata occupied half width when stacked",
+      "Read-only notice fell below very long title"
+    ],
+    "firstBuildMotion": {
+      "path": "apps/mobile/apk/mob18-runtime/android-draft-motion.mp4",
+      "durationSeconds": 100.23,
+      "sampledFrames": 5,
+      "scope": "keyboard, edit, hardware Back prompt and conflict states"
+    },
+    "correctiveBuildLayout": [
+      {
+        "scenario": "384dp / 100% / light",
+        "result": "PASS",
+        "assigneesLabelBounds": [92, 845, 493, 899],
+        "startDateLabelBounds": [587, 845, 988, 899]
+      },
+      {
+        "scenario": "320dp / 160% / dark / long archived title",
+        "result": "PASS",
+        "noticeBounds": [170, 720, 911, 812],
+        "titleBounds": [68, 910, 1013, 2095],
+        "assigneesLabelBounds": [111, 1449, 969, 1552],
+        "startDateLabelBounds": [111, 1945, 969, 2048]
+      }
+    ],
+    "finalEditor": {
+      "singleVisibleDescriptionLabel": true,
+      "accessibleDescriptionInput": true,
+      "editingBounds": ["[104,595][976,664]", "[140,677][940,1342]"],
+      "conflictBounds": ["[104,544][976,613]", "[140,626][940,1292]"],
+      "androidBackPrompt": true,
+      "keptDraft": true,
+      "confirmedConflictPatchCount": 1,
+      "appErrorLines": 0
+    },
+    "finalMotion": {
+      "path": "apps/mobile/apk/mob18-runtime/android-editor-final.mp4",
+      "durationSeconds": 58.42,
+      "sampledFrames": 5,
+      "scope": "Editor, keyboard, discard and conflict states"
+    },
+    "finishReview": {
+      "platform": "Android phone",
+      "result": "SHIP for listed issue",
+      "resolved": "One displayed Description label with accessible field name",
+      "notVerified": ["iOS", "transition timing", "Reduce Motion"]
+    },
+    "correctiveBuildLayoutSourceCommit": "d75d4bd",
+    "finalEditorSourceCommit": "8a54b96"
+  },
+  "ios": "NOT VERIFIED; Windows host has no available iOS simulator/device",
+  "scope": "No backend/frontend/root suites or production operations. EAS preview and controlled Mobile DTO fixture integration only.",
+  "initialSourceCommit": "f09d539",
+  "apkBuilds": [
+    {
+      "id": "24f5023f-f6f4-47be-9a3e-07907ca260d1",
+      "sourceCommit": "f09d539",
+      "result": "FINISHED",
+      "path": "apps/mobile/apk/kanvexa-mob18-preview.apk",
+      "bytes": 92729568,
+      "sha256": "DA7380636B21B0B27C6533682927A343A068699F0CD29008EABC89340503B03A",
+      "entries": 1361,
+      "integrity": "PASS ZIP, manifest, DEX, embedded bundle, Android package install"
+    },
+    {
+      "id": "bed1f994-a30b-4af4-b886-68be65c2c837",
+      "sourceCommit": "d75d4bd",
+      "reason": "correct metadata width and surface read-only notice at large font",
+      "result": "FINISHED",
+      "path": "apps/mobile/apk/kanvexa-mob18-layout-preview.apk",
+      "bytes": 92729568,
+      "sha256": "A041CC376B13FB8E0697ECC083CA73B266132B2F33806E7EE36F2CD0C8A8D908",
+      "entries": 1361,
+      "integrity": "PASS ZIP, manifest, DEX, embedded bundle, Android package install",
+      "sourceAgreement": {
+        "checked": 140,
+        "mismatched": []
+      }
+    },
+    {
+      "id": "77d0692c-6b9f-4106-8b13-6d4e413d7cd1",
+      "sourceCommit": "8a54b96",
+      "reason": "remove duplicate visible Description label identified in Android finish review",
+      "result": "FINISHED",
+      "path": "apps/mobile/apk/kanvexa-mob18-final-preview.apk",
+      "bytes": 92729592,
+      "sha256": "D02AA3CDA6051663BABD18C610C74391531E990BB0CB1A563D2012C516CE8117",
+      "entries": 1361,
+      "integrity": "PASS ZIP, manifest, DEX, embedded bundle, Android package install",
+      "sourceAgreement": {
+        "checked": 140,
+        "mismatched": []
+      }
+    }
+  ],
+  "initialEasBuildId": "24f5023f-f6f4-47be-9a3e-07907ca260d1",
+  "finalEasBuildId": "77d0692c-6b9f-4106-8b13-6d4e413d7cd1"
+}
