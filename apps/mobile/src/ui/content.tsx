@@ -18,7 +18,13 @@ import {
   useTheme,
 } from './theme';
 
-export function Surface({ children }: { children: ReactNode }) {
+export function Surface({
+  children,
+  compact,
+}: {
+  children: ReactNode;
+  compact?: boolean;
+}) {
   const c = useTheme();
   return (
     <View
@@ -26,6 +32,7 @@ export function Surface({ children }: { children: ReactNode }) {
         styles.surface,
         elevation.surface,
         { backgroundColor: c.surface, borderColor: c.border },
+        compact && { padding: spacing.md },
       ]}
     >
       {children}
@@ -179,13 +186,15 @@ export const NotificationRow = ListRow;
 export function CardPreview({
   title,
   children,
+  compact,
 }: {
   title: string;
   children?: ReactNode;
+  compact?: boolean;
 }) {
   const c = useTheme();
   return (
-    <Surface>
+    <Surface compact={compact}>
       <Text style={[typography.strong, { color: c.text }]}>{title}</Text>
       {children}
     </Surface>

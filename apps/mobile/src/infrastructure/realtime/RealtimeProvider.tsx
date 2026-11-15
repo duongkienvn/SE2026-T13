@@ -32,13 +32,24 @@ export function useRealtime(): NativeRealtime {
   return client;
 }
 /** A route must pass active=false when unfocused; mounted tab stacks may be hidden. */
-export function useBoardRealtime(boardId: string, active: boolean) {
+export function useBoardRealtime(
+  boardId: string,
+  active: boolean,
+  preserveSnapshot = false,
+) {
   const client = useRealtime();
   const session = useSessionSnapshot();
   useEffect(() => {
     if (active && session.status === 'authenticated')
-      return client.watchBoard(boardId);
-  }, [client, boardId, active, session.status, session.generation]);
+      return client.watchBoard(boardId, preserveSnapshot);
+  }, [
+    client,
+    boardId,
+    active,
+    preserveSnapshot,
+    session.status,
+    session.generation,
+  ]);
   return useSyncExternalStore(
     client.subscribeBoards,
     () => client.getBoardSnapshot(boardId),

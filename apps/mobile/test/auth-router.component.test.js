@@ -38,6 +38,8 @@ import Forgot from '../src/app/forgot-password';
 import Reset from '../src/app/reset-password';
 import { queryKeys } from '../src/infrastructure/query/keys';
 import { DataProvider } from '../src/infrastructure/query/DataProvider';
+import { RealtimeProvider } from '../src/infrastructure/realtime/RealtimeProvider';
+import { createNativeRealtime } from '../src/infrastructure/realtime/client';
 import Home from '../src/app/(private)/(tabs)/home';
 import Board from '../src/app/(private)/boards/[boardId]/index';
 import Card from '../src/app/(private)/boards/[boardId]/cards/[cardId]';
@@ -135,6 +137,7 @@ test('real auth adapters and session owner resume a canonical return target, iso
   const data = createMobileDataLayer(manager, http),
     api = createAuthApi(http),
     adapter = createNavigationSessionAdapter(manager);
+  const realtime = createNativeRealtime({ manager, data, createSocket: null });
   data.queryClient.setDefaultOptions({
     ...data.queryClient.getDefaultOptions(),
     queries: {
@@ -148,7 +151,9 @@ test('real auth adapters and session owner resume a canonical return target, iso
         <AuthProvider api={api} manager={manager} flow={flow}>
           <NavigationProvider adapter={adapter}>
             <DataProvider layer={data}>
-              <RootStack />
+              <RealtimeProvider client={realtime}>
+                <RootStack />
+              </RealtimeProvider>
             </DataProvider>
           </NavigationProvider>
         </AuthProvider>
@@ -233,6 +238,7 @@ test('real auth adapters and session owner resume a canonical return target, iso
     expect(screen.getByText('Protected Search')).toBeTruthy();
   } finally {
     await view.unmount();
+    realtime.dispose();
     data.dispose();
     manager.dispose();
     flow.clear();

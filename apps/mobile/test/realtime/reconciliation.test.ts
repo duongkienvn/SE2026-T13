@@ -17,6 +17,7 @@ test('shared scopes target Card children precisely and generic events keep a cor
     [
       queryKeys.checklists(identity, USER_A, USER_B),
       queryKeys.cardPreview(identity, USER_A, USER_B),
+      queryKeys.previewBatch(identity, USER_A, [USER_B]),
     ],
   );
   assert.deepEqual(
@@ -27,6 +28,7 @@ test('shared scopes target Card children precisely and generic events keep a cor
     [
       queryKeys.attachments(identity, USER_A, USER_B),
       queryKeys.cardPreview(identity, USER_A, USER_B),
+      queryKeys.previewBatch(identity, USER_A, [USER_B]),
     ],
   );
   assert.ok(

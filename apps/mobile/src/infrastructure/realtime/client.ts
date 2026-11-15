@@ -451,9 +451,12 @@ export function createNativeRealtime(options: {
     },
     getSnapshot: connection.getSnapshot,
     subscribe: connection.subscribe,
-    watchBoard(boardId: string) {
+    watchBoard(boardId: string, preserveSnapshot = false) {
       if (!data.getIdentity()) throw new ApiError('unauthenticated');
-      return rooms.watch(boardId);
+      return rooms.watch(boardId, preserveSnapshot);
+    },
+    revokeBoard(boardId: string) {
+      rooms.revoke(boardId);
     },
     getBoardSnapshot: rooms.getSnapshot,
     subscribeBoards: rooms.subscribe,

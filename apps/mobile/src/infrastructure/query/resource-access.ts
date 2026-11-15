@@ -118,6 +118,15 @@ export function createResourceAccess() {
   }
   return {
     capture,
+    captureBoardProbe(id: string) {
+      const revision = boards.get(id)?.version ?? 0;
+      return () => {
+        if ((boards.get(id)?.version ?? 0) !== revision)
+          throw new ApiError('session-changed', {
+            code: 'RESOURCE_ACCESS_CHANGED',
+          });
+      };
+    },
     bumpKey,
     readable,
     boardId,

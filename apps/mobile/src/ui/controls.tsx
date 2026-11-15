@@ -299,9 +299,11 @@ export function Avatar({
 export function AvatarStack({
   people,
   accessibilityLabel,
+  size = 32,
 }: {
   people: { name: string; source?: ImageSourcePropType }[];
   accessibilityLabel?: string;
+  size?: number;
 }) {
   const c = useTheme();
   return (
@@ -323,7 +325,7 @@ export function AvatarStack({
             marginRight: i < people.length - 1 ? -spacing.sm : 0,
           }}
         >
-          <Avatar {...person} size={32} />
+          <Avatar {...person} size={size} />
         </View>
       ))}
     </View>
@@ -336,6 +338,7 @@ export function Chip({
   tone = 'neutral',
   colors,
   disabled = false,
+  compact = false,
 }: {
   label: string;
   selected?: boolean;
@@ -343,6 +346,7 @@ export function Chip({
   tone?: 'neutral' | 'success' | 'warning' | 'danger' | 'info';
   colors?: { foreground: string; background: string; border: string };
   disabled?: boolean;
+  compact?: boolean;
 }) {
   const c = useTheme();
   const [focused, setFocused] = useState(false);
@@ -353,9 +357,9 @@ export function Chip({
     </Text>
   );
   const style: ViewStyle = {
-    minHeight: onPress ? sizes.touch : 28,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    minHeight: onPress ? sizes.touch : compact ? 24 : 28,
+    paddingHorizontal: compact ? spacing.sm : spacing.lg,
+    paddingVertical: compact ? spacing.xs : spacing.sm,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor:
