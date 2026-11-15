@@ -23,6 +23,7 @@ import {
   kanbanCollection,
   previewBatches,
 } from './kanban-model.ts';
+import { createColumnApi } from '../columns/api.ts';
 
 const pagination = {
   initialPageParam: 1,
@@ -58,7 +59,8 @@ export function useBoardKanban(
     ...pagination,
     staleTime: 0,
     queryKey: queryKeys.columns(identity, boardId),
-    queryFn: ({ pageParam, signal }) => board.columns(pageParam, signal),
+    queryFn: ({ pageParam, signal }) =>
+      createColumnApi(api, identity, boardId).list(pageParam, signal),
     enabled,
   });
   const cardQuery = useInfiniteQuery({
@@ -68,7 +70,10 @@ export function useBoardKanban(
   const columns = useMemo(() => {
     const collection = kanbanCollection(columnQuery.data?.pages ?? []);
     collection.items.sort(compareKanbanPosition);
-    return collection;
+    return {
+      ...collection,
+      orderedColumnIds: collection.items.map(({ id }) => id),
+    };
   }, [columnQuery.data]);
   const cards = useMemo(() => {
     const pages = cardQuery.data?.pages ?? [];

@@ -64,9 +64,11 @@ jest.mock('react-native', () => {
   descriptors.Modal = {
     configurable: true,
     enumerable: true,
-    value: ({ visible, children }) =>
+    value: ({ visible, onRequestClose, children }) =>
       visible ? (
-        <native.View testID="filter-modal">{children}</native.View>
+        <native.View testID="filter-modal" onTouchEnd={onRequestClose}>
+          {children}
+        </native.View>
       ) : null,
   };
   return Object.create(Object.getPrototypeOf(native), descriptors);
@@ -75,7 +77,7 @@ jest.mock('react-native', () => {
 function response(data, status = 200, retryAfter) {
   return {
     status,
-    ok: status === 200,
+    ok: status >= 200 && status < 300,
     headers: {
       get: (header) =>
         header === 'content-type'
@@ -87,8 +89,8 @@ function response(data, status = 200, retryAfter) {
     text: async () => JSON.stringify(data),
   };
 }
-const result = (data) =>
-  response({ success: true, statusCode: 200, message: 'OK', data });
+const result = (data, status = 200) =>
+  response({ success: true, statusCode: status, message: 'OK', data }, status);
 
 async function setup({
   cards = [],
@@ -120,8 +122,9 @@ async function setup({
       path: url.pathname,
       params: url.searchParams,
       method: options.method,
+      body: options.body ? JSON.parse(options.body) : undefined,
     });
-    const custom = override?.(url, manager.getSnapshot());
+    const custom = override?.(url, manager.getSnapshot(), requests.at(-1));
     if (custom) return custom;
     const number = Number(url.searchParams.get('page'));
     if (url.pathname === '/api/users/me/preferences')
@@ -606,6 +609,376 @@ test('HTTP 401 ends the matching session and purges private Card and Board queri
       }),
     ).toHaveLength(0);
   } finally {
+    await env.dispose();
+  }
+});
+
+const writableBoard = {
+  ...boardDetail,
+  currentUserRole: 'OWNER',
+  visibility: 'PRIVATE',
+  capabilities: { ...boardDetail.capabilities, canWriteBoard: true },
+};
+const columnError = (status, code) =>
+  response(
+    {
+      success: false,
+      statusCode: status,
+      code,
+      message: 'Column request failed',
+      details: [],
+    },
+    status,
+  );
+const columnSheet = () => within(screen.getByTestId('filter-modal'));
+const pressColumn = async (name) =>
+  fireEvent.press(await columnSheet().findByRole('button', { name }));
+const selectColumn = async (name) =>
+  fireEvent.press(await button(`Column actions for ${name}`));
+
+test('creates from an empty Board, validates drafts, rejects duplicate taps, and reveals the new Column', async () => {
+  const create = deferred();
+  let rows = [];
+  const renderList = jest.spyOn(FlatList.prototype, 'render');
+  const scrollToIndex = jest
+    .spyOn(FlatList.prototype, 'scrollToIndex')
+    .mockImplementation(() => {});
+  const env = await setup({
+    board: writableBoard,
+    override(url, _session, request) {
+      if (!url.pathname.endsWith('/columns')) return null;
+      if (request.method === 'GET')
+        return response(page(rows, Number(url.searchParams.get('page')), 100));
+      return create.promise;
+    },
+  });
+  try {
+    await screen.findByText('No columns yet');
+    await fireEvent.press(await button('Add column'));
+    await pressColumn('Create column');
+    await screen.findByText('Enter a column name.');
+    await fireEvent.changeText(
+      screen.getByLabelText('Column name'),
+      'x'.repeat(121),
+    );
+    await pressColumn('Create column');
+    await screen.findByText('Column name must be at most 120 characters.');
+    await fireEvent(screen.getByTestId('filter-modal'), 'touchEnd');
+    await screen.findByText('Discard changes?');
+    await pressColumn('Keep editing');
+    expect(screen.getByLabelText('Column name').props.value).toHaveLength(121);
+    await pressColumn('Cancel');
+    await screen.findByText('Discard changes?');
+    await pressColumn('Discard changes');
+    expect(screen.queryByTestId('filter-modal')).toBeNull();
+    expect(
+      env.reads('/columns').filter(({ method }) => method === 'POST'),
+    ).toHaveLength(0);
+    await fireEvent.press(await button('Add column'));
+    expect(screen.getByLabelText('Column name').props.value).toBe('');
+    await fireEvent.changeText(
+      screen.getByLabelText('Column name'),
+      '  In progress  ',
+    );
+    const createButton = await columnSheet().findByRole('button', {
+      name: 'Create column',
+    });
+    await fireEvent.press(createButton);
+    await fireEvent.press(createButton);
+    await screen.findByText('Saving column changes…');
+    const writes = env
+      .reads('/columns')
+      .filter(({ method }) => method === 'POST');
+    expect(writes.map(({ body }) => body)).toEqual([{ name: 'In progress' }]);
+    rows = [{ ...column(1), name: 'In progress' }];
+    await act(() => create.resolve(result(rows[0], 201)));
+    await button('Column actions for In progress');
+    await fireEvent(screen.getByTestId('board-columns'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 320, height: 600 } },
+    });
+    await act(() =>
+      renderList.mock.contexts
+        .find((list) => list.props.horizontal)
+        .props.onContentSizeChange(352, 600),
+    );
+    await waitFor(() =>
+      expect(scrollToIndex).toHaveBeenCalledWith({ index: 0, animated: false }),
+    );
+  } finally {
+    create.resolve(result(column(1), 201));
+    await env.dispose();
+    scrollToIndex.mockRestore();
+    renderList.mockRestore();
+  }
+});
+
+test('renames with a retained draft and moves using the current server order without clearing Card filters', async () => {
+  let rows = [column(1), column(2), column(3)];
+  let conflict = true;
+  const env = await setup({
+    board: writableBoard,
+    cards: [card(1)],
+    override(url, _session, request) {
+      if (url.pathname.endsWith('/columns'))
+        return response(page(rows, Number(url.searchParams.get('page')), 100));
+      if (request.method !== 'PATCH') return null;
+      if (url.pathname.endsWith('/move')) {
+        const moved = { ...rows[1], position: '4.0000000000' };
+        rows = [rows[0], rows[2], moved];
+        return result(moved);
+      }
+      if (conflict) return columnError(409, 'CONFLICT');
+      rows = rows.map((value) =>
+        value.id === rows[1].id ? { ...value, name: request.body.name } : value,
+      );
+      return result(rows[1]);
+    },
+  });
+  try {
+    await screen.findByText('1 card');
+    await fireEvent.press(await button('Due today'));
+    await button('Filters (1)');
+    await selectColumn('Column 1');
+    expect(
+      columnSheet().getByRole('button', { name: 'Move left' }).props
+        .accessibilityState.disabled,
+    ).toBe(true);
+    await pressColumn('Rename column');
+    expect(screen.getByLabelText('Column name').props.value).toBe('Column 1');
+    rows[0] = { ...rows[0], name: 'Renamed on Web' };
+    await act(() =>
+      env.data.invalidate(env.data.getIdentity(), [
+        queryKeys.columns(env.data.getIdentity(), boardId),
+      ]),
+    );
+    await pressColumn('Save column');
+    await waitFor(() =>
+      expect(screen.queryByTestId('filter-modal')).toBeNull(),
+    );
+    expect(env.reads(`/${rows[0].id}`)).toHaveLength(0);
+    await button('Column actions for Renamed on Web');
+
+    await selectColumn('Column 2');
+    await pressColumn('Rename column');
+    await fireEvent.changeText(
+      screen.getByLabelText('Column name'),
+      '  Ready  ',
+    );
+    await pressColumn('Cancel');
+    await screen.findByText('Discard changes?');
+    await pressColumn('Keep editing');
+    expect(screen.getByLabelText('Column name').props.value).toBe('  Ready  ');
+    await pressColumn('Save column');
+    await screen.findByText('Couldn’t save the column. Try again.');
+    expect(screen.getByLabelText('Column name').props.value).toBe('  Ready  ');
+    conflict = false;
+    await pressColumn('Save column');
+    await button('Column actions for Ready');
+    await selectColumn('Ready');
+    await pressColumn('Move right');
+    await waitFor(() =>
+      expect(screen.queryByTestId('filter-modal')).toBeNull(),
+    );
+    expect(env.reads('/move').map(({ body }) => body)).toEqual([
+      { beforeColumnId: null },
+    ]);
+    const headings = screen
+      .getAllByRole('header')
+      .map(({ props }) => props.children);
+    expect(headings.indexOf('Column 3')).toBeLessThan(
+      headings.indexOf('Ready'),
+    );
+    expect(screen.getByRole('button', { name: 'Filters (1)' })).toBeTruthy();
+    expect(env.reads('/cards').at(-1).params.get('dueStatus')).toBe(
+      'DUE_TODAY',
+    );
+  } finally {
+    await env.dispose();
+  }
+});
+
+test.each(['active', 'archived'])(
+  'confirms deletion, preserves the Column on %s Card conflict, and handles a subsequent 204',
+  async (status) => {
+    const target = column(1);
+    let rows = [target];
+    let containsCard = true;
+    let bodyRead = false;
+    const env = await setup({
+      board: writableBoard,
+      override(url, _session, request) {
+        if (url.pathname.endsWith('/columns'))
+          return response(
+            page(rows, Number(url.searchParams.get('page')), 100),
+          );
+        if (url.pathname.endsWith('/cards')) {
+          const cards =
+            containsCard && url.searchParams.get('status') === status
+              ? [{ ...card(1), isArchived: status === 'archived' }]
+              : [];
+          return response(page(cards, 1, 100));
+        }
+        if (request.method !== 'DELETE') return null;
+        if (containsCard) return columnError(409, 'COLUMN_NOT_EMPTY');
+        rows = [];
+        return {
+          ...response(null, 204),
+          text: async () => {
+            bodyRead = true;
+            throw new Error('Unexpected DELETE body read');
+          },
+        };
+      },
+    });
+    try {
+      await screen.findByText(status === 'active' ? '1 card' : '0 cards');
+      await selectColumn(target.name);
+      await pressColumn('Delete column');
+      await screen.findByText(`Delete “${target.name}”?`);
+      await fireEvent(screen.getByTestId('filter-modal'), 'touchEnd');
+      expect(env.reads(`/${target.id}`)).toHaveLength(0);
+      await selectColumn(target.name);
+      await pressColumn('Delete column');
+      await pressColumn('Delete column');
+      await screen.findByText(
+        'This column still contains active or archived cards.',
+      );
+      expect(screen.getByText(target.name)).toBeTruthy();
+      const readsBeforeDelete = env.reads('/cards').length;
+      containsCard = false;
+      await pressColumn('Delete column');
+      await screen.findByText('No columns yet');
+      expect(bodyRead).toBe(false);
+      expect(
+        env.reads(`/${target.id}`).map(({ method, body }) => [method, body]),
+      ).toEqual([
+        ['DELETE', undefined],
+        ['DELETE', undefined],
+      ]);
+      expect(env.reads('/cards').length).toBeGreaterThan(readsBeforeDelete);
+    } finally {
+      await env.dispose();
+    }
+  },
+);
+
+test('requires explicit review before retrying an uncertain POST and preserves the draft', async () => {
+  const env = await setup({
+    board: writableBoard,
+    override(url, _session, request) {
+      if (url.pathname.endsWith('/columns') && request.method === 'POST')
+        return response({}, 503);
+      return null;
+    },
+  });
+  try {
+    await button('Column actions for Column 1');
+    await fireEvent.press(await button('Add column'));
+    await fireEvent.changeText(
+      screen.getByLabelText('Column name'),
+      'Review later',
+    );
+    await pressColumn('Create column');
+    await screen.findByText(
+      'The server may have created this column. Check the refreshed board before creating again.',
+    );
+    expect(
+      columnSheet().queryByRole('button', { name: 'Create column' }),
+    ).toBeNull();
+    await pressColumn('Review board');
+    await fireEvent.press(await button('Add column'));
+    expect(screen.getByLabelText('Column name').props.value).toBe(
+      'Review later',
+    );
+    expect(
+      env.reads('/columns').filter(({ method }) => method === 'POST'),
+    ).toHaveLength(1);
+    await pressColumn('I checked the board');
+    expect(
+      columnSheet().getByRole('button', { name: 'Create column' }),
+    ).toBeTruthy();
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('an editable Column draft survives an offline access recheck', async () => {
+  const env = await setup({ board: writableBoard });
+  try {
+    await button('Column actions for Column 1');
+    await fireEvent.press(await button('Add column'));
+    await fireEvent.changeText(
+      screen.getByLabelText('Column name'),
+      'Keep this draft',
+    );
+    await act(() => onlineManager.setOnline(false));
+    await screen.findByText('Connection unavailable');
+    expect(screen.queryByLabelText('Column name')).toBeNull();
+    await act(() => onlineManager.setOnline(true));
+    await screen.findByDisplayValue('Keep this draft');
+    expect(
+      env.reads('/columns').filter(({ method }) => method === 'POST'),
+    ).toHaveLength(0);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test.each([
+  ['reader', boardDetail],
+  [
+    'guest without write capability',
+    {
+      ...writableBoard,
+      currentUserRole: 'MEMBER',
+      capabilities: boardDetail.capabilities,
+    },
+  ],
+  [
+    'archived owner',
+    { ...writableBoard, isArchived: true, archivedAt: boardDetail.createdAt },
+  ],
+])('%s cannot access Column mutation controls', async (_role, board) => {
+  const env = await setup({ board });
+  try {
+    await screen.findByText('Column 1');
+    expect(screen.queryByRole('button', { name: 'Add column' })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Column actions for Column 1' }),
+    ).toBeNull();
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('revocation during a Column write removes the editor and ignores a delayed success', async () => {
+  const create = deferred();
+  const env = await setup({
+    board: writableBoard,
+    override(url, _session, request) {
+      return url.pathname.endsWith('/columns') && request.method === 'POST'
+        ? create.promise
+        : null;
+    },
+  });
+  try {
+    await button('Column actions for Column 1');
+    await fireEvent.press(await button('Add column'));
+    await fireEvent.changeText(
+      screen.getByLabelText('Column name'),
+      'Revoked draft',
+    );
+    await pressColumn('Create column');
+    await screen.findByText('Saving column changes…');
+    await act(() => env.realtime.revokeBoard(boardId));
+    await screen.findByText('Board unavailable');
+    await act(() =>
+      create.resolve(result({ ...column(2), name: 'Revoked draft' }, 201)),
+    );
+    expect(screen.queryByText('Revoked draft')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add column' })).toBeNull();
+  } finally {
+    create.resolve(result(column(2), 201));
     await env.dispose();
   }
 });

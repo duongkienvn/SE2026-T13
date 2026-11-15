@@ -30,6 +30,12 @@ import {
   typography,
   useTheme,
 } from '../../ui';
+import { ColumnActionsSheet } from '../columns/ColumnActionsSheet';
+import { canMutateColumns } from '../columns/mutations';
+import {
+  useColumnManagement,
+  type ColumnManagement,
+} from '../columns/useColumnManagement';
 import { BoardArtwork } from '../home/BoardArtwork';
 import {
   useWorkspaceOnline,
@@ -142,6 +148,14 @@ function BoardEntry({
     !detail.isFetching &&
     !detail.isError &&
     data.resources.readable(boardKey);
+  const writeAllowed = canMutateColumns(board);
+  const columnManagement = useColumnManagement({
+    boardId,
+    identity,
+    available: verified && focused && writeAllowed,
+    discard: revoked || detail.data === null || (!!board && !writeAllowed),
+    recheckBoard: () => void detail.refetch(),
+  });
   useEffect(() => {
     if (!revoked) return;
     setFilters({});
@@ -182,6 +196,7 @@ function BoardEntry({
           filters={filters}
           onFilters={setFilters}
           scroll={scroll.current}
+          columnManagement={columnManagement}
         />
       ) : detail.isError && !checking && !detail.isFetching ? (
         <ErrorState
@@ -214,6 +229,7 @@ function BoardContent({
   filters,
   onFilters,
   scroll,
+  columnManagement,
 }: {
   boardId: ResourceId;
   board: KanbanBoard;
@@ -222,6 +238,7 @@ function BoardContent({
   filters: KanbanFilters;
   onFilters: (filters: KanbanFilters) => void;
   scroll: KanbanScroll;
+  columnManagement: ColumnManagement;
 }) {
   const c = useTheme();
   const router = useRouter();
@@ -265,7 +282,42 @@ function BoardContent({
       (!!sheet || cards.items.some((card) => card.assignees.length > 0)),
   );
   const count = filterCount(filters);
-  const allowed = !board.isArchived && board.capabilities.canWriteBoard;
+  const allowed = canMutateColumns(board);
+  const { revealId, clearReveal } = columnManagement;
+  const revealIndex = revealId
+    ? columns.orderedColumnIds.indexOf(revealId)
+    : -1;
+  const orderReady =
+    columns.complete &&
+    columnQuery.isSuccess &&
+    !columnQuery.isFetching &&
+    !data.queryClient.getQueryState(queryKeys.columns(identity, boardId))
+      ?.isInvalidated;
+  useEffect(() => {
+    if (
+      !focused ||
+      !online ||
+      !revealId ||
+      revealIndex >= 0 ||
+      columnQuery.isFetching ||
+      !columnQuery.isSuccess
+    )
+      return;
+    if (columnQuery.hasNextPage)
+      void columnQuery.fetchNextPage({ cancelRefetch: false });
+    else if (columns.complete) clearReveal();
+  }, [
+    focused,
+    online,
+    revealId,
+    revealIndex,
+    columnQuery.isFetching,
+    columnQuery.isSuccess,
+    columnQuery.hasNextPage,
+    columnQuery.fetchNextPage,
+    columns.complete,
+    clearReveal,
+  ]);
   const columnIds = useMemo(
     () => new Set(columns.items.map((column) => column.id)),
     [columns.items],
@@ -422,6 +474,17 @@ function BoardContent({
             />
           </View>
         )}
+        {columnManagement.available &&
+          (columns.items.length > 0 || !columns.complete) && (
+            <View style={styles.badge}>
+              <Button
+                label="Add column"
+                variant="link"
+                disabled={columnManagement.pending}
+                onPress={columnManagement.openCreate}
+              />
+            </View>
+          )}
         <View
           style={[styles.views, { borderBottomColor: c.border }]}
           accessibilityRole="tablist"
@@ -511,7 +574,21 @@ function BoardContent({
       </View>
 
       {columns.items.length === 0 && columns.complete ? (
-        <EmptyState title="No columns yet" />
+        <EmptyState
+          title="No columns yet"
+          description={
+            allowed ? undefined : 'This board has no columns to display.'
+          }
+          action={
+            columnManagement.available ? (
+              <Button
+                label="Add column"
+                disabled={columnManagement.pending}
+                onPress={columnManagement.openCreate}
+              />
+            ) : undefined
+          }
+        />
       ) : columns.items.length > 0 ? (
         <BoardKanban
           key={hashKey([normalizeKanbanFilters(filters)])}
@@ -527,6 +604,14 @@ function BoardContent({
           timeZone={zone.data}
           scroll={scroll}
           onOpen={onOpen}
+          onColumnActions={
+            columnManagement.available
+              ? columnManagement.openActions
+              : undefined
+          }
+          columnActionsDisabled={columnManagement.pending}
+          revealColumnIndex={revealIndex}
+          onColumnRevealed={clearReveal}
         />
       ) : !columnQuery.isError ? (
         <View style={[styles.header, { flex: 1 }]}>
@@ -649,6 +734,13 @@ function BoardContent({
           online={online}
           onCancel={() => setSheet(null)}
           onApply={apply}
+        />
+      )}
+      {columnManagement.sheet && (
+        <ColumnActionsSheet
+          management={columnManagement}
+          orderedColumnIds={columns.orderedColumnIds}
+          orderReady={orderReady}
         />
       )}
     </>
