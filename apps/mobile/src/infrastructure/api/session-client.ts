@@ -20,6 +20,8 @@ export type SessionRequestOptions = Omit<RequestOptions, 'accessToken'> & {
   readonly identity?: SessionIdentity;
   /** Bind resource HTTP work to the same key used by its query/mutation. */
   readonly resourceKey?: PrivateQueryKey;
+  /** User-specific state can require Board read access even for a mutation. */
+  readonly resourceAccess?: 'read' | 'write';
 };
 export interface SessionHttpClient {
   envelope<T>(
@@ -105,7 +107,10 @@ export function createSessionHttpClient(
     const resourceCurrent = options.resourceKey
       ? resources?.capture(
           options.resourceKey,
-          (options.method ?? 'GET') !== 'GET',
+          options.resourceAccess === 'read'
+            ? false
+            : options.resourceAccess === 'write' ||
+                (options.method ?? 'GET') !== 'GET',
         )
       : undefined;
     const controller = new AbortController();

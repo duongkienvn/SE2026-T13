@@ -165,5 +165,8 @@ export function workspaceBoardOptions(
         api.boards(id, pageParam, normalized, signal),
       ),
     getNextPageParam: ({ meta }) => nextPage(meta),
+    getPreviousPageParam: ({ meta }) =>
+      meta.page > 1 ? meta.page - 1 : undefined,
+    maxPages: 5,
   });
 }

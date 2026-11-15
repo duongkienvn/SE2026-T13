@@ -151,6 +151,7 @@ export function createQueryCoordinator(
   async function optimistic<TCache, TResult>(options: {
     identity: SessionIdentity;
     key: PrivateQueryKey;
+    requiresWrite?: boolean;
     update(previous: TCache | undefined): TCache;
     mutation(): Promise<TResult>;
     reconcile?(result: TResult, current: TCache | undefined): TCache;
@@ -159,7 +160,10 @@ export function createQueryCoordinator(
     const { identity, key } = options;
     const affected = options.invalidate ?? [key];
     validate(identity, [key, ...affected]);
-    const resourceCurrent = owner.resources?.capture(key, true);
+    const resourceCurrent = owner.resources?.capture(
+      key,
+      options.requiresWrite !== false,
+    );
     const hash = hashKey(key);
     const prior = mutations.get(hash)?.done ?? Promise.resolve();
     let release!: () => void;

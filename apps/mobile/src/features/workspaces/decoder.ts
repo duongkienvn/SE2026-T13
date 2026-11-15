@@ -4,11 +4,9 @@ import {
   WorkspaceRole,
   WorkspaceType,
   type BoardCapabilities,
-  type BoardBackgroundPresetId,
 } from '@kanban/shared';
 import { isUuid } from '../../infrastructure/auth/credential-record.ts';
 import type { ResourceId } from '../../navigation/routes.ts';
-import { isBoardPreset } from '../home/presets.ts';
 
 function invalid(): never {
   throw new Error('Invalid Workspace response');
@@ -98,8 +96,10 @@ function boardCapabilities(value: unknown): BoardCapabilities {
   };
 }
 
-function background(value: unknown): BoardBackgroundPresetId {
-  return isBoardPreset(value) ? value : invalid();
+function background(value: unknown): string {
+  return typeof value === 'string' && /^[a-z0-9-]{1,64}$/.test(value)
+    ? value
+    : invalid();
 }
 
 export function decodeWorkspaceBoard(

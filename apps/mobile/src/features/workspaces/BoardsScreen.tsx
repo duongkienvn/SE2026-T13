@@ -28,15 +28,19 @@ import {
   useTheme,
 } from '../../ui';
 import { useSelectedWorkspace } from './WorkspaceSelection';
-import { WorkspaceBoards } from './WorkspaceBoards';
+import {
+  WorkspaceBoards,
+  defaultBoardFilters,
+  type BoardFilters,
+} from './WorkspaceBoards';
 import { WorkspaceSelector } from './WorkspaceSelector';
+import { StarredBoards } from '../boards/StarredBoards';
+import { BoardForm } from '../boards/BoardForm';
+import { createBoardApi } from '../boards/api';
+import { SharedBoards } from '../boards/SharedBoards';
 import { WorkspaceForm } from './WorkspaceForm';
 import { createWorkspaceApi } from './api';
-import {
-  workspaceBoardOptions,
-  workspaceDirectoryOptions,
-  workspaceOverviewOptions,
-} from './queries';
+import { workspaceDirectoryOptions, workspaceOverviewOptions } from './queries';
 import {
   canRetryWorkspace,
   useWorkspaceOnline,
@@ -68,6 +72,9 @@ function VerifiedBoards() {
   const [picker, setPicker] = useState(false);
   const [creating, setCreating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [boardFilters, setBoardFilters] = useState<
+    Record<string, BoardFilters>
+  >({});
   const lastRefresh = useRef(-Infinity);
   const {
     directory,
@@ -147,11 +154,7 @@ function VerifiedBoards() {
       const latest = await directory.refetch({ cancelRefetch: false });
       if (!latest.isSuccess || !selectedId || !isCurrentSelection(selectedId))
         return;
-      const boardKey = workspaceBoardOptions(
-        data,
-        identity,
-        selectedId,
-      ).queryKey;
+      const boardKey = queryKeys.workspaceBoards(identity, selectedId);
       const overviewKey = workspaceOverviewOptions(
         data,
         identity,
@@ -265,6 +268,30 @@ function VerifiedBoards() {
               if (setSelectedId(id)) setPicker(false);
             }}
             navigate={router.navigate}
+            filters={boardFilters[selected.id] ?? defaultBoardFilters}
+            onFiltersChange={(filters) =>
+              setBoardFilters((previous) => ({
+                ...previous,
+                [selected.id]: filters,
+              }))
+            }
+          />
+        )}
+        {directory.isSuccess && workspaces && (
+          <SharedBoards
+            identity={identity}
+            workspaces={workspaces}
+            membershipUpdatedAt={directory.dataUpdatedAt}
+            active={active}
+            onBoard={(id) => {
+              if (
+                activeRef.current &&
+                sameIdentity(identity, data.getIdentity())
+              )
+                router.navigate(
+                  destinationPath({ kind: 'board', boardId: id }),
+                );
+            }}
           />
         )}
         {creating && (
@@ -345,6 +372,8 @@ function SelectedWorkspace({
   select,
   isCurrentSelection,
   navigate,
+  filters,
+  onFiltersChange,
 }: {
   selected: NonNullable<ReturnType<typeof useSelectedWorkspace>['selected']>;
   identity: ReturnType<typeof useSelectedWorkspace>['identity'];
@@ -360,11 +389,27 @@ function SelectedWorkspace({
     typeof useSelectedWorkspace
   >['isCurrentSelection'];
   navigate: (path: ReturnType<typeof destinationPath>) => void;
+  filters: BoardFilters;
+  onFiltersChange: (filters: BoardFilters) => void;
 }) {
   const data = useMobileData();
   const options = workspaceOverviewOptions(data, identity, selected.id);
   const overview = useQuery({ ...options, enabled: active });
   const safe = () => active && isCurrentSelection(selected.id);
+  const [creatingBoard, setCreatingBoard] = useState(false);
+  const fenceKey = [
+    ...queryKeys.scope(identity),
+    'board-create-fence',
+  ] as const;
+  const [boardBlocked, setBoardBlocked] = useState(
+    () => data.queryClient.getQueryData<boolean>(fenceKey) === true,
+  );
+  const fence = (value: boolean) => {
+    data.assertCurrent(identity);
+    data.queryClient.setQueryDefaults(fenceKey, { gcTime: Infinity });
+    data.queryClient.setQueryData(fenceKey, value);
+    setBoardBlocked(value);
+  };
   return (
     <>
       <WorkspaceSelector
@@ -396,7 +441,7 @@ function SelectedWorkspace({
           }}
         />
       </View>
-      <WorkspaceBoards
+      <StarredBoards
         identity={identity}
         workspace={selected.id}
         active={active}
@@ -404,6 +449,92 @@ function SelectedWorkspace({
           if (safe()) navigate(destinationPath({ kind: 'board', boardId: id }));
         }}
       />
+      <WorkspaceBoards
+        identity={identity}
+        workspace={selected.id}
+        active={active}
+        filters={filters}
+        onFiltersChange={onFiltersChange}
+        onCreateBoard={
+          selected.canCreateBoards
+            ? () => {
+                if (safe()) setCreatingBoard(true);
+              }
+            : undefined
+        }
+        onBoard={(id) => {
+          if (safe()) navigate(destinationPath({ kind: 'board', boardId: id }));
+        }}
+      />
+      {creatingBoard && (
+        <BoardForm
+          identity={identity}
+          selected={selected}
+          workspaces={workspaces}
+          blocked={boardBlocked}
+          onConfirmChecked={() => fence(false)}
+          onDismiss={() => setCreatingBoard(false)}
+          onSubmit={async (input) => {
+            if (
+              !safe() ||
+              !sameIdentity(identity, data.getIdentity()) ||
+              !workspaces.some(
+                (workspace) =>
+                  workspace.id === input.workspaceId &&
+                  workspace.canCreateBoards,
+              )
+            )
+              throw new Error(
+                'Workspace access changed. Close this form and try again.',
+              );
+            let confirmed = false;
+            try {
+              fence(true);
+              const created = await createBoardApi(data.api, identity).create(
+                input,
+                new AbortController().signal,
+              );
+              confirmed = true;
+              if (
+                created.workspaceId !== input.workspaceId ||
+                created.visibility !== 'PRIVATE'
+              )
+                throw new Error('Unexpected board response');
+              data.assertCurrent(identity);
+              fence(false);
+              void data
+                .invalidate(identity, [
+                  queryKeys.workspaceBoards(identity, input.workspaceId),
+                  queryKeys.home(identity),
+                ])
+                .catch(() => undefined);
+              setCreatingBoard(false);
+            } catch (error) {
+              if (!sameIdentity(identity, data.getIdentity())) return;
+              if (
+                confirmed ||
+                !(error instanceof ApiError) ||
+                error.status >= 500 ||
+                ['timeout', 'network', 'aborted', 'invalid-response'].includes(
+                  error.kind,
+                )
+              ) {
+                void data
+                  .invalidate(identity, [
+                    queryKeys.workspaceBoards(identity, input.workspaceId),
+                  ])
+                  .catch(() => undefined);
+                throw new Error(
+                  'The result could not be confirmed. Check the board list before trying again.',
+                  { cause: error },
+                );
+              }
+              fence(false);
+              throw new Error(workspaceErrorMessage(error), { cause: error });
+            }
+          }}
+        />
+      )}
     </>
   );
 }
