@@ -6,6 +6,9 @@ export class UpdateCardDto implements CardDateInput {
   @StringFieldOptional({ trim: true, minLength: 1, maxLength: 120 })
   title?: string;
 
+  @StringFieldOptional({ minLength: 1, maxLength: 120 })
+  expectedTitle?: string;
+
   @StringFieldOptional({ nullable: true, minLength: 0, maxLength: 2000 })
   description?: string | null;
 

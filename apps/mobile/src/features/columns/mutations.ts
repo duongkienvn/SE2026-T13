@@ -71,6 +71,7 @@ export function columnWriteNeedsAccessCheck(error: unknown) {
 export function isUncertainColumnWrite(error: unknown) {
   return (
     error instanceof ApiError &&
+    error.requestStarted !== false &&
     ([
       'timeout',
       'network',
@@ -78,6 +79,7 @@ export function isUncertainColumnWrite(error: unknown) {
       'aborted',
       'session-changed',
     ].includes(error.kind) ||
+      (error.kind === 'offline' && error.requestStarted === true) ||
       error.status >= 500)
   );
 }

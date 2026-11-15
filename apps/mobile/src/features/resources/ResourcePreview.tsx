@@ -5,6 +5,7 @@ import { useSessionSnapshot } from '../../infrastructure/auth/SessionProvider';
 import type { SessionIdentity } from '../../infrastructure/api/session-client';
 import { useMobileData } from '../../infrastructure/query/DataProvider';
 import { queryKeys } from '../../infrastructure/query/keys';
+import { useBoardRealtime } from '../../infrastructure/realtime/RealtimeProvider';
 import { ResourceBoundary } from '../../navigation/resource-boundary';
 import {
   destinationPath,
@@ -13,6 +14,7 @@ import {
 } from '../../navigation/routes';
 import { Scaffold } from '../../navigation/scaffold';
 import { useSession } from '../../navigation/session-context';
+import { createCardApi } from '../cards/api';
 
 type CardDestination = Extract<Destination, { kind: 'card' }>;
 
@@ -42,33 +44,21 @@ function CardAccessCheck({
   const session = useSession();
   const focused = useIsFocused();
   const { boardId, cardId } = destination;
+  const room = useBoardRealtime(boardId, focused, true);
   const path = destinationPath(destination);
-  const key = [
-    ...queryKeys.card(identity, boardId, cardId),
-    'detail-access',
-  ] as const;
+  const key = queryKeys.card(identity, boardId, cardId);
   const access = useQuery({
     queryKey: key,
-    enabled: focused,
+    enabled:
+      focused && room.status !== 'unavailable' && room.status !== 'checking',
     gcTime: 0,
     staleTime: 0,
     refetchOnMount: 'always',
     async queryFn({ signal }) {
       try {
-        // The GET enforces Card read access and the parent Board relationship.
-        return await data.api.json(
-          path,
-          (value) => {
-            const card = value as { id?: unknown; boardId?: unknown } | null;
-            return card?.id === cardId && card?.boardId === boardId;
-          },
-          {
-            identity,
-            signal,
-            resourceKey: key,
-            expectedStatus: 200,
-            retries: 0,
-          },
+        return await createCardApi(data.api, identity, boardId).getCard(
+          cardId,
+          signal,
         );
       } catch (error) {
         if (error instanceof ApiError && [403, 404].includes(error.status)) {
@@ -80,11 +70,13 @@ function CardAccessCheck({
       }
     },
   });
-  if (access.isError || access.isPaused || access.data === false)
+  if (access.isError || access.isPaused || room.status === 'unavailable')
     return <ResourceBoundary access="unavailable" />;
   if (
     !access.isFetchedAfterMount ||
-    access.data !== true ||
+    !access.data ||
+    room.status === 'checking' ||
+    !data.resources.readable(key) ||
     session.status !== 'authenticated'
   )
     return <ResourceBoundary access="checking" />;
@@ -97,8 +89,14 @@ function CardAccessCheck({
       }}
     >
       <Scaffold
-        title="Card detail"
-        message="Card detail is coming soon."
+        title={access.data.isArchived ? access.data.title : 'Card detail'}
+        message={
+          access.data.isArchived
+            ? ['Archived · Read-only', access.data.description]
+                .filter(Boolean)
+                .join('\n\n')
+            : 'Card detail is coming soon.'
+        }
         header
       />
     </ResourceBoundary>

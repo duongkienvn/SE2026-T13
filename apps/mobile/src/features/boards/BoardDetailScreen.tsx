@@ -30,6 +30,11 @@ import {
   typography,
   useTheme,
 } from '../../ui';
+import { CardActionsSheet } from '../cards/CardActionsSheet';
+import {
+  useCardLifecycle,
+  type CardLifecycle,
+} from '../cards/useCardLifecycle';
 import { ColumnActionsSheet } from '../columns/ColumnActionsSheet';
 import { canMutateColumns } from '../columns/mutations';
 import {
@@ -156,6 +161,14 @@ function BoardEntry({
     discard: revoked || detail.data === null || (!!board && !writeAllowed),
     recheckBoard: () => void detail.refetch(),
   });
+  const cards = useCardLifecycle({
+    boardId,
+    identity,
+    writable: verified && focused && writeAllowed,
+    discard: revoked || detail.data === null,
+    discardWrites: !!board && !writeAllowed,
+    recheckBoard: () => void detail.refetch(),
+  });
   useEffect(() => {
     if (!revoked) return;
     setFilters({});
@@ -197,6 +210,7 @@ function BoardEntry({
           onFilters={setFilters}
           scroll={scroll.current}
           columnManagement={columnManagement}
+          cardManagement={cards}
         />
       ) : detail.isError && !checking && !detail.isFetching ? (
         <ErrorState
@@ -230,6 +244,7 @@ function BoardContent({
   onFilters,
   scroll,
   columnManagement,
+  cardManagement,
 }: {
   boardId: ResourceId;
   board: KanbanBoard;
@@ -239,6 +254,7 @@ function BoardContent({
   onFilters: (filters: KanbanFilters) => void;
   scroll: KanbanScroll;
   columnManagement: ColumnManagement;
+  cardManagement: CardLifecycle;
 }) {
   const c = useTheme();
   const router = useRouter();
@@ -293,6 +309,23 @@ function BoardContent({
     !columnQuery.isFetching &&
     !data.queryClient.getQueryState(queryKeys.columns(identity, boardId))
       ?.isInvalidated;
+  useEffect(() => {
+    if (
+      focused &&
+      cardManagement.sheet?.kind === 'archived' &&
+      columnQuery.hasNextPage &&
+      !columnQuery.isFetching &&
+      !columnQuery.isError
+    )
+      void columnQuery.fetchNextPage({ cancelRefetch: false });
+  }, [
+    focused,
+    cardManagement.sheet?.kind,
+    columnQuery.hasNextPage,
+    columnQuery.isFetching,
+    columnQuery.isError,
+    columnQuery.fetchNextPage,
+  ]);
   useEffect(() => {
     if (
       !focused ||
@@ -433,16 +466,26 @@ function BoardContent({
       <View style={styles.header}>
         <AppHeader
           trailing={
-            star.data && !star.isError ? (
-              <BoardStar
-                identity={identity}
-                id={boardId}
-                name={board.name}
-                starred={star.data.isStarred}
-                updatedAt={star.dataUpdatedAt}
-                disabled={!online}
+            <View style={{ flexDirection: 'row' }}>
+              {star.data && !star.isError && (
+                <BoardStar
+                  identity={identity}
+                  id={boardId}
+                  name={board.name}
+                  starred={star.data.isStarred}
+                  updatedAt={star.dataUpdatedAt}
+                  disabled={!online}
+                />
+              )}
+              <Button
+                variant="icon"
+                label="Board actions"
+                onPress={() => cardManagement.open({ kind: 'board' })}
+                icon={
+                  <Text style={[typography.section, { color: c.text }]}>⋯</Text>
+                }
               />
-            ) : undefined
+            </View>
           }
         />
         <View style={styles.boardHeading}>
@@ -604,6 +647,17 @@ function BoardContent({
           timeZone={zone.data}
           scroll={scroll}
           onOpen={onOpen}
+          onAddCard={
+            cardManagement.writable && filters.status !== 'archived'
+              ? (column) => cardManagement.open({ kind: 'create', column })
+              : undefined
+          }
+          onCardActions={
+            cardManagement.writable
+              ? (card) => cardManagement.open({ kind: 'actions', card })
+              : undefined
+          }
+          cardActionsDisabled={cardManagement.pending}
           onColumnActions={
             columnManagement.available
               ? columnManagement.openActions
@@ -622,6 +676,14 @@ function BoardContent({
       )}
 
       <View style={[styles.footer, { borderTopColor: c.border }]}>
+        {!!cardManagement.notice && !cardManagement.sheet && (
+          <Text
+            accessibilityLiveRegion="polite"
+            style={[typography.supporting, { color: c.text }]}
+          >
+            {cardManagement.notice}
+          </Text>
+        )}
         {cards.total !== undefined && (
           <Text
             style={[typography.supporting, { color: c.textSecondary }]}
@@ -741,6 +803,37 @@ function BoardContent({
           management={columnManagement}
           orderedColumnIds={columns.orderedColumnIds}
           orderReady={orderReady}
+        />
+      )}
+      {focused && cardManagement.sheet && (
+        <CardActionsSheet
+          management={cardManagement}
+          identity={identity}
+          boardId={boardId}
+          columns={columns.items}
+          allowPrecision={count === 0 && !unstable}
+          columnsPending={columnQuery.isFetching}
+          onLoadColumns={
+            columnQuery.hasNextPage
+              ? () => void columnQuery.fetchNextPage({ cancelRefetch: false })
+              : undefined
+          }
+          onOpenCard={(card) => {
+            onOpen(card);
+            cardManagement.close();
+          }}
+          refreshBoardForReview={async () => {
+            const options = kanbanCardOptions(data.api, identity, boardId, {});
+            apply({});
+            await data.queryClient.cancelQueries({
+              queryKey: options.queryKey,
+              exact: true,
+            });
+            return data.queryClient.fetchInfiniteQuery({
+              ...options,
+              retry: false,
+            });
+          }}
         />
       )}
     </>
