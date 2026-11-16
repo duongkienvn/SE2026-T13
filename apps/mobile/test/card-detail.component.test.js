@@ -46,12 +46,20 @@ import {
   preview,
   timestamp,
 } from './workspaces/kanban-fixtures';
-import { page, workspace } from './workspaces/fixtures';
+import { page, uuid, workspace } from './workspaces/fixtures';
 import { FakeSocket } from './realtime/support';
 
 jest.mock('expo-network', () => ({
   getNetworkStateAsync: async () => ({ isConnected: true }),
   addNetworkStateListener: () => ({ remove() {} }),
+}));
+jest.mock('@react-native-community/datetimepicker', () => ({
+  __esModule: true,
+  default: () => null,
+  DateTimePickerAndroid: {
+    open: jest.fn(),
+    dismiss: jest.fn(async () => true),
+  },
 }));
 jest.mock(
   'expo-glass-effect',
@@ -147,6 +155,7 @@ async function setup({
         const url = new URL(input);
         const request = {
           path: url.pathname,
+          page: Number(url.searchParams.get('page')) || 1,
           method: init.method,
           body: init.body ? JSON.parse(init.body) : undefined,
           signal: init.signal,
@@ -161,6 +170,10 @@ async function setup({
           return response(page([column(1), column(2)], n, 100));
         if (url.pathname.endsWith('/cards'))
           return response(page([card], n, 100));
+        if (url.pathname === `/api${cardPath}/labels`)
+          return success({ cardId: card.id, labels: [] });
+        if (url.pathname.endsWith('/preferences'))
+          return success({ timeZone: 'UTC', dateFormat: 'YYYY-MM-DD' });
         if (
           url.pathname.endsWith('/labels') ||
           url.pathname.endsWith('/members')
@@ -683,7 +696,7 @@ test('320dp with 160% fonts stacks metadata, wraps long title and preserves full
     const titleNode = await screen.findByText(title);
     expect(titleNode.props.numberOfLines).toBeUndefined();
     expect(
-      screen.getByTestId('card-detail-metadata').props.style.flexDirection,
+      screen.getByTestId('card-detail-metadata-grid').props.style.flexDirection,
     ).toBe('column');
     await editDescription('word '.repeat(400));
     expect(screen.getByLabelText('Description').props.value).toHaveLength(2000);
@@ -773,6 +786,7 @@ test('a 200 with a different saved value retains the editor until its input is c
 
 test('real dates use the account zone and a Workspace-only reader never fetches restricted member profiles', async () => {
   const env = await setup({
+    readOnly: true,
     override: (r) => {
       if (r.path.endsWith('/preferences')) return success({ timeZone: 'UTC' });
       if (r.path.endsWith('/members'))
@@ -802,16 +816,18 @@ test('real dates use the account zone and a Workspace-only reader never fetches 
       startDate: timestamp,
       dueDate: timestamp,
     });
-    await screen.findByText(USER_B);
-    await screen.findByText('UTC');
+    expect(
+      await screen.findByLabelText('Assignees: Assigned member'),
+    ).toBeTruthy();
+    expect(await screen.findAllByText('2026-11-13 · 09:00')).toHaveLength(2);
     expect(
       env.requests.filter(({ path }) => path.endsWith('/members')),
     ).toHaveLength(0);
-    expect(screen.queryByText('Assigned colleague')).toBeNull();
+    expect(screen.queryByLabelText('Assignees: Assigned colleague')).toBeNull();
     await env.board({ currentUserRole: 'MEMBER' });
-    await screen.findByText('Assigned colleague');
+    await screen.findByLabelText('Assignees: Assigned colleague');
     expect(
-      screen.queryByRole('button', { name: /Add assignee|Change due date/ }),
+      screen.queryByRole('button', { name: 'Manage assignees' }),
     ).toBeNull();
   } finally {
     await env.dispose();
@@ -819,7 +835,16 @@ test('real dates use the account zone and a Workspace-only reader never fetches 
 });
 
 test('real MOB-06 socket hints refetch the field and Board archive retains a hidden draft through reauthorization', async () => {
-  const env = await setup({ liveSocket: true });
+  let labels = [
+    { id: uuid(7000), boardId, name: 'QA label', color: '#615CF7' },
+  ];
+  const env = await setup({
+    liveSocket: true,
+    override: (r) =>
+      r.path === `/api${cardPath}/labels`
+        ? success({ cardId: cardDto(1).id, labels })
+        : null,
+  });
   try {
     await screen.findByText('Card 1');
     await act(() =>
@@ -839,6 +864,16 @@ test('real MOB-06 socket hints refetch the field and Board archive retains a hid
       ),
     );
     await editDescription('survives verification');
+    expect(await screen.findByText('QA label')).toBeTruthy();
+    labels = [{ ...labels[0], name: 'QA label renamed' }];
+    await act(() => {
+      socket.server('labels:changed', { boardId, labelId: labels[0].id });
+      env.time.advance(50);
+    });
+    expect(await screen.findByText('QA label renamed')).toBeTruthy();
+    expect(screen.getByLabelText('Description').props.value).toBe(
+      'survives verification',
+    );
     env.serverOnly({ description: 'Web-side description' });
     await act(() => {
       socket.server('card:updated', {
