@@ -568,15 +568,29 @@ function BoardContent({
                 : 'Workspace details unavailable')}
           </Text>
         </View>
-      </View>
-      {!allowed && (
-        <View style={styles.badge}>
-          <StatusChip
-            label={board.isArchived ? 'Archived · Read-only' : 'Read-only'}
-            tone="info"
+        <View style={styles.headerActions}>
+          {!allowed && (
+            <StatusChip
+              label={board.isArchived ? 'Archived · Read-only' : 'Read-only'}
+              tone="info"
+            />
+          )}
+          <Button
+            label="Board settings"
+            variant="link"
+            disabled={!focused}
+            onPress={() => {
+              if (
+                focused &&
+                data.resources.readable(queryKeys.board(identity, boardId))
+              )
+                router.push(
+                  destinationPath({ kind: 'boardSettings', boardId }),
+                );
+            }}
           />
         </View>
-      )}
+      </View>
       {view === 'board' &&
         columnManagement.available &&
         (columns.items.length > 0 || !columns.complete) && (
@@ -976,6 +990,12 @@ const styles = StyleSheet.create({
   },
   boardHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   badge: { alignSelf: 'flex-start' },
+  headerActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   views: {
     flexDirection: 'row',
     alignItems: 'center',

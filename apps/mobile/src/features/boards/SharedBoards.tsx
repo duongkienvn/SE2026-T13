@@ -1,6 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { BoardRole } from '@kanban/shared';
 import { Text, View } from 'react-native';
 import type { SessionIdentity } from '../../infrastructure/api/session-client';
 import { useMobileData } from '../../infrastructure/query/DataProvider';
@@ -31,6 +30,7 @@ import {
 import { createBoardApi } from './api';
 import { BoardStar } from './BoardStar';
 import { BoardEditor } from './BoardEditor';
+import { BoardRowActions } from './BoardRowActions';
 
 export function SharedBoards({
   identity,
@@ -169,22 +169,16 @@ export function SharedBoards({
                     disabled={!active || !online}
                   />
                 )}
-                {!board.isArchived &&
-                  board.currentUserRole === BoardRole.OWNER && (
-                    <Button
-                      label={`Edit ${board.name}`}
-                      variant="link"
-                      disabled={!active || !online}
-                      onPress={() => {
-                        if (
-                          active &&
-                          online &&
-                          data.queryClient.getQueryData(key) === query.data
-                        )
-                          setEditing(board.id);
-                      }}
-                    />
-                  )}
+                <BoardRowActions
+                  board={board}
+                  disabled={!active || !online}
+                  current={() =>
+                    active &&
+                    online &&
+                    data.queryClient.getQueryData(key) === query.data
+                  }
+                  onEdit={() => setEditing(board.id)}
+                />
               </View>
             }
           />

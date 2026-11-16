@@ -18,12 +18,21 @@ function record(value: unknown): Record<string, unknown> {
 export function decodeBoard(value: unknown) {
   const row = record(value);
   const workspace = workspaceId(row.workspaceId);
-  if (!workspace || !workspaceId(row.createdById))
+  if (
+    !workspace ||
+    !workspaceId(row.createdById) ||
+    (row.isStarterBoard !== undefined &&
+      typeof row.isStarterBoard !== 'boolean')
+  )
     throw new Error('Invalid Board response');
-  return decodeWorkspaceBoard(
-    { ...row, memberCount: null, canEdit: false },
-    workspace,
-  );
+  return {
+    ...decodeWorkspaceBoard(
+      { ...row, memberCount: null, canEdit: false },
+      workspace,
+    ),
+    // A server hint only; the sample-removal preview decides eligibility.
+    isStarterBoard: row.isStarterBoard === true,
+  };
 }
 
 export function decodeBoardUserState(value: unknown) {

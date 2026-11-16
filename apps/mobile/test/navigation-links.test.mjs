@@ -102,6 +102,7 @@ test('only the approved destination schema parses', () => {
     `/boards/${board}`,
     `/boards/${board}/table`,
     `/boards/${board}/calendar`,
+    `/boards/${board}/settings`,
   ]) {
     assert.ok(parsePath(path), path);
   }

@@ -12,7 +12,7 @@ export type ResourcePath =
   | `/workspaces/${ResourceId}`
   | `/boards/${ResourceId}`
   | `/boards/${ResourceId}/cards/${ResourceId}`
-  | `/boards/${ResourceId}/${'calendar' | 'table'}`;
+  | `/boards/${ResourceId}/${'calendar' | 'table' | 'settings'}`;
 export type DestinationPath =
   | `/${'home' | 'tasks' | 'boards' | 'inbox' | 'search' | 'settings' | 'invitation'}`
   | ResourcePath;
@@ -23,6 +23,7 @@ export type Destination =
   | { kind: 'board'; boardId: ResourceId }
   | { kind: 'card'; boardId: ResourceId; cardId: ResourceId }
   | { kind: 'boardView'; boardId: ResourceId; view: 'calendar' | 'table' }
+  | { kind: 'boardSettings'; boardId: ResourceId }
   | { kind: 'screen'; screen: 'search' | 'settings' | 'invitation' };
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -56,6 +57,8 @@ export function parsePath(path: string): Destination | null {
     if (parts.length === 2) return { kind: 'board', boardId };
     if (parts.length === 3 && (parts[2] === 'calendar' || parts[2] === 'table'))
       return { kind: 'boardView', boardId, view: parts[2] };
+    if (parts.length === 3 && parts[2] === 'settings')
+      return { kind: 'boardSettings', boardId };
     const cardId = parseResourceId(parts[3] ?? '');
     if (parts.length === 4 && parts[2] === 'cards' && cardId)
       return { kind: 'card', boardId, cardId };
@@ -77,6 +80,8 @@ export function destinationPath(destination: Destination): DestinationPath {
       return `/boards/${destination.boardId}/cards/${destination.cardId}`;
     case 'boardView':
       return `/boards/${destination.boardId}/${destination.view}`;
+    case 'boardSettings':
+      return `/boards/${destination.boardId}/settings`;
   }
 }
 

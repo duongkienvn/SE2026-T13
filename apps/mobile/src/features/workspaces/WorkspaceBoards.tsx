@@ -1,6 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { BoardRole } from '@kanban/shared';
 import { View, Text } from 'react-native';
 import type { SessionIdentity } from '../../infrastructure/api/session-client';
 import { useMobileData } from '../../infrastructure/query/DataProvider';
@@ -23,6 +22,7 @@ import {
 import { BoardArtwork } from '../home/BoardArtwork';
 import { BoardStar } from '../boards/BoardStar';
 import { BoardEditor } from '../boards/BoardEditor';
+import { BoardRowActions } from '../boards/BoardRowActions';
 import { workspaceBoardOptions } from './queries';
 import {
   canRetryWorkspace,
@@ -224,23 +224,17 @@ export function WorkspaceBoards({
                       disabled={!active || !online}
                     />
                   )}
-                  {!board.isArchived &&
-                    board.currentUserRole === BoardRole.OWNER && (
-                      <Button
-                        label={`Edit ${board.name}`}
-                        variant="link"
-                        disabled={!active || !online}
-                        onPress={() => {
-                          if (
-                            active &&
-                            online &&
-                            data.queryClient.getQueryData(options.queryKey) ===
-                              query.data
-                          )
-                            setEditing(board.id);
-                        }}
-                      />
-                    )}
+                  <BoardRowActions
+                    board={board}
+                    disabled={!active || !online}
+                    current={() =>
+                      active &&
+                      online &&
+                      data.queryClient.getQueryData(options.queryKey) ===
+                        query.data
+                    }
+                    onEdit={() => setEditing(board.id)}
+                  />
                 </View>
               }
               onPress={() => {

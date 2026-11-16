@@ -103,6 +103,7 @@ chưa triển khai. Mục lục dưới đây liệt kê toàn bộ task documen
 - [MOB-17 Native Card lifecycle](frontend/mob-17-card-lifecycle.md)
 - [MOB-16 Native Column management](frontend/mob-16-column-management.md)
 - [MOB-15 Native Board Detail and filters](frontend/mob-15-board-kanban.md)
+- [MOB-14 Native Board lifecycle and settings](frontend/mob-14-board-lifecycle.md)
 - [MOB-13 Native Board discovery](frontend/mob-13-board-discovery.md)
 
 - [MOB-12 Native Workspace management (work in progress)](frontend/mob-12-workspace-management.md)

@@ -193,6 +193,14 @@ const trigger = () =>
   screen.findByRole('button', {
     name: /^Switch workspace\. Current workspace/,
   });
+const openBoardEditor = async (name) => {
+  await fireEvent.press(
+    await screen.findByRole('button', { name: `More actions for ${name}` }),
+  );
+  await fireEvent.press(
+    await screen.findByRole('button', { name: 'Edit details' }),
+  );
+};
 const switchTo = async (label) => {
   await fireEvent.press(await trigger());
   await fireEvent.press(await screen.findByRole('button', { name: label }));
@@ -579,9 +587,7 @@ test('only an explicit active Board owner can open the editor and save metadata'
       url.pathname === `/api/boards/${owner.id}` ? ok(owner) : null,
   });
   try {
-    await fireEvent.press(
-      await screen.findByRole('button', { name: 'Edit Personal planning' }),
-    );
+    await openBoardEditor('Personal planning');
     await screen.findByLabelText('Board name');
     await fireEvent.changeText(screen.getByLabelText('Board name'), 'Renamed');
     await fireEvent.press(screen.getByRole('button', { name: 'Save board' }));
@@ -620,9 +626,7 @@ test('a downgraded Board role is rechecked before showing the editor', async () 
         : null,
   });
   try {
-    await fireEvent.press(
-      await screen.findByRole('button', { name: 'Edit Personal planning' }),
-    );
+    await openBoardEditor('Personal planning');
     await screen.findByText('Board editing is unavailable.');
     expect(screen.queryByLabelText('Board name')).toBeNull();
     expect(
@@ -678,9 +682,7 @@ test('background conflict refreshes the version before an explicit retry', async
     },
   });
   try {
-    await fireEvent.press(
-      await screen.findByRole('button', { name: 'Edit Personal planning' }),
-    );
+    await openBoardEditor('Personal planning');
     await fireEvent.press(
       await screen.findByRole('button', { name: 'Background blue' }),
     );
@@ -731,9 +733,7 @@ test('saving metadata preserves a pending background selection', async () => {
     },
   });
   try {
-    await fireEvent.press(
-      await screen.findByRole('button', { name: 'Edit Personal planning' }),
-    );
+    await openBoardEditor('Personal planning');
     await fireEvent.changeText(
       await screen.findByLabelText('Board name'),
       'Renamed',
