@@ -1,7 +1,8 @@
 /* global jest, test, expect, console */
 import React from 'react';
 import { URL } from 'node:url';
-import { Dimensions, Text } from 'react-native';
+import { Dimensions, Platform, Text } from 'react-native';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Stack, Tabs, router, useRouter } from 'expo-router';
 import {
   act,
@@ -9,6 +10,7 @@ import {
   renderRouter,
   screen,
   waitFor,
+  within,
 } from 'expo-router/testing-library';
 import { onlineManager } from '@tanstack/react-query';
 import { SessionProvider } from '../src/infrastructure/auth/SessionProvider';
@@ -935,6 +937,463 @@ test('multiline editor exposes native scrolling, does not truncate long values, 
     );
     expect(screen.getByLabelText('Description').props.value).toHaveLength(1900);
     await press('Cancel');
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('assignees use paged eligible members, reconcile duplicate taps and unassign via 204', async () => {
+  const members = Array.from({ length: 101 }, (_, i) => ({
+    user: {
+      id: i === 100 ? USER_B : uuid(6000 + i),
+      displayName: i === 100 ? 'Page two colleague' : `Colleague ${i + 1}`,
+      avatarUrl: null,
+    },
+  }));
+  let assigned = [];
+  const gate = deferred();
+  const env = await setup({
+    override: (r, state) => {
+      if (r.path.endsWith('/members'))
+        return response(page(members, r.page, 100));
+      if (r.path.endsWith('/assignees') && r.method === 'POST')
+        return gate.promise.then(() => {
+          assigned = [
+            {
+              userId: r.body.userId,
+              assignedById: USER_A,
+              createdAt: timestamp,
+            },
+          ];
+          return success(assigned[0], 201);
+        });
+      if (r.path.endsWith(`/assignees/${USER_B}`) && r.method === 'DELETE') {
+        assigned = [];
+        return {
+          status: 204,
+          ok: true,
+          headers: { get: () => null },
+          text: () => {
+            throw new Error('204 cannot read JSON');
+          },
+        };
+      }
+      if (r.path === `/api${cardPath}` && r.method === 'GET')
+        return success({ ...state.card, assignees: assigned });
+      return null;
+    },
+  });
+  try {
+    await env.board({ currentUserRole: 'MEMBER' });
+    await press('Manage assignees');
+    await fireEvent.changeText(
+      screen.getByLabelText('Search board members'),
+      'page TWO',
+    );
+    expect(
+      await screen.findByText(
+        'Search covers loaded members. Load more for additional results.',
+      ),
+    ).toBeTruthy();
+    await press('Load more members');
+    const row = await screen.findByRole('checkbox', {
+      name: 'Page two colleague',
+    });
+    await fireEvent.press(row);
+    await fireEvent.press(row);
+    expect(
+      env.requests
+        .filter((r) => r.method === 'POST' && r.path.endsWith('/assignees'))
+        .map((r) => r.body),
+    ).toEqual([{ userId: USER_B }]);
+    await act(() => gate.resolve());
+    await waitFor(() =>
+      expect(
+        screen.getByRole('checkbox', { name: 'Page two colleague' }),
+      ).toBeChecked(),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('checkbox', { name: 'Page two colleague' }),
+      ).toBeEnabled(),
+    );
+    await fireEvent.press(
+      screen.getByRole('checkbox', { name: 'Page two colleague' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('checkbox', { name: 'Page two colleague' }),
+      ).not.toBeChecked(),
+    );
+    expect(
+      env.requests.some(
+        (r) => r.method === 'DELETE' && r.path.endsWith(`/assignees/${USER_B}`),
+      ),
+    ).toBe(true);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('Card labels read their own DTO, support a third catalog page, and reflect Board CRUD after confirmation', async () => {
+  let labels = Array.from({ length: 251 }, (_, i) => ({
+    id: uuid(10000 + i),
+    boardId,
+    name: `Label ${i + 1}`,
+    color: '#615CF7',
+  }));
+  const last = labels.at(-1);
+  const assigned = new Set([last.id]);
+  const boardLabels = `/api/boards/${boardId}/labels`;
+  const assignments = `/api${cardPath}/labels`;
+  const empty = {
+    status: 204,
+    ok: true,
+    headers: { get: () => null },
+    text: () => {
+      throw new Error('204 cannot read JSON');
+    },
+  };
+  const dto = () => ({
+    cardId: cardDto(1).id,
+    labels: labels.filter(({ id }) => assigned.has(id)),
+  });
+  const env = await setup({
+    override(r) {
+      if (r.path === boardLabels && r.method === 'GET')
+        return response(page(labels, r.page, 100));
+      if (r.path === boardLabels && r.method === 'POST') {
+        const saved = { id: uuid(11000), boardId, ...r.body };
+        labels = [saved, ...labels];
+        return success(saved, 201);
+      }
+      if (r.path === assignments) {
+        if (r.method === 'POST') assigned.add(r.body.labelId);
+        return success(dto(), r.method === 'POST' ? 201 : 200);
+      }
+      if (r.path.startsWith(assignments + '/') && r.method === 'DELETE') {
+        assigned.delete(r.path.split('/').at(-1));
+        return empty;
+      }
+      if (r.path.startsWith(boardLabels + '/')) {
+        const id = r.path.split('/').at(-1);
+        if (r.method === 'DELETE') {
+          labels = labels.filter((item) => item.id !== id);
+          assigned.delete(id);
+          return empty;
+        }
+        if (r.method === 'PATCH') {
+          const saved = { ...labels.find((item) => item.id === id), ...r.body };
+          labels = labels.map((item) => (item.id === id ? saved : item));
+          return success(saved);
+        }
+      }
+      return null;
+    },
+  });
+  try {
+    expect(await screen.findByText(last.name)).toBeTruthy();
+    expect(env.requests.some(({ path }) => path === boardLabels)).toBe(false);
+    await press('Manage labels');
+    await fireEvent.changeText(
+      screen.getByLabelText('Search labels'),
+      last.name,
+    );
+    const chip = await screen.findByRole('checkbox', {
+      name: last.name,
+    });
+    expect(chip).toBeChecked();
+    await waitFor(() =>
+      expect(screen.getByRole('checkbox', { name: last.name })).toBeEnabled(),
+    );
+    await fireEvent.press(chip);
+    await waitFor(() =>
+      expect(screen.queryByRole('checkbox', { name: last.name })).toBeNull(),
+    );
+    await press('Load more labels');
+    await waitFor(() =>
+      expect(
+        env.requests.some(
+          ({ path, page }) => path === boardLabels && page === 2,
+        ),
+      ).toBe(true),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Load more labels' }),
+      ).toBeEnabled(),
+    );
+    await press('Load more labels');
+    const finalRow = await screen.findByRole('checkbox', { name: last.name });
+    await waitFor(() => expect(finalRow).toBeEnabled());
+    await fireEvent.press(finalRow);
+    await waitFor(() =>
+      expect(screen.getByRole('checkbox', { name: last.name })).toBeChecked(),
+    );
+    await press('Manage board labels');
+    await fireEvent.changeText(
+      screen.getByLabelText('Search labels'),
+      last.name,
+    );
+    await press(`Edit ${last.name}`);
+    await fireEvent.changeText(
+      screen.getByLabelText('Label name'),
+      'Design review',
+    );
+    await press('Back to labels');
+    expect(await screen.findByText('Discard label changes?')).toBeTruthy();
+    await press('Keep editing');
+    expect(screen.getByLabelText('Label name').props.value).toBe(
+      'Design review',
+    );
+    await fireEvent.changeText(screen.getByLabelText('Color'), '#ff9900');
+    await press('Save label');
+    await screen.findByText('Board labels');
+    expect(env.patches()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          body: { name: 'Design review', color: '#FF9900' },
+        }),
+      ]),
+    );
+    await fireEvent.changeText(
+      screen.getByLabelText('Search labels'),
+      'design review',
+    );
+    await press('Edit Design review');
+    await press('Delete label');
+    expect(await screen.findByText(/removes it from every card/)).toBeTruthy();
+    expect(
+      env.requests.some(
+        ({ path, method }) =>
+          path === `${boardLabels}/${last.id}` && method === 'DELETE',
+      ),
+    ).toBe(false);
+    await press('Delete label');
+    await screen.findByText('Board labels');
+    expect(assigned.has(last.id)).toBe(false);
+    await press('Create label');
+    await fireEvent.changeText(screen.getByLabelText('Label name'), 'Label 1');
+    await press('Save label');
+    expect(
+      await screen.findByText('A board label already uses this name.'),
+    ).toBeTruthy();
+    await fireEvent.changeText(
+      screen.getByLabelText('Label name'),
+      '  Customer  ',
+    );
+    await press('Save label');
+    await screen.findByText('Board labels');
+    expect(env.requests).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: boardLabels,
+          method: 'POST',
+          body: { name: 'Customer', color: '#615CF7' },
+        }),
+      ]),
+    );
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('native date controls preserve a dirty description, PATCH one instant or null, and cancel/no-op without writes', async () => {
+  const original = '2026-11-13T09:00:00.000Z';
+  const env = await setup({
+    override: (r) =>
+      r.path.endsWith('/preferences')
+        ? success({ timeZone: 'Asia/Kathmandu', dateFormat: 'DD/MM/YYYY' })
+        : null,
+  });
+  const platform = jest.replaceProperty(Platform, 'OS', 'android');
+  try {
+    await env.remote({ startDate: original, dueDate: original });
+    await editDescription('Unsent text');
+    await press('Edit due date');
+    await press('Save');
+    expect(env.patches()).toHaveLength(0);
+    await press('Edit due date');
+    await press('Choose time');
+    const picker = DateTimePickerAndroid.open.mock.calls.at(-1)[0];
+    expect(picker).toMatchObject({ mode: 'time', timeZoneName: 'UTC' });
+    await act(() =>
+      picker.onValueChange({}, new Date('2026-11-13T23:00:00.000Z')),
+    );
+    await press('Dismiss date editor');
+    expect(await screen.findByText('Discard date changes?')).toBeTruthy();
+    await press('Keep editing');
+    expect(screen.getByText('23:00')).toBeTruthy();
+    await fireEvent.press(
+      within(screen.getByTestId('card-date-actions')).getByRole('button', {
+        name: 'Cancel',
+      }),
+    );
+    expect(env.patches()).toHaveLength(0);
+    await press('Edit due date');
+    await press('Choose time');
+    await act(() =>
+      DateTimePickerAndroid.open.mock.calls
+        .at(-1)[0]
+        .onValueChange({}, new Date('2026-11-13T23:00:00.000Z')),
+    );
+    await press('Save');
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Save', exact: true }),
+      ).toBeNull(),
+    );
+    expect(env.patches().map(({ body }) => body)).toEqual([
+      { dueDate: '2026-11-13T17:15:00.000Z' },
+    ]);
+    expect(screen.getByLabelText('Description').props.value).toBe(
+      'Unsent text',
+    );
+    await press('Edit start date');
+    await press('Clear');
+    await press('Save');
+    await waitFor(() => expect(env.patches()).toHaveLength(2));
+    expect(env.patches()[1].body).toEqual({ startDate: null });
+  } finally {
+    platform.restore();
+    await env.dispose();
+  }
+});
+
+test('an optional roster denial and a removed assignee never expose profiles or evict the Card', async () => {
+  let denied = true;
+  let members = [
+    {
+      user: { id: USER_B, displayName: 'Eligible colleague', avatarUrl: null },
+    },
+  ];
+  const env = await setup({
+    override(r) {
+      if (r.path.endsWith('/members'))
+        return denied
+          ? fail(403, 'BOARD_MEMBERSHIP_REQUIRED')
+          : response(page(members, 1, 100));
+      if (r.path.endsWith('/assignees') && r.method === 'POST') {
+        members = [];
+        return fail(404, 'CARD_ASSIGNEE_NOT_FOUND');
+      }
+      return null;
+    },
+  });
+  try {
+    await env.board({ currentUserRole: 'MEMBER' });
+    await press('Manage assignees');
+    expect(
+      await screen.findByText(
+        /board’s members are unavailable|no longer have permission|Access changed/,
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole('checkbox', { name: 'Eligible colleague' }),
+    ).toBeNull();
+    denied = false;
+    await press('Done');
+    await press('Manage assignees');
+    await act(() =>
+      env.data.invalidate(env.data.getIdentity(), [
+        queryKeys.members(env.data.getIdentity(), boardId),
+      ]),
+    );
+    const eligible = await screen.findByRole('checkbox', {
+      name: 'Eligible colleague',
+    });
+    await fireEvent.press(eligible);
+    expect(
+      await screen.findByText(/This item is no longer available/),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole('checkbox', { name: 'Eligible colleague' }),
+    ).toBeNull();
+    expect(screen.queryByText('Card unavailable')).toBeNull();
+    await press('Done');
+    expect(await screen.findByText('Card 1')).toBeTruthy();
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('date Save detects a changed account time zone and retains the unsubmitted wall time', async () => {
+  let zone = 'America/New_York';
+  const env = await setup({
+    override: (r) =>
+      r.path.endsWith('/preferences') ? success({ timeZone: zone }) : null,
+  });
+  const platform = jest.replaceProperty(Platform, 'OS', 'android');
+  try {
+    await env.remote({ dueDate: '2026-11-01T07:00:00.000Z' });
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Edit due date' }),
+      ).toBeEnabled(),
+    );
+    await press('Edit due date');
+    await press('Choose time');
+    await act(() =>
+      DateTimePickerAndroid.open.mock.calls
+        .at(-1)[0]
+        .onValueChange({}, new Date('2026-11-01T01:30:00.000Z')),
+    );
+    expect(
+      await screen.findByText('This time occurs twice. Choose its UTC offset.'),
+    ).toBeTruthy();
+    await press('UTC−05:00');
+    zone = 'UTC';
+    await press('Save');
+    expect(
+      await screen.findAllByText(/Your time zone changed/),
+    ).not.toHaveLength(0);
+    expect(screen.getByText('01:30')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    expect(env.patches()).toHaveLength(0);
+  } finally {
+    platform.restore();
+    await env.dispose();
+  }
+});
+
+test('a date rate limit keeps Clear staged and only permits a manual retry after Retry-After', async () => {
+  const original = '2026-11-13T09:00:00.000Z';
+  let attempts = 0;
+  const env = await setup({
+    override: (r) =>
+      r.path === `/api${cardPath}` && r.method === 'PATCH' && ++attempts === 1
+        ? fail(429, 'TOO_MANY_REQUESTS', '1')
+        : null,
+  });
+  try {
+    await env.remote({ startDate: original, dueDate: original });
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Edit due date' }),
+      ).toBeEnabled(),
+    );
+    await press('Edit due date');
+    await press('Clear');
+    await press('Save');
+    expect(
+      await screen.findByText('Too many requests. Try again shortly.'),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    expect(attempts).toBe(1);
+    await waitFor(
+      () => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled(),
+      { timeout: 3000 },
+    );
+    expect(attempts).toBe(1);
+    await press('Save');
+    await waitFor(() =>
+      expect(screen.queryByTestId('card-date-actions')).toBeNull(),
+    );
+    expect(env.patches().map(({ body }) => body)).toEqual([
+      { dueDate: null },
+      { dueDate: null },
+    ]);
+    expect(await screen.findByText('2026-11-13 · 09:00')).toBeTruthy();
   } finally {
     await env.dispose();
   }
