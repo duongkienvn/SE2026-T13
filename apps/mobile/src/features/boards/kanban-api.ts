@@ -19,6 +19,10 @@ import { requirePage } from '../../infrastructure/query/pagination.ts';
 import { decodeBoardAccess } from '../../infrastructure/realtime/rooms.ts';
 import { decodeWorkspace } from '../workspaces/decoder.ts';
 import { decodeBoard } from './api.ts';
+import {
+  utcPreferences,
+  type DatePreferences,
+} from '../cards/metadata/dates.ts';
 
 export type KanbanFilters = Omit<BoardCardFilters, 'page' | 'limit'>;
 export const kanbanPageSize = 100;
@@ -223,6 +227,26 @@ export interface KanbanAssignee {
   avatarUrl: string | null;
 }
 
+export function decodeKanbanLabel(
+  value: unknown,
+  boardId: string,
+  status = 200,
+): KanbanLabel {
+  const label = value as Record<string, unknown> | null;
+  if (
+    !isUuid(label?.boardId) ||
+    label.boardId.toLowerCase() !== boardId ||
+    !isUuid(label.id) ||
+    typeof label.name !== 'string' ||
+    !label.name.trim() ||
+    [...label.name].length > 120 ||
+    typeof label.color !== 'string' ||
+    !/^#[0-9A-F]{6}$/.test(label.color)
+  )
+    throw invalidResponse(status);
+  return { id: label.id.toLowerCase(), name: label.name, color: label.color };
+}
+
 export function isAccessDenied(error: unknown) {
   return (
     error instanceof ApiError && (error.status === 403 || error.status === 404)
@@ -317,19 +341,7 @@ export function createKanbanApi(
           queryKeys.labels(identity, boardId),
           page,
           signal,
-          (value): KanbanLabel => {
-            const label = related(value, boardId);
-            if (
-              typeof label.color !== 'string' ||
-              !/^#[0-9a-f]{6}$/i.test(label.color)
-            )
-              throw invalidResponse(200);
-            return {
-              id: id(label.id),
-              name: name(label.name),
-              color: label.color,
-            };
-          },
+          (value) => decodeKanbanLabel(value, boardId),
         ),
       ),
     members: (page: number, signal: AbortSignal) =>
@@ -381,6 +393,31 @@ export function createKanbanApi(
           },
           options(signal, [...boardKey, 'workspace-context', workspaceId]),
         ),
+      ),
+    datePreferences: (signal: AbortSignal) =>
+      api.json(
+        '/users/me/preferences',
+        (value): DatePreferences => {
+          const {
+            timeZone = utcPreferences.timeZone,
+            dateFormat = utcPreferences.dateFormat,
+          } = row(value);
+          if (
+            typeof timeZone !== 'string' ||
+            !/^[A-Za-z][A-Za-z0-9_+\-/]*$/.test(timeZone) ||
+            (dateFormat !== 'YYYY-MM-DD' &&
+              dateFormat !== 'DD/MM/YYYY' &&
+              dateFormat !== 'MM/DD/YYYY')
+          )
+            throw invalidResponse(200);
+          try {
+            new Intl.DateTimeFormat('en', { timeZone });
+          } catch {
+            throw invalidResponse(200);
+          }
+          return { timeZone, dateFormat };
+        },
+        options(signal, queryKeys.datePreferences(identity)),
       ),
     timeZone: (signal: AbortSignal) =>
       api.json(
