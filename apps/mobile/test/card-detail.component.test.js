@@ -1406,3 +1406,119 @@ test('a date rate limit keeps Clear staged and only permits a manual retry after
     await env.dispose();
   }
 });
+
+test('MOB-22 uses the actual canonical Card stack and restores Table filters and sorting after Back', async () => {
+  const env = await setup({ initialUrl: `/boards/${boardId}` });
+  try {
+    await fireEvent.press(await screen.findByRole('tab', { name: 'Table' }));
+    await press('Sort: Board order');
+    await fireEvent.changeText(screen.getByLabelText('Search cards'), 'Card');
+    await press('Latest due date');
+    await press('Apply filters (2)');
+    await press('Open card: Card 1');
+    await screen.findByText('Original\nsecond line');
+    expect(screen).toHavePathname(cardPath);
+    await act(() => router.back());
+    await screen.findByTestId('board-table');
+    await press('Sort: Latest due date');
+    expect(screen.getByLabelText('Search cards').props.value).toBe('Card');
+    await press('Cancel');
+    expect(
+      screen.getByRole('tab', { name: 'Table' }).props.accessibilityState
+        .selected,
+    ).toBe(true);
+    expect(screen).toHavePathname(`/boards/${boardId}`);
+    await fireEvent.press(screen.getByRole('tab', { name: 'Board' }));
+    await screen.findByTestId('board-columns');
+    expect(screen.getByRole('button', { name: 'Filters (2)' })).toBeTruthy();
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('MOB-22 real realtime owner coalesces hints, reconciles moved/archived rows and fences revoked Table content', async () => {
+  const env = await setup({
+    initialUrl: `/boards/${boardId}`,
+    liveSocket: true,
+    override: (request, current) =>
+      request.path.endsWith('/cards')
+        ? response(
+            page(
+              current.card.isArchived ? [] : [current.card],
+              request.page,
+              100,
+            ),
+          )
+        : null,
+  });
+  try {
+    await fireEvent.press(await screen.findByRole('tab', { name: 'Table' }));
+    await screen.findByRole('button', { name: 'Open card: Card 1' });
+    await act(() =>
+      env.realtime.setEnvironment({ foreground: true, online: true }),
+    );
+    await waitFor(() => expect(env.sockets.length).toBeGreaterThan(0));
+    const socket = env.sockets.at(-1);
+    await act(() => socket.server('connect'));
+    await waitFor(() =>
+      expect(socket.commands.some(({ event }) => event === 'board:join')).toBe(
+        true,
+      ),
+    );
+    await act(() =>
+      socket.ack(
+        socket.commands.findLastIndex(({ event }) => event === 'board:join'),
+      ),
+    );
+    await screen.findByText('Column: Column 1');
+    const reads = () =>
+      env.requests.filter(({ path }) => path.endsWith('/cards')).length;
+    const boardReads = () =>
+      env.requests.filter(({ path }) => path === `/api/boards/${boardId}`)
+        .length;
+    const before = reads();
+    const beforeBoard = boardReads();
+    env.serverOnly({
+      title: 'Moved on another client',
+      columnId: column(2).id,
+    });
+    await act(() => {
+      for (let i = 0; i < 3; i++)
+        socket.server('card:updated', {
+          boardId,
+          cardId: cardDto(1).id,
+          columnId: column(2).id,
+          changeScope: 'card-fields',
+        });
+      env.time.advance(50);
+    });
+    await screen.findByRole('button', {
+      name: 'Open card: Moved on another client',
+    });
+    await screen.findByText('Column: Column 2');
+    expect(reads()).toBe(before + 1);
+    expect(boardReads()).toBe(beforeBoard);
+    env.serverOnly({ isArchived: true, archivedAt: timestamp });
+    await act(() => {
+      socket.server('card:archived', {
+        boardId,
+        cardId: cardDto(1).id,
+        columnId: column(2).id,
+      });
+      env.time.advance(50);
+    });
+    await screen.findByText('0 cards');
+    expect(screen.queryByText('Moved on another client')).toBeNull();
+    env.serverBoard({
+      capabilities: { ...boardDetail.capabilities, canReadBoard: false },
+    });
+    await act(() => {
+      socket.server('board:access-revoked', { boardId });
+      env.time.advance(50);
+    });
+    await screen.findByText('Board unavailable');
+    expect(screen.queryByTestId('board-table')).toBeNull();
+  } finally {
+    await env.dispose();
+  }
+});
