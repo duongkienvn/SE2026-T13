@@ -211,7 +211,8 @@ async function setup({
   };
 }
 
-const button = (name) => screen.findByRole('button', { name });
+const button = (name) =>
+  screen.findByRole('button', { name }, { timeout: 4000 });
 
 test('Card previews resolve later label pages once for the Board and filters reuse them', async () => {
   const labels = Array.from({ length: 101 }, (_, index) => ({
@@ -483,9 +484,9 @@ test('guest and archived reading survives restricted Workspace context; Card nav
     await screen.findByText('Archived · Read-only');
     expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
     expect(
-      screen.getByRole('tab', { name: 'Table, coming soon' }).props
-        .accessibilityState.disabled,
-    ).toBe(true);
+      screen.getByRole('tab', { name: 'Table' }).props.accessibilityState
+        .selected,
+    ).toBe(false);
     await fireEvent.press(await button('Due today'));
     await button('Filters (1)');
     await fireEvent.press(await button(/^Card 1,/));
@@ -1452,3 +1453,293 @@ test('revocation during a Column write removes the editor and ignores a delayed 
     await env.dispose();
   }
 });
+
+test.each([0, 1, 20, 100, 101, 251])(
+  'Table reads %i real cards on demand with honest totals and bounded preview requests',
+  async (count) => {
+    const rows = Array.from({ length: count }, (_, index) => card(index + 1));
+    const env = await setup({ cards: rows });
+    try {
+      await fireEvent.press(await screen.findByRole('tab', { name: 'Table' }));
+      await screen.findByTestId('board-table');
+      const pages = Math.max(1, Math.ceil(count / 100));
+      for (let pageNumber = 1; pageNumber < pages; pageNumber++) {
+        await screen.findByText(`Loaded ${pageNumber * 100} of ${count} cards`);
+        expect(env.reads('/cards')).toHaveLength(pageNumber);
+        await fireEvent.press(await button('Load more cards'));
+      }
+      await screen.findByText(`${count} ${count === 1 ? 'card' : 'cards'}`);
+      expect(
+        env
+          .reads('/cards')
+          .map(({ params }) => [params.get('page'), params.get('limit')]),
+      ).toEqual(
+        Array.from({ length: pages }, (_, index) => [String(index + 1), '100']),
+      );
+      await waitFor(() =>
+        expect(env.reads('/card-preview-summaries')).toHaveLength(
+          count ? pages : 0,
+        ),
+      );
+      expect(
+        env
+          .reads('/card-preview-summaries')
+          .every(
+            ({ params }) => params.get('cardIds').split(',').length <= 100,
+          ),
+      ).toBe(true);
+      if (count) {
+        expect(await button('Open card: Card 1')).toBeTruthy();
+        expect(screen.getAllByText('Column: Column 1').length).toBeGreaterThan(
+          0,
+        );
+        expect(screen.getAllByText('Card 1')).toHaveLength(1);
+        expect(
+          screen.queryAllByText(/^Card [0-9]+$/).length,
+        ).toBeLessThanOrEqual(Math.max(5, count));
+      } else expect(screen.getByText('No cards to display')).toBeTruthy();
+      expect(
+        screen.queryByRole('button', { name: /^Card actions for/ }),
+      ).toBeNull();
+      expect(
+        screen.getByRole('tab', { name: 'Calendar, coming soon' }).props
+          .accessibilityState.disabled,
+      ).toBe(true);
+      const readCount = env.reads('/cards').length;
+      await fireEvent.press(screen.getByRole('tab', { name: 'Board' }));
+      await screen.findByTestId('board-columns');
+      await fireEvent.press(screen.getByRole('tab', { name: 'Table' }));
+      expect(env.reads('/cards')).toHaveLength(readCount);
+    } finally {
+      await env.dispose();
+    }
+  },
+);
+
+test.each([
+  ['Title A–Z', 'title', 'asc'],
+  ['Title Z–A', 'title', 'desc'],
+  ['Earliest due date', 'dueDate', 'asc'],
+  ['Latest due date', 'dueDate', 'desc'],
+])(
+  'Table sort %s resets server pagination and preserves filters through Board and Back',
+  async (label, sortBy, direction) => {
+    const env = await setup({
+      cards: Array.from({ length: 101 }, (_, i) => card(i + 1)),
+    });
+    try {
+      await fireEvent.press(await screen.findByRole('tab', { name: 'Table' }));
+      await screen.findByText('Loaded 100 of 101 cards');
+      await fireEvent.press(await button('Load more cards'));
+      await screen.findByText('101 cards');
+      await fireEvent.press(await button('Sort: Board order'));
+      await fireEvent.changeText(
+        screen.getByLabelText('Search cards'),
+        ' Card ',
+      );
+      await fireEvent.press(await button(label));
+      await fireEvent.press(await button('Apply filters (2)'));
+      await screen.findByText('Loaded 100 of 101 cards');
+      const params = env.reads('/cards').at(-1).params;
+      expect([
+        params.get('q'),
+        params.get('sortBy'),
+        params.get('sortDirection'),
+        params.get('page'),
+      ]).toEqual(['Card', sortBy, direction, '1']);
+      await fireEvent.press(await button('Load more cards'));
+      await screen.findByText('101 cards');
+      await fireEvent.press(await button('Open card: Card 1'));
+      expect(mockPush).toHaveBeenLastCalledWith(
+        `/boards/${boardId}/cards/${card(1).id}`,
+      );
+      await env.focus(false);
+      await env.focus(true);
+      await screen.findByTestId('board-table');
+      await button(`Sort: ${label}`);
+      await screen.findByText('101 cards');
+      await fireEvent.press(screen.getByRole('tab', { name: 'Board' }));
+      await button('Filters (2)');
+      expect(
+        screen.getByRole('tab', { name: 'Board' }).props.accessibilityState
+          .selected,
+      ).toBe(true);
+      await fireEvent.press(await button('Filters (2)'));
+      await fireEvent.changeText(
+        screen.getByLabelText('Search cards'),
+        'not applied',
+      );
+      await fireEvent.press(await button('Cancel'));
+      expect(env.reads('/cards').at(-1).params.get('q')).toBe('Card');
+      await fireEvent.press(await button('Filters (2)'));
+      await fireEvent.press(await button('Reset'));
+      await fireEvent.press(await button('Apply filters (0)'));
+      await screen.findByText('Loaded 100 of 101 cards');
+      expect(env.reads('/cards').at(-1).params.get('q')).toBeNull();
+    } finally {
+      await env.dispose();
+    }
+  },
+);
+
+test('Table tolerates roster denial and unknown labels, uses MOB-19 dates and fences a delayed preview on revoke', async () => {
+  const slow = deferred();
+  let delayed = false;
+  const row = {
+    ...card(1),
+    dueDate: '2026-11-17T20:00:00.000Z',
+    assignees: [{ userId: USER_A }],
+  };
+  const env = await setup({
+    cards: [row],
+    mode: 'dark',
+    override(url) {
+      if (url.pathname.endsWith('/members')) return response({}, 403);
+      if (url.pathname.endsWith('/card-preview-summaries'))
+        return delayed
+          ? slow.promise
+          : result({
+              summaries: [{ ...preview(row.id), labelIds: [uuid(9999)] }],
+            });
+      return null;
+    },
+  });
+  try {
+    await fireEvent.press(await screen.findByRole('tab', { name: 'Table' }));
+    await button('Open card: Card 1');
+    await screen.findByText('1 unresolved label');
+    await screen.findByText('1 assigned');
+    expect(screen.queryByText('Mobile QA')).toBeNull();
+    expect(screen.getByText('1/2 checklist items')).toBeTruthy();
+    expect(screen.getByLabelText(/Wednesday, November 18, 2026/)).toBeTruthy();
+    const identity = env.data.getIdentity();
+    delayed = true;
+    await act(() => {
+      void env.data.invalidate(identity, [
+        [...queryKeys.board(identity, boardId), 'previews'],
+      ]);
+    });
+    await act(() => env.realtime.revokeBoard(boardId));
+    await screen.findByText('Board unavailable');
+    await act(() => slow.resolve(result({ summaries: [preview(row.id)] })));
+    expect(screen.queryByTestId('board-table')).toBeNull();
+    expect(screen.queryByText('Card 1')).toBeNull();
+    expect(
+      env.data.queryClient
+        .getQueriesData({ queryKey: queryKeys.board(identity, boardId) })
+        .every(([, value]) => value === undefined),
+    ).toBe(true);
+  } finally {
+    slow.resolve(result({ summaries: [] }));
+    await env.dispose();
+  }
+});
+
+test('Table retries a failed next page and repairs an empty shifted last page after archive', async () => {
+  const rows = Array.from({ length: 101 }, (_, i) => card(i + 1));
+  let stage = 0;
+  const env = await setup({
+    cards: rows,
+    override(url) {
+      if (!url.pathname.endsWith('/cards')) return null;
+      const n = Number(url.searchParams.get('page'));
+      if (n === 2 && stage === 0) {
+        stage = 1;
+        return response({}, 500);
+      }
+      if (n === 2 && stage === 1) {
+        stage = 2;
+        return response(page(rows.slice(0, 100), n, 100));
+      }
+      if (stage === 2) return response(page(rows.slice(0, 100), n, 100));
+      return null;
+    },
+  });
+  try {
+    await fireEvent.press(await screen.findByRole('tab', { name: 'Table' }));
+    await screen.findByText('Loaded 100 of 101 cards');
+    await fireEvent.press(await button('Load more cards'));
+    await fireEvent.press(await button('Retry cards'));
+    await screen.findByText('100 cards');
+    expect(env.reads('/cards').map(({ params }) => params.get('page'))).toEqual(
+      ['1', '2', '2', '1'],
+    );
+    expect(screen.queryByText('Loaded 100 of 101 cards')).toBeNull();
+  } finally {
+    await env.dispose();
+  }
+});
+
+test.each(['logout', 'account', '401'])(
+  'Table %s fences old rows, label catalog and late summary responses',
+  async (kind) => {
+    const slow = deferred();
+    let delaying = false;
+    let expired = false;
+    const label = {
+      id: uuid(8000),
+      boardId,
+      name: 'Private Table label',
+      color: '#615CF7',
+    };
+    const env = await setup({
+      cards: [card(1)],
+      override(url, session) {
+        if (session.user.id === USER_B) return response({}, 404);
+        if (expired && url.pathname.endsWith('/cards'))
+          return response({}, 401);
+        if (url.pathname.endsWith('/labels'))
+          return response(page([label], 1, 100));
+        if (url.pathname.endsWith('/card-preview-summaries'))
+          return delaying
+            ? slow.promise
+            : result({
+                summaries: [{ ...preview(card(1).id), labelIds: [label.id] }],
+              });
+        return null;
+      },
+    });
+    try {
+      await fireEvent.press(await screen.findByRole('tab', { name: 'Table' }));
+      await screen.findByText('Private Table label');
+      const identity = env.data.getIdentity();
+      delaying = true;
+      await act(() => {
+        void env.data
+          .invalidate(identity, [
+            [...queryKeys.board(identity, boardId), 'previews'],
+          ])
+          .catch((error) => expect(error.kind).toBe('session-changed'));
+      });
+      if (kind === 'logout') await act(() => env.manager.logout());
+      else if (kind === 'account')
+        await act(() => env.manager.establishSession(loginResponse(USER_B)));
+      else {
+        expired = true;
+        await act(() =>
+          env.data
+            .invalidate(identity, [queryKeys.cards(identity, boardId)])
+            .catch((error) => expect(error.kind).toBe('session-changed')),
+        );
+      }
+      await act(() =>
+        slow.resolve(
+          result({
+            summaries: [{ ...preview(card(1).id), labelIds: [label.id] }],
+          }),
+        ),
+      );
+      expect(screen.queryByTestId('board-table')).toBeNull();
+      expect(screen.queryByText('Private Table label')).toBeNull();
+      expect(screen.queryByText('Card 1')).toBeNull();
+      expect(
+        env.data.queryClient
+          .getQueriesData({ queryKey: queryKeys.scope(identity) })
+          .every(([, value]) => value === undefined),
+      ).toBe(true);
+    } finally {
+      slow.resolve(result({ summaries: [] }));
+      await env.dispose();
+    }
+  },
+);
