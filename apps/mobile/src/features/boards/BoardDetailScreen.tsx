@@ -1,7 +1,7 @@
 import { hashKey, useQuery } from '@tanstack/react-query';
 import { useIsFocused, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../../infrastructure/api/errors';
 import { useSessionSnapshot } from '../../infrastructure/auth/SessionProvider';
@@ -52,6 +52,7 @@ import { createBoardApi } from './api';
 import { BoardFiltersSheet, dueOptions } from './BoardFiltersSheet';
 import { BoardKanban, type KanbanScroll } from './BoardKanban';
 import { BoardStar } from './BoardStar';
+import { BoardTable } from './table/BoardTable';
 import {
   createKanbanApi,
   filterCount,
@@ -104,6 +105,8 @@ function BoardEntry({
   const recorded = useRef(false);
   const scroll = useRef<KanbanScroll>({ x: 0, cards: new Map() });
   const [filters, setFilters] = useState<KanbanFilters>({});
+  const [view, setView] = useState<'board' | 'table'>('board');
+  const tableScroll = useRef({ y: 0 });
   const checking = room.status === 'checking';
   const revoked = room.status === 'unavailable';
   const detail = useQuery({
@@ -173,6 +176,8 @@ function BoardEntry({
   useEffect(() => {
     if (!revoked) return;
     setFilters({});
+    setView('board');
+    tableScroll.current.y = 0;
     scroll.current.x = 0;
     scroll.current.cards.clear();
     recorded.current = false;
@@ -210,6 +215,9 @@ function BoardEntry({
           filters={filters}
           onFilters={setFilters}
           scroll={scroll.current}
+          view={view}
+          onView={setView}
+          tableScroll={tableScroll.current}
           columnManagement={columnManagement}
           cardManagement={cards}
         />
@@ -244,6 +252,9 @@ function BoardContent({
   filters,
   onFilters,
   scroll,
+  view,
+  onView,
+  tableScroll,
   columnManagement,
   cardManagement,
 }: {
@@ -254,6 +265,9 @@ function BoardContent({
   filters: KanbanFilters;
   onFilters: (filters: KanbanFilters) => void;
   scroll: KanbanScroll;
+  view: 'board' | 'table';
+  onView: (view: 'board' | 'table') => void;
+  tableScroll: { y: number };
   columnManagement: ColumnManagement;
   cardManagement: CardLifecycle;
 }) {
@@ -264,6 +278,7 @@ function BoardContent({
   const api = createKanbanApi(data.api, identity, boardId);
   const [sheet, setSheet] = useState<'filters' | 'labels' | null>(null);
   const driftRepair = useRef(false);
+  const [focusedView, setFocusedView] = useState<string | null>(null);
   const workspace = useQuery({
     queryKey: [
       ...queryKeys.board(identity, boardId),
@@ -276,7 +291,6 @@ function BoardContent({
   const zone = useQuery({
     ...datePreferencesOptions(data.api, identity, boardId),
     enabled: focused,
-    select: (preferences) => preferences.timeZone,
   });
   const star = useQuery({
     queryKey: boardStarKey(identity, boardId),
@@ -286,6 +300,9 @@ function BoardContent({
   });
   const kanban = useBoardKanban(data.api, identity, boardId, filters, focused);
   const { cards, columns, previews, cardQuery, columnQuery } = kanban;
+  const refreshDueFilter = useCallback(() => {
+    void cardQuery.refetch({ cancelRefetch: false });
+  }, [cardQuery.refetch]);
   const catalogs = useKanbanCatalogs(
     data.api,
     identity,
@@ -382,6 +399,25 @@ function BoardContent({
   const relationPending = [...cards.groups.keys()].some(
     (id) => !columnIds.has(id),
   );
+  useEffect(() => {
+    if (
+      view === 'table' &&
+      focused &&
+      relationPending &&
+      columnQuery.hasNextPage &&
+      !columnQuery.isFetching &&
+      !columnQuery.isError
+    )
+      void columnQuery.fetchNextPage({ cancelRefetch: false });
+  }, [
+    view,
+    focused,
+    relationPending,
+    columnQuery.hasNextPage,
+    columnQuery.isFetching,
+    columnQuery.isError,
+    columnQuery.fetchNextPage,
+  ]);
   const complete = cards.complete && !relationPending && !cardQuery.isError;
   const mismatch = columns.complete && relationPending;
   const unstable = columns.drift || cards.drift || mismatch;
@@ -451,6 +487,7 @@ function BoardContent({
     });
     driftRepair.current = false;
     scroll.cards.clear();
+    tableScroll.y = 0;
     onFilters(next);
   }
   const dueLabel = dueOptions.find(
@@ -485,338 +522,405 @@ function BoardContent({
     previewError?.errorUpdatedAt ?? 0,
   );
 
-  return (
-    <>
-      <View style={styles.header}>
-        <AppHeader
-          trailing={
-            <View style={{ flexDirection: 'row' }}>
-              {star.data && !star.isError && (
-                <BoardStar
-                  identity={identity}
-                  id={boardId}
-                  name={board.name}
-                  starred={star.data.isStarred}
-                  updatedAt={star.dataUpdatedAt}
-                  disabled={!online}
-                />
-              )}
-              <Button
-                variant="icon"
-                label="Board actions"
-                onPress={() => cardManagement.open({ kind: 'board' })}
-                icon={
-                  <Text style={[typography.section, { color: c.text }]}>⋯</Text>
-                }
+  const header = (
+    <View style={styles.header}>
+      <AppHeader
+        trailing={
+          <View style={{ flexDirection: 'row' }}>
+            {star.data && !star.isError && (
+              <BoardStar
+                identity={identity}
+                id={boardId}
+                name={board.name}
+                starred={star.data.isStarred}
+                updatedAt={star.dataUpdatedAt}
+                disabled={!online}
               />
-            </View>
-          }
-        />
-        <View style={styles.boardHeading}>
-          <BoardArtwork preset={board.backgroundPreset ?? ''} />
-          <View style={{ flex: 1 }}>
-            <Text
-              accessibilityRole="header"
-              numberOfLines={2}
-              style={[typography.title, { color: c.text }]}
-            >
-              {board.name}
-            </Text>
-            <Text
-              numberOfLines={1}
-              style={[typography.supporting, { color: c.textSecondary }]}
-            >
-              {workspace.data ??
-                (workspace.isFetching
-                  ? 'Loading workspace…'
-                  : 'Workspace details unavailable')}
-            </Text>
+            )}
+            <Button
+              variant="icon"
+              label="Board actions"
+              onPress={() => cardManagement.open({ kind: 'board' })}
+              icon={
+                <Text style={[typography.section, { color: c.text }]}>⋯</Text>
+              }
+            />
           </View>
+        }
+      />
+      <View style={styles.boardHeading}>
+        <BoardArtwork preset={board.backgroundPreset ?? ''} />
+        <View style={{ flex: 1 }}>
+          <Text
+            accessibilityRole="header"
+            numberOfLines={2}
+            style={[typography.title, { color: c.text }]}
+          >
+            {board.name}
+          </Text>
+          <Text
+            numberOfLines={1}
+            style={[typography.supporting, { color: c.textSecondary }]}
+          >
+            {workspace.data ??
+              (workspace.isFetching
+                ? 'Loading workspace…'
+                : 'Workspace details unavailable')}
+          </Text>
         </View>
-        {!allowed && (
+      </View>
+      {!allowed && (
+        <View style={styles.badge}>
+          <StatusChip
+            label={board.isArchived ? 'Archived · Read-only' : 'Read-only'}
+            tone="info"
+          />
+        </View>
+      )}
+      {view === 'board' &&
+        columnManagement.available &&
+        (columns.items.length > 0 || !columns.complete) && (
           <View style={styles.badge}>
-            <StatusChip
-              label={board.isArchived ? 'Archived · Read-only' : 'Read-only'}
-              tone="info"
+            <Button
+              label="Add column"
+              variant="link"
+              disabled={columnManagement.pending}
+              onPress={columnManagement.openCreate}
             />
           </View>
         )}
-        {columnManagement.available &&
-          (columns.items.length > 0 || !columns.complete) && (
-            <View style={styles.badge}>
-              <Button
-                label="Add column"
-                variant="link"
-                disabled={columnManagement.pending}
-                onPress={columnManagement.openCreate}
-              />
-            </View>
-          )}
-        <View
-          style={[styles.views, { borderBottomColor: c.border }]}
-          accessibilityRole="tablist"
+      <View
+        style={[styles.views, { borderBottomColor: c.border }]}
+        accessibilityRole="tablist"
+      >
+        {(['board', 'table'] as const).map((item) => (
+          <Pressable
+            key={item}
+            accessibilityRole="tab"
+            accessibilityLabel={item === 'board' ? 'Board' : 'Table'}
+            accessibilityState={{ selected: view === item }}
+            onPress={() => onView(item)}
+            onFocus={() => setFocusedView(item)}
+            onBlur={() => setFocusedView(null)}
+            style={({ pressed }) => ({
+              minHeight: 48,
+              minWidth: 48,
+              justifyContent: 'center',
+              borderBottomWidth: 2,
+              borderBottomColor: view === item ? c.primary : 'transparent',
+              backgroundColor:
+                pressed || focusedView === item ? c.primaryTint : 'transparent',
+            })}
+          >
+            <Text
+              style={[
+                typography.strong,
+                { color: view === item ? c.primary : c.textSecondary },
+              ]}
+            >
+              {item === 'board' ? 'Board' : 'Table'}
+            </Text>
+          </Pressable>
+        ))}
+        <Text
+          accessibilityRole="tab"
+          accessibilityState={{ disabled: true }}
+          accessibilityLabel="Calendar, coming soon"
+          style={[typography.supporting, { color: c.textMuted }]}
         >
-          <Text
-            accessibilityRole="tab"
-            accessibilityState={{ selected: true }}
-            style={[typography.strong, { color: c.primary }]}
-          >
-            Board
-          </Text>
-          <Text
-            accessibilityRole="tab"
-            accessibilityState={{ disabled: true }}
-            accessibilityLabel="Table, coming soon"
-            style={[typography.supporting, { color: c.textMuted }]}
-          >
-            Table
-          </Text>
-          <Text
-            accessibilityRole="tab"
-            accessibilityState={{ disabled: true }}
-            accessibilityLabel="Calendar, coming soon"
-            style={[typography.supporting, { color: c.textMuted }]}
-          >
-            Calendar
-          </Text>
-        </View>
-        <ScrollView
-          horizontal
-          keyboardShouldPersistTaps="handled"
-          showsHorizontalScrollIndicator={false}
-          style={{ flexGrow: 0 }}
-          contentContainerStyle={{ alignItems: 'center', gap: spacing.sm }}
-        >
+          Calendar
+        </Text>
+      </View>
+      <ScrollView
+        horizontal
+        keyboardShouldPersistTaps="handled"
+        showsHorizontalScrollIndicator={false}
+        style={{ flexGrow: 0 }}
+        contentContainerStyle={{ alignItems: 'center', gap: spacing.sm }}
+      >
+        <FilterChip
+          label={count ? `Filters (${count})` : 'Filters'}
+          onPress={() => setSheet('filters')}
+        />
+        <FilterChip label="All" selected={!count} onPress={() => apply({})} />
+        {board.currentUserRole && (
           <FilterChip
-            label={count ? `Filters (${count})` : 'Filters'}
-            onPress={() => setSheet('filters')}
-          />
-          <FilterChip label="All" selected={!count} onPress={() => apply({})} />
-          {board.currentUserRole && (
-            <FilterChip
-              label="Mine"
-              selected={filters.assigneeIds?.includes(identity.userId) ?? false}
-              onPress={() =>
-                apply({
-                  ...filters,
-                  assigneeIds: filters.assigneeIds?.includes(identity.userId)
-                    ? filters.assigneeIds.filter((id) => id !== identity.userId)
-                    : [identity.userId],
-                })
-              }
-            />
-          )}
-          <FilterChip
-            label={dueLabel ?? 'Due today'}
-            selected={!!filters.dueStatus}
+            label="Mine"
+            selected={filters.assigneeIds?.includes(identity.userId) ?? false}
             onPress={() =>
               apply({
                 ...filters,
-                dueStatus: filters.dueStatus ? undefined : 'DUE_TODAY',
+                assigneeIds: filters.assigneeIds?.includes(identity.userId)
+                  ? filters.assigneeIds.filter((id) => id !== identity.userId)
+                  : [identity.userId],
               })
             }
           />
-          <FilterChip
-            label={
-              filteredLabels.length
-                ? filteredLabels.join(', ')
-                : filters.labelIds?.length
-                  ? `Labels (${filters.labelIds.length})`
-                  : 'Labels'
-            }
-            selected={!!filters.labelIds?.length}
-            onPress={() => setSheet('labels')}
-          />
-          {!!filters.q && (
-            <FilterChip
-              label={`Search: ${filters.q.slice(0, 32)}`}
-              selected
-              onPress={() => setSheet('filters')}
-            />
-          )}
-          {count > 0 && (
-            <FilterChip label="Clear filters" onPress={() => apply({})} />
-          )}
-        </ScrollView>
-      </View>
-
-      {columns.items.length === 0 && columns.complete ? (
-        <EmptyState
-          title="No columns yet"
-          description={
-            allowed ? undefined : 'This board has no columns to display.'
-          }
-          action={
-            columnManagement.available ? (
-              <Button
-                label="Add column"
-                disabled={columnManagement.pending}
-                onPress={columnManagement.openCreate}
-              />
-            ) : undefined
+        )}
+        <FilterChip
+          label={dueLabel ?? 'Due today'}
+          selected={!!filters.dueStatus}
+          onPress={() =>
+            apply({
+              ...filters,
+              dueStatus: filters.dueStatus ? undefined : 'DUE_TODAY',
+            })
           }
         />
-      ) : columns.items.length > 0 ? (
-        <BoardKanban
+        <FilterChip
+          label={
+            filteredLabels.length
+              ? filteredLabels.join(', ')
+              : filters.labelIds?.length
+                ? `Labels (${filters.labelIds.length})`
+                : 'Labels'
+          }
+          selected={!!filters.labelIds?.length}
+          onPress={() => setSheet('labels')}
+        />
+        {!!filters.q && (
+          <FilterChip
+            label={`Search: ${filters.q.slice(0, 32)}`}
+            selected
+            onPress={() => setSheet('filters')}
+          />
+        )}
+        {count > 0 && (
+          <FilterChip label="Clear filters" onPress={() => apply({})} />
+        )}
+      </ScrollView>
+      {view === 'table' && (
+        <View style={{ alignItems: 'flex-start' }}>
+          <Button
+            label={`Sort: ${!filters.sortBy ? 'Board order' : filters.sortBy === 'title' ? (filters.sortDirection === 'desc' ? 'Title Z–A' : 'Title A–Z') : filters.sortDirection === 'desc' ? 'Latest due date' : 'Earliest due date'}`}
+            variant="link"
+            onPress={() => setSheet('filters')}
+          />
+          <Text
+            accessibilityLiveRegion="polite"
+            style={[typography.caption, { color: c.textSecondary }]}
+          >
+            {filters.sortBy
+              ? 'Server order · all matching cards'
+              : 'Default server order · column and card position'}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+  const footer = (
+    <View style={[styles.footer, { borderTopColor: c.border }]}>
+      {!!cardManagement.notice && !cardManagement.sheet && (
+        <Text
+          accessibilityLiveRegion="polite"
+          style={[typography.supporting, { color: c.text }]}
+        >
+          {cardManagement.notice}
+        </Text>
+      )}
+      {cards.total !== undefined && (
+        <Text
+          style={[typography.supporting, { color: c.textSecondary }]}
+          accessibilityLiveRegion="polite"
+        >
+          {complete
+            ? cards.total === 0 && count
+              ? 'No cards match these filters.'
+              : `${cards.total} ${cards.total === 1 ? 'card' : 'cards'}`
+            : `Loaded ${cards.items.length} of ${cards.total} cards`}
+        </Text>
+      )}
+      {columns.hasMore && (
+        <Text style={[typography.caption, { color: c.textSecondary }]}>
+          {columns.items.length} of {columns.total} columns loaded
+        </Text>
+      )}
+      {cards.total === undefined && !cardQuery.isError && (
+        <Text style={[typography.supporting, { color: c.textSecondary }]}>
+          Loading cards…
+        </Text>
+      )}
+      {(columnQuery.isError ||
+        cardQuery.isError ||
+        columnState ||
+        cardState) && (
+        <Text
+          accessibilityLiveRegion="polite"
+          style={[typography.supporting, { color: c.textSecondary }]}
+        >
+          {columnState ??
+            cardState ??
+            ((isAccessDenied(cardQuery.error) ||
+              (cardQuery.error instanceof ApiError &&
+                cardQuery.error.code === 'RESOURCE_ACCESS_CHANGED')) &&
+            count
+              ? 'A filter may no longer be available. Clear filters or retry.'
+              : workspaceErrorMessage(columnQuery.error ?? cardQuery.error))}
+        </Text>
+      )}
+      <View style={styles.actions}>
+        {(columnQuery.isError || columnState || columns.hasMore) && (
+          <Button
+            label={
+              columnState
+                ? 'Refresh columns'
+                : columnQuery.isError
+                  ? 'Retry columns'
+                  : 'Load more columns'
+            }
+            variant="link"
+            loading={columnQuery.isFetchingNextPage}
+            disabled={!online || !columnRetryReady || columnQuery.isFetching}
+            onPress={() =>
+              void (columnState ||
+              (columnQuery.isError && !columnQuery.isFetchNextPageError)
+                ? columnQuery.refetch()
+                : columnQuery.fetchNextPage({ cancelRefetch: false }))
+            }
+          />
+        )}
+        {(cardQuery.isError || cardState || cards.hasMore) && (
+          <Button
+            label={
+              cardState
+                ? 'Refresh cards'
+                : cardQuery.isError
+                  ? 'Retry cards'
+                  : 'Load more cards'
+            }
+            variant="link"
+            loading={cardQuery.isFetchingNextPage}
+            disabled={!online || !cardRetryReady || cardQuery.isFetching}
+            onPress={() => {
+              if (mismatch) void columnQuery.refetch();
+              void (cardState ||
+              (cardQuery.isError && !cardQuery.isFetchNextPageError)
+                ? cardQuery.refetch()
+                : cardQuery.fetchNextPage({ cancelRefetch: false }));
+            }}
+          />
+        )}
+        {previewUnavailable && (
+          <Button
+            label="Retry card summaries"
+            variant="link"
+            disabled={!online || !previewRetryReady}
+            onPress={() =>
+              void data
+                .invalidate(identity, [
+                  [...queryKeys.board(identity, boardId), 'previews'],
+                ])
+                .catch(() => undefined)
+            }
+          />
+        )}
+      </View>
+      {previewUnavailable && (
+        <Text style={[typography.caption, { color: c.textSecondary }]}>
+          Some card summaries are unavailable.
+        </Text>
+      )}
+    </View>
+  );
+
+  return (
+    <>
+      {view === 'table' ? (
+        <BoardTable
           key={hashKey([normalizeKanbanFilters(filters)])}
+          cards={cards.items}
           columns={columns.items}
-          columnsComplete={columns.complete && !columnQuery.isFetching}
-          groups={cards.groups}
-          cardsReady={cards.total !== undefined}
-          cardsComplete={complete}
-          cardsLoading={cardQuery.isFetching}
           previews={previews.byCard}
           labels={catalogs.labelItems}
           members={catalogs.memberItems}
-          timeZone={zone.data}
-          scroll={scroll}
+          preferences={zone.data}
+          active={focused}
+          onDueBoundary={filters.dueStatus ? refreshDueFilter : undefined}
+          ready={cards.total !== undefined}
+          complete={complete}
+          loading={cardQuery.isFetching}
+          scroll={tableScroll}
+          header={header}
+          footer={footer}
           onOpen={onOpen}
-          onAddCard={
-            cardManagement.writable && filters.status !== 'archived'
-              ? (column) => cardManagement.open({ kind: 'create', column })
-              : undefined
-          }
-          onCardActions={
+          onActions={
             cardManagement.writable
               ? (card) => cardManagement.open({ kind: 'actions', card })
               : undefined
           }
-          cardActionsDisabled={cardManagement.pending}
-          onColumnActions={
-            columnManagement.available
-              ? columnManagement.openActions
-              : undefined
-          }
-          columnActionsDisabled={columnManagement.pending}
-          revealColumnIndex={revealIndex}
-          onColumnRevealed={clearReveal}
+          actionsDisabled={cardManagement.pending}
         />
-      ) : !columnQuery.isError ? (
-        <View style={[styles.header, { flex: 1 }]}>
-          <Skeleton height={160} label="Loading columns" />
-        </View>
       ) : (
-        <View style={{ flex: 1 }} />
-      )}
+        <>
+          {header}
+          {columns.items.length === 0 && columns.complete ? (
+            <EmptyState
+              title="No columns yet"
+              description={
+                allowed ? undefined : 'This board has no columns to display.'
+              }
+              action={
+                columnManagement.available ? (
+                  <Button
+                    label="Add column"
+                    disabled={columnManagement.pending}
+                    onPress={columnManagement.openCreate}
+                  />
+                ) : undefined
+              }
+            />
+          ) : columns.items.length > 0 ? (
+            <BoardKanban
+              key={hashKey([normalizeKanbanFilters(filters)])}
+              columns={columns.items}
+              columnsComplete={columns.complete && !columnQuery.isFetching}
+              groups={cards.groups}
+              cardsReady={cards.total !== undefined}
+              cardsComplete={complete}
+              cardsLoading={cardQuery.isFetching}
+              previews={previews.byCard}
+              labels={catalogs.labelItems}
+              members={catalogs.memberItems}
+              timeZone={zone.data?.timeZone}
+              scroll={scroll}
+              onOpen={onOpen}
+              onAddCard={
+                cardManagement.writable && filters.status !== 'archived'
+                  ? (column) => cardManagement.open({ kind: 'create', column })
+                  : undefined
+              }
+              onCardActions={
+                cardManagement.writable
+                  ? (card) => cardManagement.open({ kind: 'actions', card })
+                  : undefined
+              }
+              cardActionsDisabled={cardManagement.pending}
+              onColumnActions={
+                columnManagement.available
+                  ? columnManagement.openActions
+                  : undefined
+              }
+              columnActionsDisabled={columnManagement.pending}
+              revealColumnIndex={revealIndex}
+              onColumnRevealed={clearReveal}
+            />
+          ) : !columnQuery.isError ? (
+            <View style={[styles.header, { flex: 1 }]}>
+              <Skeleton height={160} label="Loading columns" />
+            </View>
+          ) : (
+            <View style={{ flex: 1 }} />
+          )}
 
-      <View style={[styles.footer, { borderTopColor: c.border }]}>
-        {!!cardManagement.notice && !cardManagement.sheet && (
-          <Text
-            accessibilityLiveRegion="polite"
-            style={[typography.supporting, { color: c.text }]}
-          >
-            {cardManagement.notice}
-          </Text>
-        )}
-        {cards.total !== undefined && (
-          <Text
-            style={[typography.supporting, { color: c.textSecondary }]}
-            accessibilityLiveRegion="polite"
-          >
-            {complete
-              ? cards.total === 0 && count
-                ? 'No cards match these filters.'
-                : `${cards.total} ${cards.total === 1 ? 'card' : 'cards'}`
-              : `Loaded ${cards.items.length} of ${cards.total} cards`}
-          </Text>
-        )}
-        {columns.hasMore && (
-          <Text style={[typography.caption, { color: c.textSecondary }]}>
-            {columns.items.length} of {columns.total} columns loaded
-          </Text>
-        )}
-        {cards.total === undefined && !cardQuery.isError && (
-          <Text style={[typography.supporting, { color: c.textSecondary }]}>
-            Loading cards…
-          </Text>
-        )}
-        {(columnQuery.isError ||
-          cardQuery.isError ||
-          columnState ||
-          cardState) && (
-          <Text
-            accessibilityLiveRegion="polite"
-            style={[typography.supporting, { color: c.textSecondary }]}
-          >
-            {columnState ??
-              cardState ??
-              ((isAccessDenied(cardQuery.error) ||
-                (cardQuery.error instanceof ApiError &&
-                  cardQuery.error.code === 'RESOURCE_ACCESS_CHANGED')) &&
-              count
-                ? 'A filter may no longer be available. Clear filters or retry.'
-                : workspaceErrorMessage(columnQuery.error ?? cardQuery.error))}
-          </Text>
-        )}
-        <View style={styles.actions}>
-          {(columnQuery.isError || columnState || columns.hasMore) && (
-            <Button
-              label={
-                columnState
-                  ? 'Refresh columns'
-                  : columnQuery.isError
-                    ? 'Retry columns'
-                    : 'Load more columns'
-              }
-              variant="link"
-              loading={columnQuery.isFetchingNextPage}
-              disabled={!online || !columnRetryReady || columnQuery.isFetching}
-              onPress={() =>
-                void (columnState ||
-                (columnQuery.isError && !columnQuery.isFetchNextPageError)
-                  ? columnQuery.refetch()
-                  : columnQuery.fetchNextPage({ cancelRefetch: false }))
-              }
-            />
-          )}
-          {(cardQuery.isError || cardState || cards.hasMore) && (
-            <Button
-              label={
-                cardState
-                  ? 'Refresh cards'
-                  : cardQuery.isError
-                    ? 'Retry cards'
-                    : 'Load more cards'
-              }
-              variant="link"
-              loading={cardQuery.isFetchingNextPage}
-              disabled={!online || !cardRetryReady || cardQuery.isFetching}
-              onPress={() => {
-                if (mismatch) void columnQuery.refetch();
-                void (cardState ||
-                (cardQuery.isError && !cardQuery.isFetchNextPageError)
-                  ? cardQuery.refetch()
-                  : cardQuery.fetchNextPage({ cancelRefetch: false }));
-              }}
-            />
-          )}
-          {previewUnavailable && (
-            <Button
-              label="Retry card summaries"
-              variant="link"
-              disabled={!online || !previewRetryReady}
-              onPress={() =>
-                void data
-                  .invalidate(identity, [
-                    [...queryKeys.board(identity, boardId), 'previews'],
-                  ])
-                  .catch(() => undefined)
-              }
-            />
-          )}
-        </View>
-        {previewUnavailable && (
-          <Text style={[typography.caption, { color: c.textSecondary }]}>
-            Some card summaries are unavailable.
-          </Text>
-        )}
-      </View>
+          {footer}
+        </>
+      )}
       {sheet && focused && (
         <BoardFiltersSheet
           initial={filters}
           startWithLabels={sheet === 'labels'}
           catalogs={catalogs}
-          timeZone={zone.data}
+          timeZone={zone.data?.timeZone}
           online={online}
           onCancel={() => setSheet(null)}
           onApply={apply}
