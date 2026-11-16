@@ -694,12 +694,20 @@ test('320dp with 160% fonts stacks metadata, wraps long title and preserves full
   try {
     const title =
       'A long title that must wrap across multiple lines on a narrow screen with large fonts';
-    await env.remote({ title });
+    await env.remote({
+      title,
+      assignees: [
+        { userId: USER_B, assignedById: USER_A, createdAt: timestamp },
+      ],
+    });
     const titleNode = await screen.findByText(title);
     expect(titleNode.props.numberOfLines).toBeUndefined();
     expect(
       screen.getByTestId('card-detail-metadata-grid').props.style.flexDirection,
     ).toBe('column');
+    expect(
+      screen.getByLabelText('Assigned member').props.style.width,
+    ).toBeCloseTo(38.4);
     await editDescription('word '.repeat(400));
     expect(screen.getByLabelText('Description').props.value).toHaveLength(2000);
     expect(

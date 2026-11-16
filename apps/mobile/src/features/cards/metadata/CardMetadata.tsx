@@ -297,7 +297,7 @@ export function CardMetadata({ context }: CardDetailSectionProps) {
           </Text>
           {people.length ? (
             <AvatarStack
-              size={24}
+              size={sizes.iconLarge * Math.max(fontScale, 1)}
               accessibilityLabel={`Assignees: ${people.map(({ name }) => name).join(', ')}`}
               people={people.map(({ name, avatarUrl }) => ({
                 name,

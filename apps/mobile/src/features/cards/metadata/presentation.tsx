@@ -1,9 +1,10 @@
-import { Text, View } from 'react-native';
+import { Text, View, useWindowDimensions } from 'react-native';
 import { ApiError } from '../../../infrastructure/api/errors';
 import {
   Avatar,
   Button,
   LabelChip,
+  sizes,
   spacing,
   typography,
   useTheme,
@@ -82,9 +83,10 @@ export function AssigneeAvatar({
 }: {
   member: Pick<KanbanAssignee, 'name' | 'avatarUrl'>;
 }) {
+  const { fontScale } = useWindowDimensions();
   return (
     <Avatar
-      size={32}
+      size={Math.max(32, sizes.iconLarge * fontScale)}
       name={member.name}
       source={member.avatarUrl ? { uri: member.avatarUrl } : undefined}
     />
