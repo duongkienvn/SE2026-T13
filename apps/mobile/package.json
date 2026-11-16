@@ -25,6 +25,7 @@
   "dependencies": {
     "@expo/metro-runtime": "58.0.17",
     "@kanban/shared": "workspace:*",
+    "@react-native-community/datetimepicker": "9.2.1",
     "@react-native-google-signin/google-signin": "16.1.5",
     "@tanstack/react-query": "5.90.21",
     "expo": "58.0.23",

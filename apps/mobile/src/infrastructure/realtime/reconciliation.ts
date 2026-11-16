@@ -96,6 +96,7 @@ export function hintTargets(
       [...queryKeys.board(identity, board), 'previews'],
       queryKeys.tasks(identity),
       queryKeys.home(identity),
+      queryKeys.search(identity),
     ];
   if (event.startsWith('comment:'))
     return event === 'comment:updated'
@@ -127,5 +128,10 @@ export function hintTargets(
     result.push(queryKeys.workspace(identity, workspaceId));
   else if (workspaceId && event.startsWith('board:'))
     result.push([...queryKeys.workspace(identity, workspaceId), 'overview']);
+  if (event === 'member:removed')
+    result.push(queryKeys.cards(identity, board), [
+      ...queryKeys.board(identity, board),
+      'cards',
+    ]);
   return result;
 }

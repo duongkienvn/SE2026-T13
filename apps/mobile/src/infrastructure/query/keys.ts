@@ -94,6 +94,15 @@ export const queryKeys = {
     [...board(identity, id), 'members'] as const,
   labels: (identity: SessionIdentity, id: string) =>
     [...board(identity, id), 'labels'] as const,
+  cardLabels: (identity: SessionIdentity, boardId: string, cardId: string) =>
+    [
+      ...board(identity, boardId),
+      'cards',
+      cardId.toLowerCase(),
+      'labels',
+    ] as const,
+  datePreferences: (identity: SessionIdentity) =>
+    [...scope(identity), 'me', 'date-preferences'] as const,
   comments: (identity: SessionIdentity, boardId: string, cardId: string) =>
     [
       ...board(identity, boardId),

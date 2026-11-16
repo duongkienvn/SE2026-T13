@@ -6,6 +6,23 @@ import {
   normalizeKanbanFilters,
 } from '../boards/kanban-api.ts';
 
+export function decodeCardAssignee(value: unknown, status = 200) {
+  const dto = value as Record<string, unknown> | null;
+  const { userId, assignedById, createdAt } = dto ?? {};
+  if (
+    !isUuid(userId) ||
+    (assignedById !== null && !isUuid(assignedById)) ||
+    !isCardDateInstant(createdAt) ||
+    !createdAt.endsWith('Z')
+  )
+    throw invalidResponse(status);
+  return {
+    userId: userId.toLowerCase(),
+    assignedById: assignedById?.toLowerCase() ?? null,
+    createdAt,
+  };
+}
+
 export function decodeCard(value: unknown, boardId: string) {
   const dto = value as Record<string, unknown> | null;
   const card = decodeKanbanCard(
@@ -26,21 +43,9 @@ export function decodeCard(value: unknown, boardId: string) {
   return {
     ...card,
     createdById: dto.createdById.toLowerCase(),
-    assignees: card.assignees.map(({ userId }, index) => {
-      const assignee = (dto.assignees as Record<string, unknown>[])[index]!;
-      const { assignedById, createdAt } = assignee;
-      if (
-        (assignedById !== null && !isUuid(assignedById)) ||
-        !isCardDateInstant(createdAt) ||
-        !createdAt.endsWith('Z')
-      )
-        throw invalidResponse(200);
-      return {
-        userId,
-        assignedById: assignedById?.toLowerCase() ?? null,
-        createdAt,
-      };
-    }),
+    assignees: (dto.assignees as unknown[]).map((value) =>
+      decodeCardAssignee(value),
+    ),
   };
 }
 
