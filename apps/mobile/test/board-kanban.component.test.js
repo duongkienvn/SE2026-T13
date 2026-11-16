@@ -213,7 +213,7 @@ async function setup({
 
 const button = (name) => screen.findByRole('button', { name });
 
-test('Card previews keep known labels and announce labels beyond the loaded catalog page', async () => {
+test('Card previews resolve later label pages once for the Board and filters reuse them', async () => {
   const labels = Array.from({ length: 101 }, (_, index) => ({
     id: uuid(5000 + index),
     boardId,
@@ -241,21 +241,10 @@ test('Card previews keep known labels and announce labels beyond the loaded cata
     },
   });
   try {
-    await screen.findByRole(
-      'button',
-      { name: /^Card 1, Planning, 1 unresolved label,/ },
-      { timeout: 5000 },
-    );
-    expect(screen.getByText('Planning')).toBeTruthy();
-    expect(screen.getByText('1 unresolved label')).toBeTruthy();
-    expect(env.reads('/labels')).toHaveLength(1);
-
+    await button(/^Card 1, Planning, Label 101,/);
     await fireEvent.press(await button('Labels'));
     const sheet = within(screen.getByTestId('filter-modal'));
-    await fireEvent.press(
-      await sheet.findByRole('button', { name: 'More labels' }),
-    );
-    await button(/^Card 1, Planning, Label 101,/);
+    expect(await sheet.findByText('Label 101')).toBeTruthy();
     await fireEvent.press(await sheet.findByRole('button', { name: 'Cancel' }));
     expect(screen.getByText('Planning')).toBeTruthy();
     expect(screen.getByText('Label 101')).toBeTruthy();

@@ -419,17 +419,5 @@ export function createKanbanApi(
         },
         options(signal, queryKeys.datePreferences(identity)),
       ),
-    timeZone: (signal: AbortSignal) =>
-      api.json(
-        '/users/me/preferences',
-        (value) => {
-          const zone = name(row(value).timeZone);
-          if (!/^[A-Za-z][A-Za-z0-9_+\-/]*$/.test(zone))
-            throw invalidResponse(200);
-          new Intl.DateTimeFormat('en', { timeZone: zone });
-          return zone;
-        },
-        options(signal, [...queryKeys.me(identity), 'time-zone']),
-      ),
   };
 }

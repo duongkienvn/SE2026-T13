@@ -31,6 +31,7 @@ import {
   useTheme,
 } from '../../ui';
 import { CardActionsSheet } from '../cards/CardActionsSheet';
+import { datePreferencesOptions } from '../cards/metadata/queries';
 import {
   useCardLifecycle,
   type CardLifecycle,
@@ -273,9 +274,9 @@ function BoardContent({
     queryFn: ({ signal }) => api.workspace(board.workspaceId, signal),
   });
   const zone = useQuery({
-    queryKey: [...queryKeys.me(identity), 'time-zone'],
+    ...datePreferencesOptions(data.api, identity, boardId),
     enabled: focused,
-    queryFn: ({ signal }) => api.timeZone(signal),
+    select: (preferences) => preferences.timeZone,
   });
   const star = useQuery({
     queryKey: boardStarKey(identity, boardId),
@@ -297,6 +298,29 @@ function BoardContent({
     focused &&
       (!!sheet || cards.items.some((card) => card.assignees.length > 0)),
   );
+  const unresolvedLabels = [...previews.byCard.values()].some(({ labelIds }) =>
+    labelIds.some(
+      (id) => !catalogs.labelItems.some((label) => label.id === id),
+    ),
+  );
+  useEffect(() => {
+    if (
+      focused &&
+      unresolvedLabels &&
+      catalogs.labels.hasNextPage &&
+      !catalogs.labels.isFetching &&
+      !catalogs.labels.isError
+    ) {
+      void catalogs.labels.fetchNextPage({ cancelRefetch: false });
+    }
+  }, [
+    focused,
+    unresolvedLabels,
+    catalogs.labels.hasNextPage,
+    catalogs.labels.isFetching,
+    catalogs.labels.isError,
+    catalogs.labels.fetchNextPage,
+  ]);
   const count = filterCount(filters);
   const allowed = canMutateColumns(board);
   const { revealId, clearReveal } = columnManagement;
