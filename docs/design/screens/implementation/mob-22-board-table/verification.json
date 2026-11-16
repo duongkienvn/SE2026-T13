@@ -1,0 +1,105 @@
+{
+  "buildId": "575ae1cb-25d4-468b-b0c8-7ba12a0d85b5",
+  "apkSha256": "FBA1EF9DB9C32665E2ACBA3703B7CD5FCCEFB5A6939B96A068212D5E7443EF4B",
+  "sourceFilesMatched": 149,
+  "nodeTestsPassed": 264,
+  "jestTestsPassed": 270,
+  "afterOverflowFocusedTestsPassed": 49,
+  "device": "Samsung SM-A507FN, Android 11",
+  "fixture": "HTTPS localhost over ADB reverse; in-memory DTO/Socket.IO, 251 Cards; no production",
+  "finalFlow": {
+    "buildId": "575ae1cb-25d4-468b-b0c8-7ba12a0d85b5",
+    "compactOverflow": true,
+    "minimumTargetDp": 48,
+    "canonicalCardBack": true,
+    "scrollRestoredPx": 1569,
+    "beforeScrollPx": 1568,
+    "filtersSheet": true,
+    "boardTable": true,
+    "appErrorEntries": 0
+  },
+  "finalDisplayAndRevoke": [
+    {
+      "scenario": "Physical 320dp, 160% text, dark/system and archived read-only Table with restricted roster and unknown label",
+      "result": "PASS"
+    },
+    {
+      "scenario": "Native landscape Table has one vertical scroll and reachable row content",
+      "result": "PASS"
+    },
+    {
+      "scenario": "Socket access hint plus authoritative REST denial clears protected Table title and metadata",
+      "result": "PASS"
+    }
+  ],
+  "initialPaginationAndFilters": [
+    {
+      "scenario": "Table opens the canonical Card route and hardware Back retains Table; 48dp view tabs and Calendar disabled",
+      "result": "PASS"
+    },
+    {
+      "scenario": "Table opens the canonical Card route and hardware Back retains Table; 48dp view tabs and Calendar disabled",
+      "result": "PASS"
+    },
+    {
+      "scenario": "Writable Table row opens the existing MOB-17 actions sheet",
+      "result": "PASS"
+    },
+    {
+      "scenario": "Board and Table switch with the existing Board shell and Kanban intact",
+      "result": "PASS"
+    },
+    {
+      "scenario": "Server text filter and due-desc sort apply to all authorized Cards",
+      "result": "PASS",
+      "total": 1
+    },
+    {
+      "scenario": "Real Card Back retains Table search and sort",
+      "result": "PASS"
+    },
+    {
+      "scenario": "Cancel preserves applied filters; Reset resets the server query to page one",
+      "result": "PASS"
+    },
+    {
+      "scenario": "Native 251-Card pagination reaches the final Card with max-100-ID preview batches",
+      "result": "PASS",
+      "pages": ["1", "1", "1", "1", "1", "1", "1", "1", "2", "3"],
+      "previewRequests": 9
+    },
+    {
+      "scenario": "Physical 320dp, 160% text, dark/system and archived read-only Table with restricted roster and unknown label",
+      "result": "PASS"
+    },
+    {
+      "scenario": "Native landscape Table has one vertical scroll and reachable row content",
+      "result": "PASS"
+    },
+    {
+      "scenario": "Socket access hint plus authoritative REST denial clears protected Table title and metadata",
+      "result": "PASS"
+    }
+  ],
+  "motion": {
+    "framesDecoded": 606,
+    "containerFPS": 10.891669031454237,
+    "seconds": 55.64,
+    "blackFrames": 0,
+    "note": "Container FPS is not measured UI FPS."
+  },
+  "performance": {
+    "framesRendered": 421,
+    "jankyFrames": 333,
+    "jankyPercent": 79.1,
+    "medianMs": 19,
+    "p95Ms": 42,
+    "sustained60Fps": "NOT VERIFIED"
+  },
+  "notVerified": [
+    "iOS",
+    "emulator/tablet",
+    "audible TalkBack/VoiceOver traversal",
+    "concurrent live Web/Mobile backend"
+  ]
+}
