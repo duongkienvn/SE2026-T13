@@ -184,7 +184,7 @@ const Preview = memo(function Preview({
   );
 });
 
-function useScrollRestore<T>(
+export function useScrollRestore<T>(
   offset: number,
   complete: boolean,
   saveOffset: (offset: number) => void,
