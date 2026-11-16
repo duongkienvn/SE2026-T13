@@ -284,3 +284,77 @@ test('preview HTTP adapter sends one bounded request and rejects oversized IDs a
     c.dispose();
   }
 });
+
+for (const sortBy of ['title', 'dueDate'] as const) {
+  for (const sortDirection of ['asc', 'desc'] as const) {
+    test(`Table forwards every supported predicate with ${sortBy}/${sortDirection} on all server pages`, async () => {
+      const c = await integration();
+      try {
+        const filters = {
+          q: ' literal_% ',
+          columnId: column(1).id.toUpperCase(),
+          labelIds: [uuid(11).toUpperCase(), uuid(10), uuid(11)],
+          assigneeIds: [uuid(20)],
+          dueStatus: 'UPCOMING' as const,
+          dueFrom: '2026-11-16T07:00:00+07:00',
+          dueTo: '2026-11-30T07:00:00+07:00',
+          status: 'active' as const,
+          sortBy,
+          sortDirection,
+        };
+        // Deliberately non-position order: Table must keep the server's sequence,
+        // including null deadlines at the end in either direction.
+        const rows = Array.from({ length: 251 }, (_, index) => ({
+          ...card(251 - index),
+          dueDate: index > 240 ? null : '2026-11-20T00:00:00.000Z',
+        }));
+        const requests: Record<string, string>[] = [];
+        c.respond((request) => {
+          const url = new URL(request);
+          requests.push(Object.fromEntries(url.searchParams));
+          return Promise.resolve(
+            json(page(rows, Number(url.searchParams.get('page')), 100)),
+          );
+        });
+        const options = kanbanCardOptions(
+          c.data.api,
+          c.identity,
+          boardId,
+          filters,
+        );
+        const observer = new InfiniteQueryObserver(c.data.queryClient, {
+          ...options,
+          enabled: false,
+        });
+        await observer.refetch();
+        await observer.fetchNextPage();
+        await observer.fetchNextPage();
+        const result = kanbanCollection(
+          observer.getCurrentResult().data!.pages,
+        );
+        assert.equal(result.total, 251);
+        assert.equal(result.complete, true);
+        assert.deepEqual(result.items, rows);
+        for (const [index, query] of requests.entries())
+          assert.deepEqual(query, {
+            status: 'active',
+            q: 'literal_%',
+            columnId: column(1).id,
+            labelIds: `${uuid(10)},${uuid(11)}`,
+            assigneeIds: uuid(20),
+            dueStatus: 'UPCOMING',
+            dueFrom: '2026-11-16T00:00:00.000Z',
+            dueTo: '2026-11-30T00:00:00.000Z',
+            sortBy,
+            sortDirection,
+            page: String(index + 1),
+            limit: '100',
+          });
+        assert.equal(requests.length, 3);
+        observer.destroy();
+      } finally {
+        c.dispose();
+      }
+    });
+  }
+}
