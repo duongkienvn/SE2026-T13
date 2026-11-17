@@ -17,7 +17,7 @@ export function useWorkspaceAction(context: WorkspaceCollaborationContext) {
 
   async function run<T>(
     write: (controller: AbortSignal) => Promise<T>,
-    success: (value: T) => void,
+    success?: (value: T) => void,
   ) {
     if (
       request.current ||
@@ -36,7 +36,7 @@ export function useWorkspaceAction(context: WorkspaceCollaborationContext) {
       sameIdentity(context.identity, data.getIdentity());
     try {
       const response = await write(controller.signal);
-      if (current()) success(response);
+      if (current()) success?.(response);
     } catch (error) {
       if (!current()) return;
       setFailure({ error, time: Date.now() });

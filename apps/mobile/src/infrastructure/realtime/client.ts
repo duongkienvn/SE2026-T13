@@ -106,7 +106,7 @@ export function createNativeRealtime(options: {
       for (const id of ids) void verify(id, identity);
     }, 50);
   }
-  function workspaceDenied(workspaceId: string) {
+  function recheckWorkspaceBoards(workspaceId: string) {
     const identity = data.getIdentity();
     if (!identity) return;
     const boards = workspaceBoardCandidates(
@@ -129,6 +129,24 @@ export function createNativeRealtime(options: {
       queueVerification(id, identity);
     }
     void data.invalidateHints(identity, keys).catch(() => undefined);
+  }
+  function fenceGuestRosters(identity: SessionIdentity) {
+    const keys = new Map<string, PrivateQueryKey>();
+    for (const { queryKey } of data.queryClient.getQueryCache().getAll()) {
+      if (
+        !keyBelongsTo(queryKey, identity) ||
+        queryKey[4] !== 'workspaces' ||
+        typeof queryKey[5] !== 'string' ||
+        queryKey[6] !== 'guests'
+      )
+        continue;
+      const id = queryKey[5];
+      keys.set(id, [...queryKeys.workspace(identity, id), 'guests']);
+    }
+    const affected = [...keys.values()];
+    for (const key of affected) data.cancelResourceRequests(key);
+    data.evict(identity, affected);
+    void data.invalidateHints(identity, affected).catch(() => undefined);
   }
   function requeueWorkspaceChecks() {
     const identity = data.getIdentity();
@@ -349,6 +367,7 @@ export function createNativeRealtime(options: {
       const identity = data.getIdentity();
       if (!hint || !identity) return;
       if (event === 'board:access-revoked') {
+        fenceGuestRosters(identity);
         rooms.revoke(hint.boardId!);
         return;
       }
@@ -360,6 +379,8 @@ export function createNativeRealtime(options: {
         accessCheck();
         return;
       }
+      if (event === 'member:removed' && hint.userId === identity.userId)
+        fenceGuestRosters(identity);
       if (
         event === 'member:removed' &&
         hint.userId === identity.userId &&
@@ -410,8 +431,9 @@ export function createNativeRealtime(options: {
   return {
     start() {
       unsubscribeDenied ??= data.resources.subscribeDenied(resourceFailed);
-      unsubscribeWorkspaceDenied ??=
-        data.resources.subscribeWorkspaceDenied(workspaceDenied);
+      unsubscribeWorkspaceDenied ??= data.resources.subscribeWorkspaceDenied(
+        recheckWorkspaceBoards,
+      );
       unsubscribeErrors ??= data.queryClient
         .getQueryCache()
         .subscribe((event) => {
@@ -458,6 +480,7 @@ export function createNativeRealtime(options: {
     revokeBoard(boardId: string) {
       rooms.revoke(boardId);
     },
+    recheckWorkspaceBoards,
     getBoardSnapshot: rooms.getSnapshot,
     subscribeBoards: rooms.subscribe,
     async retryBoard(boardId?: string) {

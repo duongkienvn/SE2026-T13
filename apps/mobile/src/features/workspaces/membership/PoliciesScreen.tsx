@@ -4,6 +4,7 @@ import { usePreventRemove } from 'expo-router';
 import { useEffect, useState, type RefObject } from 'react';
 import { Switch, Text, View } from 'react-native';
 import { useMobileData } from '../../../infrastructure/query/DataProvider';
+import { useRealtime } from '../../../infrastructure/realtime/RealtimeProvider';
 import {
   Button,
   ConfirmDialog,
@@ -52,6 +53,7 @@ export function PoliciesScreen({
   draftRef: RefObject<Partial<WorkspacePolicies>>;
 }) {
   const data = useMobileData();
+  const realtime = useRealtime();
   const c = useTheme();
   const { identity, id, workspace, active, online } = context;
   const [draft, setDraft] = useState(draftRef.current);
@@ -195,6 +197,7 @@ export function PoliciesScreen({
                 () => {
                   update({});
                   setSaved(true);
+                  realtime.recheckWorkspaceBoards(id);
                 },
               )
             }

@@ -11,8 +11,14 @@ import {
   decodePolicies,
 } from '../../src/features/workspaces/membership/decoder.ts';
 import { parseResourceId } from '../../src/navigation/routes.ts';
-import { integration, json } from '../realtime/integration-support.ts';
-import { uuid } from './fixtures.ts';
+import { queryKeys } from '../../src/infrastructure/query/keys.ts';
+import {
+  workspaceGuestsOptions,
+  workspaceMembersOptions,
+  workspaceCollaborationKeys,
+} from '../../src/features/workspaces/membership/queries.ts';
+import { BOARD, integration, json } from '../realtime/integration-support.ts';
+import { page, uuid, workspace } from './fixtures.ts';
 
 const id = parseResourceId(uuid(111))!;
 const userId = parseResourceId(uuid(222))!;
@@ -155,6 +161,68 @@ test('Workspace collaboration adapter uses scoped paths, paginated search and ex
     await assert.rejects(api.members(0, {}, signal));
     await assert.rejects(api.guests(1, undefined, signal, 101));
     assert.equal(count, calls.length);
+  } finally {
+    env.dispose();
+  }
+});
+
+test('child denial probes Workspace authority and Board revocation evicts guest associations only', async () => {
+  const env = await integration();
+  const identity = env.identity;
+  const workspaceKey = queryKeys.workspace(identity, id);
+  const guestKey = workspaceGuestsOptions(env.data, identity, id, 1).queryKey;
+  const memberKey = workspaceMembersOptions(
+    env.data,
+    identity,
+    id,
+    1,
+    {},
+  ).queryKey;
+  const rows = {
+    ...page([decodeMember(member)], 1, 20),
+    success: true,
+  } as const;
+  let parentAllowed = true;
+  let probes = 0;
+  env.respond((url) => {
+    const path = new URL(url).pathname;
+    if (path.endsWith('/members')) return Promise.resolve(json({}, 403));
+    if (path.endsWith(`/workspaces/${id}`)) {
+      probes++;
+      return Promise.resolve(
+        parentAllowed ? ok({ ...workspace(), id }) : json({}, 404),
+      );
+    }
+    return null;
+  });
+  try {
+    await env.join();
+    const options = workspaceMembersOptions(env.data, identity, id, 1, {});
+    await assert.rejects(env.data.queryClient.fetchQuery(options));
+    assert.equal(probes, 1);
+    assert.equal(env.data.resources.readable(workspaceKey), true);
+    env.data.queryClient.setQueryData(guestKey, {
+      ...page([decodeGuest(guest)], 1, 20),
+      success: true,
+    });
+    env.data.queryClient.setQueryData(memberKey, rows);
+    env.socket.server('board:access-revoked', { boardId: BOARD });
+    assert.equal(env.data.queryClient.getQueryData(guestKey), undefined);
+    assert.deepEqual(env.data.queryClient.getQueryData(memberKey), rows);
+    parentAllowed = false;
+    await env.data.queryClient.invalidateQueries({
+      queryKey: workspaceCollaborationKeys.members(identity, id),
+      refetchType: 'none',
+    });
+    await assert.rejects(
+      env.data.queryClient.fetchQuery(
+        workspaceMembersOptions(env.data, identity, id, 1, {
+          search: 'fresh scope',
+        }),
+      ),
+    );
+    assert.equal(env.data.resources.readable(workspaceKey), false);
+    assert.equal(env.data.queryClient.getQueryData(memberKey), undefined);
   } finally {
     env.dispose();
   }

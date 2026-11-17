@@ -40,6 +40,12 @@ export function MembersDirectory({
   const router = useRouter();
   const activeRef = useRef(active);
   activeRef.current = active;
+  useEffect(() => {
+    activeRef.current = active;
+    return () => {
+      activeRef.current = false;
+    };
+  }, [active]);
   const [candidate, setCandidate] = useState<{
     kind: 'role' | 'remove';
     member: WorkspaceMember;
@@ -207,11 +213,10 @@ export function MembersDirectory({
           confirmDisabled={action.disabled || context.checking}
           onCancel={() => setLeaving(false)}
           onConfirm={() =>
-            void action.run(
-              () => leaveWorkspace(data, identity, id),
-              () => {
+            void action.run(() =>
+              leaveWorkspace(data, identity, id, () => {
                 if (activeRef.current) router.navigate('/boards');
-              },
+              }),
             )
           }
         />

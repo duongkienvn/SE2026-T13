@@ -129,6 +129,7 @@ export async function leaveWorkspace(
   data: MobileDataLayer,
   identity: SessionIdentity,
   id: ResourceId,
+  onLeft?: () => void,
 ) {
   data.assertCurrent(identity);
   try {
@@ -138,6 +139,7 @@ export async function leaveWorkspace(
     );
     data.assertCurrent(identity);
     evictWorkspace(data, identity, id);
+    onLeft?.();
   } catch (error) {
     if (
       sameIdentity(identity, data.getIdentity()) &&
