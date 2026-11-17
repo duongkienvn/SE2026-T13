@@ -126,15 +126,8 @@ export function hintTargets(
     );
   if (workspaceId && event.startsWith('member:'))
     result.push(queryKeys.workspace(identity, workspaceId));
-  else if (workspaceId && event.startsWith('board:')) {
+  else if (workspaceId && event.startsWith('board:'))
     result.push([...queryKeys.workspace(identity, workspaceId), 'overview']);
-    if (
-      event === 'board:archived' ||
-      event === 'board:restored' ||
-      event === 'board:access-changed'
-    )
-      result.push([...queryKeys.workspace(identity, workspaceId), 'guests']);
-  }
   if (event === 'member:removed')
     result.push(queryKeys.cards(identity, board), [
       ...queryKeys.board(identity, board),

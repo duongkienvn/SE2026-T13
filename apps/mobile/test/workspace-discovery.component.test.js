@@ -9,7 +9,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react-native';
-import { onlineManager } from '@tanstack/react-query';
+import { focusManager, onlineManager } from '@tanstack/react-query';
 import { BoardsScreen } from '../src/features/workspaces/BoardsScreen';
 import { WorkspaceOverviewScreen } from '../src/features/workspaces/WorkspaceOverviewScreen';
 import { WorkspaceCollaborationScreen } from '../src/features/workspaces/membership/WorkspaceCollaborationScreen';
@@ -45,11 +45,14 @@ import { board, overview, page, uuid, workspace } from './workspaces/fixtures';
 const mockNavigate = jest.fn();
 let mockPath = '/boards';
 let mockFocused = true;
+let mockPreventRemove;
 jest.mock('expo-router', () => ({
   useRouter: () => ({ navigate: mockNavigate, push: mockNavigate }),
   usePathname: () => mockPath,
   useIsFocused: () => mockFocused,
-  usePreventRemove: () => undefined,
+  usePreventRemove: (prevent, listener) => {
+    mockPreventRemove = prevent ? listener : undefined;
+  },
 }));
 jest.mock('expo-network', () => ({
   getNetworkStateAsync: async () => ({ isConnected: true }),
@@ -635,6 +638,194 @@ test('policy editing sends only changed flags, preserves an error draft and hide
   } finally {
     mockPath = '/boards';
     await env.dispose();
+  }
+});
+
+test('policy polling waits for each Retry-After and stops on unmount', async () => {
+  jest.useFakeTimers();
+  mockPath = `/workspaces/${b.id}/policies`;
+  let requests = 0;
+  const env = await setup({
+    view: 'collaboration',
+    first: [collaborationAdmin],
+    override(url) {
+      if (!url.pathname.endsWith('/policies')) return null;
+      requests++;
+      return envelope({}, 429, requests === 1 ? '300' : '120');
+    },
+  });
+  const advance = (ms) => act(() => jest.advanceTimersByTimeAsync(ms));
+  const retry = () => screen.getByRole('button', { name: 'Retry policies' });
+  try {
+    await act(() => focusManager.setFocused(true));
+    await screen.findByRole('button', { name: 'Retry policies' });
+    expect(requests).toBe(1);
+    await advance(30_000);
+    expect(requests).toBe(1);
+    await advance(269_000);
+    expect(retry()).toBeDisabled();
+    await advance(1_000);
+    expect(retry()).toBeEnabled();
+    await advance(30_000);
+    expect(requests).toBe(2);
+    expect(retry()).toBeDisabled();
+    await advance(30_000);
+    expect(requests).toBe(2);
+    await advance(91_000);
+    expect(retry()).toBeEnabled();
+    await advance(30_000);
+    expect(requests).toBe(3);
+    await env.show(null);
+    await advance(300_000);
+    expect(requests).toBe(3);
+  } finally {
+    await env.dispose();
+    mockPath = '/boards';
+    jest.useRealTimers();
+  }
+});
+
+test('Back can keep or discard a policy draft after a failed refresh', async () => {
+  mockPath = `/workspaces/${b.id}/policies`;
+  let failed = false;
+  const env = await setup({
+    view: 'collaboration',
+    first: [collaborationAdmin],
+    override(url) {
+      if (!url.pathname.endsWith('/policies')) return null;
+      return failed ? fail(503) : ok(policyFixture);
+    },
+  });
+  const label = 'Board owners can add Board members';
+  let navigation;
+  const repeat = jest.fn(() => {
+    navigation = env.show(null);
+  });
+  const back = () => act(() => mockPreventRemove({ repeat }));
+  try {
+    await screen.findByLabelText(label);
+    await fireEvent(screen.getByLabelText(label), 'valueChange', false);
+    failed = true;
+    await act(() =>
+      env.data.queryClient.invalidateQueries({
+        queryKey: [
+          ...queryKeys.workspace(env.data.getIdentity(), b.id),
+          'policies',
+        ],
+      }),
+    );
+    await screen.findByRole('button', { name: 'Retry policies' });
+    await back();
+    await confirmWorkspace('Keep editing');
+    expect(repeat).not.toHaveBeenCalled();
+    failed = false;
+    await pressWorkspace('Retry policies');
+    expect((await screen.findByLabelText(label)).props.value).toBe(false);
+    failed = true;
+    await act(() =>
+      env.data.queryClient.invalidateQueries({
+        queryKey: [
+          ...queryKeys.workspace(env.data.getIdentity(), b.id),
+          'policies',
+        ],
+      }),
+    );
+    await screen.findByRole('button', { name: 'Retry policies' });
+    await back();
+    await confirmWorkspace('Discard changes');
+    expect(repeat).toHaveBeenCalledTimes(1);
+    await navigation;
+    expect(screen.queryByText('Permissions')).toBeNull();
+    expect(screen.queryByTestId('native-modal')).toBeNull();
+  } finally {
+    await env.dispose();
+    mockPath = '/boards';
+  }
+});
+
+test('Workspace refresh errors preserve an open role dialog until access is denied', async () => {
+  mockPath = `/workspaces/${b.id}/members`;
+  let detailStatus = 200;
+  const env = await setup({
+    view: 'collaboration',
+    first: [collaborationAdmin],
+    override(url) {
+      if (url.pathname.endsWith('/members'))
+        return envelope(page([memberFixture(1)], 1, 20));
+      if (url.pathname.endsWith(b.id) && detailStatus !== 200)
+        return fail(detailStatus);
+      return null;
+    },
+  });
+  const refresh = () =>
+    act(() =>
+      env.data.queryClient.invalidateQueries({
+        queryKey: queryKeys.workspace(env.data.getIdentity(), b.id),
+        exact: true,
+      }),
+    );
+  try {
+    await pressWorkspace('Actions for Roster member 1');
+    await confirmWorkspace('Change role');
+    detailStatus = 503;
+    await refresh();
+    await screen.findByRole('button', { name: 'Retry workspace' });
+    expect(screen.getByText('Promote to Workspace ADMIN?')).toBeTruthy();
+    detailStatus = 200;
+    await pressWorkspace('Retry workspace');
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Retry workspace' }),
+      ).toBeNull(),
+    );
+    expect(screen.getByText('Promote to Workspace ADMIN?')).toBeTruthy();
+    await act(() => onlineManager.setOnline(false));
+    expect(screen.getByText('Promote to Workspace ADMIN?')).toBeTruthy();
+    expect(screen.queryByText('Connection unavailable')).toBeNull();
+    await act(() => onlineManager.setOnline(true));
+    detailStatus = 403;
+    await refresh();
+    await screen.findByText('Resource unavailable');
+    expect(screen.queryByText('Roster member 1')).toBeNull();
+    expect(screen.queryByTestId('native-modal')).toBeNull();
+  } finally {
+    await act(() => onlineManager.setOnline(true));
+    await env.dispose();
+    mockPath = '/boards';
+  }
+});
+
+test('a cold offline Workspace section hides cached data until verification succeeds', async () => {
+  mockPath = `/workspaces/${b.id}/members`;
+  let status = 503;
+  const env = await setup({
+    view: null,
+    first: [collaborationAdmin],
+    override(url) {
+      if (url.pathname.endsWith('/members'))
+        return envelope(page([memberFixture(1)], 1, 20));
+      if (url.pathname.endsWith(b.id) && status !== 200) return fail(status);
+      return null;
+    },
+  });
+  try {
+    const key = queryKeys.workspace(env.data.getIdentity(), b.id);
+    env.data.queryClient.setQueryData(key, collaborationAdmin);
+    await act(() => onlineManager.setOnline(false));
+    await env.show('collaboration');
+    await screen.findByText('Connection unavailable');
+    expect(screen.queryByText(collaborationAdmin.name)).toBeNull();
+    expect(env.fetch).not.toHaveBeenCalled();
+    await act(() => onlineManager.setOnline(true));
+    await screen.findByRole('button', { name: 'Retry workspace' });
+    expect(screen.queryByText(collaborationAdmin.name)).toBeNull();
+    status = 200;
+    await pressWorkspace('Retry workspace');
+    await screen.findByText('Roster member 1');
+  } finally {
+    await act(() => onlineManager.setOnline(true));
+    await env.dispose();
+    mockPath = '/boards';
   }
 });
 

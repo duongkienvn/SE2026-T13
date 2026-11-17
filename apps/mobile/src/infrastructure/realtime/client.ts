@@ -392,15 +392,23 @@ export function createNativeRealtime(options: {
         event === 'board:restored' ||
         (event.startsWith('member:') && hint.userId === identity.userId)
       ) {
+        const boardId = hint.boardId!;
+        const workspaceId = rooms.getSnapshot(boardId).workspaceId;
+        const guestWorkspaceId =
+          workspaceId ?? data.resources.boardWorkspace(boardId);
+        if (guestWorkspaceId && event.startsWith('board:')) {
+          void data
+            .invalidateHints(identity, [
+              [...queryKeys.workspace(identity, guestWorkspaceId), 'guests'],
+            ])
+            .catch(() => undefined);
+        }
         data.resources.fenceAggregates();
         data.evict(identity, [
           ...aggregateKeys(identity),
-          ...workspaceOverviewKeys(
-            identity,
-            rooms.getSnapshot(hint.boardId!).workspaceId,
-          ),
+          ...workspaceOverviewKeys(identity, workspaceId),
         ]);
-        accessCheck(hint.boardId);
+        accessCheck(boardId);
         return;
       }
       if (event === 'presence:sync')

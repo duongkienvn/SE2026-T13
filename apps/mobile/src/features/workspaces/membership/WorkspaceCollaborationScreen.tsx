@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useIsFocused, usePathname } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSessionSnapshot } from '../../../infrastructure/auth/SessionProvider';
@@ -87,42 +87,47 @@ function VerifiedCollaboration({
     retry: false,
   });
   const retry = useWorkspaceRetryReady(detail.error, detail.errorUpdatedAt);
+  const [verified, setVerified] = useState(false);
+  const denied = !readable || isWorkspaceDenied(detail.error);
+  const verifiedNow = detail.isSuccess && detail.isFetchedAfterMount;
+  const workspace = verified || verifiedNow ? detail.data : undefined;
   useEffect(() => {
-    if (!readable || isWorkspaceDenied(detail.error)) policyDraft.current = {};
-  }, [readable, detail.error]);
-  if (!readable || isWorkspaceDenied(detail.error))
-    return <ResourceBoundary access="unavailable" />;
-  if (!online && !detail.data)
+    if (denied) {
+      policyDraft.current = {};
+      setVerified(false);
+    } else if (verifiedNow) {
+      setVerified(true);
+    }
+  }, [denied, verifiedNow]);
+  if (denied) return <ResourceBoundary access="unavailable" />;
+  if (!online && !workspace)
     return (
       <ErrorState
         title="Connection unavailable"
         description="Reconnect to verify Workspace access."
       />
     );
-  if (detail.isError)
+  const retryWorkspace = (
+    <Button
+      label="Retry workspace"
+      disabled={!active || !online || !retry || detail.isFetching}
+      onPress={() => void detail.refetch()}
+    />
+  );
+  if (detail.isError && !workspace)
     return (
       <ErrorState
         title="Couldn’t verify Workspace access"
         description={workspaceErrorMessage(detail.error)}
-        action={
-          <Button
-            label="Retry workspace"
-            disabled={!retry}
-            onPress={() => void detail.refetch()}
-          />
-        }
+        action={retryWorkspace}
       />
     );
-  if (
-    !detail.isFetchedAfterMount ||
-    !detail.data ||
-    session.status !== 'authenticated'
-  )
+  if (!workspace || session.status !== 'authenticated')
     return <ResourceBoundary access="checking" />;
   const context = {
     id,
     identity,
-    workspace: detail.data,
+    workspace,
     active,
     online,
     checking: detail.isFetching,
@@ -154,8 +159,20 @@ function VerifiedCollaboration({
               {workspaceSectionLabels[destination.section]}
             </Text>
             <Text style={[typography.body, { color: c.textSecondary }]}>
-              {detail.data.name}
+              {workspace.name}
             </Text>
+            {detail.isError && (
+              <>
+                <Text
+                  accessibilityLiveRegion="polite"
+                  style={[typography.body, { color: c.textSecondary }]}
+                >
+                  Couldn’t refresh Workspace access.{' '}
+                  {workspaceErrorMessage(detail.error)}
+                </Text>
+                {retryWorkspace}
+              </>
+            )}
             {!online && (
               <Text
                 accessibilityLiveRegion="polite"

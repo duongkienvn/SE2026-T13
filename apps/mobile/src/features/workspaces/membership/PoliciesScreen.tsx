@@ -15,7 +15,12 @@ import {
   typography,
   useTheme,
 } from '../../../ui';
-import { useWorkspaceRetryReady, workspaceErrorMessage } from '../status';
+import { isWorkspaceDenied } from '../queries';
+import {
+  canRetryWorkspace,
+  useWorkspaceRetryReady,
+  workspaceErrorMessage,
+} from '../status';
 import { policyFields, type WorkspacePolicies } from './decoder';
 import { updateWorkspacePolicies } from './mutations';
 import {
@@ -63,13 +68,16 @@ export function PoliciesScreen({
   const action = useWorkspaceAction(context);
   const query = useQuery({
     ...workspacePoliciesOptions(data, identity, id),
-    enabled: active && online,
-    refetchInterval: 30_000,
+    enabled: ({ state }) =>
+      active && online && canRetryWorkspace(state.error, state.errorUpdatedAt),
+    refetchInterval: ({ state }) =>
+      canRetryWorkspace(state.error, state.errorUpdatedAt) ? 30_000 : false,
   });
   const retry = useWorkspaceRetryReady(query.error, query.errorUpdatedAt);
   const personal = workspace.type === WorkspaceType.PERSONAL;
   const policy = query.data;
-  const canWrite = canManageWorkspacePolicies(workspace, policy);
+  const denied = isWorkspaceDenied(query.error);
+  const canWrite = !denied && canManageWorkspacePolicies(workspace, policy);
   const changes: Partial<WorkspacePolicies> = {};
   for (const field of policyFields) {
     const value = draft[field];
@@ -91,32 +99,32 @@ export function PoliciesScreen({
     setDraft(next);
   }
   useEffect(() => {
-    if (policy && !canWrite) {
+    if (denied || (policy && !canWrite)) {
       draftRef.current = {};
       setDraft({});
       setExit(undefined);
       setCancel(false);
     }
-  }, [canWrite, draftRef, policy]);
+  }, [canWrite, denied, draftRef, policy]);
 
-  if (query.isError)
-    return (
-      <ErrorState
-        title="Couldn’t load Workspace policies"
-        description={workspaceErrorMessage(query.error)}
-        action={
-          <Button
-            label="Retry policies"
-            disabled={!online || !retry}
-            onPress={() => void query.refetch()}
-          />
-        }
-      />
-    );
-  if (!policy)
-    return online ? <LoadingState label="Loading Workspace policies" /> : null;
   const blocked = action.disabled || context.checking || query.isFetching;
-  return (
+  const content = query.isError ? (
+    <ErrorState
+      title="Couldn’t load Workspace policies"
+      description={workspaceErrorMessage(query.error)}
+      action={
+        <Button
+          label="Retry policies"
+          disabled={!active || !online || !retry || query.isFetching}
+          onPress={() => void query.refetch()}
+        />
+      }
+    />
+  ) : !policy ? (
+    online ? (
+      <LoadingState label="Loading Workspace policies" />
+    ) : null
+  ) : (
     <>
       {!canWrite && (
         <Text style={[typography.body, { color: c.textSecondary }]}>
@@ -214,7 +222,12 @@ export function PoliciesScreen({
           />
         </>
       )}
-      {(cancel || exit) && (
+    </>
+  );
+  return (
+    <>
+      {content}
+      {canWrite && (cancel || exit) && (
         <ConfirmDialog
           visible
           destructive
