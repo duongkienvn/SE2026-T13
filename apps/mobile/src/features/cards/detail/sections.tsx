@@ -1,4 +1,5 @@
 import { CardMetadata } from '../metadata/CardMetadata';
+import { CardChecklists } from '../checklists/CardChecklists';
 import { Component, type ComponentType, type ReactNode } from 'react';
 import { Text, View } from 'react-native';
 import type { SessionIdentity } from '../../../infrastructure/api/session-client';
@@ -113,7 +114,7 @@ export function CardMetadataSection({
 }
 export function CardChecklistsSection({
   context,
-  section,
+  section = CardChecklists,
 }: CardDetailSectionProps & {
   section?: ComponentType<CardDetailSectionProps>;
 }) {
