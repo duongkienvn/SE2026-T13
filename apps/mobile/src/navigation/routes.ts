@@ -8,8 +8,14 @@ export type PublicRoute =
 
 declare const resourceIdBrand: unique symbol;
 export type ResourceId = string & { readonly [resourceIdBrand]: true };
-export const workspaceSections = ['members', 'guests', 'policies'] as const;
+export const workspaceSections = [
+  'members',
+  'guests',
+  'policies',
+  'invitations',
+] as const;
 export type WorkspaceSection = (typeof workspaceSections)[number];
+export const invitationRecipientPath = '/invitations/workspace';
 export type ResourcePath =
   | `/workspaces/${ResourceId}`
   | `/workspaces/${ResourceId}/${WorkspaceSection}`
@@ -18,10 +24,12 @@ export type ResourcePath =
   | `/boards/${ResourceId}/${'calendar' | 'table' | 'settings'}`;
 export type DestinationPath =
   | `/${'home' | 'tasks' | 'boards' | 'inbox' | 'search' | 'settings' | 'invitation'}`
+  | typeof invitationRecipientPath
   | ResourcePath;
 
 export type Destination =
   | { kind: 'tab'; tab: 'home' | 'tasks' | 'boards' | 'inbox' }
+  | { kind: 'workspaceInvitation' }
   | { kind: 'workspace'; workspaceId: ResourceId }
   | {
       kind: 'workspaceSection';
@@ -41,6 +49,7 @@ export function parseResourceId(value: string): ResourceId | null {
 }
 
 export function parsePath(path: string): Destination | null {
+  if (path === invitationRecipientPath) return { kind: 'workspaceInvitation' };
   // Reject encoding entirely: no encoded separators, traversal, or double decoding.
   if (!path.startsWith('/') || /[%?#\\\s]/.test(path) || path.includes('//'))
     return null;
@@ -81,6 +90,8 @@ export function parsePath(path: string): Destination | null {
 
 export function destinationPath(destination: Destination): DestinationPath {
   switch (destination.kind) {
+    case 'workspaceInvitation':
+      return invitationRecipientPath;
     case 'tab':
       return `/${destination.tab}`;
     case 'screen':

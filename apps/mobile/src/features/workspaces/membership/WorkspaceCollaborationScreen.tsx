@@ -27,6 +27,8 @@ import { GuestsDirectory } from './GuestsDirectory';
 import { PoliciesScreen } from './PoliciesScreen';
 import type { WorkspacePolicies } from './decoder';
 import { workspaceCapabilityOptions } from './queries';
+import { InvitationAdminScreen } from '../invitations/InvitationAdminScreen';
+import { canManageInvitations } from '../invitations/queries';
 
 export const workspaceRefreshInterval = 30_000;
 
@@ -60,6 +62,7 @@ export const workspaceSectionLabels = {
   members: 'Members',
   guests: 'Guests',
   policies: 'Permissions',
+  invitations: 'Invitations',
 } as const;
 
 function VerifiedCollaboration({
@@ -124,6 +127,8 @@ function VerifiedCollaboration({
     );
   if (!workspace || session.status !== 'authenticated')
     return <ResourceBoundary access="checking" />;
+  if (destination.section === 'invitations' && !canManageInvitations(workspace))
+    return <ResourceBoundary access="unavailable" />;
   const context = {
     id,
     identity,
@@ -189,6 +194,9 @@ function VerifiedCollaboration({
             )}
             {destination.section === 'policies' && (
               <PoliciesScreen context={context} draftRef={policyDraft} />
+            )}
+            {destination.section === 'invitations' && (
+              <InvitationAdminScreen context={context} />
             )}
           </ScrollView>
         </KeyboardAvoidingView>

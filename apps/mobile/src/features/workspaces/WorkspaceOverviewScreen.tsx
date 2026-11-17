@@ -365,23 +365,25 @@ function VerifiedOverview({
               onPress={() => setEditing(true)}
             />
           )}
-          {workspaceSections.map((section) => (
-            <Button
-              key={section}
-              label={workspaceSectionLabels[section]}
-              variant="secondary"
-              disabled={!active || !online || detail.isFetching}
-              onPress={() =>
-                router.push(
-                  destinationPath({
-                    kind: 'workspaceSection',
-                    workspaceId: id,
-                    section,
-                  }),
-                )
-              }
-            />
-          ))}
+          {workspaceSections
+            .filter((section) => section !== 'invitations')
+            .map((section) => (
+              <Button
+                key={section}
+                label={workspaceSectionLabels[section]}
+                variant="secondary"
+                disabled={!active || !online || detail.isFetching}
+                onPress={() =>
+                  router.push(
+                    destinationPath({
+                      kind: 'workspaceSection',
+                      workspaceId: id,
+                      section,
+                    }),
+                  )
+                }
+              />
+            ))}
           {overview.data && (
             <Surface>
               <Text style={[typography.strong, { color: c.text }]}>

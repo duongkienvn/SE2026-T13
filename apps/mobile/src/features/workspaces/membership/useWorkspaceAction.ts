@@ -6,7 +6,10 @@ import { useWorkspaceRetryReady, workspaceErrorMessage } from '../status';
 import type { WorkspaceCollaborationContext } from './WorkspaceCollaborationScreen';
 import { uncertainWorkspaceWrite } from './mutations';
 
-export function useWorkspaceAction(context: WorkspaceCollaborationContext) {
+export function useWorkspaceAction(
+  context: WorkspaceCollaborationContext,
+  formatError = workspaceErrorMessage,
+) {
   const data = useMobileData();
   const request = useRef<AbortController | null>(null);
   const [pending, setPending] = useState(false);
@@ -60,7 +63,7 @@ export function useWorkspaceAction(context: WorkspaceCollaborationContext) {
         : error instanceof ApiError &&
             (error.status === 403 || error.status === 404)
           ? 'This action is unavailable. Check the latest Workspace access.'
-          : workspaceErrorMessage(error),
+          : formatError(error),
     clearError: () => setFailure(undefined),
     reviewed() {
       setMustReview(false);

@@ -13,6 +13,9 @@ import { focusManager, onlineManager } from '@tanstack/react-query';
 import { BoardsScreen } from '../src/features/workspaces/BoardsScreen';
 import { WorkspaceOverviewScreen } from '../src/features/workspaces/WorkspaceOverviewScreen';
 import { WorkspaceCollaborationScreen } from '../src/features/workspaces/membership/WorkspaceCollaborationScreen';
+import { InvitationRecipientScreen } from '../src/features/workspaces/invitations/InvitationRecipientScreen';
+import { nativeInvitationFlow } from '../src/features/workspaces/invitations/flow';
+import { redirectSystemPath } from '../src/app/+native-intent';
 import { WorkspaceSelectionProvider } from '../src/features/workspaces/WorkspaceSelection';
 import { SessionProvider } from '../src/infrastructure/auth/SessionProvider';
 import { DataProvider } from '../src/infrastructure/query/DataProvider';
@@ -43,11 +46,16 @@ import {
 import { board, overview, page, uuid, workspace } from './workspaces/fixtures';
 
 const mockNavigate = jest.fn();
+const mockReplace = jest.fn();
 let mockPath = '/boards';
 let mockFocused = true;
 let mockPreventRemove;
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ navigate: mockNavigate, push: mockNavigate }),
+  useRouter: () => ({
+    navigate: mockNavigate,
+    push: mockNavigate,
+    replace: mockReplace,
+  }),
   usePathname: () => mockPath,
   useIsFocused: () => mockFocused,
   usePreventRemove: (prevent, listener) => {
@@ -119,6 +127,7 @@ async function setup({
   view = 'boards',
 } = {}) {
   mockNavigate.mockClear();
+  mockReplace.mockClear();
   mockFocused = true;
   const time = new FakeTime();
   const sessionApi = new FakeSessionApi();
@@ -133,6 +142,10 @@ async function setup({
     timers: time,
   });
   await manager.establishSession(loginResponse(USER_A));
+  const stopInvitation = manager.addLifecycleListener({
+    onSessionEnd: nativeInvitationFlow.clear,
+    onSessionStart: nativeInvitationFlow.bind,
+  });
   const fetch = jest.fn(async (input, init) => {
     const url = new URL(input);
     const custom = override?.(url, init);
@@ -183,6 +196,7 @@ async function setup({
             <ThemeContext.Provider value="dark">
               {shown === 'boards' && <BoardsScreen />}
               {shown === 'overview' && <WorkspaceOverviewScreen />}
+              {shown === 'recipient' && <InvitationRecipientScreen />}
               {shown === 'collaboration' && (
                 <RealtimeProvider client={realtime}>
                   <WorkspaceCollaborationScreen />
@@ -203,6 +217,7 @@ async function setup({
     show: (shown) => mounted.rerender(tree(shown)),
     async dispose() {
       await mounted.unmount();
+      stopInvitation();
       realtime.dispose();
       data.dispose();
       manager.dispose();
@@ -828,6 +843,458 @@ test('a cold offline Workspace section hides cached data until verification succ
     mockPath = '/boards';
   }
 });
+
+const invitationLink =
+  'https://kanvexa.tech/invitations/workspace#proof=' + 'N'.repeat(43);
+const recipientRoute = '/invitations/workspace';
+function inviteRow(index, workspaceId = b.id) {
+  const date = new Date().toISOString();
+  return {
+    id: uuid(450 + index),
+    workspaceId,
+    invitedById: USER_A,
+    email: `invite${index}@example.test`,
+    role: 'MEMBER',
+    status: 'PENDING',
+    sendState: 'FAILED',
+    createdAt: date,
+    updatedAt: date,
+    expiresAt: new Date(Date.now() + 604_800_000).toISOString(),
+    consumedAt: null,
+    revokedAt: null,
+    declinedAt: null,
+  };
+}
+
+test('invitation admin requests once, shows delivery, pages and filters, and confirms revocation', async () => {
+  mockPath = `/workspaces/${b.id}/invitations`;
+  let writes = 0;
+  let deletes = 0;
+  let issue;
+  const pending = new Promise((resolve) => {
+    issue = resolve;
+  });
+  let rows = Array.from({ length: 21 }, (_, index) => inviteRow(index));
+  rows[1].status = 'ACCEPTED';
+  rows[1].consumedAt = rows[1].createdAt;
+  const env = await setup({
+    view: 'collaboration',
+    first: [collaborationAdmin],
+    override(url, init) {
+      if (!url.pathname.includes('/invitations')) return null;
+      if (init.method === 'POST') {
+        writes++;
+        expect(JSON.parse(init.body)).toEqual({
+          email: 'invite99@example.test',
+          role: 'MEMBER',
+        });
+        return pending;
+      }
+      if (init.method === 'DELETE') {
+        deletes++;
+        expect(url.pathname.endsWith(inviteRow(20).id)).toBe(true);
+        rows = rows.map((row) =>
+          row.id === inviteRow(20).id
+            ? { ...row, status: 'REVOKED', revokedAt: row.createdAt }
+            : row,
+        );
+        return envelope(null, 204);
+      }
+      const filter = url.searchParams.get('status');
+      return envelope(
+        page(
+          filter ? rows.filter((row) => row.status === filter) : rows,
+          Number(url.searchParams.get('page')),
+          Number(url.searchParams.get('limit')),
+        ),
+      );
+    },
+  });
+  try {
+    await screen.findByText('21 invitations · Page 1 of 2');
+    await pressWorkspace('Invite member');
+    await fireEvent.changeText(
+      screen.getByLabelText('Recipient email'),
+      'invalid email',
+    );
+    await pressWorkspace('Request invitation');
+    expect(screen.getByText('Enter a valid email address.')).toBeTruthy();
+    expect(writes).toBe(0);
+    await pressWorkspace('Cancel');
+    await screen.findByText('Discard invitation draft?');
+    await pressWorkspace('Keep editing');
+    expect(screen.getByLabelText('Recipient email').props.value).toBe(
+      'invalid email',
+    );
+    await fireEvent.changeText(
+      screen.getByLabelText('Recipient email'),
+      ' Invite99@Example.Test ',
+    );
+    const submit = screen.getByRole('button', { name: 'Request invitation' });
+    await fireEvent.press(submit);
+    await fireEvent.press(submit);
+    await waitFor(() => expect(writes).toBe(1));
+    const requested = { ...inviteRow(99), sendState: 'UNAVAILABLE' };
+    await act(() =>
+      issue(
+        envelope(
+          {
+            success: true,
+            statusCode: 202,
+            message: 'Accepted',
+            data: requested,
+          },
+          202,
+        ),
+      ),
+    );
+    await screen.findByText(
+      /Invitation requested. PENDING. Email delivery unavailable/,
+    );
+    expect(screen.queryByText('Email sent')).toBeNull();
+    await pressWorkspace('ACCEPTED');
+    await screen.findByText('invite1@example.test');
+    expect(
+      screen.queryByRole('button', { name: /Revoke invitation for/ }),
+    ).toBeNull();
+    await pressWorkspace('All statuses');
+    await pressWorkspace('Next page');
+    await screen.findByText('invite20@example.test');
+    await pressWorkspace('Revoke invitation for invite20@example.test');
+    await confirmWorkspace('Cancel');
+    expect(deletes).toBe(0);
+    await pressWorkspace('Revoke invitation for invite20@example.test');
+    await confirmWorkspace('Revoke invitation');
+    await screen.findByText('Invitation revoked.');
+    expect(deletes).toBe(1);
+    await screen.findByText('MEMBER · REVOKED');
+  } finally {
+    await env.dispose();
+    mockPath = '/boards';
+  }
+});
+
+test.each([true, false])(
+  'timed-out invitation review checks the submitted recipient across unfiltered pages (created: %s)',
+  async (created) => {
+    jest.useFakeTimers();
+    mockPath = `/workspaces/${b.id}/invitations`;
+    const old = {
+      ...inviteRow(1),
+      status: 'ACCEPTED',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      consumedAt: '2026-01-01T00:01:00.000Z',
+    };
+    const newer = '2026-01-01T00:02:00.000Z';
+    let rows = [old];
+    let writes = 0;
+    const reads = [];
+    const env = await setup({
+      view: 'collaboration',
+      first: [collaborationAdmin],
+      override(url, init) {
+        if (!url.pathname.endsWith('/invitations')) return null;
+        if (init.method === 'POST') {
+          writes++;
+          if (created) {
+            rows = [
+              ...Array.from({ length: 100 }, (_, index) => ({
+                ...inviteRow(index + 101),
+                createdAt: '2026-01-01T00:03:00.000Z',
+              })),
+              { ...inviteRow(2), email: old.email, createdAt: newer },
+              old,
+            ];
+          }
+          return new Promise(() => {});
+        }
+        const status = url.searchParams.get('status');
+        const number = Number(url.searchParams.get('page'));
+        const limit = Number(url.searchParams.get('limit'));
+        reads.push({ status, number });
+        return envelope(
+          page(
+            status ? rows.filter((row) => row.status === status) : rows,
+            number,
+            limit,
+          ),
+        );
+      },
+    });
+    try {
+      await screen.findByText(old.email);
+      await pressWorkspace('ACCEPTED');
+      await screen.findByText('MEMBER · ACCEPTED');
+      await pressWorkspace('Invite member');
+      await fireEvent.changeText(
+        screen.getByLabelText('Recipient email'),
+        old.email.toUpperCase(),
+      );
+      await pressWorkspace('Request invitation');
+      await waitFor(() => expect(writes).toBe(1));
+      await act(() => jest.advanceTimersByTimeAsync(15_000));
+      await screen.findByRole('button', { name: 'Check latest invitations' });
+      const beforeReview = reads.length;
+      if (!created) {
+        await env.show(null);
+        await env.show('collaboration');
+      }
+      await pressWorkspace('Check latest invitations');
+      if (created) {
+        await screen.findByText(
+          /Found a newer invitation for invite1@example.test.*PENDING/,
+        );
+        expect(reads.slice(beforeReview)).toContainEqual({
+          status: null,
+          number: 2,
+        });
+        expect(
+          screen.getByRole('button', { name: 'Invite member' }),
+        ).toBeEnabled();
+        expect(screen.getByText('MEMBER · ACCEPTED')).toBeTruthy();
+      } else {
+        await screen.findByText(
+          /Couldn’t verify a new invitation for invite1@example.test/,
+        );
+        expect(
+          screen.getByRole('button', { name: 'Invite member' }),
+        ).toBeDisabled();
+      }
+      expect(writes).toBe(1);
+    } finally {
+      await env.dispose();
+      mockPath = '/boards';
+      jest.useRealTimers();
+    }
+  },
+);
+
+test.each([b, a])(
+  'non-admin or Personal Workspace cannot read invitation history',
+  async (workspace) => {
+    mockPath = `/workspaces/${workspace.id}/invitations`;
+    let calls = 0;
+    const env = await setup({
+      view: 'collaboration',
+      first: [workspace],
+      override(url) {
+        if (url.pathname.endsWith('/invitations')) calls++;
+        return null;
+      },
+    });
+    try {
+      await screen.findByText('Resource unavailable');
+      expect(calls).toBe(0);
+    } finally {
+      await env.dispose();
+      mockPath = '/boards';
+    }
+  },
+);
+
+test('signed-out invitation handoff stays explicit and decline clears proof without joining', async () => {
+  const calls = [];
+  const env = await setup({
+    view: null,
+    override(url, init) {
+      if (!url.pathname.startsWith('/api/workspace-invitations/')) return null;
+      calls.push(url.pathname);
+      expect(JSON.parse(init.body)).toEqual({ proof: 'N'.repeat(43) });
+      return envelope(null, 204);
+    },
+  });
+  try {
+    await act(() => env.manager.logout());
+    expect(redirectSystemPath({ path: invitationLink, initial: true })).toBe(
+      recipientRoute,
+    );
+    await env.show('recipient');
+    await pressWorkspace('Sign in');
+    expect(mockNavigate).toHaveBeenCalledWith('/sign-in');
+    expect(calls).toEqual([]);
+    await act(() => env.manager.establishSession(loginResponse(USER_A)));
+    await pressWorkspace('Decline invitation');
+    expect(calls).toEqual([]);
+    await confirmWorkspace('Decline invitation');
+    await screen.findByText('Invitation declined');
+    await pressWorkspace('Go to Workspaces');
+    expect(mockReplace).toHaveBeenCalledWith('/boards');
+    expect(calls).toEqual(['/api/workspace-invitations/decline']);
+    expect(nativeInvitationFlow.getSnapshot().available).toBe(false);
+  } finally {
+    nativeInvitationFlow.clear();
+    await env.dispose();
+  }
+});
+
+test('accept finds an authorized Workspace through the returned membership and clears its proof', async () => {
+  let joined = false;
+  let probes = 0;
+  const member = { ...memberFixture(1), userId: USER_A };
+  const env = await setup({
+    view: null,
+    first: [a],
+    override(url, init) {
+      if (
+        url.pathname === '/api/workspace-invitations/accept' &&
+        init.method === 'POST'
+      ) {
+        joined = true;
+        return ok(member);
+      }
+      if (url.pathname === '/api/workspaces')
+        return envelope(page(joined ? [a, b] : [a], 1, 20));
+      if (url.pathname === `/api/workspaces/${b.id}/members`)
+        return envelope(page([member], 1, 20));
+      if (url.pathname === `/api/workspaces/${b.id}`) {
+        probes++;
+        return ok(b);
+      }
+      return null;
+    },
+  });
+  try {
+    expect(redirectSystemPath({ path: invitationLink, initial: false })).toBe(
+      recipientRoute,
+    );
+    await env.show('recipient');
+    await screen.findByRole('button', { name: 'Accept invitation' });
+    expect(joined).toBe(false);
+    await pressWorkspace('Accept invitation');
+    await waitFor(() =>
+      expect(mockReplace).toHaveBeenCalledWith(`/workspaces/${b.id}`),
+    );
+    expect(probes).toBe(1);
+    expect(nativeInvitationFlow.getSnapshot().available).toBe(false);
+  } finally {
+    nativeInvitationFlow.clear();
+    await env.dispose();
+  }
+});
+
+test('a wrong account receives a generic invitation failure and a bare route asks to reopen', async () => {
+  const env = await setup({
+    view: null,
+    override(url) {
+      return url.pathname === '/api/workspace-invitations/accept'
+        ? fault(410, 'secret@example.test')
+        : null;
+    },
+  });
+  try {
+    await env.show('recipient');
+    await screen.findByText('Open the link from your invitation email again.');
+    expect(
+      screen.queryByRole('button', { name: 'Accept invitation' }),
+    ).toBeNull();
+    await act(() =>
+      redirectSystemPath({ path: invitationLink, initial: false }),
+    );
+    await pressWorkspace('Accept invitation');
+    await screen.findByText(/This invitation is unavailable/);
+    expect(screen.queryByText(/secret@example.test/)).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Sign out to use another account' }),
+    ).toBeTruthy();
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(nativeInvitationFlow.getSnapshot().available).toBe(false);
+  } finally {
+    nativeInvitationFlow.clear();
+    await env.dispose();
+  }
+});
+
+test.each(['logout', 'account replacement'])(
+  'a late acceptance drops its proof after %s',
+  async (transition) => {
+    let finish;
+    let signal;
+    const delayed = new Promise((resolve) => {
+      finish = resolve;
+    });
+    const env = await setup({
+      view: null,
+      override(url, init) {
+        if (url.pathname !== '/api/workspace-invitations/accept') return null;
+        signal = init.signal;
+        return delayed;
+      },
+    });
+    try {
+      redirectSystemPath({ path: invitationLink, initial: true });
+      await env.show('recipient');
+      await pressWorkspace('Accept invitation');
+      await waitFor(() => expect(signal).toBeDefined());
+      await act(() =>
+        transition === 'logout'
+          ? env.manager.logout()
+          : env.manager.establishSession(loginResponse(USER_B)),
+      );
+      expect(signal.aborted).toBe(true);
+      await act(() => finish(ok({ ...memberFixture(1), userId: USER_A })));
+      expect(nativeInvitationFlow.getSnapshot().available).toBe(false);
+      expect(mockReplace).not.toHaveBeenCalled();
+    } finally {
+      nativeInvitationFlow.clear();
+      await env.dispose();
+    }
+  },
+);
+
+test.each([
+  [403, /Verify the invited email address/],
+  [409, /Email delivery was not confirmed/],
+  [429, /Too many attempts/],
+  [503, /We couldn’t confirm what happened/],
+])(
+  'responding to an invitation handles HTTP %s without an automatic retry',
+  async (status, message) => {
+    let writes = 0;
+    const env = await setup({
+      view: null,
+      override(url) {
+        if (url.pathname !== '/api/workspace-invitations/accept') return null;
+        writes++;
+        return envelope(
+          {
+            success: false,
+            statusCode: status,
+            message: 'Private server detail',
+          },
+          status,
+          status === 429 ? '300' : null,
+        );
+      },
+    });
+    try {
+      redirectSystemPath({ path: invitationLink, initial: true });
+      await env.show('recipient');
+      await act(() => onlineManager.setOnline(false));
+      expect(
+        screen.getByRole('button', { name: 'Accept invitation' }),
+      ).toBeDisabled();
+      await fireEvent.press(
+        screen.getByRole('button', { name: 'Accept invitation' }),
+      );
+      expect(writes).toBe(0);
+      await act(() => onlineManager.setOnline(true));
+      await pressWorkspace('Accept invitation');
+      await screen.findByText(message);
+      expect(screen.queryByText('Private server detail')).toBeNull();
+      const accept = screen.queryByRole('button', {
+        name: 'Accept invitation',
+      });
+      if (status === 429) expect(accept).toBeDisabled();
+      else expect(accept).toBeNull();
+      expect(writes).toBe(1);
+      expect(mockReplace).not.toHaveBeenCalled();
+    } finally {
+      await act(() => onlineManager.setOnline(true));
+      nativeInvitationFlow.clear();
+      await env.dispose();
+    }
+  },
+);
 
 test('Board search, status and sort are sent to the server', async () => {
   const env = await setup({
