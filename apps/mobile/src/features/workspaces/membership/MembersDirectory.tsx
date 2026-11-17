@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { WorkspaceRole } from '@kanban/shared';
-import { useEffect, useState } from 'react';
+import { WorkspaceRole, WorkspaceType } from '@kanban/shared';
+import { useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import {
   Button,
@@ -17,7 +18,11 @@ import { canManageWorkspaceMembers, workspaceMembersOptions } from './queries';
 import { useMobileData } from '../../../infrastructure/query/DataProvider';
 import { WorkspacePersonAvatar } from './WorkspacePersonAvatar';
 import type { WorkspaceMember } from './decoder';
-import { changeWorkspaceMemberRole } from './mutations';
+import {
+  changeWorkspaceMemberRole,
+  leaveWorkspace,
+  removeWorkspaceMember,
+} from './mutations';
 import { useWorkspaceAction } from './useWorkspaceAction';
 
 const roles = [undefined, WorkspaceRole.ADMIN, WorkspaceRole.MEMBER] as const;
@@ -32,7 +37,14 @@ export function MembersDirectory({
   const roster = useRosterPage();
   const [role, setRole] = useState<WorkspaceRole>();
   const { identity, id, active, online } = context;
-  const [candidate, setCandidate] = useState<WorkspaceMember>();
+  const router = useRouter();
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  const [candidate, setCandidate] = useState<{
+    kind: 'role' | 'remove';
+    member: WorkspaceMember;
+  }>();
+  const [leaving, setLeaving] = useState(false);
   const [notice, setNotice] = useState('');
   const action = useWorkspaceAction(context);
   const manager = canManageWorkspaceMembers(context.workspace);
@@ -48,11 +60,11 @@ export function MembersDirectory({
     refetchInterval: 30_000,
   });
   const current = members.data?.data.find(
-    ({ userId }) => userId === candidate?.userId,
+    ({ userId }) => userId === candidate?.member.userId,
   );
-  const stale = !!candidate && current?.role !== candidate.role;
+  const stale = !!candidate && current?.role !== candidate.member.role;
   const nextRole =
-    candidate?.role === WorkspaceRole.ADMIN
+    candidate?.member.role === WorkspaceRole.ADMIN
       ? WorkspaceRole.MEMBER
       : WorkspaceRole.ADMIN;
   const blocked =
@@ -100,6 +112,7 @@ export function MembersDirectory({
             if ((await members.refetch()).isSuccess) {
               action.reviewed();
               setCandidate(undefined);
+              setLeaving(false);
             }
           }}
         />
@@ -143,49 +156,114 @@ export function MembersDirectory({
               </View>
             </View>
             {manager && member.userId !== identity.userId && (
-              <Button
-                label={`Change role for ${member.displayName}`}
-                variant="link"
-                disabled={blocked}
-                onPress={() => {
-                  action.clearError();
-                  setNotice('');
-                  setCandidate(member);
-                }}
-              />
+              <>
+                <Button
+                  label={`Change role for ${member.displayName}`}
+                  variant="link"
+                  disabled={blocked}
+                  onPress={() => {
+                    action.clearError();
+                    setNotice('');
+                    setCandidate({ kind: 'role', member });
+                  }}
+                />
+                <Button
+                  label={`Remove ${member.displayName} from workspace`}
+                  variant="link"
+                  disabled={blocked}
+                  onPress={() => {
+                    action.clearError();
+                    setNotice('');
+                    setCandidate({ kind: 'remove', member });
+                  }}
+                />
+              </>
             )}
           </Surface>
         )}
       />
+      {context.workspace.type === WorkspaceType.TEAM && (
+        <Button
+          label="Leave workspace"
+          variant="secondary"
+          disabled={action.disabled || context.checking}
+          onPress={() => {
+            action.clearError();
+            setLeaving(true);
+          }}
+        />
+      )}
+      {leaving && (
+        <ConfirmDialog
+          visible
+          destructive
+          title="Leave this workspace?"
+          message={
+            action.message ??
+            'You’ll lose Workspace membership. Your explicit Board memberships stay in place.'
+          }
+          confirmLabel="Leave workspace"
+          loading={action.pending}
+          confirmDisabled={action.disabled || context.checking}
+          onCancel={() => setLeaving(false)}
+          onConfirm={() =>
+            void action.run(
+              () => leaveWorkspace(data, identity, id),
+              () => {
+                if (activeRef.current) router.navigate('/boards');
+              },
+            )
+          }
+        />
+      )}
       {candidate && manager && (
         <ConfirmDialog
           visible
           title={
-            nextRole === WorkspaceRole.ADMIN
-              ? 'Promote to Workspace ADMIN?'
-              : 'Change to Workspace MEMBER?'
+            candidate.kind === 'remove'
+              ? 'Remove Workspace member?'
+              : nextRole === WorkspaceRole.ADMIN
+                ? 'Promote to Workspace ADMIN?'
+                : 'Change to Workspace MEMBER?'
           }
           message={
             action.message ??
             (stale
               ? 'This membership changed. Close and review the latest role.'
-              : `Change ${candidate.displayName} to Workspace ${nextRole}? Their Board roles stay separate.`)
+              : candidate.kind === 'remove'
+                ? `Remove ${candidate.member.displayName} from this Workspace? Their explicit Board memberships stay in place.`
+                : `Change ${candidate.member.displayName} to Workspace ${nextRole}? Their Board roles stay separate.`)
           }
-          confirmLabel="Change role"
+          confirmLabel={
+            candidate.kind === 'remove' ? 'Remove member' : 'Change role'
+          }
+          destructive={candidate.kind === 'remove'}
           onCancel={() => setCandidate(undefined)}
           onConfirm={() =>
-            void action.run(
+            void action.run<unknown>(
               (signal) =>
-                changeWorkspaceMemberRole(
-                  data,
-                  identity,
-                  id,
-                  candidate.userId,
-                  nextRole,
-                  signal,
-                ),
+                candidate.kind === 'remove'
+                  ? removeWorkspaceMember(
+                      data,
+                      identity,
+                      id,
+                      candidate.member.userId,
+                      signal,
+                    )
+                  : changeWorkspaceMemberRole(
+                      data,
+                      identity,
+                      id,
+                      candidate.member.userId,
+                      nextRole,
+                      signal,
+                    ),
               () => {
-                setNotice('Workspace role updated.');
+                setNotice(
+                  candidate.kind === 'remove'
+                    ? 'Workspace member removed.'
+                    : 'Workspace role updated.',
+                );
                 setCandidate(undefined);
               },
             )

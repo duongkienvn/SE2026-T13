@@ -9,6 +9,8 @@ import type { MobileDataLayer } from '../../../infrastructure/query/data-layer.t
 import type { ResourceId } from '../../../navigation/routes.ts';
 import type { WorkspaceSummary } from '../decoder.ts';
 import { isWorkspaceDenied } from '../queries.ts';
+import { createWorkspaceApi } from '../api.ts';
+import { evictWorkspace } from '../queries.ts';
 import { createWorkspaceMembershipApi } from './api.ts';
 import {
   canManageWorkspaceMembers,
@@ -98,4 +100,46 @@ export function changeWorkspaceMemberRole(
       userId !== identity.userId && canManageWorkspaceMembers(workspace),
     (api) => api.changeRole(userId, role, signal),
   );
+}
+
+export function removeWorkspaceMember(
+  data: MobileDataLayer,
+  identity: SessionIdentity,
+  id: ResourceId,
+  userId: ResourceId,
+  signal: AbortSignal,
+) {
+  return runWorkspaceCollaborationWrite(
+    data,
+    identity,
+    id,
+    signal,
+    (workspace) =>
+      userId !== identity.userId && canManageWorkspaceMembers(workspace),
+    (api) => api.remove(userId, signal),
+  );
+}
+
+/** Keep the server outcome observable when the route changes during a leave. */
+export async function leaveWorkspace(
+  data: MobileDataLayer,
+  identity: SessionIdentity,
+  id: ResourceId,
+) {
+  data.assertCurrent(identity);
+  try {
+    await createWorkspaceApi(data.api, identity).leave(
+      id,
+      new AbortController().signal,
+    );
+    data.assertCurrent(identity);
+    evictWorkspace(data, identity, id);
+  } catch (error) {
+    if (
+      sameIdentity(identity, data.getIdentity()) &&
+      (isWorkspaceDenied(error) || uncertainWorkspaceWrite(error))
+    )
+      void recheckWorkspaceAccess(data, identity, id).catch(() => undefined);
+    throw error;
+  }
 }
