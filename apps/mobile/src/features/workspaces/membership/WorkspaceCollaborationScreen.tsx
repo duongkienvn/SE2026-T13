@@ -80,7 +80,7 @@ function VerifiedCollaboration({
   const retry = useWorkspaceRetryReady(detail.error, detail.errorUpdatedAt);
   if (!readable || isWorkspaceDenied(detail.error))
     return <ResourceBoundary access="unavailable" />;
-  if (!online)
+  if (!online && !detail.data)
     return (
       <ErrorState
         title="Connection unavailable"
@@ -144,6 +144,14 @@ function VerifiedCollaboration({
             <Text style={[typography.body, { color: c.textSecondary }]}>
               {detail.data.name}
             </Text>
+            {!online && (
+              <Text
+                accessibilityLiveRegion="polite"
+                style={[typography.body, { color: c.textSecondary }]}
+              >
+                You’re offline. Reconnect to refresh Workspace access.
+              </Text>
+            )}
             <MembersDirectory context={context} />
           </ScrollView>
         </KeyboardAvoidingView>
