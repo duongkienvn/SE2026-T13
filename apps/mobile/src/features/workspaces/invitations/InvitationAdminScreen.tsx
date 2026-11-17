@@ -79,6 +79,15 @@ export function InvitationAdminScreen({
     );
   const blocked = action.disabled || checking;
   const latest = history.data?.data.find(({ id }) => id === candidate?.id);
+  const review = action.mustReview && (
+    <Button
+      label="Check latest invitations"
+      disabled={!online || history.isFetching}
+      onPress={async () => {
+        if ((await history.refetch()).isSuccess) action.reviewed();
+      }}
+    />
+  );
   return (
     <>
       <Button
@@ -107,15 +116,7 @@ export function InvitationAdminScreen({
           {action.message}
         </Text>
       )}
-      {action.mustReview && (
-        <Button
-          label="Check latest invitations"
-          disabled={!online || history.isFetching}
-          onPress={async () => {
-            if ((await history.refetch()).isSuccess) action.reviewed();
-          }}
-        />
-      )}
+      {!issuing && review}
       <Text
         accessibilityRole="header"
         style={[typography.title, { color: c.text }]}
@@ -179,6 +180,7 @@ export function InvitationAdminScreen({
           pending={action.pending}
           blocked={blocked}
           message={action.message}
+          review={review}
           onClose={() => setIssuing(false)}
           onIssue={(email) =>
             void action.run(

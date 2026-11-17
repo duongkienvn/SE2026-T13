@@ -47,8 +47,16 @@ export async function writeInvitation<T>(
         void data.invalidate(identity, [key]).catch(() => undefined);
       }
     }
-    throw error;
+    throw invitationRetryError(error);
   }
+}
+
+export function invitationRetryError(error: unknown) {
+  return error instanceof ApiError &&
+    error.status === 429 &&
+    error.retryAfterMs === undefined
+    ? new ApiError('http', { status: 429, retryAfterMs: 60_000 })
+    : error;
 }
 
 export function adminInvitationError(error: unknown) {

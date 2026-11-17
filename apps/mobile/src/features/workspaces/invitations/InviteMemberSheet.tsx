@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Text } from 'react-native';
 import {
   BottomSheet,
@@ -25,12 +25,14 @@ export function InviteMemberSheet({
   pending,
   blocked,
   message,
+  review,
   onIssue,
   onClose,
 }: {
   pending: boolean;
   blocked: boolean;
   message?: string;
+  review?: ReactNode;
   onIssue: (email: string) => void;
   onClose: () => void;
 }) {
@@ -92,6 +94,7 @@ export function InviteMemberSheet({
               {message}
             </Text>
           )}
+          {review}
           <Button
             label="Request invitation"
             loading={pending}

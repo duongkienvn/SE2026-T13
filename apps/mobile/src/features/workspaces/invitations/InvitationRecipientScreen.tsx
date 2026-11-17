@@ -14,6 +14,7 @@ import { useWorkspaceOnline, useWorkspaceRetryReady } from '../status';
 import { createInvitationRecipientApi } from './api';
 import { invitationRecipientPath } from '../../../navigation/routes';
 import { nativeInvitationFlow } from './flow';
+import { invitationRetryError } from './mutations';
 import {
   readInvitationBaseline,
   reconcileAcceptedInvitation,
@@ -152,7 +153,7 @@ function RecipientEntry({ available }: { available: boolean }) {
             ['offline', 'network', 'timeout'].includes(error.kind)));
       if (attempt.finish(retain) && current()) {
         setDecline(false);
-        setFailure({ error, at: Date.now() });
+        setFailure({ error: invitationRetryError(error), at: Date.now() });
       }
     } finally {
       if (current()) setPending(false);
