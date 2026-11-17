@@ -22,6 +22,7 @@ import { radius, sizes, spacing, typography, useTheme } from './theme';
 
 export type ButtonProps = {
   label: string;
+  accessibilityLabel?: string;
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
@@ -35,6 +36,7 @@ export type ButtonProps = {
 
 export function Button({
   label,
+  accessibilityLabel = label,
   onPress,
   variant = 'primary',
   disabled = false,
@@ -63,7 +65,7 @@ export function Button({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled: blocked, busy: loading }}
       disabled={blocked}
       onPress={onPress}
