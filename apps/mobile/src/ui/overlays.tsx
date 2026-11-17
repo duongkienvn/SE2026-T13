@@ -171,6 +171,7 @@ export function ConfirmDialog({
   onCancel,
   destructive,
   loading,
+  confirmDisabled,
   dismissLabel,
 }: {
   visible: boolean;
@@ -182,6 +183,7 @@ export function ConfirmDialog({
   onCancel: () => void;
   destructive?: boolean;
   loading?: boolean;
+  confirmDisabled?: boolean;
   dismissLabel?: string;
 }) {
   const c = useTheme();
@@ -201,6 +203,7 @@ export function ConfirmDialog({
         onPress={onConfirm}
         variant={destructive ? 'destructive' : 'primary'}
         loading={loading}
+        disabled={confirmDisabled}
       />
       <Button
         label={cancelLabel}

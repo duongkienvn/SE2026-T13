@@ -8,8 +8,11 @@ export type PublicRoute =
 
 declare const resourceIdBrand: unique symbol;
 export type ResourceId = string & { readonly [resourceIdBrand]: true };
+export const workspaceSections = ['members', 'guests', 'policies'] as const;
+export type WorkspaceSection = (typeof workspaceSections)[number];
 export type ResourcePath =
   | `/workspaces/${ResourceId}`
+  | `/workspaces/${ResourceId}/${WorkspaceSection}`
   | `/boards/${ResourceId}`
   | `/boards/${ResourceId}/cards/${ResourceId}`
   | `/boards/${ResourceId}/${'calendar' | 'table' | 'settings'}`;
@@ -20,6 +23,11 @@ export type DestinationPath =
 export type Destination =
   | { kind: 'tab'; tab: 'home' | 'tasks' | 'boards' | 'inbox' }
   | { kind: 'workspace'; workspaceId: ResourceId }
+  | {
+      kind: 'workspaceSection';
+      workspaceId: ResourceId;
+      section: WorkspaceSection;
+    }
   | { kind: 'board'; boardId: ResourceId }
   | { kind: 'card'; boardId: ResourceId; cardId: ResourceId }
   | { kind: 'boardView'; boardId: ResourceId; view: 'calendar' | 'table' }
@@ -52,6 +60,11 @@ export function parsePath(path: string): Destination | null {
   const resourceId = parseResourceId(parts[1] ?? '');
   if (parts.length === 2 && parts[0] === 'workspaces' && resourceId)
     return { kind: 'workspace', workspaceId: resourceId };
+  if (parts.length === 3 && parts[0] === 'workspaces' && resourceId) {
+    const section = workspaceSections.find((value) => value === parts[2]);
+    if (section)
+      return { kind: 'workspaceSection', workspaceId: resourceId, section };
+  }
   if (parts[0] === 'boards' && resourceId) {
     const boardId = resourceId;
     if (parts.length === 2) return { kind: 'board', boardId };
@@ -74,6 +87,8 @@ export function destinationPath(destination: Destination): DestinationPath {
       return `/${destination.screen}`;
     case 'workspace':
       return `/workspaces/${destination.workspaceId}`;
+    case 'workspaceSection':
+      return `/workspaces/${destination.workspaceId}/${destination.section}`;
     case 'board':
       return `/boards/${destination.boardId}`;
     case 'card':

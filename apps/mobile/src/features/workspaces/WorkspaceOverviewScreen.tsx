@@ -48,6 +48,9 @@ import { WorkspaceGlyph } from './WorkspaceGlyph';
 import { queryKeys } from '../../infrastructure/query/keys';
 import { sameIdentity } from '../../infrastructure/api/session-client';
 import { ApiError } from '../../infrastructure/api/errors';
+import { workspaceSectionLabels } from './membership/WorkspaceCollaborationScreen';
+import { leaveWorkspace } from './membership/mutations';
+import { workspaceSections } from '../../navigation/routes';
 
 export function WorkspaceOverviewScreen() {
   const pathname = usePathname();
@@ -263,10 +266,12 @@ function VerifiedOverview({
     setActionError('');
     setActionFailure(null);
     try {
-      if (kind === 'leave') await api.leave(id, new AbortController().signal);
-      else await api.remove(id, confirmation, new AbortController().signal);
+      if (kind === 'leave') await leaveWorkspace(data, identity, id);
+      else {
+        await api.remove(id, confirmation, new AbortController().signal);
+        evictWorkspace(data, identity, id);
+      }
       data.assertCurrent(identity);
-      evictWorkspace(data, identity, id);
       setAction(null);
       if (activeRef.current)
         router.navigate(destinationPath({ kind: 'tab', tab: 'boards' }));
@@ -360,6 +365,23 @@ function VerifiedOverview({
               onPress={() => setEditing(true)}
             />
           )}
+          {workspaceSections.map((section) => (
+            <Button
+              key={section}
+              label={workspaceSectionLabels[section]}
+              variant="secondary"
+              disabled={!active || !online || detail.isFetching}
+              onPress={() =>
+                router.push(
+                  destinationPath({
+                    kind: 'workspaceSection',
+                    workspaceId: id,
+                    section,
+                  }),
+                )
+              }
+            />
+          ))}
           {overview.data && (
             <Surface>
               <Text style={[typography.strong, { color: c.text }]}>

@@ -63,6 +63,50 @@ for (const event of [
   });
 }
 
+for (const event of [
+  'board:access-changed',
+  'board:archived',
+  'board:restored',
+] as const) {
+  test(`${event} refreshes only the affected Workspace Guest directory`, async () => {
+    const c = await integration();
+    const guests = (identity: typeof c.identity, workspaceId: string) =>
+      [...queryKeys.workspace(identity, workspaceId), 'guests', {}, 1] as const;
+    try {
+      await c.join();
+      const key = guests(c.identity, WORKSPACE);
+      const other = c.observe(guests(c.identity, BOARD), 'other-guests');
+      const otherAccount = guests({ ...c.identity, userId: USER_B }, WORKSPACE);
+      c.data.queryClient.setQueryData(otherAccount, 'other account');
+      const observer = c.observe(key, 'affected-guests');
+      c.configure({ archived: event === 'board:archived' });
+      const before = c.requests.length;
+      for (let i = 0; i < 3; i++) c.socket.server(event, { boardId: BOARD });
+      c.time.advance(50);
+      await flush();
+      c.socket.ack(
+        c.socket.commands.findLastIndex(({ event }) => event === 'board:join'),
+      );
+      await flush();
+      assert.equal(observer.getCurrentResult().data, 1);
+      assert.equal(other.getCurrentResult().data, 0);
+      assert.equal(
+        c.data.queryClient.getQueryData(otherAccount),
+        'other account',
+      );
+      assert.equal(c.realtime.getBoardSnapshot(BOARD).canRead, true);
+      assert.equal(
+        c.requests
+          .slice(before)
+          .filter(({ url }) => url.endsWith('/affected-guests')).length,
+        1,
+      );
+    } finally {
+      c.dispose();
+    }
+  });
+}
+
 test('global access and Workspace revocation recover aggregates without fetching revoked Workspace details', async () => {
   const c = await integration();
   try {

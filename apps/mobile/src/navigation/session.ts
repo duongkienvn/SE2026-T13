@@ -64,6 +64,7 @@ export function guardDecision(
   if (
     !destination ||
     (destination.kind !== 'workspace' &&
+      destination.kind !== 'workspaceSection' &&
       destination.kind !== 'board' &&
       destination.kind !== 'card' &&
       destination.kind !== 'boardView' &&

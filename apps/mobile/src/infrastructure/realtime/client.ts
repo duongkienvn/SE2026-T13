@@ -106,7 +106,7 @@ export function createNativeRealtime(options: {
       for (const id of ids) void verify(id, identity);
     }, 50);
   }
-  function workspaceDenied(workspaceId: string) {
+  function recheckWorkspaceBoards(workspaceId: string) {
     const identity = data.getIdentity();
     if (!identity) return;
     const boards = workspaceBoardCandidates(
@@ -129,6 +129,24 @@ export function createNativeRealtime(options: {
       queueVerification(id, identity);
     }
     void data.invalidateHints(identity, keys).catch(() => undefined);
+  }
+  function fenceGuestRosters(identity: SessionIdentity) {
+    const keys = new Map<string, PrivateQueryKey>();
+    for (const { queryKey } of data.queryClient.getQueryCache().getAll()) {
+      if (
+        !keyBelongsTo(queryKey, identity) ||
+        queryKey[4] !== 'workspaces' ||
+        typeof queryKey[5] !== 'string' ||
+        queryKey[6] !== 'guests'
+      )
+        continue;
+      const id = queryKey[5];
+      keys.set(id, [...queryKeys.workspace(identity, id), 'guests']);
+    }
+    const affected = [...keys.values()];
+    for (const key of affected) data.cancelResourceRequests(key);
+    data.evict(identity, affected);
+    void data.invalidateHints(identity, affected).catch(() => undefined);
   }
   function requeueWorkspaceChecks() {
     const identity = data.getIdentity();
@@ -271,6 +289,7 @@ export function createNativeRealtime(options: {
         if (revoked) {
           checks.delete(boardId);
           workspaceChecks.delete(boardId);
+          fenceGuestRosters(identity);
         }
         data.resources.fenceBoard(boardId, revoked);
         data.cancelResourceRequests(queryKeys.board(identity, boardId));
@@ -360,13 +379,12 @@ export function createNativeRealtime(options: {
         accessCheck();
         return;
       }
-      if (
-        event === 'member:removed' &&
-        hint.userId === identity.userId &&
-        hint.retainsReadAccess !== true
-      ) {
-        rooms.revoke(hint.boardId!);
-        return;
+      if (event === 'member:removed' && hint.userId === identity.userId) {
+        if (hint.retainsReadAccess !== true) {
+          rooms.revoke(hint.boardId!);
+          return;
+        }
+        fenceGuestRosters(identity);
       }
       if (
         event === 'board:access-changed' ||
@@ -374,15 +392,23 @@ export function createNativeRealtime(options: {
         event === 'board:restored' ||
         (event.startsWith('member:') && hint.userId === identity.userId)
       ) {
+        const boardId = hint.boardId!;
+        const workspaceId = rooms.getSnapshot(boardId).workspaceId;
+        const guestWorkspaceId =
+          workspaceId ?? data.resources.boardWorkspace(boardId);
+        if (guestWorkspaceId && event.startsWith('board:')) {
+          void data
+            .invalidateHints(identity, [
+              [...queryKeys.workspace(identity, guestWorkspaceId), 'guests'],
+            ])
+            .catch(() => undefined);
+        }
         data.resources.fenceAggregates();
         data.evict(identity, [
           ...aggregateKeys(identity),
-          ...workspaceOverviewKeys(
-            identity,
-            rooms.getSnapshot(hint.boardId!).workspaceId,
-          ),
+          ...workspaceOverviewKeys(identity, workspaceId),
         ]);
-        accessCheck(hint.boardId);
+        accessCheck(boardId);
         return;
       }
       if (event === 'presence:sync')
@@ -410,8 +436,9 @@ export function createNativeRealtime(options: {
   return {
     start() {
       unsubscribeDenied ??= data.resources.subscribeDenied(resourceFailed);
-      unsubscribeWorkspaceDenied ??=
-        data.resources.subscribeWorkspaceDenied(workspaceDenied);
+      unsubscribeWorkspaceDenied ??= data.resources.subscribeWorkspaceDenied(
+        recheckWorkspaceBoards,
+      );
       unsubscribeErrors ??= data.queryClient
         .getQueryCache()
         .subscribe((event) => {
@@ -458,6 +485,7 @@ export function createNativeRealtime(options: {
     revokeBoard(boardId: string) {
       rooms.revoke(boardId);
     },
+    recheckWorkspaceBoards,
     getBoardSnapshot: rooms.getSnapshot,
     subscribeBoards: rooms.subscribe,
     async retryBoard(boardId?: string) {
