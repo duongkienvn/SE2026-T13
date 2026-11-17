@@ -1852,3 +1852,176 @@ test('MOB-20 ambiguous POST keeps the draft, reconciles a committed addition and
     await env.dispose();
   }
 });
+
+test.each(['archived card', 'archived board', 'read-only member'])(
+  'MOB-20 still reads checklists on %s and hides mutations',
+  async (mode) => {
+    const env = await setup({
+      archived: mode === 'archived card',
+      readOnly: mode === 'read-only member',
+      override: ({ path }) =>
+        path === checklistPath
+          ? success(
+              checklists(checklistCard, [checklist(checklistCard, 1, [true])]),
+            )
+          : mode === 'archived board' && path === `/api/boards/${boardId}`
+            ? success({ ...boardDetail, isArchived: true })
+            : null,
+    });
+    try {
+      expect(
+        await screen.findByRole('checkbox', {
+          name: 'Item 1.1',
+          checked: true,
+        }),
+      ).toBeDisabled();
+      expect(screen.getByLabelText('List 1: 1 of 1 complete')).toBeTruthy();
+      expect(
+        screen.queryByRole('button', { name: 'Add checklist' }),
+      ).toBeNull();
+      expect(screen.queryByRole('button', { name: /Add item to/ })).toBeNull();
+      expect(
+        screen.queryByRole('button', { name: 'Actions for item Item 1.1' }),
+      ).toBeNull();
+    } finally {
+      await env.dispose();
+    }
+  },
+);
+
+test('MOB-20 child denial preserves Card, then 401 clears the protected checklist session', async () => {
+  let status = 404;
+  const env = await setup({
+    override: ({ path }) =>
+      path === checklistPath
+        ? status === 200
+          ? success(
+              checklists(checklistCard, [checklist(checklistCard, 1, [true])]),
+            )
+          : fail(status)
+        : null,
+  });
+  try {
+    await screen.findByText('Checklists unavailable');
+    expect(screen.getByText('Original\nsecond line')).toBeTruthy();
+    status = 200;
+    await press('Retry checklists');
+    await screen.findByRole('checkbox', { name: 'Item 1.1' });
+    status = 401;
+    const oldIdentity = env.data.getIdentity();
+    const key = queryKeys.checklists(oldIdentity, boardId, checklistCard);
+    await act(() =>
+      env.data.invalidate(oldIdentity, [key]).catch(() => undefined),
+    );
+    await screen.findByText('Signed out safely');
+    expect(env.data.queryClient.getQueryData(key)).toBeUndefined();
+    expect(screen.queryByText('Item 1.1')).toBeNull();
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('MOB-20 late list responses and drafts cannot reappear after access loss', async () => {
+  const held = deferred();
+  let delay = false;
+  const env = await setup({
+    override: ({ path }) =>
+      path === checklistPath
+        ? delay
+          ? held.promise
+          : success(
+              checklists(checklistCard, [checklist(checklistCard, 1, [true])]),
+            )
+        : null,
+  });
+  try {
+    await press('Add checklist');
+    await fireEvent.changeText(
+      screen.getByLabelText('Checklist title'),
+      'Never retain',
+    );
+    delay = true;
+    const key = queryKeys.checklists(
+      env.data.getIdentity(),
+      boardId,
+      checklistCard,
+    );
+    let pending;
+    await act(() => {
+      pending = env.data.invalidate(env.data.getIdentity(), [key]);
+    });
+    await waitFor(() =>
+      expect(
+        env.requests.filter(({ path }) => path === checklistPath),
+      ).toHaveLength(2),
+    );
+    await act(() => env.realtime.revokeBoard(boardId));
+    await act(() =>
+      held.resolve(
+        success(
+          checklists(checklistCard, [
+            checklist(checklistCard, 2, [true], 'Late checklist'),
+          ]),
+        ),
+      ),
+    );
+    await pending;
+    expect(env.data.queryClient.getQueryData(key)).toBeUndefined();
+    expect(screen.queryByText('Late checklist')).toBeNull();
+    expect(screen.queryByDisplayValue('Never retain')).toBeNull();
+  } finally {
+    held.resolve(fail(404));
+    await env.dispose();
+  }
+});
+
+test.each(['dark', 'system'])(
+  'MOB-20 checklist sheet and checkbox names remain accessible in the 320dp %s large-font harness',
+  async (mode) => {
+    const original = Dimensions.get('window');
+    await act(() =>
+      Dimensions.set({
+        window: { width: 320, height: 640, scale: 1, fontScale: 1.6 },
+      }),
+    );
+    const list = checklist(checklistCard, 1, [true]);
+    const label =
+      'Long checklist item text that must wrap when display text is enlarged';
+    list.items[0].text = label;
+    const env = await setup({
+      mode,
+      override: ({ path }) =>
+        path === checklistPath
+          ? success(checklists(checklistCard, [list]))
+          : null,
+    });
+    try {
+      await screen.findByRole('checkbox', { name: label, checked: true });
+      const item = screen.getByText(label);
+      expect(item.props.numberOfLines).toBeUndefined();
+      expect(StyleSheet.flatten(item.props.style)).toMatchObject({
+        color:
+          palettes[resolveTheme(mode, Appearance.getColorScheme())]
+            .textSecondary,
+        textDecorationLine: 'line-through',
+      });
+      await press('Add item to List 1');
+      const field = screen.getByLabelText('Item text');
+      expect(field.props.autoFocus).toBe(true);
+      expect(field.props.allowFontScaling).not.toBe(false);
+      await fireEvent.changeText(field, 'Draft before Back');
+      await press('Close checklist editor');
+      await screen.findByText('Discard changes?');
+      await press('Keep editing');
+      expect(screen.getByDisplayValue('Draft before Back')).toBeTruthy();
+      await press('Cancel');
+      await press('Discard changes');
+      expect(
+        screen.getByRole('checkbox', { name: label, checked: true }),
+      ).toBeTruthy();
+    } finally {
+      await env.dispose();
+      await act(() => Dimensions.set({ window: original }));
+    }
+  },
+);
