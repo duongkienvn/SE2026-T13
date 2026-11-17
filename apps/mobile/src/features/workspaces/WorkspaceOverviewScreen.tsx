@@ -48,6 +48,8 @@ import { WorkspaceGlyph } from './WorkspaceGlyph';
 import { queryKeys } from '../../infrastructure/query/keys';
 import { sameIdentity } from '../../infrastructure/api/session-client';
 import { ApiError } from '../../infrastructure/api/errors';
+import { workspaceSectionLabels } from './membership/WorkspaceCollaborationScreen';
+import { workspaceSections } from '../../navigation/routes';
 
 export function WorkspaceOverviewScreen() {
   const pathname = usePathname();
@@ -360,6 +362,23 @@ function VerifiedOverview({
               onPress={() => setEditing(true)}
             />
           )}
+          {workspaceSections.map((section) => (
+            <Button
+              key={section}
+              label={workspaceSectionLabels[section]}
+              variant="secondary"
+              disabled={!active || !online || detail.isFetching}
+              onPress={() =>
+                router.push(
+                  destinationPath({
+                    kind: 'workspaceSection',
+                    workspaceId: id,
+                    section,
+                  }),
+                )
+              }
+            />
+          ))}
           {overview.data && (
             <Surface>
               <Text style={[typography.strong, { color: c.text }]}>
