@@ -334,11 +334,13 @@ export function Checkbox({
   checked,
   onValueChange,
   disabled = false,
+  strikeThroughWhenChecked = false,
 }: {
   label: string;
   checked: boolean;
   onValueChange: (value: boolean) => void;
   disabled?: boolean;
+  strikeThroughWhenChecked?: boolean;
 }) {
   const c = useTheme();
   const [focused, setFocused] = useState(false);
@@ -382,7 +384,19 @@ export function Checkbox({
           </Text>
         )}
       </View>
-      <Text style={[typography.body, { color: c.text, flex: 1 }]}>{label}</Text>
+      <Text
+        style={[
+          typography.body,
+          { color: c.text, flex: 1 },
+          checked &&
+            strikeThroughWhenChecked && {
+              color: c.textSecondary,
+              textDecorationLine: 'line-through',
+            },
+        ]}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }

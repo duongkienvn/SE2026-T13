@@ -1,7 +1,13 @@
 /* global jest, test, expect, console */
 import React from 'react';
 import { URL } from 'node:url';
-import { Dimensions, Platform, Text } from 'react-native';
+import {
+  Appearance,
+  Dimensions,
+  Platform,
+  StyleSheet,
+  Text,
+} from 'react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Stack, Tabs, router, useRouter } from 'expo-router';
 import {
@@ -29,7 +35,7 @@ import PrivateLayout from '../src/app/(private)/_layout';
 import CardRoute from '../src/app/(private)/boards/[boardId]/cards/[cardId]';
 import BoardRoute from '../src/app/(private)/boards/[boardId]/index';
 import { CardDetailScreen } from '../src/features/cards/detail/CardDetailScreen';
-import { Button, ThemeContext } from '../src/ui';
+import { Button, palettes, resolveTheme, ThemeContext } from '../src/ui';
 import {
   FakeSessionApi,
   FakeTime,
@@ -50,6 +56,7 @@ import {
 } from './workspaces/kanban-fixtures';
 import { page, uuid, workspace } from './workspaces/fixtures';
 import { FakeSocket } from './realtime/support';
+import { checklist, checklists, itemCounts } from './fixtures/checklists.ts';
 
 jest.mock('expo-network', () => ({
   getNetworkStateAsync: async () => ({ isConnected: true }),
@@ -1522,3 +1529,499 @@ test('MOB-22 real realtime owner coalesces hints, reconciles moved/archived rows
     await env.dispose();
   }
 });
+
+const checklistCard = cardDto(1).id;
+const checklistPath = `/api${cardPath}/checklists`;
+
+test('MOB-20 loads and retries independently, and keeps a dirty MOB-18 description across remote checklist hints', async () => {
+  const firstRead = deferred();
+  let available = false;
+  let rows = [];
+  const env = await setup({
+    liveSocket: true,
+    override: ({ path }) => {
+      if (path !== checklistPath) return null;
+      return available
+        ? success(checklists(checklistCard, rows))
+        : firstRead.promise;
+    },
+  });
+  try {
+    await screen.findByLabelText('Loading checklists');
+    await editDescription('Unsaved checklist-neighbor text');
+    await act(() => firstRead.resolve(fail(500)));
+    await screen.findByText('Couldn’t load checklists');
+    expect(screen.getByText('Card 1')).toBeTruthy();
+    available = true;
+    await press('Retry checklists');
+    await screen.findByText('No checklists');
+    expect(
+      screen.getByLabelText('Card checklist progress: 0 of 0 complete'),
+    ).toBeTruthy();
+    await act(() =>
+      env.realtime.setEnvironment({ foreground: true, online: true }),
+    );
+    await waitFor(() => expect(env.sockets.length).toBeGreaterThan(0));
+    const socket = env.sockets.at(-1);
+    await act(() => socket.server('connect'));
+    await waitFor(() =>
+      expect(socket.commands.some(({ event }) => event === 'board:join')).toBe(
+        true,
+      ),
+    );
+    await act(async () => {
+      socket.ack(
+        socket.commands.findLastIndex(({ event }) => event === 'board:join'),
+      );
+      await Promise.resolve();
+    });
+    const boardReads = env.requests.filter(
+      ({ path }) => path === `/api/boards/${boardId}`,
+    ).length;
+    rows = [
+      checklist(checklistCard, 1, [true, false]),
+      checklist(checklistCard, 2, [true]),
+    ];
+    await act(async () => {
+      socket.server('card:updated', {
+        boardId,
+        cardId: checklistCard,
+        columnId: column(1).id,
+        changeScope: 'checklists',
+      });
+      env.time.advance(60);
+    });
+    await screen.findByLabelText('Card checklist progress: 2 of 3 complete');
+    expect(screen.getByLabelText('Description').props.value).toBe(
+      'Unsaved checklist-neighbor text',
+    );
+    expect(
+      env.requests.filter(({ path }) => path === `/api/boards/${boardId}`),
+    ).toHaveLength(boardReads);
+  } finally {
+    firstRead.resolve(fail(500));
+    await env.dispose();
+  }
+});
+
+test('MOB-20 creates and renames lists/items, moves within their own order, and deletes only after confirmation', async () => {
+  let rows = [checklist(checklistCard, 1, [true, false])];
+  const changed = deferred();
+  let nextNumber = 2;
+  const env = await setup({
+    override: ({ path, method, body }) => {
+      if (!path.startsWith(checklistPath)) return null;
+      if (method === 'GET') return success(checklists(checklistCard, rows));
+      if (method === 'POST' && path === checklistPath) {
+        const created = checklist(checklistCard, nextNumber++, [], body.title);
+        rows.push(created);
+        return success(created, 201);
+      }
+      const [, listId, , itemId] = path.slice(checklistPath.length).split('/');
+      const list = rows.find((row) => row.id === listId);
+      if (method === 'POST') {
+        list.items.push({
+          ...checklist(checklistCard, nextNumber++, [false]).items[0],
+          checklistId: list.id,
+          text: body.text,
+        });
+      } else if (method === 'DELETE') {
+        if (itemId) {
+          list.items = list.items.filter((item) => item.id !== itemId);
+          Object.assign(list, itemCounts(list.items));
+          return response(undefined, 204);
+        }
+        rows = rows.filter((row) => row !== list);
+        return changed.promise.then(() => response(undefined, 204));
+      } else if (path.endsWith('/move')) {
+        const entries = itemId ? list.items : rows;
+        const source = entries.find(({ id }) => id === (itemId ?? listId));
+        entries.splice(entries.indexOf(source), 1);
+        const before = itemId ? body.beforeItemId : body.beforeChecklistId;
+        entries.splice(
+          before === null
+            ? entries.length
+            : entries.findIndex(({ id }) => id === before),
+          0,
+          source,
+        );
+      } else if (itemId) {
+        Object.assign(
+          list.items.find(({ id }) => id === itemId),
+          body,
+        );
+      } else {
+        Object.assign(list, body);
+      }
+      Object.assign(list, itemCounts(list.items));
+      return success(list, method === 'POST' ? 201 : 200);
+    },
+  });
+  try {
+    await press('Add checklist');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    await fireEvent.changeText(
+      screen.getByLabelText('Checklist title'),
+      '  Release ',
+    );
+    await press('Save');
+    await screen.findByText('Release');
+    await press('Actions for checklist Release');
+    await press('Move to top');
+    await waitFor(() =>
+      expect(screen.queryByText('Checklist actions')).toBeNull(),
+    );
+    expect(env.patches().at(-1).body).toEqual({
+      beforeChecklistId: rows[1].id,
+    });
+    await press('Actions for checklist Release');
+    await press('Rename checklist');
+    await fireEvent.changeText(
+      screen.getByLabelText('Checklist title'),
+      'Ship',
+    );
+    await press('Save');
+    await screen.findByText('Ship');
+    await press('Add item to Ship');
+    await fireEvent.changeText(
+      screen.getByLabelText('Item text'),
+      'New release task',
+    );
+    await press('Save');
+    await screen.findByRole('checkbox', {
+      name: 'New release task',
+      checked: false,
+    });
+    await press('Actions for item New release task');
+    await press('Edit item');
+    await fireEvent.changeText(
+      screen.getByLabelText('Item text'),
+      'Edited release task',
+    );
+    await press('Save');
+    await screen.findByRole('checkbox', { name: 'Edited release task' });
+    await press('Actions for item Item 1.1');
+    await press('Move to bottom');
+    await waitFor(() => expect(screen.queryByText('Item actions')).toBeNull());
+    expect(env.patches().at(-1).body).toEqual({ beforeItemId: null });
+    await press('Actions for item Item 1.1');
+    await press('Delete item');
+    await press('Cancel');
+    expect(
+      screen.getByRole('checkbox', { name: 'Item 1.1', checked: true }),
+    ).toBeTruthy();
+    await press('Actions for item Item 1.1');
+    await press('Delete item');
+    await press('Delete item');
+    await screen.findByLabelText('Card checklist progress: 0 of 2 complete');
+    await press('Actions for checklist Ship');
+    await press('Delete checklist');
+    expect(
+      screen.getByText(
+        'This permanently deletes the checklist and all its items.',
+      ),
+    ).toBeTruthy();
+    await press('Delete checklist');
+    expect(
+      screen.getByRole('button', { name: 'Delete checklist' }),
+    ).toBeDisabled();
+    expect(
+      env.requests.filter(({ method }) => method === 'DELETE'),
+    ).toHaveLength(2);
+    const identity = env.data.getIdentity();
+    // The server can publish after commit, before sending its DELETE 204.
+    await act(() =>
+      env.data.invalidate(identity, [
+        queryKeys.checklists(identity, boardId, checklistCard),
+      ]),
+    );
+    expect(
+      screen.getByRole('checkbox', {
+        name: 'Edited release task',
+        includeHiddenElements: true,
+      }),
+    ).toBeTruthy();
+    await act(() => changed.resolve());
+    await screen.findByLabelText('List 1: 0 of 1 complete');
+    expect(
+      screen.queryByRole('checkbox', { name: 'Edited release task' }),
+    ).toBeNull();
+  } finally {
+    changed.resolve();
+    await env.dispose();
+  }
+});
+
+test('MOB-20 checkbox rapidly changes intent and a held response does not reverse it', async () => {
+  let list = checklist(checklistCard, 1, [false]);
+  const held = deferred();
+  let writes = 0;
+  const env = await setup({
+    override: ({ path, method, body }) => {
+      if (!path.startsWith(checklistPath)) return null;
+      if (method === 'GET') return success(checklists(checklistCard, [list]));
+      const items = list.items.map((item) => ({
+        ...item,
+        isChecked: body.isChecked,
+      }));
+      list = { ...list, items, ...itemCounts(items) };
+      writes++;
+      return writes === 1 ? held.promise : success(list);
+    },
+  });
+  try {
+    const checkbox = () => screen.getByRole('checkbox', { name: 'Item 1.1' });
+    await screen.findByRole('checkbox', { name: 'Item 1.1', checked: false });
+    await fireEvent.press(checkbox());
+    expect(checkbox().props.accessibilityState.checked).toBe(true);
+    await fireEvent.press(checkbox());
+    expect(checkbox().props.accessibilityState.checked).toBe(false);
+    expect(writes).toBe(1);
+    await act(() => held.resolve(success(list)));
+    await waitFor(() =>
+      expect(env.patches().map(({ body }) => body)).toEqual([
+        { isChecked: true },
+        { isChecked: false },
+      ]),
+    );
+    await waitFor(() => expect(checkbox()).not.toBeDisabled());
+    expect(checkbox().props.accessibilityState.checked).toBe(false);
+    expect(screen.getByLabelText('List 1: 0 of 1 complete')).toBeTruthy();
+    await act(() => onlineManager.setOnline(false));
+    await screen.findByText(
+      'You’re offline. Showing the last loaded checklists.',
+    );
+    expect(checkbox()).toBeDisabled();
+    await fireEvent.press(checkbox());
+    expect(env.patches()).toHaveLength(2);
+  } finally {
+    held.resolve(fail(500));
+    await env.dispose();
+  }
+});
+
+test('MOB-20 ambiguous POST keeps the draft, reconciles a committed addition and requires explicit review', async () => {
+  let rows = [];
+  const dispatched = deferred();
+  const env = await setup({
+    override: ({ path, method, body }) => {
+      if (path !== checklistPath) return null;
+      if (method === 'POST') {
+        rows = [checklist(checklistCard, 1, [], body.title)];
+        return dispatched.promise.then(() => {
+          throw new Error('connection dropped');
+        });
+      }
+      return success(checklists(checklistCard, rows));
+    },
+  });
+  try {
+    await press('Add checklist');
+    await fireEvent.changeText(
+      screen.getByLabelText('Checklist title'),
+      'Maybe committed',
+    );
+    const saveButton = screen.getByRole('button', { name: 'Save' });
+    await fireEvent.press(saveButton);
+    await fireEvent.press(saveButton);
+    await act(() => dispatched.resolve());
+    await screen.findByText(/Couldn’t confirm the addition/);
+    expect(screen.getByDisplayValue('Maybe committed')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    await press('Cancel');
+    await press('Discard changes');
+    expect(
+      screen.getByRole('button', { name: 'Add checklist' }),
+    ).toBeDisabled();
+    await press('Reload checklists');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Add checklist' }),
+      ).not.toBeDisabled(),
+    );
+    expect(
+      screen.getByRole('header', { name: 'Maybe committed' }),
+    ).toBeTruthy();
+    expect(
+      env.requests.filter(
+        ({ method, path }) => method === 'POST' && path === checklistPath,
+      ),
+    ).toHaveLength(1);
+  } finally {
+    dispatched.resolve(fail(500));
+    await env.dispose();
+  }
+});
+
+test.each(['archived card', 'archived board', 'read-only member'])(
+  'MOB-20 still reads checklists on %s and hides mutations',
+  async (mode) => {
+    const env = await setup({
+      archived: mode === 'archived card',
+      readOnly: mode === 'read-only member',
+      override: ({ path }) =>
+        path === checklistPath
+          ? success(
+              checklists(checklistCard, [checklist(checklistCard, 1, [true])]),
+            )
+          : mode === 'archived board' && path === `/api/boards/${boardId}`
+            ? success({ ...boardDetail, isArchived: true })
+            : null,
+    });
+    try {
+      expect(
+        await screen.findByRole('checkbox', {
+          name: 'Item 1.1',
+          checked: true,
+        }),
+      ).toBeDisabled();
+      expect(screen.getByLabelText('List 1: 1 of 1 complete')).toBeTruthy();
+      expect(
+        screen.queryByRole('button', { name: 'Add checklist' }),
+      ).toBeNull();
+      expect(screen.queryByRole('button', { name: /Add item to/ })).toBeNull();
+      expect(
+        screen.queryByRole('button', { name: 'Actions for item Item 1.1' }),
+      ).toBeNull();
+    } finally {
+      await env.dispose();
+    }
+  },
+);
+
+test('MOB-20 child denial preserves Card, then 401 clears the protected checklist session', async () => {
+  let status = 404;
+  const env = await setup({
+    override: ({ path }) =>
+      path === checklistPath
+        ? status === 200
+          ? success(
+              checklists(checklistCard, [checklist(checklistCard, 1, [true])]),
+            )
+          : fail(status)
+        : null,
+  });
+  try {
+    await screen.findByText('Checklists unavailable');
+    expect(screen.getByText('Original\nsecond line')).toBeTruthy();
+    status = 200;
+    await press('Retry checklists');
+    await screen.findByRole('checkbox', { name: 'Item 1.1' });
+    status = 401;
+    const oldIdentity = env.data.getIdentity();
+    const key = queryKeys.checklists(oldIdentity, boardId, checklistCard);
+    await act(() =>
+      env.data.invalidate(oldIdentity, [key]).catch(() => undefined),
+    );
+    await screen.findByText('Signed out safely');
+    expect(env.data.queryClient.getQueryData(key)).toBeUndefined();
+    expect(screen.queryByText('Item 1.1')).toBeNull();
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('MOB-20 late list responses and drafts cannot reappear after access loss', async () => {
+  const held = deferred();
+  let delay = false;
+  const env = await setup({
+    override: ({ path }) =>
+      path === checklistPath
+        ? delay
+          ? held.promise
+          : success(
+              checklists(checklistCard, [checklist(checklistCard, 1, [true])]),
+            )
+        : null,
+  });
+  try {
+    await press('Add checklist');
+    await fireEvent.changeText(
+      screen.getByLabelText('Checklist title'),
+      'Never retain',
+    );
+    delay = true;
+    const key = queryKeys.checklists(
+      env.data.getIdentity(),
+      boardId,
+      checklistCard,
+    );
+    let pending;
+    await act(() => {
+      pending = env.data.invalidate(env.data.getIdentity(), [key]);
+    });
+    await waitFor(() =>
+      expect(
+        env.requests.filter(({ path }) => path === checklistPath),
+      ).toHaveLength(2),
+    );
+    await act(() => env.realtime.revokeBoard(boardId));
+    await act(() =>
+      held.resolve(
+        success(
+          checklists(checklistCard, [
+            checklist(checklistCard, 2, [true], 'Late checklist'),
+          ]),
+        ),
+      ),
+    );
+    await pending;
+    expect(env.data.queryClient.getQueryData(key)).toBeUndefined();
+    expect(screen.queryByText('Late checklist')).toBeNull();
+    expect(screen.queryByDisplayValue('Never retain')).toBeNull();
+  } finally {
+    held.resolve(fail(404));
+    await env.dispose();
+  }
+});
+
+test.each(['dark', 'system'])(
+  'MOB-20 checklist sheet and checkbox names remain accessible in the 320dp %s large-font harness',
+  async (mode) => {
+    const original = Dimensions.get('window');
+    await act(() =>
+      Dimensions.set({
+        window: { width: 320, height: 640, scale: 1, fontScale: 1.6 },
+      }),
+    );
+    const list = checklist(checklistCard, 1, [true]);
+    const label =
+      'Long checklist item text that must wrap when display text is enlarged';
+    list.items[0].text = label;
+    const env = await setup({
+      mode,
+      override: ({ path }) =>
+        path === checklistPath
+          ? success(checklists(checklistCard, [list]))
+          : null,
+    });
+    try {
+      await screen.findByRole('checkbox', { name: label, checked: true });
+      const item = screen.getByText(label);
+      expect(item.props.numberOfLines).toBeUndefined();
+      expect(StyleSheet.flatten(item.props.style)).toMatchObject({
+        color:
+          palettes[resolveTheme(mode, Appearance.getColorScheme())]
+            .textSecondary,
+        textDecorationLine: 'line-through',
+      });
+      await press('Add item to List 1');
+      const field = screen.getByLabelText('Item text');
+      expect(field.props.autoFocus).toBe(true);
+      expect(field.props.allowFontScaling).not.toBe(false);
+      await fireEvent.changeText(field, 'Draft before Back');
+      await press('Close checklist editor');
+      await screen.findByText('Discard changes?');
+      await press('Keep editing');
+      expect(screen.getByDisplayValue('Draft before Back')).toBeTruthy();
+      await press('Cancel');
+      await press('Discard changes');
+      expect(
+        screen.getByRole('checkbox', { name: label, checked: true }),
+      ).toBeTruthy();
+    } finally {
+      await env.dispose();
+      await act(() => Dimensions.set({ window: original }));
+    }
+  },
+);
