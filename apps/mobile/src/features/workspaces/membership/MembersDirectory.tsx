@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import {
+  BottomSheet,
   Button,
   ConfirmDialog,
   FilterChip,
@@ -14,14 +15,21 @@ import {
 } from '../../../ui';
 import { RosterPage, RosterSearch, useRosterPage } from './RosterPage';
 import type { WorkspaceCollaborationContext } from './WorkspaceCollaborationScreen';
-import { canManageWorkspaceMembers, workspaceMembersOptions } from './queries';
+import {
+  canManageWorkspaceMembers,
+  recheckWorkspaceAccess,
+  workspaceMembersOptions,
+} from './queries';
 import { useMobileData } from '../../../infrastructure/query/DataProvider';
+import { sameIdentity } from '../../../infrastructure/api/session-client';
+import { isWorkspaceDenied } from '../queries';
 import { WorkspacePersonAvatar } from './WorkspacePersonAvatar';
 import type { WorkspaceMember } from './decoder';
 import {
   changeWorkspaceMemberRole,
   leaveWorkspace,
   removeWorkspaceMember,
+  uncertainWorkspaceWrite,
 } from './mutations';
 import { useWorkspaceAction } from './useWorkspaceAction';
 
@@ -47,7 +55,7 @@ export function MembersDirectory({
     };
   }, [active]);
   const [candidate, setCandidate] = useState<{
-    kind: 'role' | 'remove';
+    kind: 'actions' | 'role' | 'remove';
     member: WorkspaceMember;
   }>();
   const [leaving, setLeaving] = useState(false);
@@ -80,13 +88,14 @@ export function MembersDirectory({
     members.isError;
   return (
     <>
-      <RosterSearch roster={roster} />
+      <RosterSearch roster={roster} online={online} />
       <View style={{ gap: spacing.sm, flexDirection: 'row', flexWrap: 'wrap' }}>
         {roles.map((filter) => (
           <FilterChip
             key={filter ?? 'all'}
             label={filter ?? 'All roles'}
             selected={role === filter}
+            disabled={!online}
             onPress={() => {
               roster.setPage(1);
               setRole(filter);
@@ -126,6 +135,7 @@ export function MembersDirectory({
       <RosterPage
         roster={roster}
         query={members}
+        online={online}
         itemLabel="Workspace member"
         empty="No members match this search."
         render={(member) => (
@@ -162,28 +172,16 @@ export function MembersDirectory({
               </View>
             </View>
             {manager && member.userId !== identity.userId && (
-              <>
-                <Button
-                  label={`Change role for ${member.displayName}`}
-                  variant="link"
-                  disabled={blocked}
-                  onPress={() => {
-                    action.clearError();
-                    setNotice('');
-                    setCandidate({ kind: 'role', member });
-                  }}
-                />
-                <Button
-                  label={`Remove ${member.displayName} from workspace`}
-                  variant="link"
-                  disabled={blocked}
-                  onPress={() => {
-                    action.clearError();
-                    setNotice('');
-                    setCandidate({ kind: 'remove', member });
-                  }}
-                />
-              </>
+              <Button
+                label={`Actions for ${member.displayName}`}
+                variant="link"
+                disabled={blocked}
+                onPress={() => {
+                  action.clearError();
+                  setNotice('');
+                  setCandidate({ kind: 'actions', member });
+                }}
+              />
             )}
           </Surface>
         )}
@@ -213,15 +211,60 @@ export function MembersDirectory({
           confirmDisabled={action.disabled || context.checking}
           onCancel={() => setLeaving(false)}
           onConfirm={() =>
-            void action.run(() =>
-              leaveWorkspace(data, identity, id, () => {
-                if (activeRef.current) router.navigate('/boards');
-              }),
-            )
+            void action.run(async () => {
+              try {
+                await leaveWorkspace(data, identity, id, () => {
+                  if (activeRef.current) router.navigate('/boards');
+                });
+              } catch (error) {
+                if (
+                  sameIdentity(identity, data.getIdentity()) &&
+                  (isWorkspaceDenied(error) || uncertainWorkspaceWrite(error))
+                )
+                  await recheckWorkspaceAccess(data, identity, id).catch(
+                    () => undefined,
+                  );
+                throw error;
+              }
+            })
           }
         />
       )}
-      {candidate && manager && (
+      {candidate?.kind === 'actions' && manager && (
+        <BottomSheet
+          visible
+          title={candidate.member.displayName}
+          dismissLabel="Dismiss member actions"
+          respectReducedMotion
+          onDismiss={() => setCandidate(undefined)}
+        >
+          {stale ? (
+            <Text style={[typography.body, { color: c.textSecondary }]}>
+              This membership changed. Close and review the latest role.
+            </Text>
+          ) : (
+            <>
+              <Button
+                label="Change role"
+                disabled={blocked}
+                onPress={() => setCandidate({ ...candidate, kind: 'role' })}
+              />
+              <Button
+                label="Remove member"
+                variant="destructive"
+                disabled={blocked}
+                onPress={() => setCandidate({ ...candidate, kind: 'remove' })}
+              />
+            </>
+          )}
+          <Button
+            label="Close"
+            variant="secondary"
+            onPress={() => setCandidate(undefined)}
+          />
+        </BottomSheet>
+      )}
+      {candidate && candidate.kind !== 'actions' && manager && (
         <ConfirmDialog
           visible
           title={

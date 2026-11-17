@@ -110,6 +110,7 @@ export function workspaceGuestsOptions(
       { search: filter },
       page,
     ] as const,
+    staleTime: 0,
     retry: false,
     queryFn: ({ signal }) =>
       authorizedRead(data, identity, id, signal, () =>

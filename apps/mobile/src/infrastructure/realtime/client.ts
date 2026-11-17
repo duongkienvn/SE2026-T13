@@ -289,6 +289,7 @@ export function createNativeRealtime(options: {
         if (revoked) {
           checks.delete(boardId);
           workspaceChecks.delete(boardId);
+          fenceGuestRosters(identity);
         }
         data.resources.fenceBoard(boardId, revoked);
         data.cancelResourceRequests(queryKeys.board(identity, boardId));
@@ -367,7 +368,6 @@ export function createNativeRealtime(options: {
       const identity = data.getIdentity();
       if (!hint || !identity) return;
       if (event === 'board:access-revoked') {
-        fenceGuestRosters(identity);
         rooms.revoke(hint.boardId!);
         return;
       }
@@ -379,15 +379,12 @@ export function createNativeRealtime(options: {
         accessCheck();
         return;
       }
-      if (event === 'member:removed' && hint.userId === identity.userId)
+      if (event === 'member:removed' && hint.userId === identity.userId) {
+        if (hint.retainsReadAccess !== true) {
+          rooms.revoke(hint.boardId!);
+          return;
+        }
         fenceGuestRosters(identity);
-      if (
-        event === 'member:removed' &&
-        hint.userId === identity.userId &&
-        hint.retainsReadAccess !== true
-      ) {
-        rooms.revoke(hint.boardId!);
-        return;
       }
       if (
         event === 'board:access-changed' ||

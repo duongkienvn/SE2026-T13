@@ -97,6 +97,8 @@ chưa triển khai. Mục lục dưới đây liệt kê toàn bộ task documen
 
 ## Frontend tasks
 
+- [MOB-23 Native Workspace collaboration](frontend/mob-23-workspace-membership.md)
+
 - [MOB-22 Native Board Table View](frontend/mob-22-board-table.md)
 - [MOB-18 Native Card Detail](frontend/mob-18-card-detail.md)
 - [MOB-20 Native Card Checklists](frontend/mob-20-checklists.md)

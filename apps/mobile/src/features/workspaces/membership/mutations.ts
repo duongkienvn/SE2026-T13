@@ -132,22 +132,13 @@ export async function leaveWorkspace(
   onLeft?: () => void,
 ) {
   data.assertCurrent(identity);
-  try {
-    await createWorkspaceApi(data.api, identity).leave(
-      id,
-      new AbortController().signal,
-    );
-    data.assertCurrent(identity);
-    evictWorkspace(data, identity, id);
-    onLeft?.();
-  } catch (error) {
-    if (
-      sameIdentity(identity, data.getIdentity()) &&
-      (isWorkspaceDenied(error) || uncertainWorkspaceWrite(error))
-    )
-      void recheckWorkspaceAccess(data, identity, id).catch(() => undefined);
-    throw error;
-  }
+  await createWorkspaceApi(data.api, identity).leave(
+    id,
+    new AbortController().signal,
+  );
+  data.assertCurrent(identity);
+  evictWorkspace(data, identity, id);
+  onLeft?.();
 }
 
 export function updateWorkspacePolicies(

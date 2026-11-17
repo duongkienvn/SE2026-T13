@@ -34,7 +34,7 @@ export function GuestsDirectory({
       <Text style={[typography.body, { color: c.textSecondary }]}>
         You can see guests only on Boards whose member rosters you can access.
       </Text>
-      <RosterSearch roster={roster} />
+      <RosterSearch roster={roster} online={online} />
       {online && (context.checking || guests.isFetching) && (
         <LoadingState label="Checking guest roster access" />
       )}
@@ -45,6 +45,7 @@ export function GuestsDirectory({
           <RosterPage
             roster={roster}
             query={guests}
+            online={online}
             itemLabel="visible guest"
             empty={
               roster.search

@@ -113,7 +113,8 @@ export function PoliciesScreen({
         }
       />
     );
-  if (!policy) return <LoadingState label="Loading Workspace policies" />;
+  if (!policy)
+    return online ? <LoadingState label="Loading Workspace policies" /> : null;
   const blocked = action.disabled || context.checking || query.isFetching;
   return (
     <>
@@ -148,7 +149,10 @@ export function PoliciesScreen({
                 onValueChange={(value) => {
                   setSaved(false);
                   action.clearError();
-                  update({ ...draft, [field]: value });
+                  const next = { ...draft };
+                  if (value === policy[field]) delete next[field];
+                  else next[field] = value;
+                  update(next);
                 }}
               />
             </View>

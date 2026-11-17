@@ -32,22 +32,26 @@ export function useRosterPage() {
 
 export function RosterSearch({
   roster,
+  online,
 }: {
   roster: ReturnType<typeof useRosterPage>;
+  online: boolean;
 }) {
   return (
     <>
       <TextField
         label="Search by display name"
         value={roster.draft}
+        editable={online}
         onChangeText={roster.setDraft}
         maxLength={120}
         returnKeyType="search"
-        onSubmitEditing={roster.submitSearch}
+        onSubmitEditing={online ? roster.submitSearch : undefined}
       />
       <Button
         label="Search"
         variant="secondary"
+        disabled={!online}
         onPress={roster.submitSearch}
       />
     </>
@@ -60,12 +64,14 @@ export function RosterPage<T>({
   itemLabel,
   empty,
   render,
+  online,
 }: {
   roster: ReturnType<typeof useRosterPage>;
   query: UseQueryResult<ApiPaginatedResponse<T>>;
   itemLabel: string;
   empty: string;
   render: (row: T) => ReactNode;
+  online: boolean;
 }) {
   const c = useTheme();
   const ready = useWorkspaceRetryReady(query.error, query.errorUpdatedAt);
@@ -87,13 +93,13 @@ export function RosterPage<T>({
         </Text>
         <Button
           label="Retry directory"
-          disabled={!ready || query.isFetching}
+          disabled={!online || !ready || query.isFetching}
           onPress={() => void query.refetch()}
         />
       </>
     );
   if (!query.data || page > lastPage)
-    return <LoadingState label="Loading directory" />;
+    return online ? <LoadingState label="Loading directory" /> : null;
   const { meta, data } = query.data;
   return (
     <>
@@ -117,6 +123,7 @@ export function RosterPage<T>({
           <Button
             label="Previous page"
             variant="secondary"
+            disabled={!online}
             onPress={() => setPage(page - 1)}
           />
         )}
@@ -124,13 +131,14 @@ export function RosterPage<T>({
           <Button
             label="Next page"
             variant="secondary"
+            disabled={!online}
             onPress={() => setPage(page + 1)}
           />
         )}
         <Button
           label="Refresh directory"
           variant="link"
-          disabled={query.isFetching}
+          disabled={!online || query.isFetching}
           onPress={() => void query.refetch()}
         />
       </View>
