@@ -1,4 +1,4 @@
-import { WorkspaceRole } from '@kanban/shared';
+import { WorkspaceRole, WorkspaceType } from '@kanban/shared';
 import { onlineManager } from '@tanstack/react-query';
 import { ApiError } from '../../../infrastructure/api/errors.ts';
 import {
@@ -12,10 +12,14 @@ import { isWorkspaceDenied } from '../queries.ts';
 import { createWorkspaceApi } from '../api.ts';
 import { evictWorkspace } from '../queries.ts';
 import { createWorkspaceMembershipApi } from './api.ts';
+import type { WorkspacePolicies } from './decoder.ts';
 import {
   canManageWorkspaceMembers,
+  canManageWorkspacePolicies,
   recheckWorkspaceAccess,
   refreshWorkspaceMembership,
+  workspaceCollaborationKeys,
+  workspaceCapabilityOptions,
 } from './queries.ts';
 
 const locks = new WeakMap<MobileDataLayer, Set<string>>();
@@ -142,4 +146,43 @@ export async function leaveWorkspace(
       void recheckWorkspaceAccess(data, identity, id).catch(() => undefined);
     throw error;
   }
+}
+
+export function updateWorkspacePolicies(
+  data: MobileDataLayer,
+  identity: SessionIdentity,
+  id: ResourceId,
+  changes: Partial<WorkspacePolicies>,
+  signal: AbortSignal,
+) {
+  return runWorkspaceCollaborationWrite(
+    data,
+    identity,
+    id,
+    signal,
+    (workspace) => workspace.role === WorkspaceRole.ADMIN,
+    async (api) => {
+      const policy = await api.policies(signal);
+      const workspace = data.queryClient.getQueryData<WorkspaceSummary>(
+        workspaceCapabilityOptions(data, identity, id).queryKey,
+      );
+      if (!canManageWorkspacePolicies(workspace, policy))
+        throw new ApiError('http', { status: 403 });
+      if (
+        workspace?.type === WorkspaceType.PERSONAL &&
+        changes.boardCreationAdminOnly !== undefined
+      )
+        throw new ApiError('http', {
+          status: 400,
+          message: 'This setting applies to Team Workspaces.',
+        });
+      const result = await api.updatePolicies(changes, signal);
+      data.assertCurrent(identity);
+      data.queryClient.setQueryData(
+        workspaceCollaborationKeys.policies(identity, id),
+        result,
+      );
+      return result;
+    },
+  );
 }

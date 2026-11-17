@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useIsFocused, usePathname } from 'expo-router';
+import { useEffect, useRef } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSessionSnapshot } from '../../../infrastructure/auth/SessionProvider';
@@ -23,6 +24,8 @@ import {
 } from '../status';
 import { MembersDirectory } from './MembersDirectory';
 import { GuestsDirectory } from './GuestsDirectory';
+import { PoliciesScreen } from './PoliciesScreen';
+import type { WorkspacePolicies } from './decoder';
 import { workspaceCapabilityOptions } from './queries';
 
 export const workspaceRefreshInterval = 30_000;
@@ -56,6 +59,7 @@ export function WorkspaceCollaborationScreen() {
 export const workspaceSectionLabels = {
   members: 'Members',
   guests: 'Guests',
+  policies: 'Permissions',
 } as const;
 
 function VerifiedCollaboration({
@@ -71,6 +75,7 @@ function VerifiedCollaboration({
   const active = useIsFocused();
   const online = useWorkspaceOnline();
   const id = destination.workspaceId;
+  const policyDraft = useRef<Partial<WorkspacePolicies>>({});
   const options = workspaceCapabilityOptions(data, identity, id);
   const readable = data.resources.readable(options.queryKey);
   const detail = useQuery({
@@ -82,6 +87,9 @@ function VerifiedCollaboration({
     retry: false,
   });
   const retry = useWorkspaceRetryReady(detail.error, detail.errorUpdatedAt);
+  useEffect(() => {
+    if (!readable || isWorkspaceDenied(detail.error)) policyDraft.current = {};
+  }, [readable, detail.error]);
   if (!readable || isWorkspaceDenied(detail.error))
     return <ResourceBoundary access="unavailable" />;
   if (!online && !detail.data)
@@ -161,6 +169,9 @@ function VerifiedCollaboration({
             )}
             {destination.section === 'guests' && (
               <GuestsDirectory context={context} />
+            )}
+            {destination.section === 'policies' && (
+              <PoliciesScreen context={context} draftRef={policyDraft} />
             )}
           </ScrollView>
         </KeyboardAvoidingView>
