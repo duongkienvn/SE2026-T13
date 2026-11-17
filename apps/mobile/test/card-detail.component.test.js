@@ -342,7 +342,7 @@ test('authorized cold link renders the verified Board/Column/Card, safe plain te
     await screen.findByText('Card 1');
     await screen.findByText('Product Roadmap › Column 1');
     expect(screen.getByText('Original\nsecond line')).toBeTruthy();
-    expect(screen.queryByText('Attachments')).toBeNull();
+    expect(screen.getByRole('header', { name: 'Attachments' })).toBeTruthy();
     expect(screen.queryByText('High Priority')).toBeNull();
     expect(screen.getByText('Unassigned')).toBeTruthy();
     expect(env.requests.some(({ path }) => path.endsWith('/columns'))).toBe(
