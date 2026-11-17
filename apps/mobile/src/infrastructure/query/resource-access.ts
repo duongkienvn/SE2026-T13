@@ -203,6 +203,9 @@ export function createResourceAccess() {
     },
     subscribeBoardTeardown(listener: (boardId?: string) => void) {
       boardTeardownListeners.add(listener);
+      return () => {
+        boardTeardownListeners.delete(listener);
+      };
     },
     reset() {
       for (const listener of boardTeardownListeners) listener();
