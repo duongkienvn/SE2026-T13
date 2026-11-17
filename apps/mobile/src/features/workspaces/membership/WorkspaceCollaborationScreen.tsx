@@ -22,6 +22,7 @@ import {
   workspaceErrorMessage,
 } from '../status';
 import { MembersDirectory } from './MembersDirectory';
+import { GuestsDirectory } from './GuestsDirectory';
 import { workspaceCapabilityOptions } from './queries';
 
 export const workspaceRefreshInterval = 30_000;
@@ -52,7 +53,10 @@ export function WorkspaceCollaborationScreen() {
   );
 }
 
-export const workspaceSectionLabels = { members: 'Members' } as const;
+export const workspaceSectionLabels = {
+  members: 'Members',
+  guests: 'Guests',
+} as const;
 
 function VerifiedCollaboration({
   destination,
@@ -152,7 +156,12 @@ function VerifiedCollaboration({
                 You’re offline. Reconnect to refresh Workspace access.
               </Text>
             )}
-            <MembersDirectory context={context} />
+            {destination.section === 'members' && (
+              <MembersDirectory context={context} />
+            )}
+            {destination.section === 'guests' && (
+              <GuestsDirectory context={context} />
+            )}
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>

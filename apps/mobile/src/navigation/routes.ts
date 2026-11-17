@@ -8,7 +8,7 @@ export type PublicRoute =
 
 declare const resourceIdBrand: unique symbol;
 export type ResourceId = string & { readonly [resourceIdBrand]: true };
-export const workspaceSections = ['members'] as const;
+export const workspaceSections = ['members', 'guests'] as const;
 export type WorkspaceSection = (typeof workspaceSections)[number];
 export type ResourcePath =
   | `/workspaces/${ResourceId}`
