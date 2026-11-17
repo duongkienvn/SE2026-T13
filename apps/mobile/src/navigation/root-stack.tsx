@@ -41,13 +41,15 @@ export function RootStack() {
         previousSessionKey.current !== session.sessionKey;
       if (!previouslyAuthenticated.current || switched) {
         const pending = take();
+        const alreadyAtInvitation =
+          !switched && pathname === invitationRecipientPath;
         redirectIntent.current = switched
           ? '/home'
-          : pathname === invitationRecipientPath
+          : alreadyAtInvitation
             ? invitationRecipientPath
             : (resumeTarget(session, pending) ?? '/home');
-        reachedIntent.current = pathname === redirectIntent.current;
-        if (pathname !== redirectIntent.current)
+        reachedIntent.current = alreadyAtInvitation;
+        if (!alreadyAtInvitation)
           router.replace(redirectIntent.current, { withAnchor: true });
       } else if (pathname === '/') {
         router.replace(redirectIntent.current ?? '/home', { withAnchor: true });

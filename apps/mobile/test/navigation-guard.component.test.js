@@ -6,15 +6,17 @@ import { SessionProvider } from '../src/navigation/session-context';
 import PrivateLayout from '../src/app/(private)/_layout';
 import { RootStack } from '../src/navigation/root-stack';
 import { redirectSystemPath } from '../src/app/+native-intent';
+import { nativeInvitationFlow } from '../src/features/workspaces/invitations/flow';
 
 const mockReplace = jest.fn();
+let mockPath = '/search';
 jest.mock('expo-router', () => {
   const Stack = () => mockCreateElement(MockText, null, 'Private content');
   Stack.Screen = () => null;
   Stack.Protected = () => null;
   return {
     Stack,
-    usePathname: () => '/search',
+    usePathname: () => mockPath,
     useRouter: () => ({ replace: mockReplace }),
   };
 });
@@ -181,5 +183,37 @@ test('cold and warm native intents both reject untrusted destinations', () => {
         initial,
       }),
     ).toBe('/');
+  }
+});
+
+test('session restore keeps the public invitation route until navigation leaves it', async () => {
+  mockReplace.mockClear();
+  mockPath = '/invitations/workspace';
+  const proof = 'x'.repeat(43);
+  expect(
+    redirectSystemPath({
+      path: 'https://kanvexa.tech/invitations/workspace#proof=' + proof,
+      initial: true,
+    }),
+  ).toBe(mockPath);
+  const session = adapter({ status: 'restoring' });
+  const tree = () => (
+    <SessionProvider adapter={session}>
+      <RootStack />
+    </SessionProvider>
+  );
+  try {
+    const { rerender } = await render(tree());
+    await act(() =>
+      session.set({ status: 'authenticated', sessionKey: 'account-one' }),
+    );
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(nativeInvitationFlow.getSnapshot().available).toBe(true);
+    mockPath = '/boards';
+    await rerender(tree());
+    expect(nativeInvitationFlow.getSnapshot().available).toBe(false);
+  } finally {
+    mockPath = '/search';
+    nativeInvitationFlow.clear();
   }
 });
