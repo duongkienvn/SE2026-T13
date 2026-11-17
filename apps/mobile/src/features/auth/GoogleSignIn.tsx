@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Image, Text, View } from 'react-native';
 import googleMark from '../../../assets/brand/google-g.png';
 import { ApiError } from '../../infrastructure/api/errors';
+import { nativeInvitationFlow } from '../workspaces/invitations/flow';
 import { Button, spacing, typography, useTheme } from '../../ui';
 import { signInWithGoogle, type GoogleSignInOutcome } from './google-identity';
 import {
@@ -78,6 +79,7 @@ export function GoogleSignInOption({
   if (!google) return null;
   const start = () => {
     if (request.pending || disabled) return;
+    nativeInvitationFlow.clear();
     feedback.onStart();
     setActive(true);
     void request

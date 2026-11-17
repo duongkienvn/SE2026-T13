@@ -16,6 +16,7 @@ import { nativeGoogleProvider } from '../features/auth/google-native';
 import { WorkspaceSelectionProvider } from '../features/workspaces/WorkspaceSelection';
 import { nativeTransport } from '../infrastructure/query/native-data';
 import { clearPrivateAttachmentFiles } from '../features/cards/attachments/native';
+import { nativeInvitationFlow } from '../features/workspaces/invitations/flow';
 import {
   defaultSessionAdapter,
   type SessionAdapter,
@@ -28,7 +29,11 @@ const sessionManager = nativeSession;
 // App-lifetime cleanup also covers cold start and sessions with no Card mounted.
 clearPrivateAttachmentFiles();
 sessionManager.addLifecycleListener({
-  onSessionEnd: clearPrivateAttachmentFiles,
+  onSessionEnd() {
+    nativeInvitationFlow.clear();
+    clearPrivateAttachmentFiles();
+  },
+  onSessionStart: nativeInvitationFlow.bind,
 });
 const navigationAdapter = createNavigationSessionAdapter(sessionManager);
 const authApi = createAuthApi(nativeTransport);
