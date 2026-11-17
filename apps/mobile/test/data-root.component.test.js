@@ -8,6 +8,11 @@ import {
 } from '../src/infrastructure/query/native-data';
 import { loginResponse, USER_A } from './auth/support';
 import { queryKeys } from '../src/infrastructure/query/keys';
+import { clearPrivateAttachmentFiles } from '../src/features/cards/attachments/native';
+
+jest.mock('../src/features/cards/attachments/native', () => ({
+  clearPrivateAttachmentFiles: jest.fn(),
+}));
 
 jest.mock('expo-status-bar', () => ({ StatusBar: () => null }));
 jest.mock('expo-router', () => ({ useFocusEffect: jest.fn() }));
@@ -73,6 +78,7 @@ jest.mock('../src/navigation/root-stack', () => ({
 }));
 
 test('actual root preserves secure session and navigation providers while exposing one query client', async () => {
+  expect(clearPrivateAttachmentFiles).toHaveBeenCalled();
   const rendered = await render(<RootLayout />);
   await waitFor(() =>
     expect(
@@ -84,7 +90,11 @@ test('actual root preserves secure session and navigation providers while exposi
   expect(screen.getByText('authenticated/authenticated/true')).toBeTruthy();
   const key = queryKeys.me(nativeData.getIdentity());
   nativeData.queryClient.setQueryData(key, { private: 'test fixture' });
+  const cleanupCalls = clearPrivateAttachmentFiles.mock.calls.length;
   await act(() => nativeSession.logout());
+  expect(clearPrivateAttachmentFiles.mock.calls.length).toBeGreaterThan(
+    cleanupCalls,
+  );
   expect(screen.getByText('unauthenticated/unauthenticated/true')).toBeTruthy();
   expect(nativeData.queryClient.getQueryData(key)).toBeUndefined();
   await rendered.unmount();

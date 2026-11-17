@@ -15,6 +15,7 @@ import { nativeAuthFlow } from '../features/auth/flow';
 import { nativeGoogleProvider } from '../features/auth/google-native';
 import { WorkspaceSelectionProvider } from '../features/workspaces/WorkspaceSelection';
 import { nativeTransport } from '../infrastructure/query/native-data';
+import { clearPrivateAttachmentFiles } from '../features/cards/attachments/native';
 import {
   defaultSessionAdapter,
   type SessionAdapter,
@@ -24,6 +25,11 @@ verifySharedCompatibility();
 
 // MOB-05 owns restore and foreground verification; MOB-03 consumes token-free state.
 const sessionManager = nativeSession;
+// App-lifetime cleanup also covers cold start and sessions with no Card mounted.
+clearPrivateAttachmentFiles();
+sessionManager.addLifecycleListener({
+  onSessionEnd: clearPrivateAttachmentFiles,
+});
 const navigationAdapter = createNavigationSessionAdapter(sessionManager);
 const authApi = createAuthApi(nativeTransport);
 
