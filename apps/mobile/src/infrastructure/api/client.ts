@@ -40,6 +40,9 @@ export interface RequestOptions {
   readonly timeoutMs?: number;
   /** Retry owner is the transport, never TanStack Query as well. Reads only. */
   readonly retries?: 0 | 1 | 2;
+  /** Private file consumers can bound allocation and require declared byte integrity. */
+  readonly maximumBytes?: number;
+  readonly requireContentLength?: boolean;
 }
 
 export interface BinaryResult {
@@ -47,6 +50,7 @@ export interface BinaryResult {
   readonly contentType: string;
   /** Untrusted metadata; never use directly as a filesystem path. */
   readonly contentDisposition: string | null;
+  readonly contentLength?: number;
 }
 
 export interface HttpClient {
@@ -170,7 +174,7 @@ export function createHttpClient(config: HttpClientOptions): HttpClient {
     path: string,
     options: RequestOptions,
     accept: string,
-    consume: (response: Response) => Promise<T>,
+    consume: (response: Response, signal: AbortSignal) => Promise<T>,
   ): Promise<T> {
     if (!base) throw new ApiError('configuration');
     const timeout = options.timeoutMs ?? config.timeoutMs ?? 15_000;
@@ -285,7 +289,7 @@ export function createHttpClient(config: HttpClientOptions): HttpClient {
                 response.status !== options.expectedStatus
               )
                 throw invalidResponse(response.status);
-              return consume(response);
+              return consume(response, controller.signal);
             },
             controller.signal,
             abortError,
@@ -423,11 +427,58 @@ export function createHttpClient(config: HttpClientOptions): HttpClient {
         path,
         { ...options, expectedStatus: options.expectedStatus ?? 200 },
         contentTypes.join(', '),
-        async (response) => {
+        async (response, signal) => {
           const type = contentType(response);
           if (!contentTypes.includes(type))
             throw invalidResponse(response.status);
-          const bytes = await response.arrayBuffer();
+          const declared = response.headers.get('content-length');
+          const length =
+            declared !== null && /^\d+$/.test(declared)
+              ? Number(declared)
+              : undefined;
+          const maximum = options.maximumBytes;
+          if (
+            (options.requireContentLength &&
+              (!Number.isSafeInteger(length) || !length)) ||
+            (maximum !== undefined &&
+              (!Number.isSafeInteger(maximum) ||
+                maximum < 1 ||
+                (length !== undefined && length > maximum)))
+          ) {
+            await response.body?.cancel().catch(() => undefined);
+            throw invalidResponse(response.status);
+          }
+          let bytes: ArrayBuffer;
+          if (maximum !== undefined) {
+            // Expo fetch exposes a native readable body. Fail closed without a
+            // bounded reader rather than allocate an arbitrarily large response.
+            if (!response.body || length === undefined)
+              throw invalidResponse(response.status);
+            const reader = response.body.getReader();
+            const cancelReader = () => {
+              void reader.cancel().catch(() => undefined);
+            };
+            signal.addEventListener('abort', cancelReader, { once: true });
+            if (signal.aborted) cancelReader();
+            const output = new Uint8Array(length);
+            let received = 0;
+            try {
+              for (;;) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                if (signal.aborted) throw new ApiError('aborted');
+                received += value.byteLength;
+                if (received > maximum || received > length)
+                  throw invalidResponse(response.status);
+                output.set(value, received - value.byteLength);
+              }
+              if (received !== length) throw invalidResponse(response.status);
+              bytes = output.buffer;
+            } finally {
+              signal.removeEventListener('abort', cancelReader);
+              await reader.cancel().catch(() => undefined);
+            }
+          } else bytes = await response.arrayBuffer();
           if (bytes.byteLength === 0) throw invalidResponse(response.status);
           if (isJson(type)) {
             // JSON exports are raw downloads; require attachment disposition and reject envelopes.
@@ -450,6 +501,7 @@ export function createHttpClient(config: HttpClientOptions): HttpClient {
             bytes,
             contentType: type,
             contentDisposition: response.headers.get('content-disposition'),
+            ...(length === undefined ? {} : { contentLength: length }),
           };
         },
       );
