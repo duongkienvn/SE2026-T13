@@ -88,6 +88,14 @@ export function MembersDirectory({
     members.isError;
   return (
     <>
+      {manager && (
+        <Button
+          label="Invitations"
+          variant="secondary"
+          disabled={!online || context.checking}
+          onPress={() => router.push(`/workspaces/${id}/invitations`)}
+        />
+      )}
       <RosterSearch roster={roster} online={online} />
       <View style={{ gap: spacing.sm, flexDirection: 'row', flexWrap: 'wrap' }}>
         {roles.map((filter) => (
