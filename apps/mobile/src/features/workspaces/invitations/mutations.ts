@@ -6,11 +6,93 @@ import {
 } from '../../../infrastructure/api/session-client.ts';
 import type { MobileDataLayer } from '../../../infrastructure/query/data-layer.ts';
 import type { ResourceId } from '../../../navigation/routes.ts';
+import { maxWorkspacePage } from '../api.ts';
 import { isWorkspaceDenied } from '../queries.ts';
 import { uncertainWorkspaceWrite } from '../membership/mutations.ts';
 import { recheckWorkspaceAccess } from '../membership/queries.ts';
 import { createInvitationAdminApi, invitationKey } from './api.ts';
 import { canManageInvitations, clearInvitationHistory } from './queries.ts';
+
+export type IssuanceReview = { email: string; newestBefore: string | null };
+
+export const issuanceReviewKey = (identity: SessionIdentity, id: ResourceId) =>
+  [...invitationKey(identity, id), 'issuance-review'] as const;
+
+export function issueInvitation(
+  data: MobileDataLayer,
+  identity: SessionIdentity,
+  id: ResourceId,
+  email: string,
+  signal: AbortSignal,
+) {
+  const key = issuanceReviewKey(identity, id);
+  return writeInvitation(data, identity, id, signal, async (api) => {
+    const baseline = await api
+      .history(1, undefined, signal, 1)
+      .catch((error: unknown) => {
+        // A failed baseline GET never issued an invitation.
+        if (!(error instanceof ApiError)) throw error;
+        throw new ApiError(error.kind, {
+          status: error.status,
+          code: error.code,
+          retryAfterMs: error.retryAfterMs,
+        });
+      });
+    data.assertCurrent(identity);
+    if (signal.aborted) throw new ApiError('aborted');
+    if (!baseline.data[0] && baseline.meta.total > 0)
+      throw new ApiError('invalid-response');
+    if (data.queryClient.getQueryData(key))
+      throw new ApiError('http', { status: 409 });
+    const attempt = data.queryClient.setQueryData<IssuanceReview>(key, {
+      email,
+      newestBefore: baseline.data[0]?.createdAt ?? null,
+    });
+    const clearAttempt = () => {
+      if (data.queryClient.getQueryData(key) === attempt)
+        data.queryClient.setQueryData(key, null);
+    };
+    try {
+      const row = await api.issue(email, signal);
+      data.assertCurrent(identity);
+      clearAttempt();
+      return row;
+    } catch (error) {
+      if (
+        !uncertainWorkspaceWrite(error) &&
+        sameIdentity(identity, data.getIdentity())
+      )
+        clearAttempt();
+      throw error;
+    }
+  });
+}
+
+export async function findNewInvitation(
+  data: MobileDataLayer,
+  identity: SessionIdentity,
+  id: ResourceId,
+  attempt: IssuanceReview,
+  signal: AbortSignal,
+) {
+  const api = createInvitationAdminApi(data.api, identity, id);
+  let lastPage = maxWorkspacePage;
+  for (let page = 1; page <= lastPage; page++) {
+    const { data: rows, meta } = await api.history(
+      page,
+      undefined,
+      signal,
+      100,
+    );
+    lastPage = Math.min(lastPage, meta.totalPages);
+    // History is newest-first. Equal timestamps provide no evidence of a new row.
+    for (const row of rows) {
+      if (attempt.newestBefore && row.createdAt <= attempt.newestBefore) return;
+      if (row.email === attempt.email && row.invitedById === identity.userId)
+        return row;
+    }
+  }
+}
 
 export async function writeInvitation<T>(
   data: MobileDataLayer,

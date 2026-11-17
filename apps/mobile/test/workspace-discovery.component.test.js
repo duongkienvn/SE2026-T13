@@ -905,7 +905,7 @@ test('invitation admin requests once, shows delivery, pages and filters, and con
         page(
           filter ? rows.filter((row) => row.status === filter) : rows,
           Number(url.searchParams.get('page')),
-          20,
+          Number(url.searchParams.get('limit')),
         ),
       );
     },
@@ -973,6 +973,101 @@ test('invitation admin requests once, shows delivery, pages and filters, and con
     mockPath = '/boards';
   }
 });
+
+test.each([true, false])(
+  'timed-out invitation review checks the submitted recipient across unfiltered pages (created: %s)',
+  async (created) => {
+    jest.useFakeTimers();
+    mockPath = `/workspaces/${b.id}/invitations`;
+    const old = {
+      ...inviteRow(1),
+      status: 'ACCEPTED',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      consumedAt: '2026-01-01T00:01:00.000Z',
+    };
+    const newer = '2026-01-01T00:02:00.000Z';
+    let rows = [old];
+    let writes = 0;
+    const reads = [];
+    const env = await setup({
+      view: 'collaboration',
+      first: [collaborationAdmin],
+      override(url, init) {
+        if (!url.pathname.endsWith('/invitations')) return null;
+        if (init.method === 'POST') {
+          writes++;
+          if (created) {
+            rows = [
+              ...Array.from({ length: 100 }, (_, index) => ({
+                ...inviteRow(index + 101),
+                createdAt: '2026-01-01T00:03:00.000Z',
+              })),
+              { ...inviteRow(2), email: old.email, createdAt: newer },
+              old,
+            ];
+          }
+          return new Promise(() => {});
+        }
+        const status = url.searchParams.get('status');
+        const number = Number(url.searchParams.get('page'));
+        const limit = Number(url.searchParams.get('limit'));
+        reads.push({ status, number });
+        return envelope(
+          page(
+            status ? rows.filter((row) => row.status === status) : rows,
+            number,
+            limit,
+          ),
+        );
+      },
+    });
+    try {
+      await screen.findByText(old.email);
+      await pressWorkspace('ACCEPTED');
+      await screen.findByText('MEMBER · ACCEPTED');
+      await pressWorkspace('Invite member');
+      await fireEvent.changeText(
+        screen.getByLabelText('Recipient email'),
+        old.email.toUpperCase(),
+      );
+      await pressWorkspace('Request invitation');
+      await waitFor(() => expect(writes).toBe(1));
+      await act(() => jest.advanceTimersByTimeAsync(15_000));
+      await screen.findByRole('button', { name: 'Check latest invitations' });
+      const beforeReview = reads.length;
+      if (!created) {
+        await env.show(null);
+        await env.show('collaboration');
+      }
+      await pressWorkspace('Check latest invitations');
+      if (created) {
+        await screen.findByText(
+          /Found a newer invitation for invite1@example.test.*PENDING/,
+        );
+        expect(reads.slice(beforeReview)).toContainEqual({
+          status: null,
+          number: 2,
+        });
+        expect(
+          screen.getByRole('button', { name: 'Invite member' }),
+        ).toBeEnabled();
+        expect(screen.getByText('MEMBER · ACCEPTED')).toBeTruthy();
+      } else {
+        await screen.findByText(
+          /Couldn’t verify a new invitation for invite1@example.test/,
+        );
+        expect(
+          screen.getByRole('button', { name: 'Invite member' }),
+        ).toBeDisabled();
+      }
+      expect(writes).toBe(1);
+    } finally {
+      await env.dispose();
+      mockPath = '/boards';
+      jest.useRealTimers();
+    }
+  },
+);
 
 test.each([b, a])(
   'non-admin or Personal Workspace cannot read invitation history',

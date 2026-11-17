@@ -79,7 +79,7 @@ export function InviteMemberSheet({
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
-            editable={!pending}
+            editable={!pending && !review}
             onChangeText={(value) => {
               setEmail(value);
               setInvalid(false);

@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { skipToken, useQuery } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { ApiError } from '../../../infrastructure/api/errors';
 import { sameIdentity } from '../../../infrastructure/api/session-client';
@@ -27,7 +27,14 @@ import {
   InvitationReceipt,
   InviteMemberSheet,
 } from './InviteMemberSheet';
-import { adminInvitationError, writeInvitation } from './mutations';
+import {
+  adminInvitationError,
+  findNewInvitation,
+  issueInvitation,
+  issuanceReviewKey,
+  writeInvitation,
+  type IssuanceReview,
+} from './mutations';
 import { clearInvitationHistory, invitationHistoryOptions } from './queries';
 
 const canRevoke = (row: WorkspaceInvitation) =>
@@ -52,7 +59,17 @@ export function InvitationAdminScreen({
   const [receipt, setReceipt] = useState<WorkspaceInvitation>();
   const [revoked, setRevoked] = useState(false);
   const [denied, setDenied] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [reviewNote, setReviewNote] = useState('');
+  const reviewRequest = useRef<AbortController | null>(null);
   const action = useWorkspaceAction(context, adminInvitationError);
+  const reviewKey = issuanceReviewKey(identity, id);
+  const { data: issuance } = useQuery<IssuanceReview | null>({
+    queryKey: reviewKey,
+    queryFn: skipToken,
+    gcTime: Infinity,
+  });
+  useEffect(() => () => reviewRequest.current?.abort(), []);
   const history = useQuery({
     ...invitationHistoryOptions(data, identity, id, roster.page, status),
     enabled: active && online && !denied,
@@ -77,16 +94,76 @@ export function InvitationAdminScreen({
         Workspace access.
       </Text>
     );
-  const blocked = action.disabled || checking;
+  const blocked = action.disabled || checking || !!issuance;
   const latest = history.data?.data.find(({ id }) => id === candidate?.id);
-  const review = action.mustReview && (
-    <Button
-      label="Check latest invitations"
-      disabled={!online || history.isFetching}
-      onPress={async () => {
-        if ((await history.refetch()).isSuccess) action.reviewed();
-      }}
-    />
+  async function reviewIssuance(attempt: IssuanceReview) {
+    if (reviewRequest.current) return;
+    const controller = new AbortController();
+    reviewRequest.current = controller;
+    setReviewing(true);
+    const current = () =>
+      !controller.signal.aborted && sameIdentity(identity, data.getIdentity());
+    const inconclusive = `Couldn’t verify a new invitation for ${attempt.email}. Check again before requesting another invitation.`;
+    try {
+      const row = await findNewInvitation(
+        data,
+        identity,
+        id,
+        attempt,
+        controller.signal,
+      );
+      if (!current() || data.queryClient.getQueryData(reviewKey) !== attempt)
+        return;
+      if (!row) {
+        setReviewNote(inconclusive);
+        return;
+      }
+      setReviewNote(
+        `Found a newer invitation for ${row.email}. ${row.status}. ${deliveryLabel[row.sendState]}.`,
+      );
+      setIssuing(false);
+      data.queryClient.setQueryData(reviewKey, null);
+      action.reviewed();
+    } catch (error) {
+      if (!current()) return;
+      if (isWorkspaceDenied(error)) {
+        setDenied(true);
+        clearInvitationHistory(data, identity, id);
+      } else {
+        setReviewNote(inconclusive);
+      }
+    } finally {
+      reviewRequest.current = null;
+      if (current()) setReviewing(false);
+    }
+  }
+  const review = (action.mustReview || !!issuance) && !action.pending && (
+    <>
+      {issuance && (
+        <Text
+          accessibilityLiveRegion="polite"
+          style={[typography.body, { color: c.text }]}
+        >
+          {reviewNote ||
+            `Check whether an invitation was created for ${issuance.email} before sending another.`}
+        </Text>
+      )}
+      <Button
+        label="Check latest invitations"
+        loading={reviewing}
+        disabled={
+          !active ||
+          !online ||
+          checking ||
+          reviewing ||
+          (!issuance && history.isFetching)
+        }
+        onPress={async () => {
+          if (issuance) await reviewIssuance(issuance);
+          else if ((await history.refetch()).isSuccess) action.reviewed();
+        }}
+      />
+    </>
   );
   return (
     <>
@@ -96,6 +173,7 @@ export function InvitationAdminScreen({
         onPress={() => {
           action.clearError();
           setRevoked(false);
+          setReviewNote('');
           setIssuing(true);
         }}
       />
@@ -117,6 +195,14 @@ export function InvitationAdminScreen({
         </Text>
       )}
       {!issuing && review}
+      {!issuance && reviewNote && (
+        <Text
+          accessibilityLiveRegion="polite"
+          style={[typography.body, { color: c.text }]}
+        >
+          {reviewNote}
+        </Text>
+      )}
       <Text
         accessibilityRole="header"
         style={[typography.title, { color: c.text }]}
@@ -184,10 +270,7 @@ export function InvitationAdminScreen({
           onClose={() => setIssuing(false)}
           onIssue={(email) =>
             void action.run(
-              (signal) =>
-                writeInvitation(data, identity, id, signal, (api) =>
-                  api.issue(email, signal),
-                ),
+              (signal) => issueInvitation(data, identity, id, email, signal),
               (row) => {
                 setReceipt(row);
                 setIssuing(false);
