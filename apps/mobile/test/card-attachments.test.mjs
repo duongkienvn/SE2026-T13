@@ -7,6 +7,7 @@ import { ApiError } from '../src/infrastructure/api/errors.ts';
 import { createSessionHttpClient } from '../src/infrastructure/api/session-client.ts';
 import { createResourceAccess } from '../src/infrastructure/query/resource-access.ts';
 import { queryKeys } from '../src/infrastructure/query/keys.ts';
+import { activityKeys } from '../src/features/activity/keys.ts';
 import {
   createAttachmentApi,
   decodeAttachment,
@@ -852,7 +853,8 @@ test('attachment invalidations target child and previews without mutating card/c
     targets[0],
     queryKeys.attachments(identity, boardId, cardId),
   );
-  assert.equal(targets.length, 3);
+  assert.equal(targets.length, 4);
+  assert.deepEqual(targets[3], activityKeys.board(identity, boardId));
   assert.deepEqual(queryClient.getQueryData(checklist), {
     pending: 'checkbox draft',
   });

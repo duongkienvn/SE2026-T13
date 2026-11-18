@@ -14,6 +14,7 @@ import type {
 } from '../../features/workspaces/decoder.ts';
 import type { MobileDataLayer } from '../query/data-layer.ts';
 import { isUuid } from '../auth/credential-record.ts';
+import { activityKeys } from '../../features/activity/keys.ts';
 
 /** Aggregate projections locate Boards to check. They never grant Board access. */
 export function workspaceBoardCandidates(
@@ -70,7 +71,7 @@ export function workspaceBoardCandidates(
 }
 
 /** Hints choose cache identities; REST supplies values and permissions. */
-export function hintTargets(
+function resourceHintTargets(
   identity: SessionIdentity,
   event: ServerEvent,
   hint: Hint,
@@ -155,4 +156,44 @@ export function hintTargets(
       'cards',
     ]);
   return result;
+}
+
+/** Audit streams use the existing coalesced invalidation queue, never socket payload rows. */
+export function hintTargets(
+  identity: SessionIdentity,
+  event: ServerEvent,
+  hint: Hint,
+  workspaceId?: string,
+): PrivateQueryKey[] {
+  const targets = resourceHintTargets(identity, event, hint, workspaceId);
+  if (hint.boardId && /^(board|column|card|comment|member):/.test(event))
+    targets.push(activityKeys.board(identity, hint.boardId));
+  return targets;
+}
+
+/** Board privacy/name/move changes can invalidate an already loaded Workspace row. */
+export function workspaceActivityTargets(
+  data: MobileDataLayer,
+  identity: SessionIdentity,
+  boardId: string,
+  workspaceId?: string,
+): PrivateQueryKey[] {
+  const targets = new Map<string, PrivateQueryKey>();
+  for (const { queryKey, state } of data.queryClient.getQueryCache().getAll()) {
+    if (
+      !keyBelongsTo(queryKey, identity) ||
+      queryKey[4] !== 'workspaces' ||
+      typeof queryKey[5] !== 'string' ||
+      queryKey[6] !== 'activity'
+    )
+      continue;
+    const page = state.data as
+      { data?: { board?: { id: string } | null }[] } | undefined;
+    if (
+      queryKey[5] === workspaceId ||
+      page?.data?.some((row) => row.board?.id === boardId)
+    )
+      targets.set(queryKey[5], activityKeys.workspace(identity, queryKey[5]));
+  }
+  return [...targets.values()];
 }

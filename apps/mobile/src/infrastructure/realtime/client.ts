@@ -7,7 +7,11 @@ import { systemTimers, type Timers } from '../auth/clock.ts';
 import { keyBelongsTo, type PrivateQueryKey } from '../query/keys.ts';
 import { createConnection } from './connection.ts';
 import { createBoardRooms, decodeBoardAccess } from './rooms.ts';
-import { hintTargets, workspaceBoardCandidates } from './reconciliation.ts';
+import {
+  hintTargets,
+  workspaceBoardCandidates,
+  workspaceActivityTargets,
+} from './reconciliation.ts';
 import { parseHint } from './contracts.ts';
 import type { SocketFactory } from './socket.ts';
 import type { SessionIdentity } from '../api/session-client.ts';
@@ -49,6 +53,14 @@ export function createNativeRealtime(options: {
   let unsubscribeErrors: (() => void) | undefined;
   let unsubscribeDenied: (() => void) | undefined;
   let unsubscribeWorkspaceDenied: (() => void) | undefined;
+  function fenceWorkspaceActivity(boardId: string, workspaceId?: string) {
+    const identity = data.getIdentity();
+    if (!identity) return;
+    const keys = workspaceActivityTargets(data, identity, boardId, workspaceId);
+    for (const key of keys) data.cancelResourceRequests(key);
+    data.evict(identity, keys);
+    void data.invalidateHints(identity, keys).catch(() => undefined);
+  }
   function workspaceOverviewKeys(
     identity: SessionIdentity,
     workspaceId?: string,
@@ -285,6 +297,7 @@ export function createNativeRealtime(options: {
     fence(boardId, revoked, reconcileAggregates = true) {
       const identity = data.getIdentity();
       if (identity) {
+        fenceWorkspaceActivity(boardId, data.resources.boardWorkspace(boardId));
         cancelVerification(boardId);
         if (revoked) {
           checks.delete(boardId);
@@ -367,6 +380,11 @@ export function createNativeRealtime(options: {
       const hint = parseHint(event, value);
       const identity = data.getIdentity();
       if (!hint || !identity) return;
+      if (hint.boardId && event.startsWith('board:'))
+        fenceWorkspaceActivity(
+          hint.boardId,
+          data.resources.boardWorkspace(hint.boardId),
+        );
       if (event === 'board:access-revoked') {
         rooms.revoke(hint.boardId!);
         return;

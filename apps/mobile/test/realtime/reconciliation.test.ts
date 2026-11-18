@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { QueryObserver } from '@tanstack/react-query';
 import { hintTargets } from '../../src/infrastructure/realtime/reconciliation.ts';
+import { activityKeys } from '../../src/features/activity/keys.ts';
 import { queryKeys } from '../../src/infrastructure/query/keys.ts';
 import { setup } from '../query/support.ts';
 import { USER_A, USER_B, deferred, flush } from '../auth/support.ts';
@@ -18,6 +19,7 @@ test('shared scopes target Card children precisely and generic events keep a cor
       queryKeys.checklists(identity, USER_A, USER_B),
       queryKeys.cardPreview(identity, USER_A, USER_B),
       queryKeys.previewBatch(identity, USER_A, [USER_B]),
+      activityKeys.board(identity, USER_A),
     ],
   );
   assert.deepEqual(
@@ -29,6 +31,7 @@ test('shared scopes target Card children precisely and generic events keep a cor
       queryKeys.attachments(identity, USER_A, USER_B),
       queryKeys.cardPreview(identity, USER_A, USER_B),
       queryKeys.previewBatch(identity, USER_A, [USER_B]),
+      activityKeys.board(identity, USER_A),
     ],
   );
   assert.ok(
@@ -40,6 +43,7 @@ test('shared scopes target Card children precisely and generic events keep a cor
   );
   assert.deepEqual(hintTargets(identity, 'comment:updated', hint), [
     queryKeys.comments(identity, USER_A, USER_B),
+    activityKeys.board(identity, USER_A),
   ]);
   assert.deepEqual(hintTargets(identity, 'notifications:changed', {}), [
     queryKeys.notifications(identity),
