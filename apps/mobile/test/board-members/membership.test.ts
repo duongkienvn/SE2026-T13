@@ -18,6 +18,8 @@ import {
 } from '../../src/features/boards/members/queries.ts';
 import {
   changeBoardMembership,
+  boardMembershipNeedsReview,
+  clearBoardMembershipReview,
   memberActionBlock,
   uncertainBoardMembershipWrite,
 } from '../../src/features/boards/members/mutations.ts';
@@ -510,6 +512,52 @@ test('offline sends nothing; an aborted preflight is not an uncertain write', as
     signal(),
   ).catch((error: unknown) => error);
   assert.equal(uncertainBoardMembershipWrite(error), false);
+});
+
+test('uncertain commands block new dispatch across Board fences until review, with session and Board isolation', async (t) => {
+  const c = await scenario();
+  t.after(c.dispose);
+  const identity = c.identity;
+  const command = { kind: 'add', email: member().user.email } as const;
+  c.state.writeStatus = 503;
+  await assert.rejects(
+    changeBoardMembership(c.data, identity, boardId, command, signal()),
+    { status: 503 },
+  );
+  assert.equal(boardMembershipNeedsReview(c.data, identity, boardId), true);
+  assert.equal(boardMembershipNeedsReview(c.data, identity, uuid(200)), false);
+  assert.equal(
+    boardMembershipNeedsReview(
+      c.data,
+      { ...identity, generation: identity.generation + 1 },
+      boardId,
+    ),
+    false,
+  );
+  const before = c.requests.length;
+  await assert.rejects(
+    changeBoardMembership(c.data, identity, boardId, command, signal()),
+    { code: 'BOARD_MEMBERSHIP_REVIEW_REQUIRED' },
+  );
+  assert.equal(c.requests.length, before);
+  c.data.resources.fenceBoard(boardId, true);
+  c.data.evict(identity, [queryKeys.board(identity, boardId)]);
+  assert.equal(boardMembershipNeedsReview(c.data, identity, boardId), true);
+  clearBoardMembershipReview(c.data, identity, boardId);
+  c.state.writeStatus = 0;
+  await changeBoardMembership(c.data, identity, boardId, command, signal());
+  assert.equal(boardMembershipNeedsReview(c.data, identity, boardId), false);
+  c.state.writeStatus = 503;
+  await assert.rejects(
+    changeBoardMembership(c.data, identity, boardId, command, signal()),
+  );
+  assert.equal(boardMembershipNeedsReview(c.data, identity, boardId), true);
+  await c.manager.establishSession(loginResponse(USER_B));
+  assert.equal(boardMembershipNeedsReview(c.data, identity, boardId), false);
+  assert.equal(
+    boardMembershipNeedsReview(c.data, c.data.getIdentity()!, boardId),
+    false,
+  );
 });
 
 test('pending Board command locks rapid duplicate submits and logout fences late results', async (t) => {

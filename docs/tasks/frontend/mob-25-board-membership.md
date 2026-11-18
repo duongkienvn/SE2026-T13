@@ -287,3 +287,20 @@ loss, membership removal and logout retire it with the existing fences. Use the
 full Board roster DTO, not Workspace Guest data or the smaller assignee catalog.
 Fetch deliberate server pages; do not present a local page filter as global
 member search. MOB-26 must supply its own scoped mention UX and verification.
+
+## Review follow-up: unresolved command outcomes
+
+The unresolved-write guard now lives beside the command lock, outside React,
+keyed by data-layer lifetime, session user/generation and Board ID. An uncertain
+started command records the guard even if its screen has already unmounted.
+Remounts, background reads and Board resource fences do not clear it. New
+commands are rejected before dispatch until the user explicitly completes both
+the access and roster review. Session teardown clears the in-memory state;
+confirmed commands retain their existing behavior.
+
+Regression coverage includes remount after an uncertain response, failed review,
+successful explicit review, route cancellation while a command is in flight,
+late responses, Board/session isolation and confirmed writes. The focused Board
+membership Node file passed all 32 cases; Members and Board Settings component
+files passed all 48 cases (29 Members, 19 Settings). Native/live verification
+limits above still apply.

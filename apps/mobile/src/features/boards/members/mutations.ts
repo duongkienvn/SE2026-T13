@@ -48,7 +48,68 @@ export type BoardMembershipCommand =
   | { kind: 'role'; member: BoardMember; role: BoardRole; page: number }
   | { kind: 'remove'; member: BoardMember; page: number };
 
-const locks = new WeakMap<MobileDataLayer, Set<string>>();
+const commandStates = new WeakMap<
+  MobileDataLayer,
+  {
+    pending: Set<string>;
+    review: Set<string>;
+    listeners: Set<() => void>;
+  }
+>();
+const commandKey = (identity: SessionIdentity, boardId: string) =>
+  JSON.stringify([identity.userId, identity.generation, boardId.toLowerCase()]);
+
+function commandState(data: MobileDataLayer) {
+  let state = commandStates.get(data);
+  if (!state) {
+    const created = {
+      pending: new Set<string>(),
+      review: new Set<string>(),
+      listeners: new Set<() => void>(),
+    };
+    commandStates.set(data, created);
+    // Session teardown clears local command state; Board fences and remounts do not.
+    data.resources.subscribeBoardTeardown((boardId) => {
+      if (boardId !== undefined) return;
+      created.pending.clear();
+      created.review.clear();
+      for (const listener of created.listeners) listener();
+    });
+    state = created;
+  }
+  return state;
+}
+
+export function boardMembershipNeedsReview(
+  data: MobileDataLayer,
+  identity: SessionIdentity,
+  boardId: string,
+) {
+  return commandState(data).review.has(commandKey(identity, boardId));
+}
+
+export function subscribeBoardMembershipReview(
+  data: MobileDataLayer,
+  listener: () => void,
+) {
+  const state = commandState(data);
+  state.listeners.add(listener);
+  return () => {
+    state.listeners.delete(listener);
+  };
+}
+
+/** Called only after the explicit access-and-roster review has succeeded. */
+export function clearBoardMembershipReview(
+  data: MobileDataLayer,
+  identity: SessionIdentity,
+  boardId: string,
+) {
+  data.assertCurrent(identity);
+  const state = commandState(data);
+  if (state.review.delete(commandKey(identity, boardId)))
+    for (const listener of state.listeners) listener();
+}
 
 export function uncertainBoardMembershipWrite(error: unknown) {
   return (
@@ -78,9 +139,16 @@ export async function changeBoardMembership(
   if (!onlineManager.isOnline()) throw new ApiError('offline');
   if (signal.aborted) throw new ApiError('aborted');
   if (command.kind === 'add') boardMemberEmail(command.email);
-  const key = JSON.stringify([identity.userId, identity.generation, boardId]);
-  const pending = locks.get(data) ?? new Set<string>();
-  locks.set(data, pending);
+  const key = commandKey(identity, boardId);
+  const state = commandState(data);
+  if (state.review.has(key))
+    throw new ApiError('http', {
+      status: 409,
+      code: 'BOARD_MEMBERSHIP_REVIEW_REQUIRED',
+      message:
+        'Check the latest Board access and members before another change.',
+    });
+  const pending = state.pending;
   if (pending.has(key))
     throw new ApiError('http', {
       status: 409,
@@ -171,6 +239,14 @@ export async function changeBoardMembership(
     ).catch(() => undefined);
     return result;
   } catch (error) {
+    if (
+      commandStarted &&
+      sameIdentity(identity, data.getIdentity()) &&
+      uncertainBoardMembershipWrite(error)
+    ) {
+      state.review.add(key);
+      for (const listener of state.listeners) listener();
+    }
     if (
       !workspaceId &&
       sameIdentity(identity, data.getIdentity()) &&

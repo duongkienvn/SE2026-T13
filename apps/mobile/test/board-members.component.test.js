@@ -186,19 +186,21 @@ async function setup({
   });
   realtime.setEnvironment({ foreground: true, online: true });
   const adapter = createNavigationSessionAdapter(manager);
-  const mounted = await render(
+  let routeGeneration = 0;
+  const tree = () => (
     <SessionProvider manager={manager}>
       <DataProvider layer={data}>
         <RealtimeProvider client={realtime}>
           <NavigationProvider adapter={adapter}>
             <ThemeContext.Provider value={theme}>
-              <MembersRoute />
+              <MembersRoute key={routeGeneration} />
             </ThemeContext.Provider>
           </NavigationProvider>
         </RealtimeProvider>
       </DataProvider>
-    </SessionProvider>,
+    </SessionProvider>
   );
+  const mounted = await render(tree());
   return {
     data,
     manager,
@@ -206,21 +208,13 @@ async function setup({
     state,
     calls,
     mounted,
+    async remountMembers() {
+      routeGeneration++;
+      await mounted.rerender(tree());
+    },
     async systemTheme(mode) {
       useColorScheme.mockReturnValue(mode);
-      await mounted.rerender(
-        <SessionProvider manager={manager}>
-          <DataProvider layer={data}>
-            <RealtimeProvider client={realtime}>
-              <NavigationProvider adapter={adapter}>
-                <ThemeContext.Provider value={theme}>
-                  <MembersRoute />
-                </ThemeContext.Provider>
-              </NavigationProvider>
-            </RealtimeProvider>
-          </DataProvider>
-        </SessionProvider>,
-      );
+      await mounted.rerender(tree());
     },
     writes: () => calls.filter(({ method }) => method !== 'GET'),
     async dispose() {
@@ -424,6 +418,106 @@ test('uncertain 503 requires checking REST before another explicit action', asyn
     await screen.findByText(/Latest members loaded/);
     expect(c.writes()).toHaveLength(1);
   } finally {
+    await c.dispose();
+  }
+});
+
+test('uncertain outcome survives remount and failed review until explicit access-and-roster review succeeds', async () => {
+  let uncertain = true;
+  let refuseRoster = false;
+  const c = await setup({
+    override: (call) =>
+      call.method === 'POST' && uncertain
+        ? failure(503)
+        : call.method === 'GET' &&
+            call.path.endsWith('/members') &&
+            refuseRoster
+          ? failure(503)
+          : undefined,
+  });
+  try {
+    await waitRoster();
+    await press('Add existing Kanvexa user');
+    await fireEvent.changeText(
+      screen.getByLabelText('Kanvexa account email'),
+      'new@example.test',
+    );
+    await press('Add to Board');
+    await screen.findByRole('button', { name: 'Check latest members' });
+    await c.remountMembers();
+    await waitRoster();
+    expect(
+      screen.getByRole('button', { name: 'Add existing Kanvexa user' }),
+    ).toBeDisabled();
+    refuseRoster = true;
+    await press('Check latest members');
+    await screen.findByRole('button', { name: 'Retry members' });
+    expect(
+      screen.getByRole('button', { name: 'Check latest members' }),
+    ).toBeTruthy();
+    expect(c.writes()).toHaveLength(1);
+    refuseRoster = false;
+    await press('Check latest members');
+    await screen.findByText(/Latest members loaded/);
+    uncertain = false;
+    await press('Add existing Kanvexa user');
+    await fireEvent.changeText(
+      screen.getByLabelText('Kanvexa account email'),
+      'new@example.test',
+    );
+    await press('Add to Board');
+    await screen.findByText('Board member added.');
+    await c.remountMembers();
+    await waitRoster();
+    expect(
+      screen.queryByRole('button', { name: 'Check latest members' }),
+    ).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Add existing Kanvexa user' }),
+    ).toBeEnabled();
+    expect(c.writes()).toHaveLength(2);
+  } finally {
+    await c.dispose();
+  }
+});
+
+test('remount while a command is in flight preserves its uncertain outcome after cancellation', async () => {
+  const gate = deferred();
+  const c = await setup({
+    override: (call) => (call.method === 'POST' ? gate.promise : undefined),
+  });
+  try {
+    await waitRoster();
+    await press('Add existing Kanvexa user');
+    await fireEvent.changeText(
+      screen.getByLabelText('Kanvexa account email'),
+      'new@example.test',
+    );
+    await press('Add to Board');
+    await waitFor(() => expect(c.writes()).toHaveLength(1));
+    await c.remountMembers();
+    await waitRoster();
+    await screen.findByRole('button', { name: 'Check latest members' });
+    expect(
+      screen.getByRole('button', { name: 'Add existing Kanvexa user' }),
+    ).toBeDisabled();
+    await act(async () =>
+      gate.resolve(
+        ok(
+          {
+            ...member(100),
+            user: { ...member(100).user, email: 'new@example.test' },
+          },
+          201,
+        ),
+      ),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Check latest members' }),
+    ).toBeTruthy();
+    expect(c.writes()).toHaveLength(1);
+  } finally {
+    gate.resolve(ok(member(100), 201));
     await c.dispose();
   }
 });

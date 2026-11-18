@@ -1,7 +1,13 @@
 import { BoardRole } from '@kanban/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useIsFocused } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { FlatList, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../../../infrastructure/api/errors';
@@ -43,8 +49,10 @@ import { BoardMemberAvatar } from './BoardMemberAvatar';
 import type { BoardMember } from './api';
 import {
   changeBoardMembership,
+  boardMembershipNeedsReview,
+  clearBoardMembershipReview,
   memberActionBlock,
-  uncertainBoardMembershipWrite,
+  subscribeBoardMembershipReview,
   type BoardMembershipCommand,
 } from './mutations';
 import {
@@ -105,7 +113,10 @@ function MembersScreen({
   const [notice, setNotice] = useState('');
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<{ error: unknown; at: number }>();
-  const [mustReview, setMustReview] = useState(false);
+  const mustReview = useSyncExternalStore(
+    (listener) => subscribeBoardMembershipReview(data, listener),
+    () => boardMembershipNeedsReview(data, identity, boardId),
+  );
   const request = useRef<AbortController | null>(null);
   const mounted = useRef(true);
   useEffect(
@@ -251,7 +262,6 @@ function MembersScreen({
     } catch (error) {
       if (!current()) return;
       setFailure({ error, at: Date.now() });
-      if (uncertainBoardMembershipWrite(error)) setMustReview(true);
     } finally {
       if (request.current === controller) request.current = null;
       if (current()) setPending(false);
@@ -269,7 +279,7 @@ function MembersScreen({
       !sameIdentity(identity, data.getIdentity())
     )
       return;
-    setMustReview(false);
+    clearBoardMembershipReview(data, identity, boardId);
     setFailure(undefined);
     setAdding(false);
     setEmail('');
