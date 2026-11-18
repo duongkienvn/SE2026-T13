@@ -1,0 +1,32 @@
+PASS TC01/02/08/09: JWT HTTP acknowledgement before gated work; actual scheduler, same-key replay, progress and real JSON download
+PASS TC04/05: payload conflict, malformed key/body/id and validation privacy
+PASS TC06/07: real JWT, verified identity, owner gate and private job isolation
+PASS TC10: scheduler failure sanitized and explicit retry completes using same job
+Browser diagnostic: [{"navigation":"http://127.0.0.1:4175/settings/data-privacy"},{"console":"[vite] connecting..."},{"console":"[vite] connected."},{"navigation":"http://127.0.0.1:4175/settings/data-privacy"},{"failed":"/api/users/me","error":"net::ERR_ABORTED"},{"path":"/api/users/me","status":200},{"failed":"/api/notifications/unread-count","error":"net::ERR_ABORTED"},{"failed":"/api/boards","error":"net::ERR_ABORTED"},{"failed":"/api/boards","error":"net::ERR_ABORTED"},{"failed":"/api/workspaces","error":"net::ERR_ABORTED"},{"path":"/api/users/me/preferences","status":200},{"path":"/api/notifications/unread-count","status":200},{"path":"/api/boards","status":200},{"path":"/api/boards","status":200},{"path":"/api/workspaces","status":200},{"path":"/api/boards/00e295f5-04fc-4fc4-9ace-5c5205ae97e4/export-jobs","status":202},{"path":"/api/boards/00e295f5-04fc-4fc4-9ace-5c5205ae97e4/export-jobs/c2360b33-dcb0-4dd5-b34a-748d49350c5c","status":200},{"failed":"/socket.io/","error":"net::ERR_CONNECTION_REFUSED"},{"path":"/api/boards/00e295f5-04fc-4fc4-9ace-5c5205ae97e4/export-jobs/c2360b33-dcb0-4dd5-b34a-748d49350c5c","status":200},{"path":"/api/boards/00e295f5-04fc-4fc4-9ace-5c5205ae97e4/export-jobs/c2360b33-dcb0-4dd5-b34a-748d49350c5c/download","status":200},{"failed":"/socket.io/","error":"net::ERR_CONNECTION_REFUSED"}]
+Browser card on failure: Export board data
+
+A board you own with its lists, cards, labels, members, checklists and comments.
+
+Board
+Loading your boards…
+Export format
+JSON
+Full structure (recommended)
+CSV
+One row per card (spreadsheets)
+Export board data
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+page.waitForEvent: Timeout 30000ms exceeded while waiting for event "download"
+=========================== logs ===========================
+waiting for event "download"
+============================================================
+    at browserJourney (D:\TAI LIEU DAI HOC\NAM BON\SEM_1\SE\SE2026-T13\.worktrees\23001908-vt054-fresh\apps\backend\test\exports\async-export.browser.mjs:151:38)
+    at async file:///D:/TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/apps/backend/test/exports/async-export-http.integration.mjs:217:5 {
+  log: [],
+  name: 'TimeoutError'
+}
+
+Node.js v22.23.4

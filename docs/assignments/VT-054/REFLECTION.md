@@ -1,0 +1,7 @@
+# Reflection
+
+Điều làm tôi tin hơn vào thay đổi này là mỗi bằng chứng trả lời một câu hỏi cụ thể. HTTP RED trả 404 khi hợp đồng yêu cầu 202. Sau patch, cùng assertion chạy xanh và kiểm thử trên PostgreSQL chứng minh các request đồng thời cùng key tạo đúng một hàng. Latch giữ worker đang chạy giúp xác minh trạng thái mà không dựa vào việc ngủ một khoảng thời gian tùy ý. Khi lease hết hạn, worker mới lấy lại job và kết quả của worker cũ không ghi đè được dữ liệu.
+
+Mutation làm rõ giá trị của dữ liệu đại diện. Phần lớn fixture dùng JSON vẫn pass khi mapper luôn trả JSON. Case CSV phát hiện lỗi ngay tại response field và chuyển lại pass sau khi khôi phục. Tôi cũng thấy số test xanh không tự giải thích chất lượng của test. Một assertion so sánh constructor Blob thất bại vì Node và jsdom dùng hai constructor khác nhau. Kiểm tra nội dung bytes cho câu trả lời sát yêu cầu hơn. Browser thực còn phát hiện harness đã bỏ qua Socket.IO, làm cache quyền bị xóa đúng theo cơ chế bảo vệ của ứng dụng.
+
+Điều tôi chưa chứng minh là thời gian hoàn tất với Board lớn, nhiều người dùng độc lập và nhiều máy chủ. Thử tải local đo cả thời gian chờ và tải file, nhưng một Board rỗng không đại diện cho các query và kích thước dữ liệu lớn. Kiểm thử có giá trị cao nhất tiếp theo là chạy workload với Board có nhiều trang và đồng thời thay đổi quyền OWNER. Tôi sẽ đo riêng acknowledgement, thời gian xử lý nền và tải file, đối chiếu số job và attempt trong PostgreSQL, rồi kiểm tra file bị chặn sau khi mất quyền.

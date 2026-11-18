@@ -1,0 +1,3 @@
+
+> @kanban/backend@0.0.0 build D:\TAI LIEU DAI HOC\NAM BON\SEM_1\SE\SE2026-T13\.worktrees\23001908-vt054-fresh\apps\backend
+> nest build

@@ -1,0 +1,143 @@
+PASS test/cards/cards.e2e-spec.ts (15.951 s)
+PASS test/boards/boards.e2e-spec.ts
+PASS test/boards/boards.service.spec.ts
+PASS test/foundation/foundation.e2e-spec.ts
+PASS test/board-members/board-members.service.spec.ts
+PASS test/cards/cards.service.spec.ts
+PASS test/auth/auth.service.spec.ts
+PASS test/auth/welcome-onboarding.service.spec.ts
+PASS test/card-checklists/checklists.e2e-spec.ts
+PASS test/auth/email-change.spec.ts
+[Nest] 25980  - 11/12/2026, 11:18:20 PM    WARN [EmailChangeService] Email change proof delivery unavailable
+PASS test/board-members/board-members.e2e-spec.ts
+PASS test/comments/comments.e2e-spec.ts
+PASS test/notifications/notifications.e2e-spec.ts
+PASS test/comments/comments.service.spec.ts
+PASS test/realtime/presence-concurrency.spec.ts
+PASS test/labels/labels.e2e-spec.ts
+PASS test/realtime/board-room.spec.ts
+PASS test/auth/verification-mailer.spec.ts
+PASS test/auth/mail-transport.spec.ts
+[Nest] 25980  - 11/12/2026, 11:18:31 PM   ERROR [BoardEventPublisher] Board event delivery failed
+PASS test/attachments/attachments.service.spec.ts
+PASS test/search/search.e2e-spec.ts
+PASS test/attachments/attachments.e2e-spec.ts
+PASS test/auth/email-change.e2e-spec.ts
+PASS test/auth/password-security.service.spec.ts
+PASS test/notifications/task-notification-mailer.spec.ts
+PASS test/board-members/board-member-added-email.spec.ts
+PASS test/realtime/session-revocation-races.spec.ts
+PASS test/productivity/productivity.e2e-spec.ts
+PASS test/users/user-preferences.e2e-spec.ts
+PASS test/realtime/board-room-coordinator.spec.ts
+PASS test/attachments/private-file-content.spec.ts
+PASS test/auth/auth.e2e-spec.ts
+PASS test/activities/activities.service.spec.ts
+PASS test/users/account-deletion.service.spec.ts
+[Nest] 25980  - 11/12/2026, 11:18:49 PM    WARN [AccountDeletionService] Account deletion realtime invalidation unavailable
+PASS test/columns/columns.e2e-spec.ts
+PASS test/card-checklists/checklists.service.spec.ts
+PASS test/attachments/private-file-storage.spec.ts
+PASS test/activities/activities.e2e-spec.ts
+PASS test/auth/google-token-verifier.spec.ts
+PASS test/realtime/board-events/cards-events.spec.ts
+PASS test/foundation/field-decorators.spec.ts
+PASS test/cards/cards-duplicate.spec.ts
+PASS test/workspaces/workspace-invitations.dto.spec.ts
+PASS test/auth/google-auth.e2e-spec.ts
+PASS test/notifications/notification-realtime.spec.ts
+PASS test/realtime/board-events/columns-events.spec.ts
+PASS test/cards/cards.dto.spec.ts
+PASS test/realtime/realtime-broadcast.spec.ts
+PASS test/auth/resend-workspace-invitation-mailer.spec.ts
+PASS test/realtime/realtime-auth.spec.ts
+PASS test/notifications/notification-contracts.spec.ts
+PASS test/users/avatar-image.spec.ts
+PASS test/auth/password-security.e2e-spec.ts
+PASS test/search/search.dto.spec.ts
+PASS test/realtime/board-presence.spec.ts
+PASS test/workspaces/workspace-api.dto.spec.ts
+PASS test/labels/labels.service.spec.ts
+PASS test/boards/board-discovery.spec.ts
+PASS test/auth/auth-rate-limit.e2e-spec.ts
+PASS test/attachments/attachment-contracts.spec.ts
+PASS test/boards/boards.dto.spec.ts
+PASS test/notifications/task-email-dispatcher.spec.ts
+PASS test/cards/cards-dates.service.spec.ts
+PASS test/board-members/board-member-added-notification.spec.ts
+PASS test/auth/password-security.controller.spec.ts
+PASS test/comments/comments.dto.spec.ts
+[Nest] 25980  - 11/12/2026, 11:19:30 PM   ERROR [BoardEventPublisher] Board event delivery failed
+PASS test/card-checklists/checklists-events.spec.ts
+PASS test/notifications/due-reminder-scanner.spec.ts
+PASS test/users/avatar-storage.spec.ts
+PASS test/auth/email-change-mail.spec.ts
+PASS test/workspaces/workspace-invitation-dispatch.spec.ts
+PASS test/auth/welcome-mailer.spec.ts
+PASS test/foundation/proxy.e2e-spec.ts
+PASS test/productivity/productivity.dto.spec.ts
+PASS test/auth/password-recovery-mailer.spec.ts
+PASS test/search/search.service.spec.ts
+PASS test/auth/environment-preflight.spec.ts (5.02 s)
+PASS test/attachments/private-file-policy.spec.ts
+[Nest] 25980  - 11/12/2026, 11:19:45 PM   ERROR [BoardEventPublisher] Board event delivery failed
+PASS test/labels/labels-events.spec.ts
+PASS test/auth/welcome-email.spec.ts
+PASS test/workspaces/workspaces.service.spec.ts
+PASS test/boards/board-discovery.e2e-spec.ts
+PASS test/users/account-deletion-reauthentication.spec.ts
+PASS test/auth/workspace-invitation-email.spec.ts
+PASS test/workspaces/workspace-guests.dto.spec.ts
+PASS test/cards/cards-restore.spec.ts
+PASS test/users/users.service.spec.ts
+PASS test/foundation/rate-limit.e2e-spec.ts
+PASS test/attachments/private-file-cleanup.spec.ts
+PASS test/cards/cards-dates.dto.spec.ts
+PASS test/auth/workspace-invitation-link.spec.ts
+PASS test/users/account-deletion-locks.spec.ts
+PASS test/board-members/board-permissions.spec.ts
+PASS test/notifications/task-notification-worker.spec.ts
+PASS test/users/user-preferences.dto.spec.ts
+PASS test/auth/register-request.spec.ts
+PASS test/auth/fake-workspace-invitation-mailer.spec.ts
+PASS test/realtime/board-events/board-event-publisher.spec.ts
+PASS test/realtime/realtime-io.adapter.spec.ts
+PASS test/attachments/attachment-storage.spec.ts
+PASS test/workspaces/workspace-invitation-notification-resolver.spec.ts
+PASS test/auth/task-notification-config.spec.ts
+PASS test/notifications/due-reminder-time.spec.ts
+PASS test/workspaces/workspace-activity-writer.spec.ts
+PASS test/activities/activities.dto.spec.ts
+PASS test/boards/starter-board-template.spec.ts
+PASS test/columns/columns-ordering.spec.ts
+PASS test/cards/cards-ordering.spec.ts
+PASS test/realtime/board-room-rate-limiter.spec.ts
+PASS test/health/health.e2e-spec.ts
+PASS test/auth/auth-config.spec.ts
+[Nest] 23716  - 11/12/2026, 11:20:32 PM   ERROR [BoardPresenceService] Board presence delivery failed
+[Nest] 23716  - 11/12/2026, 11:20:32 PM   ERROR [BoardRoomCoordinator] Board room eviction failed; disconnecting socket
+[Nest] 23716  - 11/12/2026, 11:20:32 PM   ERROR [BoardRoomCoordinator] Socket disconnect failed; board receive access remains revoked
+[Nest] 23716  - 11/12/2026, 11:20:32 PM   ERROR [BoardRoomCoordinator] Board room eviction failed; disconnecting socket
+[Nest] 23716  - 11/12/2026, 11:20:32 PM   ERROR [BoardRoomCoordinator] Socket disconnect failed; board receive access remains revoked
+PASS test/realtime/presence/presence.e2e-spec.ts (27.911 s)
+[Nest] 13624  - 11/12/2026, 11:21:05 PM   ERROR [BoardRoomCoordinator] Board room eviction failed; disconnecting socket
+[Nest] 13624  - 11/12/2026, 11:21:05 PM   ERROR [BoardRoomCoordinator] Socket disconnect failed; board receive access remains revoked
+[Nest] 13624  - 11/12/2026, 11:21:05 PM   ERROR [BoardRoomCoordinator] Board room eviction failed; disconnecting socket
+[Nest] 13624  - 11/12/2026, 11:21:05 PM   ERROR [BoardRoomCoordinator] Socket disconnect failed; board receive access remains revoked
+[Nest] 13624  - 11/12/2026, 11:21:05 PM   ERROR [BoardEventPublisher] Board event delivery failed
+[Nest] 13624  - 11/12/2026, 11:21:05 PM   ERROR [BoardEventPublisher] Board event delivery failed
+PASS test/realtime/board-events/board-events.e2e-spec.ts (33.238 s)
+[Nest] 23704  - 11/12/2026, 11:21:30 PM   ERROR [BoardRoomCoordinator] Board room eviction failed; disconnecting socket
+[Nest] 23704  - 11/12/2026, 11:21:30 PM   ERROR [BoardRoomCoordinator] Socket disconnect failed; board receive access remains revoked
+PASS test/realtime/realtime.e2e-spec.ts (24.767 s)
+PASS test/boards/boards-module.spec.ts (24.911 s)
+PASS test/exports/async-export.e2e-spec.ts
+PASS src/api/exports/export-jobs.worker.spec.ts
+PASS src/api/exports/export-job-policy.spec.ts
+PASS src/api/exports/exports.spec.ts
+
+Test Suites: 119 passed, 119 total
+Tests:       1297 passed, 1297 total
+Snapshots:   0 total
+Time:        250.646 s
+Ran all test suites.

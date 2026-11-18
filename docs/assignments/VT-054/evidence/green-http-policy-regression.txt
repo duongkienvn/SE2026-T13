@@ -1,0 +1,9 @@
+PASS test/exports/async-export.e2e-spec.ts (38.921 s)
+PASS src/api/exports/exports.spec.ts
+PASS src/api/exports/export-job-policy.spec.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       46 passed, 46 total
+Snapshots:   0 total
+Time:        45.231 s, estimated 109 s
+Ran all test suites within paths "test/exports/async-export.e2e-spec.ts", "src/api/exports/exports.spec.ts", "src/api/exports/export-job-policy.spec.ts".

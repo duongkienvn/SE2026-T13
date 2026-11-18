@@ -4,10 +4,11 @@ import type { BinaryResponse } from '../../../lib/api-client';
 import { useAuthSession } from '../../auth/auth-session-context';
 import { useAuth } from '../../auth/useAuth';
 import { exportFilename, saveBlob, type ExportTarget } from './export-file';
+import type { ExportPhase } from './async-export-api';
 
 export type ExportState =
   | { status: 'idle' }
-  | { status: 'exporting' }
+  | { status: 'exporting'; phase?: ExportPhase }
   | { status: 'saved' }
   | { status: 'error'; message: string };
 
@@ -16,6 +17,7 @@ export interface StartExportOptions {
   request: (
     accessToken: string,
     signal: AbortSignal,
+    onPhase: (phase: ExportPhase) => void,
   ) => Promise<BinaryResponse>;
   /**
    * Checked again right before the browser receives the file, after the
@@ -54,6 +56,12 @@ export function exportErrorMessage(
         : 'Your account data could not be found. Please sign in again.';
     case 400:
       return 'This export request was not accepted. Refresh the page and try again.';
+    case 410:
+      return 'This export has expired. Try again to start a new export.';
+    case 409:
+      return error.code === 'EXPORT_RETRY_EXHAUSTED'
+        ? 'This export could not be completed after three attempts. Try again to start a new export.'
+        : 'The export failed. Try again to retry the same export.';
     case 413:
       return kind === 'board'
         ? 'This board is too large to export (the limit is 10,000 cards or 20 MB). Archive or move cards into a smaller board and try again.'
@@ -90,7 +98,7 @@ export function useExportDownload() {
       for (const dispose of pending) dispose();
       pending.clear();
     };
-  }, []);
+  }, [scope.generation]);
 
   // A different session must never see the previous session's export status.
   const [generation, setGeneration] = useState(scope.generation);
@@ -117,7 +125,9 @@ export function useExportDownload() {
       setState({ status: 'exporting' });
       try {
         const response = await runAuthorized((token) =>
-          request(token, abort.signal),
+          request(token, abort.signal, (phase) => {
+            if (live()) setState({ status: 'exporting', phase });
+          }),
         );
         // Re-check at the side effect, not only after the request resolved.
         if (!live()) return;

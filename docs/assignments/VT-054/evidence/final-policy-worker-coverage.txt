@@ -1,0 +1,15 @@
+PASS src/api/exports/export-jobs.worker.spec.ts (52.578 s)
+PASS src/api/exports/export-job-policy.spec.ts
+-----------------------|---------|----------|---------|---------|-------------------
+File                   | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+-----------------------|---------|----------|---------|---------|-------------------
+All files              |   91.17 |    86.66 |   91.66 |   92.59 |
+ export-job-policy.ts  |     100 |      100 |     100 |     100 |
+ export-jobs.worker.ts |      90 |    66.66 |      90 |    91.3 | 24,38
+-----------------------|---------|----------|---------|---------|-------------------
+
+Test Suites: 2 passed, 2 total
+Tests:       13 passed, 13 total
+Snapshots:   0 total
+Time:        55.469 s
+Ran all test suites within paths "src/api/exports/export-job-policy.spec.ts", "src/api/exports/export-jobs.worker.spec.ts".

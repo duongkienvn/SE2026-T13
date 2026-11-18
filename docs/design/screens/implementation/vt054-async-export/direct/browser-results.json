@@ -1,0 +1,86 @@
+{
+  "browser": "151.0.7922.34",
+  "api": "direct real Nest JWT REST and Socket.IO on port 3009 + disposable PostgreSQL",
+  "records": [
+    {
+      "name": "mobile",
+      "width": 375,
+      "height": 812,
+      "theme": "light",
+      "viewport": 375,
+      "appliedTheme": "light",
+      "jobId": "aa9e547d-0fa6-41fa-bacb-3209f31545d1",
+      "download": "validated actual JSON"
+    },
+    {
+      "name": "mobile",
+      "width": 375,
+      "height": 812,
+      "theme": "dark",
+      "viewport": 375,
+      "appliedTheme": "dark",
+      "jobId": "2cd5c4cf-b7ea-454e-8fdd-353a9e98fb7b",
+      "download": "validated actual JSON"
+    },
+    {
+      "name": "tablet",
+      "width": 768,
+      "height": 1024,
+      "theme": "light",
+      "viewport": 768,
+      "appliedTheme": "light",
+      "jobId": "86ad19f0-7789-472e-bb38-00e49b3e7cbc",
+      "download": "validated actual JSON"
+    },
+    {
+      "name": "tablet",
+      "width": 768,
+      "height": 1024,
+      "theme": "dark",
+      "viewport": 768,
+      "appliedTheme": "dark",
+      "jobId": "2c2639ff-93d8-41da-bbc2-5e86491cc8d0",
+      "download": "validated actual JSON"
+    },
+    {
+      "name": "laptop",
+      "width": 1280,
+      "height": 800,
+      "theme": "light",
+      "viewport": 1280,
+      "appliedTheme": "light",
+      "jobId": "84e58e23-9d08-4fec-83ea-52eee9d49f11",
+      "download": "validated actual JSON"
+    },
+    {
+      "name": "laptop",
+      "width": 1280,
+      "height": 800,
+      "theme": "dark",
+      "viewport": 1280,
+      "appliedTheme": "dark",
+      "jobId": "c9b9ad22-06de-4b60-88c1-f3f97cd84fc3",
+      "download": "validated actual JSON"
+    },
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "viewport": 1440,
+      "appliedTheme": "light",
+      "jobId": "912310dc-9a69-4713-8314-b209979fee1d",
+      "download": "validated actual JSON"
+    },
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "viewport": 1440,
+      "appliedTheme": "dark",
+      "jobId": "72b92f1e-2e93-4388-9dc9-75ef1261a751",
+      "download": "validated actual JSON"
+    }
+  ]
+}

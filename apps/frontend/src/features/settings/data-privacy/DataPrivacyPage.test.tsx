@@ -76,7 +76,7 @@ function signedIn(
     removeEventListener: () => undefined,
   }));
   storeSession();
-  return mockApi({
+  const handlers: typeof overrides = {
     'GET /users/me': ok(testUser),
     'GET /boards?page=1&limit=100': okPage([owned, memberOnly, workspaceOnly]),
     'GET /boards?page=1&limit=100&status=archived': okPage([archivedOwned]),
@@ -92,7 +92,40 @@ function signedIn(
     [exportPath(archivedOwned.id, 'json')]: file('{"board":2}'),
     'POST /auth/logout': ok(null),
     ...overrides,
-  });
+  };
+  // Preserve the existing content/security fixtures at the download boundary;
+  // Board UI now starts a job rather than calling the synchronous GET route.
+  const prepared = new Map<string, MockResponse>();
+  for (const board of [owned, archivedOwned]) {
+    const path = `/boards/${board.id}/export-jobs`;
+    handlers[`POST ${path}`] = async (request) => {
+      const format = (request.body as { format: 'json' | 'csv' }).format;
+      const fixture = handlers[exportPath(board.id, format)];
+      if (!fixture) throw new Error('Missing export fixture');
+      const response =
+        typeof fixture === 'function' ? await fixture(request) : fixture;
+      if (response.status !== 200) return response;
+      prepared.set(board.id, response);
+      return {
+        status: 202,
+        body: {
+          id: board.id,
+          state: 'COMPLETED',
+          format,
+          attempts: 1,
+          expiresAt: new Date(Date.now() + 900_000).toISOString(),
+          progress: 100,
+          error: null,
+        },
+      };
+    };
+    handlers[`GET ${path}/${board.id}/download`] = () => {
+      const response = prepared.get(board.id);
+      if (!response) throw new Error('Download before completed fixture');
+      return response;
+    };
+  }
+  return mockApi({ ...handlers, ...overrides });
 }
 
 let downloads: { name: string; href: string }[];
@@ -306,11 +339,56 @@ describe('Data & Privacy page', () => {
       `kanvexa-board-${archivedOwned.id}-${today}.json`,
     );
     expect(
-      calls.filter((call) => call.path.includes('/export?')).map((c) => c.path),
+      calls
+        .filter(
+          (call) =>
+            call.method === 'POST' && call.path.endsWith('/export-jobs'),
+        )
+        .map((c) => ({
+          path: c.path,
+          format: (c.body as { format: string }).format,
+        })),
     ).toEqual([
-      `/boards/${owned.id}/export?format=csv`,
-      `/boards/${archivedOwned.id}/export?format=json`,
+      { path: `/boards/${owned.id}/export-jobs`, format: 'csv' },
+      { path: `/boards/${archivedOwned.id}/export-jobs`, format: 'json' },
     ]);
+  });
+
+  it('TC14: preserves the operation key when acknowledgement is lost and the user retries', async () => {
+    let starts = 0;
+    const path = `/boards/${owned.id}/export-jobs`;
+    const calls = signedIn({
+      [`POST ${path}`]: () =>
+        ++starts === 1
+          ? fail(503, 'UNAVAILABLE')
+          : {
+              status: 202,
+              body: {
+                id: owned.id,
+                state: 'COMPLETED',
+                format: 'json',
+                attempts: 1,
+                expiresAt: new Date(Date.now() + 900_000).toISOString(),
+                progress: 100,
+                error: null,
+              },
+            },
+      [`GET ${path}/${owned.id}/download`]: file('{"board":1}'),
+    });
+    await openPage();
+    await boardsLoaded();
+    fireEvent.change(boardSelect(), { target: { value: owned.id } });
+    fireEvent.click(exportBoardButton());
+    await within(boardCard()).findByText(/took too long/);
+    fireEvent.click(exportBoardButton());
+    await within(boardCard()).findByText(/Download started/);
+    const keys = calls
+      .filter((call) => call.method === 'POST' && call.path === path)
+      .map((call) => call.headers['Idempotency-Key']);
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).toBeTruthy();
+    expect(keys[1]).toBe(keys[0]);
+    expect(downloads).toHaveLength(1);
   });
 
   it('shows guidance when the user owns no Boards', async () => {

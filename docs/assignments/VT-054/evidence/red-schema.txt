@@ -1,0 +1,19 @@
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: VT-054 requires a durable board_export_jobs table
+
+false !== true
+
+    at file:///D:/TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/apps/backend/test/exports/async-export-schema.integration.mjs:30:12
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v22.23.4

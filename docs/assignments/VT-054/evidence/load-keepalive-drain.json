@@ -1,0 +1,889 @@
+{
+  "startedAt": "2026-11-12T16:10:09.613Z",
+  "workload": "120 simultaneous independent JSON exports of one synthetic empty Board, each with a simultaneous same-key duplicate POST; 1s status polling; actual JWT, Nest worker, PostgreSQL and download",
+  "warmup": 5,
+  "concurrency": 120,
+  "successes": 120,
+  "failures": [],
+  "counts": {
+    "rows": 120,
+    "logical_operations": 120,
+    "attempts": 120,
+    "completed": 120
+  },
+  "ack": {
+    "p50": 1680.4085999999988,
+    "p95": 2982.5591999999997,
+    "max": 3195.1087000000007
+  },
+  "completion": {
+    "p50": 8735.254,
+    "p95": 10825.700399999998,
+    "max": 10849.550300000003
+  },
+  "download": {
+    "p50": 9010.280200000001,
+    "p95": 11056.1031,
+    "max": 11086.735900000003
+  },
+  "environment": {
+    "node": "v22.23.4",
+    "transport": "Node HTTP keep-alive, 32 sockets, queued time included; no retries in transport",
+    "v8Profiling": false,
+    "platform": "win32",
+    "release": "10.0.26200",
+    "cpu": "13th Gen Intel(R) Core(TM) i5-1340P",
+    "logicalCpus": 16,
+    "memoryBytes": 16849256448,
+    "database": "PostgreSQL 16 disposable local container; pool 10",
+    "workerConcurrency": 4
+  },
+  "limitations": "Local same-machine empty-Board workload; does not prove large exports, 120 distinct human sessions, WAN latency or production performance. Job identity/attempts are the relevant side effects; exports do not send notifications.",
+  "samples": [
+    {
+      "key": "da70a5b3-ca05-47e6-af39-b1a89a8d91c2",
+      "id": "59463035-7a56-4f75-9725-2013d6832a6f",
+      "ackMs": 319.88400000000183,
+      "completionMs": 3107.1026999999995,
+      "downloadMs": 4458.849900000001
+    },
+    {
+      "key": "83c29e20-b742-46e1-85f6-35586e18eb8b",
+      "id": "a0426bfd-1951-4672-9074-2282fdb1e98e",
+      "ackMs": 331.97269999999844,
+      "completionMs": 3123.6519000000008,
+      "downloadMs": 4479.461200000002
+    },
+    {
+      "key": "421cac69-3450-4735-8986-e200b2d2db7e",
+      "id": "ec43ccd7-e3f0-454b-8672-5c0cb7f1983f",
+      "ackMs": 337.33730000000287,
+      "completionMs": 3140.6667000000016,
+      "downloadMs": 4526.295000000002
+    },
+    {
+      "key": "4fea17b4-8d52-4663-8eff-21885ce9bd3a",
+      "id": "d9cc957b-c888-4d98-9a2b-a128f1d67cf5",
+      "ackMs": 430.77089999999953,
+      "completionMs": 3294.6549000000014,
+      "downloadMs": 4631.594099999998
+    },
+    {
+      "key": "d881b7e6-9ba1-4b2c-8cd1-44126d3ec88c",
+      "id": "0bc9df91-42ff-432b-8ef8-8cfc0b84a285",
+      "ackMs": 411.0612000000001,
+      "completionMs": 3283.6254999999983,
+      "downloadMs": 4618.853299999999
+    },
+    {
+      "key": "7b314882-3a89-42d7-9768-39654890c8c2",
+      "id": "83bd213f-ab9c-47b1-943b-71d582a0fbe8",
+      "ackMs": 340.811700000002,
+      "completionMs": 3152.9647000000004,
+      "downloadMs": 4535.350200000001
+    },
+    {
+      "key": "5f9205e2-90ed-40e6-a9b4-bd008830af23",
+      "id": "c7f63bee-fd2c-4ab8-a25c-22210d4f4a11",
+      "ackMs": 348.5463000000018,
+      "completionMs": 3171.439900000001,
+      "downloadMs": 4543.478000000003
+    },
+    {
+      "key": "3f2dceab-a523-4d01-9d74-e7f82f5f8a9c",
+      "id": "eb05a003-1874-4faa-aeee-3a507ad03ff7",
+      "ackMs": 358.22179999999935,
+      "completionMs": 3184.684300000001,
+      "downloadMs": 4586.910599999999
+    },
+    {
+      "key": "33e01d86-c24a-46f1-9d9f-f65db3bcfc4c",
+      "id": "5a1c3ac2-68b3-4bfa-9fed-1be34b0c3fe0",
+      "ackMs": 380.3660000000018,
+      "completionMs": 3265.9040000000023,
+      "downloadMs": 4592.339200000002
+    },
+    {
+      "key": "d78d5c61-618c-43dd-8cea-18b442bcde0b",
+      "id": "0f91d8ff-9afc-4d1f-b780-8c3e13adb64f",
+      "ackMs": 373.122199999998,
+      "completionMs": 3242.2291000000005,
+      "downloadMs": 4585.1408999999985
+    },
+    {
+      "key": "7614d6db-2c7a-41aa-984e-166533938e2f",
+      "id": "cb8f45a4-3d65-4a83-9a8d-c7a558c6d611",
+      "ackMs": 397.14140000000043,
+      "completionMs": 3267.9907999999996,
+      "downloadMs": 4597.1054
+    },
+    {
+      "key": "fd73a304-c479-4bb8-8f19-1052b19603be",
+      "id": "99e78e65-f306-4242-862c-981dc10dc8c6",
+      "ackMs": 402.1058000000012,
+      "completionMs": 3278.047699999999,
+      "downloadMs": 4600.2117
+    },
+    {
+      "key": "61574ebb-a96f-4368-91d3-73ba3f43a326",
+      "id": "84a72013-1550-45ca-b764-90dfa65eba89",
+      "ackMs": 414.6290000000008,
+      "completionMs": 3287.1625999999997,
+      "downloadMs": 4654.464400000001
+    },
+    {
+      "key": "3d4c2393-6d2e-46c5-8228-40cd1793ba0d",
+      "id": "c801577f-7149-45e3-845d-4b16266ce3ce",
+      "ackMs": 434.58130000000165,
+      "completionMs": 3301.7657,
+      "downloadMs": 4678.0016
+    },
+    {
+      "key": "1333d981-52a9-4adb-bdef-b38266cec3fe",
+      "id": "ae422439-c120-45d2-b2c3-9d09fa7668b2",
+      "ackMs": 437.77430000000095,
+      "completionMs": 3305.9526000000005,
+      "downloadMs": 4695.851200000001
+    },
+    {
+      "key": "c27f7eb1-21cc-4967-9415-884663ad2498",
+      "id": "8612f8b0-f477-4171-b84e-a27694cb2404",
+      "ackMs": 455.9392000000007,
+      "completionMs": 3309.945499999998,
+      "downloadMs": 4703.0491
+    },
+    {
+      "key": "4a4b86a9-04b0-4f1b-8da9-a51d1a621700",
+      "id": "131dc6e8-0034-45dd-9e65-1136b357f793",
+      "ackMs": 747.0992000000006,
+      "completionMs": 4626.466499999999,
+      "downloadMs": 5041.024000000001
+    },
+    {
+      "key": "d7d5ff0e-3ce0-480c-81b8-908956bb1c37",
+      "id": "2ada797c-1150-492d-a64d-d0e19d1bd766",
+      "ackMs": 749.2698999999993,
+      "completionMs": 4634.103600000002,
+      "downloadMs": 5078.363000000001
+    },
+    {
+      "key": "b901edd6-b3d7-4704-99f4-15a746f0dcb5",
+      "id": "59906c71-f623-4a9f-b001-262066c9ed79",
+      "ackMs": 757.6900999999998,
+      "completionMs": 4642.696100000001,
+      "downloadMs": 5184.8694
+    },
+    {
+      "key": "341f938a-d0de-477c-8c14-acc133ba8b59",
+      "id": "1faa5eec-6c9e-4b5f-a390-8a2e84746b26",
+      "ackMs": 781.5008999999991,
+      "completionMs": 4654.828099999999,
+      "downloadMs": 5212.156200000001
+    },
+    {
+      "key": "d5356b03-6218-4010-a66a-ddd82f76ff23",
+      "id": "e9cc6b9f-1ac6-4555-90a1-4bc54f553eb2",
+      "ackMs": 765.1985999999997,
+      "completionMs": 4639.721999999998,
+      "downloadMs": 5172.351699999999
+    },
+    {
+      "key": "b06c7148-3ff5-4be5-a151-922e25ceeb0d",
+      "id": "6f3346ab-12fd-4dc0-ad3f-f63efa41b90d",
+      "ackMs": 795.0693000000028,
+      "completionMs": 4661.921400000003,
+      "downloadMs": 5236.080100000003
+    },
+    {
+      "key": "841dbe57-d6ce-419f-a4be-4ad88034e6c7",
+      "id": "e53c249b-9b27-4626-9f40-393606257f8b",
+      "ackMs": 795.8126999999986,
+      "completionMs": 4718.232800000002,
+      "downloadMs": 5267.026099999999
+    },
+    {
+      "key": "2521d421-0543-4d00-87ee-ab5a66e5ec54",
+      "id": "d159e1a4-7ded-414a-b44d-9663d3182527",
+      "ackMs": 813.336800000001,
+      "completionMs": 4739.0196,
+      "downloadMs": 5281.007600000001
+    },
+    {
+      "key": "0ea14e55-4938-43c7-8703-0ebbe5b940f3",
+      "id": "9307c142-9eb4-43d0-be07-abff7ecf5fe3",
+      "ackMs": 828.2943000000014,
+      "completionMs": 5798.355100000001,
+      "downloadMs": 5931.0848000000005
+    },
+    {
+      "key": "0623da21-8984-4080-be31-2915a0a2596f",
+      "id": "cb41a58b-c1a4-4e9a-ad0a-5e577fafa19e",
+      "ackMs": 835.5400999999983,
+      "completionMs": 4763.232599999999,
+      "downloadMs": 5312.2696
+    },
+    {
+      "key": "ba32aeb4-7ac6-4539-9e81-2fb9d1d59268",
+      "id": "20fced1a-b2ed-4694-a58c-abcc251d2d13",
+      "ackMs": 846.4637000000002,
+      "completionMs": 5835.046400000003,
+      "downloadMs": 6007.396900000003
+    },
+    {
+      "key": "b7d556d8-e4d1-43c6-b304-3b9fb2a18842",
+      "id": "2ce39b77-70af-4c0b-8d0f-f8c9aef2ef45",
+      "ackMs": 878.8552999999993,
+      "completionMs": 5865.2065,
+      "downloadMs": 6152.321099999997
+    },
+    {
+      "key": "d9670d1c-e018-4253-bd8a-99268a8deb47",
+      "id": "07fe1bfd-3c44-4afd-927f-7267488307be",
+      "ackMs": 887.6462000000029,
+      "completionMs": 5887.242300000002,
+      "downloadMs": 6190.288400000001
+    },
+    {
+      "key": "6ed1df2c-db2b-4e54-8873-093e96aa3cfc",
+      "id": "1dd6694e-8b38-47f7-b088-c4f7f526cd9d",
+      "ackMs": 904.8541000000005,
+      "completionMs": 5890.238100000002,
+      "downloadMs": 6223.500900000003
+    },
+    {
+      "key": "6367bbaa-6b0e-406f-ae43-4dec7adbec52",
+      "id": "41b3ea65-001e-481d-a82d-15c5d4cb233b",
+      "ackMs": 910.252999999997,
+      "completionMs": 5906.3822,
+      "downloadMs": 6301.403199999997
+    },
+    {
+      "key": "8d8ecad3-e914-4e2c-9a22-6eab00d37483",
+      "id": "82b54a1c-026d-4212-92bc-2f09daaa90ba",
+      "ackMs": 1001.8669000000009,
+      "completionMs": 6039.350000000002,
+      "downloadMs": 6415.954800000003
+    },
+    {
+      "key": "f5f2188c-82f2-4acf-b0a8-644989fb1eee",
+      "id": "c7ab466a-ed7c-4eb0-b19d-b7e800371ed5",
+      "ackMs": 1113.6552999999985,
+      "completionMs": 5905.725199999997,
+      "downloadMs": 6287.082999999999
+    },
+    {
+      "key": "1075b6c5-16eb-4fd3-8f0a-080c74175a05",
+      "id": "ac966910-88fe-44ca-a86b-ff6c35d9ed60",
+      "ackMs": 1125.9487999999983,
+      "completionMs": 6048.604800000001,
+      "downloadMs": 6424.348999999998
+    },
+    {
+      "key": "12e767be-7fdf-4da6-ae26-03c99055fe26",
+      "id": "969fda2a-ad4a-440b-9fdd-0055bcb866ef",
+      "ackMs": 1136.4159,
+      "completionMs": 6069.298199999997,
+      "downloadMs": 6483.3634999999995
+    },
+    {
+      "key": "f4410345-ee7f-43c8-a535-854b88357019",
+      "id": "d99082d9-a6b1-4213-86cb-50b7941e6c94",
+      "ackMs": 1131.5787000000018,
+      "completionMs": 6062.421400000003,
+      "downloadMs": 6481.946600000003
+    },
+    {
+      "key": "33506518-ddc1-4868-b523-bb82e78c1b76",
+      "id": "31fec9ab-4817-4ed6-9b9c-eb37ababe2da",
+      "ackMs": 1141.8727,
+      "completionMs": 6106.1086,
+      "downloadMs": 6548.4365
+    },
+    {
+      "key": "998a6a93-1156-4e90-92f3-8dab2a328c4b",
+      "id": "9ac6904e-d44b-4a54-8292-ed4aff7499e1",
+      "ackMs": 1179.6772999999994,
+      "completionMs": 6135.410499999998,
+      "downloadMs": 6578.5165000000015
+    },
+    {
+      "key": "0604c059-03a4-4388-b02a-b03b8a0f7b77",
+      "id": "6a90c960-4417-458e-8c20-9ab9cfee30fa",
+      "ackMs": 1182.6309,
+      "completionMs": 6112.821600000003,
+      "downloadMs": 6578.1019000000015
+    },
+    {
+      "key": "c69547f6-3a6b-42af-9558-096b369dd092",
+      "id": "3d4303e5-851a-4ed6-b28f-cc16d7c2aa2d",
+      "ackMs": 1208.8109000000004,
+      "completionMs": 6159.943800000001,
+      "downloadMs": 6586.924500000001
+    },
+    {
+      "key": "23a6a5b9-342a-4767-a74e-85cbecc63bb4",
+      "id": "343832a2-ee59-40a6-bd49-16ab72d4cc12",
+      "ackMs": 1197.2551999999996,
+      "completionMs": 7202.233799999998,
+      "downloadMs": 7347.1623
+    },
+    {
+      "key": "281a3301-3ac1-4867-a21e-6161b8ee99da",
+      "id": "0470fb9e-2827-4bbb-a2fb-5076d74970a1",
+      "ackMs": 1214.7863999999972,
+      "completionMs": 7248.4313,
+      "downloadMs": 7393.998799999998
+    },
+    {
+      "key": "ba6b7800-f15d-47dc-b2dd-ae92a365566e",
+      "id": "66ce6672-1aac-450d-8e92-7d6934cbc844",
+      "ackMs": 1257.9676999999974,
+      "completionMs": 7251.485699999997,
+      "downloadMs": 7403.324699999997
+    },
+    {
+      "key": "9ca875a8-8a14-4db2-9c04-591774f81bdc",
+      "id": "f1d26bb9-6cba-4c4a-8c47-b2145118f0a9",
+      "ackMs": 1272.3688000000002,
+      "completionMs": 7257.395099999998,
+      "downloadMs": 7440.4385
+    },
+    {
+      "key": "f2b21c1a-1dae-4413-b734-9a18ed8ecf37",
+      "id": "b8ba2c66-859d-4b6c-b4d0-d79a329374bd",
+      "ackMs": 1283.9179000000004,
+      "completionMs": 7253.468799999999,
+      "downloadMs": 7430.041099999999
+    },
+    {
+      "key": "8ae29cfc-8c09-41ac-81bd-c315388acc24",
+      "id": "87554778-5b6e-4f0c-ba17-a8553cfc7d27",
+      "ackMs": 1339.9383000000016,
+      "completionMs": 7263.113800000003,
+      "downloadMs": 7451.474600000001
+    },
+    {
+      "key": "e55631d3-cc02-4f58-845d-ad69c53378cd",
+      "id": "8c47378f-c7ed-4584-aba5-76115e1f875e",
+      "ackMs": 1345.203999999998,
+      "completionMs": 7276.860199999999,
+      "downloadMs": 7473.923299999999
+    },
+    {
+      "key": "47fb99f6-d0c9-4423-be7b-95432b27d859",
+      "id": "317ec584-8101-4270-92a6-37dc44a8c26a",
+      "ackMs": 1410.419600000001,
+      "completionMs": 7385.075000000001,
+      "downloadMs": 7626.339100000001
+    },
+    {
+      "key": "7a5918a1-0311-44fe-b645-d802f80e4df3",
+      "id": "37a72e5b-4f5e-4318-9d41-a8cab9672e49",
+      "ackMs": 1508.0863000000027,
+      "completionMs": 7344.300800000001,
+      "downloadMs": 7592.593400000002
+    },
+    {
+      "key": "c5d5c1bc-3770-4d17-aa9b-4b13fcf635bb",
+      "id": "97dae2f9-54a9-45ee-bc2e-68e07092aa72",
+      "ackMs": 1515.8203999999969,
+      "completionMs": 7392.5795,
+      "downloadMs": 7660.479499999998
+    },
+    {
+      "key": "63d73063-fbca-4fdc-a126-9b300881957a",
+      "id": "0447c7a6-b45e-4a86-b246-69a654cb4578",
+      "ackMs": 1528.3509999999987,
+      "completionMs": 7398.584999999999,
+      "downloadMs": 7671.099600000001
+    },
+    {
+      "key": "e355b1fe-3123-4800-ad40-5e3f29dae2e1",
+      "id": "629695e0-9147-4b68-b489-4f893bd3027e",
+      "ackMs": 1533.4055999999982,
+      "completionMs": 7411.300899999998,
+      "downloadMs": 7677.113399999998
+    },
+    {
+      "key": "5c82f349-2084-482a-b689-ba399c9a0211",
+      "id": "bdd21b7c-e831-47f8-83a3-1c2f3089383a",
+      "ackMs": 1552.5963999999985,
+      "completionMs": 7520.3164,
+      "downloadMs": 7766.595699999998
+    },
+    {
+      "key": "fbf0d9e4-2a0c-4c5d-b26b-1648bdd771c2",
+      "id": "1161ed18-a886-4973-ad38-ce3c78c91b44",
+      "ackMs": 1566.7609999999986,
+      "completionMs": 7544.8979,
+      "downloadMs": 7818.3145
+    },
+    {
+      "key": "7490277a-22fc-4aa3-81c2-f82e2621b565",
+      "id": "b0aa149e-54c4-426f-86a0-78de2773d672",
+      "ackMs": 1579.3719999999994,
+      "completionMs": 7547.0396999999975,
+      "downloadMs": 7816.441299999999
+    },
+    {
+      "key": "535a8c8a-2d6f-4404-9666-491346b4afcb",
+      "id": "bc2cd002-85ce-4940-b351-2e4d94a7f9df",
+      "ackMs": 1588.0684,
+      "completionMs": 7558.7611,
+      "downloadMs": 7814.743599999998
+    },
+    {
+      "key": "8897e210-ceed-4772-a41f-d53cbfa701de",
+      "id": "fa287e16-affe-4b98-9763-b9d949d0ffd1",
+      "ackMs": 1657.3358999999982,
+      "completionMs": 8725.921299999998,
+      "downloadMs": 9002.050599999999
+    },
+    {
+      "key": "e912c167-12ff-48a4-b4b3-0f447db11d10",
+      "id": "7a708c48-d5af-43aa-b525-7e0d60e1382c",
+      "ackMs": 1655.4961000000003,
+      "completionMs": 8615.136899999998,
+      "downloadMs": 8715.3816
+    },
+    {
+      "key": "e1bbfcae-73ee-4d5d-812f-f905e2d5f250",
+      "id": "a448fdb4-4352-443e-91bc-f0bb217d3a43",
+      "ackMs": 1672.9559000000008,
+      "completionMs": 8729.7624,
+      "downloadMs": 8993.174500000001
+    },
+    {
+      "key": "91186065-5344-4f1b-9a8c-b94098eb4a78",
+      "id": "d1e198ef-bd49-41fe-8241-08e381641402",
+      "ackMs": 1680.4085999999988,
+      "completionMs": 8735.254,
+      "downloadMs": 9010.280200000001
+    },
+    {
+      "key": "a5a13127-fc32-4759-ba81-78ac744cd5e8",
+      "id": "28b1fc58-663a-40ea-a088-d9ef6188b4a3",
+      "ackMs": 1739.7007999999987,
+      "completionMs": 8752.9997,
+      "downloadMs": 9025.980199999998
+    },
+    {
+      "key": "d0a48c44-7b24-4b44-85f0-6c3ff78e0b78",
+      "id": "fdf2e0d5-bf18-47c8-a5b0-0616edbddb78",
+      "ackMs": 1799.490600000001,
+      "completionMs": 8775.1735,
+      "downloadMs": 9043.326200000003
+    },
+    {
+      "key": "04500d9f-f898-4375-961c-4a606c10e6df",
+      "id": "537a9884-be87-4824-9281-80a4501bdf13",
+      "ackMs": 1801.9926999999989,
+      "completionMs": 8767.639,
+      "downloadMs": 9037.5475
+    },
+    {
+      "key": "1fad3437-8e44-433a-9cf8-379641443c11",
+      "id": "6b315d87-62a4-458f-9afe-1b5485a4ee12",
+      "ackMs": 1824.775999999998,
+      "completionMs": 8782.391800000001,
+      "downloadMs": 9095.360799999999
+    },
+    {
+      "key": "d0aac5d0-816e-4d0f-8430-cf3d48662f68",
+      "id": "524d663d-b0d1-494e-bcf3-5cbbba70f46a",
+      "ackMs": 1874.3911000000007,
+      "completionMs": 8829.5498,
+      "downloadMs": 9141.2792
+    },
+    {
+      "key": "ddc08373-d9eb-4f7b-85b6-5e3eaa9d5d25",
+      "id": "07cabc96-e13d-4f76-a56b-e22c34f7bf80",
+      "ackMs": 1891.6448999999993,
+      "completionMs": 8788.672999999999,
+      "downloadMs": 9106.3129
+    },
+    {
+      "key": "21981738-be3d-4fd6-a13a-5a59fac2fb33",
+      "id": "efcc7d48-4475-4d67-bf14-c3eabb40c0b8",
+      "ackMs": 1893.9144000000015,
+      "completionMs": 8798.041799999999,
+      "downloadMs": 9108.7906
+    },
+    {
+      "key": "aef43981-c596-47ee-b26f-9b15aea81220",
+      "id": "80078421-b6ea-4186-b6c3-0185716e08f0",
+      "ackMs": 1899.8163999999997,
+      "completionMs": 8836.9846,
+      "downloadMs": 9154.522099999998
+    },
+    {
+      "key": "35f56f18-5fef-4daa-879c-fd8679cd1926",
+      "id": "f1658c85-0788-4bfe-9d57-46803c5ee271",
+      "ackMs": 1911.6389000000017,
+      "completionMs": 8886.3792,
+      "downloadMs": 9214.0809
+    },
+    {
+      "key": "e60dcfb1-48c4-4dcc-8ccd-90b7898fbe73",
+      "id": "c96c1eff-ad89-4147-aed1-1fb5a5e47139",
+      "ackMs": 1922.4049000000014,
+      "completionMs": 8875.93,
+      "downloadMs": 9205.269
+    },
+    {
+      "key": "55c29b07-5427-4e7c-95b3-f2f107cd6230",
+      "id": "a8496f5c-df70-4e6c-9551-68be8af64208",
+      "ackMs": 1935.5089000000007,
+      "completionMs": 8901.352200000001,
+      "downloadMs": 9297.3364
+    },
+    {
+      "key": "7d82e3bf-c9e7-4fe2-a210-60cfee90d34f",
+      "id": "6e1796b6-42f7-47a9-8d2e-d27e914d3604",
+      "ackMs": 1944.8079999999973,
+      "completionMs": 8924.1731,
+      "downloadMs": 9320.3966
+    },
+    {
+      "key": "0a2641cf-d464-4b86-a98f-a671cbdaa430",
+      "id": "78fa3450-0415-4ded-bd33-4b61418e44dd",
+      "ackMs": 2012.3047000000006,
+      "completionMs": 8923.0861,
+      "downloadMs": 9327.607
+    },
+    {
+      "key": "e84f086e-5bfc-476e-8b7c-579ed41e1c7f",
+      "id": "cc578472-7547-467a-9e48-2dfd343b79fe",
+      "ackMs": 2026.7670999999973,
+      "completionMs": 8962.251099999998,
+      "downloadMs": 9365.3989
+    },
+    {
+      "key": "fca7e355-64a9-4f30-a059-7b4de12390b3",
+      "id": "1052feb5-608a-4454-b6cc-da0741584d44",
+      "ackMs": 2031.7776000000013,
+      "completionMs": 8997.6191,
+      "downloadMs": 9402.4993
+    },
+    {
+      "key": "a761a6c4-e69d-4906-8b29-052ea0e5eaeb",
+      "id": "8eaa7c60-9e12-452c-970b-93f8424d5dc6",
+      "ackMs": 2107.494200000001,
+      "completionMs": 9112.9306,
+      "downloadMs": 9556.308
+    },
+    {
+      "key": "4f12a6f4-30f5-4f40-b854-f21a7005cf99",
+      "id": "84e1ef39-0576-49dc-8a71-2a3e7a0750ed",
+      "ackMs": 2157.5761999999995,
+      "completionMs": 9016.523700000002,
+      "downloadMs": 9455.157599999999
+    },
+    {
+      "key": "8bb5d9b8-a7fa-42d5-b1ad-5f11394980e9",
+      "id": "48d6f17e-45ce-40a7-b1ea-dea0d09e4363",
+      "ackMs": 2170.415799999999,
+      "completionMs": 9191.046299999998,
+      "downloadMs": 9665.955399999999
+    },
+    {
+      "key": "e69ac2a1-6d0c-480c-84e0-18046b9ec47a",
+      "id": "b0329fed-27ac-45a1-bd5a-623d80f2cf39",
+      "ackMs": 2188.3012000000017,
+      "completionMs": 9249.1724,
+      "downloadMs": 9675.9431
+    },
+    {
+      "key": "b842a3dc-864a-4db9-aa6d-824d5f979a57",
+      "id": "dbefbb0b-b5cb-4281-81db-311d3657bfe8",
+      "ackMs": 2218.0895999999993,
+      "completionMs": 9241.719799999999,
+      "downloadMs": 9677.715199999999
+    },
+    {
+      "key": "6aced6fe-767f-4b56-b735-586705b93b25",
+      "id": "2beab70b-d250-4597-bf2f-9b4145723145",
+      "ackMs": 2239.9199999999983,
+      "completionMs": 9251.609799999998,
+      "downloadMs": 9679.149699999998
+    },
+    {
+      "key": "3a14bc35-539b-4735-962f-827717c538b8",
+      "id": "1a9fb275-f923-4e04-aa50-c44ccc18c5e6",
+      "ackMs": 2246.0182999999997,
+      "completionMs": 9266.985799999999,
+      "downloadMs": 9692.999799999998
+    },
+    {
+      "key": "3c6848b5-cfd5-4e15-bc29-bf7cb80603f8",
+      "id": "9082f2cb-2110-4694-9ed3-fed40ca5548b",
+      "ackMs": 2259.8055999999997,
+      "completionMs": 9268.6678,
+      "downloadMs": 9692.206699999999
+    },
+    {
+      "key": "885c5328-8494-4acb-a79c-1264db9a0eda",
+      "id": "7442a1ee-be7a-49fd-8449-9eae84498462",
+      "ackMs": 2278.1913999999997,
+      "completionMs": 9283.5753,
+      "downloadMs": 9697.2768
+    },
+    {
+      "key": "02584753-ce41-4b45-bcd6-8a9abb3ebd76",
+      "id": "21ff410b-058a-4bd4-bcff-49a7d24d46c1",
+      "ackMs": 2289.571500000002,
+      "completionMs": 9286.318800000001,
+      "downloadMs": 9709.607600000003
+    },
+    {
+      "key": "72067ffb-4efc-47af-b891-1b40301a358d",
+      "id": "ce917b3f-9b87-401f-9516-03430213c4d6",
+      "ackMs": 2294.3467999999993,
+      "completionMs": 9302.2627,
+      "downloadMs": 9721.980800000001
+    },
+    {
+      "key": "47206c2a-f2ff-4080-af2f-42f7f05bc242",
+      "id": "b446055a-9365-4af4-a2c4-79342e86e3ae",
+      "ackMs": 2303.706299999998,
+      "completionMs": 9337.8566,
+      "downloadMs": 9725.0546
+    },
+    {
+      "key": "537708fc-1e3d-4df9-b97b-1e13a497000d",
+      "id": "829ae60a-49a4-4bf0-a73f-ae8baef93dbb",
+      "ackMs": 2324.6542999999983,
+      "completionMs": 9347.195,
+      "downloadMs": 9723.520700000001
+    },
+    {
+      "key": "0358bb4d-5415-482e-adc6-8ab63359df4a",
+      "id": "1b8a9cc2-82fb-4717-9a83-de56c7335813",
+      "ackMs": 2411.998099999997,
+      "completionMs": 10363.594799999999,
+      "downloadMs": 10460.1165
+    },
+    {
+      "key": "88a6cabb-4cac-42c5-a3b1-2df97dfb4515",
+      "id": "6e622202-2d5d-4385-8c9b-4ce1dd8e7dc9",
+      "ackMs": 2439.106499999998,
+      "completionMs": 10425.285899999999,
+      "downloadMs": 10594.420199999997
+    },
+    {
+      "key": "0e1325d9-3241-4bb0-a0ef-e0a9b8973288",
+      "id": "25ecfca0-3001-4a37-9197-7b5289d34d61",
+      "ackMs": 2446.614700000002,
+      "completionMs": 10412.539800000002,
+      "downloadMs": 10549.717400000001
+    },
+    {
+      "key": "49bfb848-cf6a-4586-be67-f6cbbe1e4ec7",
+      "id": "1d9381eb-be9a-460f-8f08-4d2b3dba6b5f",
+      "ackMs": 2526.8611999999994,
+      "completionMs": 10439.7892,
+      "downloadMs": 10603.0975
+    },
+    {
+      "key": "4b021284-275a-450c-8fae-3def294f4a54",
+      "id": "5d094a4d-80cf-4098-8b25-e884a2b5fe27",
+      "ackMs": 2541.4104000000007,
+      "completionMs": 10477.602600000002,
+      "downloadMs": 10708.203100000002
+    },
+    {
+      "key": "66428759-8d27-4955-bd8d-53b567390b92",
+      "id": "f4edb5f1-a581-4aa4-9441-b383d8d1d05e",
+      "ackMs": 2557.329099999999,
+      "completionMs": 10478.941499999997,
+      "downloadMs": 10758.4934
+    },
+    {
+      "key": "c4a483a3-7e9b-44be-bf4f-c56b1264afbb",
+      "id": "0df23e8a-8be6-4af3-bca2-b3d4f5c7578c",
+      "ackMs": 2572.2034999999996,
+      "completionMs": 10509.6944,
+      "downloadMs": 10816.982800000002
+    },
+    {
+      "key": "90031006-54d9-4a11-ac3a-e9fe13e6a152",
+      "id": "684d196e-1c62-4a7f-9e46-c1dd1bf41f30",
+      "ackMs": 2595.3218000000015,
+      "completionMs": 10489.931600000004,
+      "downloadMs": 10753.256100000002
+    },
+    {
+      "key": "5df4e891-8fdf-40fa-bd6b-08faa688e558",
+      "id": "f8e21d1a-8643-41fd-9f6b-461d94dccf85",
+      "ackMs": 2607.238300000001,
+      "completionMs": 10511.543000000001,
+      "downloadMs": 10825.649800000003
+    },
+    {
+      "key": "cd554e0d-cf77-4030-a104-93fc439ca4b0",
+      "id": "419ebca9-eec1-459a-a8b0-e3890502bf47",
+      "ackMs": 2630.151099999999,
+      "completionMs": 10629.3278,
+      "downloadMs": 10935.977599999998
+    },
+    {
+      "key": "7798c174-3afd-4750-a9d8-2051c763cdec",
+      "id": "39e57e59-f41e-4ac8-8e84-286581c2effe",
+      "ackMs": 2641.9893999999986,
+      "completionMs": 10565.133999999998,
+      "downloadMs": 10877.021400000001
+    },
+    {
+      "key": "2e3951e1-4704-44cf-92f6-e4aacc73a793",
+      "id": "d3305c50-2e40-4af1-a0d7-0ee9303cb966",
+      "ackMs": 2651.381599999997,
+      "completionMs": 10549.638799999997,
+      "downloadMs": 10861.0782
+    },
+    {
+      "key": "2e41c369-714a-4da8-87e3-bacf93ddfd70",
+      "id": "89ee6c67-d8d1-4bfa-82f3-15d6f0f08d2c",
+      "ackMs": 2664.027900000001,
+      "completionMs": 10710.977299999999,
+      "downloadMs": 10977.703300000001
+    },
+    {
+      "key": "b57759f5-fd92-4639-abc3-cb0c23ce8b8f",
+      "id": "d50db512-2afb-49f4-95d1-7c27bc8624d9",
+      "ackMs": 2687.4097999999976,
+      "completionMs": 10719.1931,
+      "downloadMs": 10985.6267
+    },
+    {
+      "key": "18f1aae7-4e3b-441a-b498-c5b342be44da",
+      "id": "e02bfeff-b862-44d8-b9d3-889e3824bd2c",
+      "ackMs": 2699.996800000001,
+      "completionMs": 10728.088899999999,
+      "downloadMs": 10990.858799999998
+    },
+    {
+      "key": "40593c33-5891-477f-8058-d3ca768c7005",
+      "id": "6fe18ff0-c802-4eaf-9bc2-6021ea537269",
+      "ackMs": 2761.6785999999993,
+      "completionMs": 10722.0596,
+      "downloadMs": 10978.262600000002
+    },
+    {
+      "key": "027cf6d9-aaab-446c-8b15-4e5f6c8894d1",
+      "id": "42d81776-ce49-477d-9f59-00b696cc0c39",
+      "ackMs": 2851.8431999999993,
+      "completionMs": 10739.290799999999,
+      "downloadMs": 10988.988000000001
+    },
+    {
+      "key": "e2a2386d-fabe-4004-a3c8-99e13958f37f",
+      "id": "999fcc0c-921e-448a-a147-14d95059f067",
+      "ackMs": 2876.431700000001,
+      "completionMs": 10749.195800000001,
+      "downloadMs": 10996.2029
+    },
+    {
+      "key": "88a12263-598d-4b85-8bb9-3acbdfceff48",
+      "id": "223794a9-ea46-4ec4-b0da-f2e15863ba41",
+      "ackMs": 2885.7847,
+      "completionMs": 10751.728300000002,
+      "downloadMs": 10996.6453
+    },
+    {
+      "key": "ad64f9f9-dee7-490d-8a7d-6ac273a49913",
+      "id": "3ca5cc31-7991-4f7c-98c4-287851d78fd7",
+      "ackMs": 2906.844200000003,
+      "completionMs": 10754.6705,
+      "downloadMs": 10995.274800000003
+    },
+    {
+      "key": "3b1da3f9-deb3-49be-abcb-a4ae4971a295",
+      "id": "5852b1b0-e1c2-49f7-9736-4b8c67e16ea8",
+      "ackMs": 2918.865600000001,
+      "completionMs": 10758.0861,
+      "downloadMs": 11039.824
+    },
+    {
+      "key": "676f370f-4eb9-42b9-a79e-79fd57519e60",
+      "id": "cc235fff-7f38-497a-9990-b89a6238a4ac",
+      "ackMs": 2936.0013,
+      "completionMs": 10801.732499999998,
+      "downloadMs": 11054.470299999997
+    },
+    {
+      "key": "5d500332-f122-47b1-957c-720d86ff007b",
+      "id": "55a0a995-39ab-4f48-b343-754cfa8227b4",
+      "ackMs": 2955.1687999999995,
+      "completionMs": 10796.905600000002,
+      "downloadMs": 11049.144100000001
+    },
+    {
+      "key": "1be87351-be63-48df-91e2-063fd8cae7bb",
+      "id": "2fd0fc64-9005-4979-9f73-647659cee91d",
+      "ackMs": 2967.1732999999986,
+      "completionMs": 10811.1623,
+      "downloadMs": 11056.399699999998
+    },
+    {
+      "key": "2498ec43-81b2-4d0c-ab72-e4e8d93ad1bf",
+      "id": "84fba4cc-408a-49e7-8124-8c2c4d2b31eb",
+      "ackMs": 2971.0347,
+      "completionMs": 10815.7903,
+      "downloadMs": 11050.343099999998
+    },
+    {
+      "key": "81dc8014-2fcb-4bd7-b904-8c7019b3610c",
+      "id": "26c51370-ba74-43b3-ac27-5dcd8e7ee964",
+      "ackMs": 2982.5591999999997,
+      "completionMs": 10826.8227,
+      "downloadMs": 11061.9186
+    },
+    {
+      "key": "29adc4ab-8fff-4188-af53-a45d95db2619",
+      "id": "e68aed37-6cb3-4c55-8a49-57f79ccce6ba",
+      "ackMs": 2994.9857999999986,
+      "completionMs": 10825.700399999998,
+      "downloadMs": 11055.755699999998
+    },
+    {
+      "key": "4fbcb07a-ab49-487d-9b46-5f8c7f6dafab",
+      "id": "5986094a-3d71-4d61-8a58-165b890849c8",
+      "ackMs": 3003.261300000002,
+      "completionMs": 10829.893500000002,
+      "downloadMs": 11059.7173
+    },
+    {
+      "key": "be3ad013-d814-4533-9e91-e1ef7e762320",
+      "id": "0f1137b3-97fd-4759-8722-0875b2be0bbb",
+      "ackMs": 3029.5126999999993,
+      "completionMs": 10839.669699999999,
+      "downloadMs": 11082.9631
+    },
+    {
+      "key": "6efc1390-f20a-4a4e-a9d7-30fc8c3318de",
+      "id": "e8d1f598-87a4-45b7-9890-c5f0d14cdced",
+      "ackMs": 3060.8712000000014,
+      "completionMs": 10849.550300000003,
+      "downloadMs": 11086.735900000003
+    },
+    {
+      "key": "e6f01f42-e841-413c-98c0-fcf020c7e0a4",
+      "id": "df4e3dd7-73dc-4b8e-8a01-d93fc6f39448",
+      "ackMs": 3077.067899999998,
+      "completionMs": 10834.717099999998,
+      "downloadMs": 11056.1031
+    },
+    {
+      "key": "1255b64f-3639-4dbf-b2b2-d8cbd768f0ee",
+      "id": "95b1be66-cc76-4cdd-98f5-ad5688abf5e6",
+      "ackMs": 3195.1087000000007,
+      "completionMs": 10845.011599999998,
+      "downloadMs": 11059.132999999998
+    }
+  ],
+  "target": {
+    "thresholdMs": 3500,
+    "ack": true,
+    "completion": false
+  }
+}

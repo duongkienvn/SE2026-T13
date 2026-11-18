@@ -1,0 +1,8 @@
+
+ RUN  v5.0.3 D:/TAI LIEU DAI HOC/NAM BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/apps/frontend
+
+
+ Test Files  5 passed (5)
+      Tests  66 passed (66)
+   Start at  22:22:52
+   Duration  42.24s (environment 40%, transform 22%, import 17%, setup 10%, tests 10%)

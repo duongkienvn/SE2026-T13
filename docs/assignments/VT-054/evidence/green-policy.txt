@@ -1,0 +1,21 @@
+PASS src/api/exports/export-job-policy.spec.ts (23.841 s)
+  VT-054 export job public contract
+    √ TC08/09: maps PENDING without inventing percentage progress (34 ms)
+    √ TC08/09: maps RUNNING without inventing percentage progress (3 ms)
+    √ TC08/09: maps COMPLETED without inventing percentage progress (1 ms)
+    √ TC08/09: maps FAILED without inventing percentage progress (1 ms)
+    √ TC09: exposes exactly the allowlist even when private job columns are present (5 ms)
+    √ TC12: preserves the requested CSV representation in the response (2 ms)
+  VT-054 explicit retry eligibility
+    √ TC02: replay does not restart PENDING jobs (2 ms)
+    √ TC02: replay does not restart RUNNING jobs (2 ms)
+    √ TC02: replay does not restart COMPLETED jobs (2 ms)
+    √ TC10: permits failed attempts below the fixed attempt limit (2 ms)
+    √ TC10: refuses exhausted failures without resetting attempt count (1 ms)
+    √ TC13: refuses an expired failure at and after the deadline (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       12 passed, 12 total
+Snapshots:   0 total
+Time:        25.741 s
+Ran all test suites within paths "src/api/exports/export-job-policy.spec.ts".

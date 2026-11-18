@@ -15,6 +15,7 @@ import { ExportBuffer, ExportSizeBudget } from './export-buffer';
 import { AccountExportQueryDto, BoardExportQueryDto } from './export-query.dto';
 import { publicAvatar } from './account-export.service';
 import { ExportSnapshot, exportPages } from './export-snapshot';
+import { ExportJobsService } from './export-jobs.service';
 import { ExportsController } from './exports.controller';
 import { BoardExportService } from './board-export.service';
 import { AccountExportService } from './account-export.service';
@@ -216,6 +217,7 @@ describe('publication failures', () => {
       {} as BoardExportService,
       accounts as unknown as AccountExportService,
       snapshots as unknown as ExportSnapshot,
+      {} as ExportJobsService,
     );
     const response = {
       setHeader: jest.fn(),

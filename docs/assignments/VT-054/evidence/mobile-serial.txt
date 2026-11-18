@@ -1,0 +1,375 @@
+
+> @kanban/mobile@0.0.0 test D:\TAI LIEU DAI HOC\NAM BON\SEM_1\SE\SE2026-T13\.worktrees\23001908-vt054-fresh\apps\mobile
+> node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/*.test.mjs test/**/*.test.ts && jest --runInBand
+
+TAP version 13
+# Subtest: login credential uses expiresIn on the device clock and the JWT subject
+ok 1 - login credential uses expiresIn on the device clock and the JWT subject
+  ---
+  duration_ms: 5.9793
+  type: 'test'
+  ...
+# Subtest: login credential rejects bad tokens and lifetimes
+ok 2 - login credential rejects bad tokens and lifetimes
+  ---
+  duration_ms: 1.2922
+  type: 'test'
+  ...
+# Subtest: JWT subject needs a UUID sub and integer exp
+ok 3 - JWT subject needs a UUID sub and integer exp
+  ---
+  duration_ms: 1.3403
+  type: 'test'
+  ...
+# Subtest: stored record round-trips and holds only version, token and expiry
+ok 4 - stored record round-trips and holds only version, token and expiry
+  ---
+  duration_ms: 3.6329
+  type: 'test'
+  ...
+# Subtest: corrupted, foreign or future-version records do not decode
+ok 5 - corrupted, foreign or future-version records do not decode
+  ---
+  duration_ms: 4.4315
+  type: 'test'
+  ...
+# Subtest: read reports none, valid, and removes invalid values
+ok 6 - read reports none, valid, and removes invalid values
+  ---
+  duration_ms: 2.9455
+  type: 'test'
+  ...
+# Subtest: read failure is reported, cleaned up and never thrown
+ok 7 - read failure is reported, cleaned up and never thrown
+  ---
+  duration_ms: 1.0549
+  type: 'test'
+  ...
+# Subtest: failed or partial writes leave nothing behind
+ok 8 - failed or partial writes leave nothing behind
+  ---
+  duration_ms: 0.8791
+  type: 'test'
+  ...
+# Subtest: clear reports platform refusal instead of throwing
+ok 9 - clear reports platform refusal instead of throwing
+  ---
+  duration_ms: 1.3229
+  type: 'test'
+  ...
+# Subtest: native session feeds navigation with stable, token-free state and generation-scoped identity
+ok 10 - native session feeds navigation with stable, token-free state and generation-scoped identity
+  ---
+  duration_ms: 8.9329
+  type: 'test'
+  ...
+# Subtest: verify calls GET /users/me with the bearer and keeps identity fields only
+ok 11 - verify calls GET /users/me with the bearer and keeps identity fields only
+  ---
+  duration_ms: 131.1944
+  type: 'test'
+  ...
+# Subtest: only 401 means unauthorized; other failures are unavailable
+ok 12 - only 401 means unauthorized; other failures are unavailable
+  ---
+  duration_ms: 57.9478
+  type: 'test'
+  ...
+# Subtest: verify times out through the injected timer and aborts fetch
+ok 13 - verify times out through the injected timer and aborts fetch
+  ---
+  duration_ms: 1.6092
+  type: 'test'
+  ...
+# Subtest: logout posts once and never throws
+ok 14 - logout posts once and never throws
+  ---
+  duration_ms: 1.6652
+  type: 'test'
+  ...
+# Subtest: base URL requires HTTPS outside local development hosts
+ok 15 - base URL requires HTTPS outside local development hosts
+  ---
+  duration_ms: 1.4168
+  type: 'test'
+  ...
+# Subtest: foreground is reported once per return to active
+ok 16 - foreground is reported once per return to active
+  ---
+  duration_ms: 3.091
+  type: 'test'
+  ...
+# Subtest: guard state exposes no token and unlocks only when authenticated
+ok 17 - guard state exposes no token and unlocks only when authenticated
+  ---
+  duration_ms: 2.8271
+  type: 'test'
+  ...
+# Subtest: account switch aborts old work and a late answer cannot repopulate the cache
+ok 18 - account switch aborts old work and a late answer cannot repopulate the cache
+  ---
+  duration_ms: 22.2655
+  type: 'test'
+  ...
+# Subtest: late 401 from the previous account does not sign out the new one
+ok 19 - late 401 from the previous account does not sign out the new one
+  ---
+  duration_ms: 3.7931
+  type: 'test'
+  ...
+# Subtest: expiry and logout block requests and tear down sockets
+ok 20 - expiry and logout block requests and tear down sockets
+  ---
+  duration_ms: 30.2487
+  type: 'test'
+  ...
+# Subtest: cold start without a credential settles signed out with no network call
+ok 21 - cold start without a credential settles signed out with no network call
+  ---
+  duration_ms: 7.5855
+  type: 'test'
+  ...
+# Subtest: stored token is never usable before /users/me verifies it
+ok 22 - stored token is never usable before /users/me verifies it
+  ---
+  duration_ms: 38.8529
+  type: 'test'
+  ...
+# Subtest: start runs once even when called concurrently
+ok 23 - start runs once even when called concurrently
+  ---
+  duration_ms: 1.5617
+  type: 'test'
+  ...
+# Subtest: expired, corrupted and unreadable credentials sign out safely
+ok 24 - expired, corrupted and unreadable credentials sign out safely
+  ---
+  duration_ms: 2.6394
+  type: 'test'
+  ...
+# Subtest: 401 during restore signs out and removes the stored token
+ok 25 - 401 during restore signs out and removes the stored token
+  ---
+  duration_ms: 4.8175
+  type: 'test'
+  ...
+# Subtest: timeout is offline-uncertain: credential kept, content locked, retry works
+ok 26 - timeout is offline-uncertain: credential kept, content locked, retry works
+  ---
+  duration_ms: 3.011
+  type: 'test'
+  ...
+# Subtest: retry while a retry is running reuses the same request
+ok 27 - retry while a retry is running reuses the same request
+  ---
+  duration_ms: 1.9799
+  type: 'test'
+  ...
+# Subtest: /users/me identity that differs from the token subject is rejected
+ok 28 - /users/me identity that differs from the token subject is rejected
+  ---
+  duration_ms: 15.6063
+  type: 'test'
+  ...
+# Subtest: establishSession verifies, persists and starts the session
+ok 29 - establishSession verifies, persists and starts the session
+  ---
+  duration_ms: 3.3308
+  type: 'test'
+  ...
+# Subtest: malformed login responses never touch the current session
+ok 30 - malformed login responses never touch the current session
+  ---
+  duration_ms: 2.596
+  type: 'test'
+  ...
+# Subtest: login verification outcomes: rejected, unavailable, unsaved
+ok 31 - login verification outcomes: rejected, unavailable, unsaved
+  ---
+  duration_ms: 3.0257
+  type: 'test'
+  ...
+# Subtest: login during cold restore drops the late restore answer
+ok 32 - login during cold restore drops the late restore answer
+  ---
+  duration_ms: 6.0721
+  type: 'test'
+  ...
+# Subtest: logout during login verification wins and leaves no stored token
+ok 33 - logout during login verification wins and leaves no stored token
+  ---
+  duration_ms: 2.5208
+  type: 'test'
+  ...
+# Subtest: logout queued behind a slow credential write still removes it
+ok 34 - logout queued behind a slow credential write still removes it
+  ---
+  duration_ms: 4.1551
+  type: 'test'
+  ...
+# Subtest: logout tears down before publishing, then calls the API with the old token
+ok 35 - logout tears down before publishing, then calls the API with the old token
+  ---
+  duration_ms: 1.6988
+  type: 'test'
+  ...
+# Subtest: logout still signs out locally when the keychain refuses deletion
+ok 36 - logout still signs out locally when the keychain refuses deletion
+  ---
+  duration_ms: 1.0444
+  type: 'test'
+  ...
+# Subtest: stale 401 and security events from older generations are ignored
+ok 37 - stale 401 and security events from older generations are ignored
+  ---
+  duration_ms: 1.6287
+  type: 'test'
+  ...
+# Subtest: security invalidation ends the current session with its own reason
+ok 38 - security invalidation ends the current session with its own reason
+  ---
+  duration_ms: 15.7666
+  type: 'test'
+  ...
+# Subtest: expiry timer ends the session at the absolute expiry
+ok 39 - expiry timer ends the session at the absolute expiry
+  ---
+  duration_ms: 2.5875
+  type: 'test'
+  ...
+# Subtest: clock jump while backgrounded expires on next access or foreground
+ok 40 - clock jump while backgrounded expires on next access or foreground
+  ---
+  duration_ms: 3.0081
+  type: 'test'
+  ...
+# Subtest: token expiring while /users/me is pending ends as expired, not authenticated
+ok 41 - token expiring while /users/me is pending ends as expired, not authenticated
+  ---
+  duration_ms: 2.8343
+  type: 'test'
+  ...
+# Subtest: a throwing listener does not stop teardown for the others
+ok 42 - a throwing listener does not stop teardown for the others
+  ---
+  duration_ms: 1.6136
+  type: 'test'
+  ...
+# Subtest: dispose stops timers and ignores late answers
+ok 43 - dispose stops timers and ignores late answers
+  ---
+  duration_ms: 2.4404
+  type: 'test'
+  ...
+# Subtest: production bundle audit rejects development gallery sources
+ok 44 - production bundle audit rejects development gallery sources
+  ---
+  duration_ms: 679.711
+  type: 'test'
+  ...
+# Subtest: the native shell exposes precisely the four approved tabs
+ok 45 - the native shell exposes precisely the four approved tabs
+  ---
+  duration_ms: 4.7586
+  type: 'test'
+  ...
+# Subtest: tab icons provide distinct transparent selected and unselected assets at native densities
+ok 46 - tab icons provide distinct transparent selected and unselected assets at native densities
+  ---
+  duration_ms: 482.719
+  type: 'test'
+  ...
+# Subtest: header icons provide transparent assets at native densities
+ok 47 - header icons provide transparent assets at native densities
+  ---
+  duration_ms: 173.081
+  type: 'test'
+  ...
+# Subtest: canonical card links round trip for HTTPS and the configured scheme
+ok 48 - canonical card links round trip for HTTPS and the configured scheme
+  ---
+  duration_ms: 1.5064
+  type: 'test'
+  ...
+# Subtest: reject untrusted authorities, paths, queries and encodings before normalization
+ok 49 - reject untrusted authorities, paths, queries and encodings before normalization
+  ---
+  duration_ms: 0.6154
+  type: 'test'
+  ...
+# Subtest: only the approved destination schema parses
+ok 50 - only the approved destination schema parses
+  ---
+  duration_ms: 0.6084
+  type: 'test'
+  ...
+# Subtest: preview exposes data-free shell routes only and is disabled by default
+ok 51 - preview exposes data-free shell routes only and is disabled by default
+  ---
+  duration_ms: 5.3013
+  type: 'test'
+  ...
+# Subtest: protected return targets require an authenticated external session
+ok 52 - protected return targets require an authenticated external session
+  ---
+  duration_ms: 8.0669
+  type: 'test'
+  ...
+# Subtest: session and server access both fail closed
+ok 53 - session and server access both fail closed
+  ---
+  duration_ms: 2.1064
+  type: 'test'
+  ...
+# Subtest: only a validated internal destination can be retained
+ok 54 - only a validated internal destination can be retained
+  ---
+  duration_ms: 0.5377
+  type: 'test'
+  ...
+# Subtest: logout and account switch clear pending targets
+ok 55 - logout and account switch clear pending targets
+  ---
+  duration_ms: 3.9736
+  type: 'test'
+  ...
+# Subtest: a transient verification preserves the target only for the same session
+ok 56 - a transient verification preserves the target only for the same session
+  ---
+  duration_ms: 0.9214
+  type: 'test'
+  ...
+# Subtest: Metro evaluates shared ESM runtime exports for Android without source aliases
+ok 57 - Metro evaluates shared ESM runtime exports for Android without source aliases
+  ---
+  duration_ms: 25573.267
+  type: 'test'
+  ...
+# Subtest: native logo is the unmodified approved transparent PNG
+ok 58 - native logo is the unmodified approved transparent PNG
+  ---
+  duration_ms: 24.3593
+  type: 'test'
+  ...
+# Subtest: explicit and system theme selection
+ok 59 - explicit and system theme selection
+  ---
+  duration_ms: 4.4213
+  type: 'test'
+  ...
+# Subtest: core text, status and button pairs have readable contrast
+ok 60 - core text, status and button pairs have readable contrast
+  ---
+  duration_ms: 3.0385
+  type: 'test'
+  ...
+1..60
+# tests 60
+# suites 0
+# pass 60
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 38075.238
+No tests found, exiting with code 0

@@ -1,0 +1,198 @@
+FAIL src/api/exports/export-job-policy.spec.ts (24.825 s)
+  VT-054 export job public contract
+    × TC08/09: maps PENDING without inventing percentage progress (9 ms)
+    × TC08/09: maps RUNNING without inventing percentage progress (3 ms)
+    × TC08/09: maps COMPLETED without inventing percentage progress (1 ms)
+    × TC08/09: maps FAILED without inventing percentage progress (2 ms)
+    × TC09: exposes exactly the allowlist even when private job columns are present (1 ms)
+    × TC12: preserves the requested CSV representation in the response (1 ms)
+  VT-054 explicit retry eligibility
+    × TC02: replay does not restart PENDING jobs (1 ms)
+    × TC02: replay does not restart RUNNING jobs
+    × TC02: replay does not restart COMPLETED jobs (1 ms)
+    × TC10: permits failed attempts below the fixed attempt limit (1 ms)
+    × TC10: refuses exhausted failures without resetting attempt count (1 ms)
+    × TC13: refuses an expired failure at and after the deadline (1 ms)
+
+  ● VT-054 export job public contract › TC08/09: maps PENDING without inventing percentage progress
+
+    Async export response mapping is not implemented
+
+      17 | }
+      18 | export function toExportJobResponse(_row: ExportJobRecord): ExportJobResponse {
+    > 19 |   throw new Error('Async export response mapping is not implemented');
+         |         ^
+      20 | }
+      21 | export function canRetryExportJob(_row: ExportJobRecord, _now: Date): boolean {
+      22 |   throw new Error('Async export retry policy is not implemented');
+
+      at toExportJobResponse (src/api/exports/export-job-policy.ts:19:9)
+      at src/api/exports/export-job-policy.spec.ts:25:41
+
+  ● VT-054 export job public contract › TC08/09: maps RUNNING without inventing percentage progress
+
+    Async export response mapping is not implemented
+
+      17 | }
+      18 | export function toExportJobResponse(_row: ExportJobRecord): ExportJobResponse {
+    > 19 |   throw new Error('Async export response mapping is not implemented');
+         |         ^
+      20 | }
+      21 | export function canRetryExportJob(_row: ExportJobRecord, _now: Date): boolean {
+      22 |   throw new Error('Async export retry policy is not implemented');
+
+      at toExportJobResponse (src/api/exports/export-job-policy.ts:19:9)
+      at src/api/exports/export-job-policy.spec.ts:25:41
+
+  ● VT-054 export job public contract › TC08/09: maps COMPLETED without inventing percentage progress
+
+    Async export response mapping is not implemented
+
+      17 | }
+      18 | export function toExportJobResponse(_row: ExportJobRecord): ExportJobResponse {
+    > 19 |   throw new Error('Async export response mapping is not implemented');
+         |         ^
+      20 | }
+      21 | export function canRetryExportJob(_row: ExportJobRecord, _now: Date): boolean {
+      22 |   throw new Error('Async export retry policy is not implemented');
+
+      at toExportJobResponse (src/api/exports/export-job-policy.ts:19:9)
+      at src/api/exports/export-job-policy.spec.ts:25:41
+
+  ● VT-054 export job public contract › TC08/09: maps FAILED without inventing percentage progress
+
+    Async export response mapping is not implemented
+
+      17 | }
+      18 | export function toExportJobResponse(_row: ExportJobRecord): ExportJobResponse {
+    > 19 |   throw new Error('Async export response mapping is not implemented');
+         |         ^
+      20 | }
+      21 | export function canRetryExportJob(_row: ExportJobRecord, _now: Date): boolean {
+      22 |   throw new Error('Async export retry policy is not implemented');
+
+      at toExportJobResponse (src/api/exports/export-job-policy.ts:19:9)
+      at src/api/exports/export-job-policy.spec.ts:25:41
+
+  ● VT-054 export job public contract › TC09: exposes exactly the allowlist even when private job columns are present
+
+    Async export response mapping is not implemented
+
+      17 | }
+      18 | export function toExportJobResponse(_row: ExportJobRecord): ExportJobResponse {
+    > 19 |   throw new Error('Async export response mapping is not implemented');
+         |         ^
+      20 | }
+      21 | export function canRetryExportJob(_row: ExportJobRecord, _now: Date): boolean {
+      22 |   throw new Error('Async export retry policy is not implemented');
+
+      at toExportJobResponse (src/api/exports/export-job-policy.ts:19:9)
+      at Object.<anonymous> (src/api/exports/export-job-policy.spec.ts:47:39)
+
+  ● VT-054 export job public contract › TC12: preserves the requested CSV representation in the response
+
+    Async export response mapping is not implemented
+
+      17 | }
+      18 | export function toExportJobResponse(_row: ExportJobRecord): ExportJobResponse {
+    > 19 |   throw new Error('Async export response mapping is not implemented');
+         |         ^
+      20 | }
+      21 | export function canRetryExportJob(_row: ExportJobRecord, _now: Date): boolean {
+      22 |   throw new Error('Async export retry policy is not implemented');
+
+      at toExportJobResponse (src/api/exports/export-job-policy.ts:19:9)
+      at Object.<anonymous> (src/api/exports/export-job-policy.spec.ts:64:31)
+
+  ● VT-054 explicit retry eligibility › TC02: replay does not restart PENDING jobs
+
+    Async export retry policy is not implemented
+
+      20 | }
+      21 | export function canRetryExportJob(_row: ExportJobRecord, _now: Date): boolean {
+    > 22 |   throw new Error('Async export retry policy is not implemented');
+         |         ^
+      23 | }
+      24 |
+
+      at canRetryExportJob (src/api/exports/export-job-policy.ts:22:9)
+      at src/api/exports/export-job-policy.spec.ts:72:31
+
+  ● VT-054 explicit retry eligibility › TC02: replay does not restart RUNNING jobs
+
+    Async export retry policy is not implemented
+
+      20 | }
+      21 | export function canRetryExportJob(_row: ExportJobRecord, _now: Date): boolean {
+    > 22 |   throw new Error('Async export retry policy is not implemented');
+         |         ^
+      23 | }
+      24 |
+
+      at canRetryExportJob (src/api/exports/export-job-policy.ts:22:9)
+      at src/api/exports/export-job-policy.spec.ts:72:31
+
+  ● VT-054 explicit retry eligibility › TC02: replay does not restart COMPLETED jobs
+
+    Async export retry policy is not implemented
+
+      20 | }
+      21 | export function canRetryExportJob(_row: ExportJobRecord, _now: Date): boolean {
+    > 22 |   throw new Error('Async export retry policy is not implemented');
+         |         ^
+      23 | }
+      24 |
+
+      at canRetryExportJob (src/api/exports/export-job-policy.ts:22:9)
+      at src/api/exports/export-job-policy.spec.ts:72:31
+
+  ● VT-054 explicit retry eligibility › TC10: permits failed attempts below the fixed attempt limit
+
+    Async export retry policy is not implemented
+
+      20 | }
+      21 | export function canRetryExportJob(_row: ExportJobRecord, _now: Date): boolean {
+    > 22 |   throw new Error('Async export retry policy is not implemented');
+         |         ^
+      23 | }
+      24 |
+
+      at canRetryExportJob (src/api/exports/export-job-policy.ts:22:9)
+      at Object.<anonymous> (src/api/exports/export-job-policy.spec.ts:77:24)
+
+  ● VT-054 explicit retry eligibility › TC10: refuses exhausted failures without resetting attempt count
+
+    Async export retry policy is not implemented
+
+      20 | }
+      21 | export function canRetryExportJob(_row: ExportJobRecord, _now: Date): boolean {
+    > 22 |   throw new Error('Async export retry policy is not implemented');
+         |         ^
+      23 | }
+      24 |
+
+      at canRetryExportJob (src/api/exports/export-job-policy.ts:22:9)
+      at Object.<anonymous> (src/api/exports/export-job-policy.spec.ts:85:24)
+
+  ● VT-054 explicit retry eligibility › TC13: refuses an expired failure at and after the deadline
+
+    Async export retry policy is not implemented
+
+      20 | }
+      21 | export function canRetryExportJob(_row: ExportJobRecord, _now: Date): boolean {
+    > 22 |   throw new Error('Async export retry policy is not implemented');
+         |         ^
+      23 | }
+      24 |
+
+      at canRetryExportJob (src/api/exports/export-job-policy.ts:22:9)
+      at Object.<anonymous> (src/api/exports/export-job-policy.spec.ts:90:29)
+
+Test Suites: 1 failed, 1 total
+Tests:       12 failed, 12 total
+Snapshots:   0 total
+Time:        26.976 s
+Ran all test suites within paths "src/api/exports/export-job-policy.spec.ts".
+undefined
+D:\TAI LIEU DAI HOC\NAM BON\SEM_1\SE\SE2026-T13\.worktrees\23001908-vt054-fresh\apps\backend:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command "jest" not found

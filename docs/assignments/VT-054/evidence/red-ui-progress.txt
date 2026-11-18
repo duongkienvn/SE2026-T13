@@ -1,0 +1,68 @@
+
+ RUN  v5.0.3 D:/TAI LIEU DAI HOC/NAM BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/apps/frontend
+
+ ❯ src/features/settings/data-privacy/async-export-progress.test.tsx (3 tests | 3 failed) 506ms
+   ❯ VT-054 visible export progress (3)
+     × TC14: announces the actual queued phase visibly 368ms
+     × TC14: announces the actual running phase visibly 60ms
+     × TC14: announces the actual downloading phase visibly 69ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/features/settings/data-privacy/async-export-progress.test.tsx > VT-054 visible export progress > TC14: announces the actual queued phase visibly
+AssertionError: expected 'Preparing your file. This can take a …' to be 'Queued for export.' // Object.is equality
+
+Expected: "Queued for export."
+Received: "Preparing your file. This can take a few moments."
+
+ ❯ src/features/settings/data-privacy/async-export-progress.test.tsx:23:32
+     21|     );
+     22|     const status = screen.getByRole('status');
+     23|     expect(status.textContent).toBe(message);
+       |                                ^
+     24|     expect(status.querySelector('.sr-only')).toBeNull();
+     25|     expect(screen.getByRole('button').hasAttribute('disabled')).toBe(t…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/features/settings/data-privacy/async-export-progress.test.tsx > VT-054 visible export progress > TC14: announces the actual running phase visibly
+AssertionError: expected 'Preparing your file. This can take a …' to be 'Preparing your board export.' // Object.is equality
+
+Expected: "Preparing your board export."
+Received: "Preparing your file. This can take a few moments."
+
+ ❯ src/features/settings/data-privacy/async-export-progress.test.tsx:23:32
+     21|     );
+     22|     const status = screen.getByRole('status');
+     23|     expect(status.textContent).toBe(message);
+       |                                ^
+     24|     expect(status.querySelector('.sr-only')).toBeNull();
+     25|     expect(screen.getByRole('button').hasAttribute('disabled')).toBe(t…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/features/settings/data-privacy/async-export-progress.test.tsx > VT-054 visible export progress > TC14: announces the actual downloading phase visibly
+AssertionError: expected 'Preparing your file. This can take a …' to be 'Downloading your export.' // Object.is equality
+
+Expected: "Downloading your export."
+Received: "Preparing your file. This can take a few moments."
+
+ ❯ src/features/settings/data-privacy/async-export-progress.test.tsx:23:32
+     21|     );
+     22|     const status = screen.getByRole('status');
+     23|     expect(status.textContent).toBe(message);
+       |                                ^
+     24|     expect(status.querySelector('.sr-only')).toBeNull();
+     25|     expect(screen.getByRole('button').hasAttribute('disabled')).toBe(t…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  22:14:34
+   Duration  60.22s (environment 75%, setup 22%, transform 2%, tests 1%)
+
+undefined
+D:\TAI LIEU DAI HOC\NAM BON\SEM_1\SE\SE2026-T13\.worktrees\23001908-vt054-fresh\apps\frontend:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command "vitest" not found

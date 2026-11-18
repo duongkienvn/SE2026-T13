@@ -1,0 +1,19 @@
+# Nhật ký sử dụng AI
+
+Codex thực hiện các vòng dưới đây với PowerShell, Git, Jest, Vitest, Docker và Chromium. Đây là self-review. Những chỉ thị đã lưu nguyên văn nằm trong SPEC-PLAN.md, RED.md và QUALITY-EXPERIMENTS.md. Bảng tóm tắt các vòng còn lại, không giả định người dùng đã duyệt.
+
+| Vòng              | Chỉ thị và đầu ra                                                    | Review và điều chỉnh                                                                                                        | Evidence                                                  |
+| ----------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Plan              | Khảo sát lát cắt export theo DX-01.                                  | Bỏ giả định có queue và bỏ cache RAM làm persistence. Dùng PostgreSQL, kiểm tra ACL/session và giới hạn bytes.              | SPEC-PLAN.md, b6efdfa                                     |
+| Review plan       | Đối chiếu ExportsController, ExportSnapshot, BoardExportCard, P5-01. | Giữ generator và API cũ, thêm UI tiến trình. Bỏ oracle notification vì generator chỉ đọc.                                   | Bảng plan review trong SPEC-PLAN.md                       |
+| Generate tests    | Tạo equivalence partitions, chạy HTTP, policy và schema RED.         | Giữ assertions hành vi. Ghi giới hạn của guard/provider fake. Thêm test database và HTTP thật.                              | RED.md, 5230eb1, a7bb5fa, 01cd51e                         |
+| Review tests      | Test UI phase, retry key và abort.                                   | Quan sát promise rejection ngay, rồi kiểm tra bytes thay vì constructor Blob.                                               | red-ui-api-reviewed.txt, green-ui-workflow-reviewed.txt   |
+| Implementation    | Tạo schema, claim lease, controller và client polling.               | Giữ UNIQUE và token lease. Bỏ dependency tùy chọn chỉ để mock. Cập nhật cleanup inventory.                                  | PATCH-REVIEW.md, 0497e65, e30de97                         |
+| Review diff       | Kiểm tra scope, design, correctness và evidence.                     | Thêm recheck download, account erasure và public allowlist.                                                                 | jobs-database-first.txt, green-jobs-database.txt          |
+| Mutation          | Đổi public format sang json trên nhánh tạm.                          | Giữ nguyên assertions, chạy CSV partition và khôi phục mapper.                                                              | 44f8c6f, mutation-restored.txt                            |
+| Strengthen tests  | Test browser với REST/JWT và worker thật.                            | Dùng latch kiểm soát RUNNING. Sửa harness để cả REST và Socket.IO cùng kết nối backend test.                                | browser-diagnostic.txt, browser-direct-final.txt          |
+| Final experiments | Đo 120 tasks với retries, giữ các lượt fail.                         | Đo riêng khi không profiling. Tái sử dụng kết nối, tính cả thời gian đợi socket. Viết worker RED trước thay đổi throughput. | QUALITY-EXPERIMENTS.md, load JSON, worker-drain RED/GREEN |
+
+Vitest báo unhandled rejection vì test trì hoãn quan sát assertion promise. Sau khi gắn observer ngay, jsdom và Node Fetch lại tạo Blob thuộc hai realm khác nhau. Kiểm tra constructor thất bại dù dữ liệu đúng. Oracle cuối kiểm tra chính xác bytes, thứ tự pha và path.
+
+Trong harness Chromium, chuyển hướng REST mà bỏ Socket.IO khiến ứng dụng xóa cache quyền. Browser không lưu file dù job COMPLETED. Cấu hình lại cùng backend và chạy lại tám tổ hợp, giữ log thất bại để truy vết.

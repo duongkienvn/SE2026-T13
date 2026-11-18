@@ -1,0 +1,19 @@
+PASS TC01/02/08/09: JWT HTTP acknowledgement before gated work; actual scheduler, same-key replay, progress and real JSON download
+PASS TC04/05: payload conflict, malformed key/body/id and validation privacy
+PASS TC06/07: real JWT, verified identity, owner gate and private job isolation
+PASS TC10: scheduler failure sanitized and explicit retry completes using same job
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+page.waitForEvent: Timeout 30000ms exceeded while waiting for event "download"
+=========================== logs ===========================
+waiting for event "download"
+============================================================
+    at browserJourney (D:\TAI LIEU DAI HOC\NAM BON\SEM_1\SE\SE2026-T13\.worktrees\23001908-vt054-fresh\apps\backend\test\exports\async-export.browser.mjs:128:32)
+    at async file:///D:/TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/apps/backend/test/exports/async-export-http.integration.mjs:217:5 {
+  log: [],
+  name: 'TimeoutError'
+}
+
+Node.js v22.23.4

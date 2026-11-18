@@ -85,6 +85,14 @@ export function ExportAction({
   beside?: ReactNode;
 }) {
   const exporting = state.status === 'exporting';
+  const progressMessage =
+    state.status === 'exporting' && state.phase
+      ? {
+          queued: 'Queued for export.',
+          running: 'Preparing your board export.',
+          downloading: 'Downloading your export.',
+        }[state.phase]
+      : null;
   return (
     <div className="space-y-3">
       {state.status === 'error' && (
@@ -107,7 +115,9 @@ export function ExportAction({
             {exporting ? 'Preparing export…' : label}
           </Button>
           <p role="status" className="text-sm text-muted">
-            {exporting ? (
+            {exporting && progressMessage ? (
+              progressMessage
+            ) : exporting ? (
               <span className="sr-only">
                 Preparing your file. This can take a few moments.
               </span>

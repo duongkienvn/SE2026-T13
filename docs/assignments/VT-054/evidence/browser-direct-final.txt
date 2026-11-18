@@ -1,0 +1,16 @@
+PASS TC01/02/08/09: JWT HTTP acknowledgement before gated work; actual scheduler, same-key replay, progress and real JSON download
+PASS TC04/05: payload conflict, malformed key/body/id and validation privacy
+PASS TC06/07: real JWT, verified identity, owner gate and private job isolation
+PASS TC10: scheduler failure sanitized and explicit retry completes using same job
+PASS browser mobile/light: keyboard start, visible RUNNING, real JSON download, no page overflow
+PASS browser mobile/dark: keyboard start, visible RUNNING, real JSON download, no page overflow
+PASS browser tablet/light: keyboard start, visible RUNNING, real JSON download, no page overflow
+PASS browser tablet/dark: keyboard start, visible RUNNING, real JSON download, no page overflow
+PASS browser laptop/light: keyboard start, visible RUNNING, real JSON download, no page overflow
+PASS browser laptop/dark: keyboard start, visible RUNNING, real JSON download, no page overflow
+PASS browser desktop/light: keyboard start, visible RUNNING, real JSON download, no page overflow
+PASS browser desktop/dark: keyboard start, visible RUNNING, real JSON download, no page overflow
+PASS TC13: download rechecks current owner and JWT session invalidation
+(node:31096) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Async export real JWT HTTP/worker suite: 5 groups passed

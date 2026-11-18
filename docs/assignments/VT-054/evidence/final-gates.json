@@ -1,0 +1,6 @@
+{
+  "build": 0,
+  "format:check": 1,
+  "test": 1,
+  "lint": 0
+}

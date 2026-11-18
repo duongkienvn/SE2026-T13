@@ -1,0 +1,135 @@
+
+ RUN  v5.0.3 D:/TAI LIEU DAI HOC/NAM BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/apps/frontend
+
+(node:16400) PromiseRejectionHandledWarning: Promise rejection was handled asynchronously (rejection id: 3)
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ src/features/settings/data-privacy/async-export-api.test.ts (4 tests | 4 failed) 97ms
+   ❯ VT-054 async Board export API workflow (4)
+     × TC14: follows queued/running/completed states then downloads only the completed job 44ms
+     × TC10/14: explicit user retry reuses a failed job identity 5ms
+     × TC15: an already-aborted session starts no network operation 34ms
+     × TC06: authorization failure stops polling and never downloads 9ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/features/settings/data-privacy/async-export-api.test.ts > VT-054 async Board export API workflow > TC14: follows queued/running/completed states then downloads only the completed job
+AssertionError: promise rejected "Error: Async Board export client workflow…" instead of resolving
+ ❯ src/features/settings/data-privacy/async-export-api.test.ts:43:38
+     41|       phase,
+     42|     );
+     43|     const assertion = expect(promise).resolves.toHaveProperty('blob');
+       |                                      ^
+     44|     await vi.runAllTimersAsync();
+     45|     await assertion;
+
+Caused by: Error: Async Board export client workflow is not implemented
+ ❯ exportBoardDataAsync src/features/settings/data-privacy/async-export-api.ts:12:9
+ ❯ src/features/settings/data-privacy/async-export-api.test.ts:35:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/features/settings/data-privacy/async-export-api.test.ts > VT-054 async Board export API workflow > TC10/14: explicit user retry reuses a failed job identity
+Error: Async Board export client workflow is not implemented
+ ❯ exportBoardDataAsync src/features/settings/data-privacy/async-export-api.ts:12:9
+     10|   _onPhase?: (phase: ExportPhase) => void,
+     11| ): Promise<BinaryResponse> {
+     12|   throw new Error('Async Board export client workflow is not implement…
+       |         ^
+     13| }
+     14|
+ ❯ src/features/settings/data-privacy/async-export-api.test.ts:61:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  src/features/settings/data-privacy/async-export-api.test.ts > VT-054 async Board export API workflow > TC15: an already-aborted session starts no network operation
+AssertionError: expected Error: Async Board export client workflow… to match object { name: 'AbortError' }
+
+- Expected
++ Received
+
+- {
+-   "name": "AbortError",
++ Error {
++   "message": "Async Board export client workflow is not implemented",
+  }
+
+ ❯ src/features/settings/data-privacy/async-export-api.test.ts:80:6
+     78|     await expect(
+     79|       exportBoardDataAsync('token', board, 'json', key, abort.signal),
+     80|     ).rejects.toMatchObject({ name: 'AbortError' });
+       |      ^
+     81|     expect(calls).toHaveLength(0);
+     82|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  src/features/settings/data-privacy/async-export-api.test.ts > VT-054 async Board export API workflow > TC06: authorization failure stops polling and never downloads
+AssertionError: expected Error: Async Board export client workflow… to match object { status: 401 }
+
+- Expected
++ Received
+
+- {
+-   "status": 401,
++ Error {
++   "message": "Async Board export client workflow is not implemented",
+  }
+
+ ❯ src/features/settings/data-privacy/async-export-api.test.ts:98:6
+     96|         new AbortController().signal,
+     97|       ),
+     98|     ).rejects.toMatchObject({ status: 401 });
+       |      ^
+     99|     expect(calls).toHaveLength(1);
+    100|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+AssertionError: promise rejected "Error: Async Board export client workflow…" instead of resolving
+ ❯ _Assertion.__VITEST_RESOLVES__ ../../../../../../../../../TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/node_modules/.pnpm/vitest@5.0.3_@types+node@22_a9e4d758e48780d11fc28772e38eee97/node_modules/vitest/dist/chunks/index.C4tKZ0yW.js:2434:33
+ ❯ _Assertion.propertyGetter ../../../../../../../../../TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/node_modules/.pnpm/chai@6.3.0/node_modules/chai/index.js:1607:27
+ ❯ Object.proxyGetter [as get] ../../../../../../../../../TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/node_modules/.pnpm/chai@6.3.0/node_modules/chai/index.js:1696:22
+ ❯ src/features/settings/data-privacy/async-export-api.test.ts:43:38
+     41|       phase,
+     42|     );
+     43|     const assertion = expect(promise).resolves.toHaveProperty('blob');
+       |                                      ^
+     44|     await vi.runAllTimersAsync();
+     45|     await assertion;
+ ❯ ../../../../../../../../../TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/node_modules/.pnpm/vitest@5.0.3_@types+node@22_a9e4d758e48780d11fc28772e38eee97/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:1628:35
+ ❯ ../../../../../../../../../TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/node_modules/.pnpm/vitest@5.0.3_@types+node@22_a9e4d758e48780d11fc28772e38eee97/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:26
+ ❯ ../../../../../../../../../TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/node_modules/.pnpm/vitest@5.0.3_@types+node@22_a9e4d758e48780d11fc28772e38eee97/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3321:20
+ ❯ runWithCancel ../../../../../../../../../TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/node_modules/.pnpm/vitest@5.0.3_@types+node@22_a9e4d758e48780d11fc28772e38eee97/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3316:10
+
+This error originated in "src/features/settings/data-privacy/async-export-api.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The last test to run before this error was "TC14: follows queued/running/completed states then downloads only the completed job". This means either:
+- the error was thrown while Vitest was running this test, or
+- the error was thrown after the test completed, and this was the most recent test at that point.
+Caused by: Error: Async Board export client workflow is not implemented
+ ❯ exportBoardDataAsync src/features/settings/data-privacy/async-export-api.ts:12:9
+ ❯ src/features/settings/data-privacy/async-export-api.test.ts:35:21
+ ❯ ../../../../../../../../../TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/node_modules/.pnpm/vitest@5.0.3_@types+node@22_a9e4d758e48780d11fc28772e38eee97/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:1628:35
+ ❯ ../../../../../../../../../TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/node_modules/.pnpm/vitest@5.0.3_@types+node@22_a9e4d758e48780d11fc28772e38eee97/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:26
+ ❯ ../../../../../../../../../TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/node_modules/.pnpm/vitest@5.0.3_@types+node@22_a9e4d758e48780d11fc28772e38eee97/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3321:20
+ ❯ runWithCancel ../../../../../../../../../TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/node_modules/.pnpm/vitest@5.0.3_@types+node@22_a9e4d758e48780d11fc28772e38eee97/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3316:10
+ ❯ ../../../../../../../../../TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/node_modules/.pnpm/vitest@5.0.3_@types+node@22_a9e4d758e48780d11fc28772e38eee97/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3301:20
+ ❯ runWithTimeout ../../../../../../../../../TAI%20LIEU%20DAI%20HOC/NAM%20BON/SEM_1/SE/SE2026-T13/.worktrees/23001908-vt054-fresh/node_modules/.pnpm/vitest@5.0.3_@types+node@22_a9e4d758e48780d11fc28772e38eee97/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3259:10
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed (4)
+     Errors  1 error
+   Start at  22:15:54
+   Duration  7.44s (environment 59%, setup 31%, transform 5%, import 2%, tests 1%)
+
+undefined
+D:\TAI LIEU DAI HOC\NAM BON\SEM_1\SE\SE2026-T13\.worktrees\23001908-vt054-fresh\apps\frontend:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command "vitest" not found

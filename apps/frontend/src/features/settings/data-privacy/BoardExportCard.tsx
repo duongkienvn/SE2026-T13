@@ -11,7 +11,9 @@ import {
   type IconProps,
 } from '../../../components/icons';
 import { boardKeys } from '../../boards/query-keys';
-import { exportBoardData } from './export-api';
+import { exportBoardDataAsync } from './async-export-api';
+import { useAuthSession } from '../../auth/auth-session-context';
+import { isApiError } from '../../../lib/api-client';
 import { ExportAction, ExportCard } from './ExportCard';
 import {
   exportableBoardLabel,
@@ -47,6 +49,13 @@ export function BoardExportCard() {
   const { boards, isError, retry } = useExportableBoards();
   const queryClient = useQueryClient();
   const download = useExportDownload();
+  const scope = useAuthSession();
+  const operation = useRef<{
+    boardId: string;
+    format: BoardExportFormat;
+    generation: number;
+    key: string;
+  } | null>(null);
   const [selectedId, setSelectedId] = useState('');
   const [format, setFormat] = useState<BoardExportFormat>('json');
 
@@ -60,10 +69,43 @@ export function BoardExportCard() {
 
   const exportSelected = (board: ExportableBoard) => {
     const chosenFormat = format;
+    if (
+      !operation.current ||
+      operation.current.boardId !== board.id ||
+      operation.current.format !== chosenFormat ||
+      operation.current.generation !== scope.generation
+    )
+      operation.current = {
+        boardId: board.id,
+        format: chosenFormat,
+        generation: scope.generation,
+        key: crypto.randomUUID(),
+      };
+    const current = operation.current;
     void download.start({
       target: { kind: 'board', boardId: board.id, format: chosenFormat },
-      request: (token, signal) =>
-        exportBoardData(token, board.id, chosenFormat, signal),
+      request: async (token, signal, onPhase) => {
+        try {
+          const result = await exportBoardDataAsync(
+            token,
+            board.id,
+            chosenFormat,
+            current.key,
+            signal,
+            onPhase,
+          );
+          if (operation.current === current) operation.current = null;
+          return result;
+        } catch (error) {
+          if (
+            isApiError(error) &&
+            (error.status === 410 || error.code === 'EXPORT_RETRY_EXHAUSTED') &&
+            operation.current === current
+          )
+            operation.current = null;
+          throw error;
+        }
+      },
       stillAllowed: () => ownedIds.current.has(board.id),
       onAccessLost: () => {
         setSelectedId('');
@@ -110,6 +152,7 @@ export function BoardExportCard() {
                 }
                 onChange={(event) => {
                   setSelectedId(event.target.value);
+                  operation.current = null;
                   download.reset();
                 }}
                 className="h-11 w-full appearance-none rounded-lg border border-line bg-surface pr-10 pl-10 text-sm text-ink focus:border-primary focus:ring-3 focus:ring-primary/15 focus:outline-none disabled:cursor-not-allowed disabled:text-muted"
@@ -163,6 +206,7 @@ export function BoardExportCard() {
                   checked={checked}
                   onChange={() => {
                     setFormat(value);
+                    operation.current = null;
                     download.reset();
                   }}
                   className="mt-0.5 size-4.5 shrink-0 accent-primary"
