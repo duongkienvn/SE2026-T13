@@ -271,3 +271,9 @@ verification; mock success does not prove them.
    now accept those ties without reordering rows, while rejecting duplicate IDs
    and ascending distinct timestamps. The regression failed before the fix;
    all 14 Activity contract tests passed afterward.
+3. Verified a first-page 429 lost its cooldown when TanStack reset an empty
+   query's error before refetch. Activity now retains the original failure time
+   outside query state, scoped to the data layer, session and resource prefix,
+   and checks it before either detail or feed HTTP. The zero-data regression
+   covers poll, focus, reconnect and recreated options; it failed before the
+   fix. That case and the 20 Activity integration tests passed afterward.

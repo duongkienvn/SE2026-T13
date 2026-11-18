@@ -1,6 +1,9 @@
 import { queryOptions } from '@tanstack/react-query';
 import { ApiError } from '../../infrastructure/api/errors.ts';
-import type { SessionIdentity } from '../../infrastructure/api/session-client.ts';
+import {
+  sameIdentity,
+  type SessionIdentity,
+} from '../../infrastructure/api/session-client.ts';
 import type { MobileDataLayer } from '../../infrastructure/query/data-layer.ts';
 import type { PrivateQueryKey } from '../../infrastructure/query/keys.ts';
 import type { ResourceId } from '../../navigation/routes.ts';
@@ -22,13 +25,54 @@ export function discardActivity(
   data.evict(identity, [prefix]);
 }
 
-function cooldown(data: MobileDataLayer, prefix: PrivateQueryKey) {
-  for (const query of data.queryClient
-    .getQueryCache()
-    .findAll({ queryKey: prefix })) {
-    if (!canRetryWorkspace(query.state.error, query.state.errorUpdatedAt))
-      throw query.state.error;
+type CooldownFailure = { error: ApiError; failedAt: number };
+const cooldowns = new WeakMap<
+  MobileDataLayer,
+  {
+    identity: SessionIdentity;
+    failures: Map<string, CooldownFailure>;
   }
+>();
+
+function scopeCooldowns(data: MobileDataLayer, identity: SessionIdentity) {
+  data.assertCurrent(identity);
+  let state = cooldowns.get(data);
+  if (!state || !sameIdentity(state.identity, identity)) {
+    state = { identity, failures: new Map() };
+    cooldowns.set(data, state);
+  }
+  return state.failures;
+}
+
+function rememberCooldown(
+  data: MobileDataLayer,
+  identity: SessionIdentity,
+  prefix: PrivateQueryKey,
+  error: unknown,
+) {
+  const failedAt = Date.now();
+  if (
+    error instanceof ApiError &&
+    error.status === 429 &&
+    !canRetryWorkspace(error, failedAt)
+  )
+    scopeCooldowns(data, identity).set(JSON.stringify(prefix), {
+      error,
+      failedAt,
+    });
+}
+
+function cooldown(
+  data: MobileDataLayer,
+  identity: SessionIdentity,
+  prefix: PrivateQueryKey,
+) {
+  const failures = scopeCooldowns(data, identity);
+  const key = JSON.stringify(prefix);
+  const failure = failures.get(key);
+  if (failure && !canRetryWorkspace(failure.error, failure.failedAt))
+    throw failure.error;
+  failures.delete(key);
 }
 
 /** A permission transition discards old pages before the new history request. */
@@ -72,7 +116,7 @@ export function workspaceActivityOptions(
     ...defaults,
     queryKey: activityPageKey(prefix, page, activityPageSize),
     async queryFn({ signal }) {
-      cooldown(data, prefix);
+      cooldown(data, identity, prefix);
       const current = data.resources.capture(prefix, false);
       try {
         // Workspace detail itself requires explicit membership; a Board grant cannot substitute.
@@ -97,6 +141,7 @@ export function workspaceActivityOptions(
           archived: false,
         };
       } catch (error) {
+        if (!signal.aborted) rememberCooldown(data, identity, prefix, error);
         if (!signal.aborted && isWorkspaceDenied(error))
           evictWorkspace(data, identity, workspaceId);
         else if (
@@ -123,7 +168,7 @@ export function boardActivityOptions(
     ...defaults,
     queryKey: activityPageKey(prefix, page, activityPageSize),
     async queryFn({ signal }) {
-      cooldown(data, prefix);
+      cooldown(data, identity, prefix);
       const probeCurrent = data.resources.captureBoardProbe(boardId);
       let accessConfirmed = false;
       try {
@@ -161,6 +206,7 @@ export function boardActivityOptions(
           archived: board.isArchived,
         };
       } catch (error) {
+        if (!signal.aborted) rememberCooldown(data, identity, prefix, error);
         if (!signal.aborted && isWorkspaceDenied(error)) {
           data.assertCurrent(identity);
           probeCurrent();
