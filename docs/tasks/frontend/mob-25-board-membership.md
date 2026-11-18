@@ -304,3 +304,27 @@ late responses, Board/session isolation and confirmed writes. The focused Board
 membership Node file passed all 32 cases; Members and Board Settings component
 files passed all 48 cases (29 Members, 19 Settings). Native/live verification
 limits above still apply.
+
+## Review follow-up: initial effective-policy refresh
+
+Workspace policy updates now identify in-flight Board policy queries that have
+no cached data. After aborting the superseded HTTP requests, they await those
+queries' cancellation before invalidating the policy keys. This starts a fresh
+request instead of reusing an initial fetch that is about to reject. Queries
+with cached policy data keep the existing invalidation/refetch path and retain
+their previous snapshot until the new response arrives. The session is checked
+again after cancellation settles.
+
+The new initial-read regression failed before the fix (one request instead of
+the required fresh second request), while the cached-read case already passed.
+After the fix, both cases pass and late cancelled responses cannot overwrite the
+new policy. Follow-up verification, all exit 0:
+
+- `pnpm --filter @kanban/mobile exec node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/workspaces/membership.test.ts test/board-members/membership.test.ts`: 37/37 PASS.
+- `pnpm --filter @kanban/mobile exec jest --runInBand test/board-members.component.test.js test/board-settings.component.test.js`: 48/48 PASS.
+- `pnpm --filter @kanban/mobile lint` and `pnpm --filter @kanban/mobile typecheck`: PASS.
+- `pnpm --filter @kanban/mobile bundle:android`, with the existing workspace TEMP/TMP workaround: PASS, including Hermes/source-map verification of 1,472 native sources.
+- Changed-file Prettier with `--end-of-line auto` and `git diff --check`: PASS.
+
+Backend, Web and root application suites were not run for these Mobile-only
+fixes. The native/live QA limits above remain unchanged.

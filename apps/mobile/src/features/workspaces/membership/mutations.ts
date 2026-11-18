@@ -187,7 +187,20 @@ export function updateWorkspacePolicies(
               'policy',
             ] as const,
         );
+      const initialPolicyReads = boardPolicies.filter((key) => {
+        const state = data.queryClient.getQueryState(key);
+        return state?.data === undefined && state?.fetchStatus === 'fetching';
+      });
       for (const key of boardPolicies) data.cancelResourceRequests(key);
+      if (initialPolicyReads.length) {
+        // With no cached data, invalidation otherwise reuses the aborted fetch.
+        await Promise.all(
+          initialPolicyReads.map((queryKey) =>
+            data.queryClient.cancelQueries({ queryKey, exact: true }),
+          ),
+        );
+        data.assertCurrent(identity);
+      }
       void data.invalidate(identity, boardPolicies).catch(() => undefined);
       return result;
     },
