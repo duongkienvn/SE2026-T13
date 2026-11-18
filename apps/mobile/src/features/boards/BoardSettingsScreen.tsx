@@ -566,6 +566,29 @@ function SettingsContent({
           />
         </View>
       </Surface>
+      <Surface>
+        <View style={{ gap: spacing.sm }}>
+          <Text
+            accessibilityRole="header"
+            style={[typography.section, { color: c.text }]}
+          >
+            Sharing
+          </Text>
+          {board.currentUserRole ? (
+            <Button
+              label="Board members"
+              variant="secondary"
+              disabled={!ready || pending}
+              onPress={() => router.push(`/boards/${boardId}/members`)}
+            />
+          ) : (
+            <Text style={[typography.supporting, { color: c.textSecondary }]}>
+              Only explicit Board members can view the member list. Workspace
+              visibility provides read-only Board access.
+            </Text>
+          )}
+        </View>
+      </Surface>
       {(ownsActive || canRestore || sampleReview || sampleBlocked) && (
         <Surface>
           <View style={{ gap: spacing.sm }}>
