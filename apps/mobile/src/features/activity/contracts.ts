@@ -59,13 +59,10 @@ export function decodeRows<T extends { id: string; createdAt: string }>(
     for (let index = 0; index < rows.length; index++) {
       const row = rows[index]!;
       const previous = rows[index - 1];
-      if (
-        seen.has(row.id) ||
-        (previous &&
-          (previous.createdAt < row.createdAt ||
-            (previous.createdAt === row.createdAt && previous.id < row.id)))
-      )
+      if (seen.has(row.id) || (previous && previous.createdAt < row.createdAt))
         throw invalidResponse(200);
+      // PostgreSQL can order microseconds that Date.toISOString serializes as
+      // the same millisecond. Preserve server order for those timestamp ties.
       seen.add(row.id);
     }
     return rows;

@@ -39,6 +39,40 @@ import {
 
 const signal = new AbortController().signal;
 
+test('serialized timestamp ties preserve server order regardless of UUID order', async (t) => {
+  const env = await integration();
+  t.after(env.dispose);
+  for (const scope of ['workspace', 'board']) {
+    const event = scope === 'workspace' ? workspaceEvent : boardEvent;
+    const rows = [event(1), event(0)].map((row) => ({
+      ...row,
+      createdAt: event(0).createdAt,
+    }));
+    env.respond(() => Promise.resolve(json(page(rows, 1, 20))));
+    const read = () =>
+      scope === 'workspace'
+        ? createWorkspaceActivityApi(
+            env.data.api,
+            env.identity,
+            workspaceId,
+          ).list(1, WorkspaceRole.MEMBER, signal)
+        : createBoardActivityApi(env.data.api, env.identity, boardId).list(
+            1,
+            false,
+            signal,
+          );
+    const result = await read();
+    assert.deepEqual(
+      result.data.map((row) => row.id),
+      rows.map((row) => row.id),
+    );
+    rows[1]!.createdAt = new Date(
+      Date.parse(rows[0]!.createdAt) + 1,
+    ).toISOString();
+    await assert.rejects(read());
+  }
+});
+
 test('vetted native event/action/entity allowlists match the backend source contracts', () => {
   const enums = readFileSync(
     new URL(

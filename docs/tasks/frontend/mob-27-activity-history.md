@@ -35,8 +35,10 @@ Both adapters require the authenticated session client and AbortSignal, expect
 HTTP 200 with `ApiPaginatedResponse`, and request one explicit server page.
 Native defaults to 20 rows; adapters accept limits 1–100. Validation rejects
 invalid page/limit arithmetic, wrong response status, inconsistent page/count
-metadata, oversized or duplicate rows, invalid IDs/dates and ordering other than
-`createdAt DESC, id DESC`. Dates must be canonical ISO instants. The API client
+metadata, oversized or duplicate rows, invalid IDs/dates and ascending distinct
+timestamps. Serialized timestamp ties preserve server order: PostgreSQL's
+microsecond ordering can be lost in ISO millisecond serialization, so UUID order
+cannot validate those ties. Dates must be canonical ISO instants. The API client
 supplies the configured `/api` base; adapter paths below are relative to it.
 
 | Scope     | REST path                                      | Authorization and projection                                                                                                                                                                                                                                    |
@@ -264,3 +266,8 @@ verification; mock success does not prove them.
    remain hidden while the room is checking or the resource fence is closed.
    Regression: the focused `stopped checking room` component case failed before
    the fix and passed afterward, including failed retry and subsequent recovery.
+2. Verified UUID tie-breaking rejected valid server order when different
+   PostgreSQL timestamps serialize to the same ISO millisecond. Both decoders
+   now accept those ties without reordering rows, while rejecting duplicate IDs
+   and ascending distinct timestamps. The regression failed before the fix;
+   all 14 Activity contract tests passed afterward.
