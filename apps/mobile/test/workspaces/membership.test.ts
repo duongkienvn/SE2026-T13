@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { WorkspaceRole } from '@kanban/shared';
+import { QueryObserver } from '@tanstack/react-query';
+import { updateWorkspacePolicies } from '../../src/features/workspaces/membership/mutations.ts';
+import { boardPolicyOptions } from '../../src/features/boards/members/queries.ts';
+import { deferred, flush } from '../auth/support.ts';
 import {
   createWorkspaceMembershipApi,
   normalizeRosterFilter,
@@ -53,6 +57,86 @@ const policies = {
 const signal = new AbortController().signal;
 const ok = (data: unknown, meta?: object) =>
   json({ success: true, statusCode: 200, message: 'OK', data, meta });
+
+for (const cached of [false, true])
+  test(`Workspace policy change refreshes a cancelled ${cached ? 'cached' : 'initial'} Board policy read`, async (t) => {
+    const env = await integration();
+    t.after(env.dispose);
+    const identity = env.identity;
+    const initial = deferred<Response>();
+    const fresh = deferred<Response>();
+    const previous = {
+      canInviteMembers: true,
+      canChangeMembership: true,
+      canChangeVisibility: true,
+    };
+    const changed = { ...previous, canInviteMembers: false };
+    let reads = 0;
+    env.respond((input, options) => {
+      const path = new URL(input).pathname;
+      if (path.endsWith('/policy-capabilities'))
+        return ++reads === 1 ? initial.promise : fresh.promise;
+      if (path === `/api/workspaces/${id}`)
+        return Promise.resolve(
+          ok({
+            ...workspace(),
+            id,
+            role: WorkspaceRole.ADMIN,
+            canManage: true,
+          }),
+        );
+      if (path === `/api/workspaces/${id}/policies`)
+        return Promise.resolve(
+          ok({
+            ...policies,
+            canManagePolicies: true,
+            ...(options.method === 'PATCH'
+              ? { boardInvitesEnabled: false }
+              : {}),
+          }),
+        );
+      return null;
+    });
+    env.data.resources.confirmBoard(BOARD, true, id);
+    const options = boardPolicyOptions(env.data, identity, BOARD);
+    if (cached) env.data.queryClient.setQueryData(options.queryKey, previous);
+    const observer = new QueryObserver(env.data.queryClient, options);
+    const stop = observer.subscribe(() => {});
+    t.after(stop);
+    try {
+      await flush();
+      assert.equal(reads, 1);
+      assert.equal(observer.getCurrentResult().fetchStatus, 'fetching');
+      await updateWorkspacePolicies(
+        env.data,
+        identity,
+        id,
+        { boardInvitesEnabled: false },
+        signal,
+      );
+      await flush();
+      assert.equal(
+        reads,
+        2,
+        'the cancelled read must be replaced with a fresh request',
+      );
+      if (cached) assert.deepEqual(observer.getCurrentResult().data, previous);
+      fresh.resolve(ok(changed));
+      await flush();
+      assert.equal(observer.getCurrentResult().status, 'success');
+      assert.deepEqual(observer.getCurrentResult().data, changed);
+      initial.resolve(ok(previous));
+      await flush();
+      assert.deepEqual(
+        observer.getCurrentResult().data,
+        changed,
+        'late cancelled policy must not overwrite the new policy',
+      );
+    } finally {
+      initial.resolve(ok(previous));
+      fresh.resolve(ok(changed));
+    }
+  });
 
 test('Workspace collaboration decoders allowlist member, Board association and policy fields', () => {
   assert.deepEqual(

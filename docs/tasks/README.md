@@ -97,6 +97,7 @@ chưa triển khai. Mục lục dưới đây liệt kê toàn bộ task documen
 
 ## Frontend tasks
 
+- [MOB-25 Native Board membership](frontend/mob-25-board-membership.md)
 - [MOB-24 Native Workspace invitations](frontend/mob-24-workspace-invitations.md)
 - [MOB-23 Native Workspace collaboration](frontend/mob-23-workspace-membership.md)
 - [MOB-21 Native Card attachments and private file safety](frontend/mob-21-attachments.md)

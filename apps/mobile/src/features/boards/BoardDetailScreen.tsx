@@ -589,6 +589,22 @@ function BoardContent({
                 );
             }}
           />
+          {board.currentUserRole && (
+            <Button
+              label="Board members"
+              variant="link"
+              disabled={!focused}
+              onPress={() => {
+                if (
+                  focused &&
+                  data.resources.readable(queryKeys.board(identity, boardId))
+                )
+                  router.push(
+                    destinationPath({ kind: 'boardMembers', boardId }),
+                  );
+              }}
+            />
+          )}
         </View>
       </View>
       {view === 'board' &&
