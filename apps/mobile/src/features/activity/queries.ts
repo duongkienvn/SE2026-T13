@@ -1,4 +1,4 @@
-import { queryOptions } from '@tanstack/react-query';
+import { CancelledError, queryOptions } from '@tanstack/react-query';
 import { ApiError } from '../../infrastructure/api/errors.ts';
 import {
   sameIdentity,
@@ -66,12 +66,20 @@ function cooldown(
   data: MobileDataLayer,
   identity: SessionIdentity,
   prefix: PrivateQueryKey,
+  queryKey: PrivateQueryKey,
 ) {
   const failures = scopeCooldowns(data, identity);
   const key = JSON.stringify(prefix);
   const failure = failures.get(key);
-  if (failure && !canRetryWorkspace(failure.error, failure.failedAt))
-    throw failure.error;
+  if (failure && !canRetryWorkspace(failure.error, failure.failedAt)) {
+    // Revert the attempted fetch, including an empty query's transient reset.
+    // A suppressed wake is not another HTTP failure or a new Retry-After start.
+    void data.queryClient.cancelQueries(
+      { queryKey, exact: true },
+      { revert: true },
+    );
+    throw new CancelledError({ revert: true });
+  }
   failures.delete(key);
 }
 
@@ -115,8 +123,8 @@ export function workspaceActivityOptions(
   return queryOptions({
     ...defaults,
     queryKey: activityPageKey(prefix, page, activityPageSize),
-    async queryFn({ signal }) {
-      cooldown(data, identity, prefix);
+    async queryFn({ signal, queryKey }) {
+      cooldown(data, identity, prefix, queryKey);
       const current = data.resources.capture(prefix, false);
       try {
         // Workspace detail itself requires explicit membership; a Board grant cannot substitute.
@@ -167,8 +175,8 @@ export function boardActivityOptions(
   return queryOptions({
     ...defaults,
     queryKey: activityPageKey(prefix, page, activityPageSize),
-    async queryFn({ signal }) {
-      cooldown(data, identity, prefix);
+    async queryFn({ signal, queryKey }) {
+      cooldown(data, identity, prefix, queryKey);
       const probeCurrent = data.resources.captureBoardProbe(boardId);
       let accessConfirmed = false;
       try {

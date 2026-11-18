@@ -277,3 +277,9 @@ verification; mock success does not prove them.
    and checks it before either detail or feed HTTP. The zero-data regression
    covers poll, focus, reconnect and recreated options; it failed before the
    fix. That case and the 20 Activity integration tests passed afterward.
+4. Verified suppressed polls rethrew the cached 429 as a new failure and shifted
+   `errorUpdatedAt`. Suppressed fetches now use TanStack's reverting
+   cancellation, restoring the prior state without emitting another error.
+   Empty/loaded regressions verify the same error and timestamp, no HTTP or
+   extra failure, and successful refetch at the original deadline. Both failed
+   before the fix; all three cooldown and 20 Activity integration tests passed.
