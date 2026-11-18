@@ -32,6 +32,7 @@ export function decodeBoard(value: unknown) {
     ),
     // A server hint only; the sample-removal preview decides eligibility.
     isStarterBoard: row.isStarterBoard === true,
+    createdById: workspaceId(row.createdById)!,
   };
 }
 
