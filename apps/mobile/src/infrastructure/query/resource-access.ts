@@ -129,6 +129,19 @@ export function createResourceAccess() {
           });
       };
     },
+    /** Aggregate reads learn their Board IDs only when the response arrives. */
+    captureBoardVersions() {
+      const versions = new Map(
+        [...boards].map(([id, board]) => [id, board.version]),
+      );
+      return (ids: Iterable<string>) => {
+        for (const id of ids)
+          if ((boards.get(id)?.version ?? 0) !== (versions.get(id) ?? 0))
+            throw new ApiError('session-changed', {
+              code: 'RESOURCE_ACCESS_CHANGED',
+            });
+      };
+    },
     bumpKey,
     readable,
     boardId,

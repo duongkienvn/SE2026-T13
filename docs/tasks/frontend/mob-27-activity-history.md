@@ -125,6 +125,10 @@ coalesced REST invalidation queue; socket payloads never become audit rows.
 Board detail denial revokes its resource grant. Board access/privacy/name/move
 hints also cancel and evict affected loaded Workspace Activity projections,
 including pages containing that Board. Unrelated Workspace feeds remain scoped.
+Workspace reads additionally capture Board epochs before HTTP and validate the
+Board IDs discovered in each response. A revoked Board cannot reappear through
+an in-flight page whose Workspace was unknown, even if a new grant arrives
+before that old response. Existing cancellation and eviction remain in place.
 
 There is no Workspace audit socket taxonomy. Workspace history polls only its
 focused online page every 30 seconds and rechecks on existing focus/reconnect
@@ -283,3 +287,9 @@ verification; mock success does not prove them.
    Empty/loaded regressions verify the same error and timestamp, no HTTP or
    extra failure, and successful refetch at the original deadline. Both failed
    before the fix; all three cooldown and 20 Activity integration tests passed.
+5. Verified an uncached, unknown-parent Board could reappear in a pending
+   Workspace response after revocation. Workspace response acceptance now
+   checks the Board epochs captured before the request independently of key
+   discovery. Both unknown-parent regressions failed before the fix and passed
+   afterward, including revoke/regrant; an unrelated-Board page remains valid.
+   All 93 focused Activity/realtime Node tests passed after this change.

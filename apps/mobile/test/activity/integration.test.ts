@@ -38,6 +38,75 @@ const ws = parseResourceId(workspaceId)!;
 const board = parseResourceId(boardId)!;
 const signal = new AbortController().signal;
 
+for (const restored of [false, true])
+  test(`unknown-Workspace Board revocation fences a pending activity response${restored ? ' even after a new grant' : ''}`, async (t) => {
+    const env = await setup();
+    t.after(env.dispose);
+    env.socket.server('connect');
+    const pending = deferred<Response>();
+    env.state.pending = pending.promise;
+    const options = workspaceActivityOptions(env.data, env.identity, ws, 1);
+    const read = env.data.queryClient
+      .fetchQuery(options)
+      .catch((error: unknown) => error);
+    await flush();
+    assert.equal(env.data.resources.boardWorkspace(board), undefined);
+    assert.deepEqual([...env.data.resources.trackedBoardIds()], []);
+    const request = env.requests.find((entry) =>
+      entry.url.includes('/activity?'),
+    )!;
+    env.socket.server('board:access-revoked', { boardId: board });
+    assert.equal(
+      request.init.signal?.aborted,
+      false,
+      'unknown parent cannot identify this request for cancellation',
+    );
+    if (restored) env.data.resources.confirmBoard(board, false, ws);
+    pending.resolve(
+      json(
+        page(
+          [
+            {
+              ...workspaceEvent(),
+              eventType: 'BOARD_MOVED',
+              board: { id: board, name: 'Revoked private context' },
+            },
+          ],
+          1,
+          20,
+        ),
+      ),
+    );
+    const result = await read;
+    assert.ok(result instanceof ApiError);
+    assert.equal(result.code, 'RESOURCE_ACCESS_CHANGED');
+    assert.equal(
+      env.data.queryClient.getQueryData(options.queryKey),
+      undefined,
+    );
+  });
+
+test('unknown Board revocation does not reject a pending Workspace page about another Board', async (t) => {
+  const env = await setup();
+  t.after(env.dispose);
+  env.socket.server('connect');
+  const pending = deferred<Response>();
+  env.state.pending = pending.promise;
+  const read = env.data.queryClient.fetchQuery(
+    workspaceActivityOptions(env.data, env.identity, ws, 1),
+  );
+  await flush();
+  env.socket.server('board:access-revoked', { boardId: board });
+  const row = {
+    ...workspaceEvent(),
+    eventType: 'BOARD_MOVED',
+    board: { id: uuid(999), name: 'Still authorized' },
+  };
+  pending.resolve(json(page([row], 1, 20)));
+  const result = await read;
+  assert.equal(result.data[0]?.board?.id, row.board.id);
+});
+
 async function setup() {
   const env = await integration();
   const state = {

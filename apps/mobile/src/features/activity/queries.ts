@@ -126,6 +126,7 @@ export function workspaceActivityOptions(
     async queryFn({ signal, queryKey }) {
       cooldown(data, identity, prefix, queryKey);
       const current = data.resources.capture(prefix, false);
+      const boardsCurrent = data.resources.captureBoardVersions();
       try {
         // Workspace detail itself requires explicit membership; a Board grant cannot substitute.
         const workspace = await createWorkspaceApi(data.api, identity).detail(
@@ -142,6 +143,9 @@ export function workspaceActivityOptions(
           workspaceId,
         ).list(page, workspace.role, signal);
         current();
+        boardsCurrent(
+          result.data.flatMap((row) => (row.board ? [row.board.id] : [])),
+        );
         return {
           ...result,
           name: workspace.name,
