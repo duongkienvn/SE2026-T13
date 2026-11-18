@@ -118,6 +118,7 @@ async function setup({
   override,
   seed,
   patch,
+  configureRealtime,
 } = {}) {
   mockScope = scope;
   mockFocus = true;
@@ -198,6 +199,7 @@ async function setup({
     createSocket: null,
     timers: time,
   });
+  configureRealtime?.(realtime, data);
   const navigation = createNavigationSessionAdapter(manager);
   const view = () => (
     <ThemeContext value={theme}>
@@ -231,6 +233,70 @@ async function setup({
     },
   };
 }
+
+test('a stopped checking room can retry through realtime without exposing activity', async () => {
+  let snapshot = {
+    status: 'checking',
+    canRead: false,
+    canWrite: false,
+    userIds: [],
+  };
+  const listeners = new Set();
+  let pending = deferred();
+  const retry = jest.fn(async () => {
+    if (!(await pending.promise))
+      throw new Error('Temporary verification failure');
+  });
+  const env = await setup({
+    scope: 'board',
+    configureRealtime: (realtime, data) => {
+      data.resources.fenceBoard(boardId);
+      realtime.getBoardSnapshot = () => snapshot;
+      realtime.subscribeBoards = (listener) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      };
+      realtime.watchBoard = () => () => {};
+      realtime.retryBoard = retry;
+    },
+  });
+  try {
+    const button = screen.getByRole('button', { name: 'Check Board access' });
+    expect(button.props.accessibilityState.disabled).toBe(false);
+    await fireEvent.press(button);
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Check Board access' }),
+    );
+    expect(retry).toHaveBeenCalledTimes(1);
+    expect(retry).toHaveBeenCalledWith(boardId);
+    expect(screen.queryByText('Someone updated a card')).toBeNull();
+    expect(env.calls.some((call) => call.path.endsWith('/activities'))).toBe(
+      false,
+    );
+    await act(() => pending.resolve(false));
+    expect(
+      screen.getByRole('button', { name: 'Check Board access' }).props
+        .accessibilityState.disabled,
+    ).toBe(false);
+    pending = deferred();
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Check Board access' }),
+    );
+    expect(retry).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText('Someone updated a card')).toBeNull();
+    await act(() => {
+      env.data.resources.confirmBoard(boardId, false, workspaceId);
+      snapshot = { ...snapshot, status: 'paused', canRead: true };
+      listeners.forEach((listener) => listener());
+      pending.resolve(true);
+    });
+    await waitFor(() =>
+      expect(screen.getByText('Someone updated a card')).toBeTruthy(),
+    );
+  } finally {
+    await env.dispose();
+  }
+});
 
 for (const scope of ['workspace', 'board'])
   for (const count of [0, 1, 20, 21, 501])

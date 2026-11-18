@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Stack, useIsFocused, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { SessionIdentity } from '../../infrastructure/api/session-client';
 import { useSessionSnapshot } from '../../infrastructure/auth/SessionProvider';
@@ -151,6 +151,21 @@ function BoardHistory(props: EntryProps) {
   const context = useHistoryScope(props, 'board');
   const { data, active, online, page, source } = context;
   const room = useBoardRealtime(props.id, active, true);
+  const retryPending = useRef(false);
+  const [retrying, setRetrying] = useState(false);
+  async function retryAccess() {
+    if (!active || !online || retryPending.current) return;
+    retryPending.current = true;
+    setRetrying(true);
+    try {
+      await realtime.retryBoard(props.id);
+    } catch {
+      // Verification failure keeps the existing access fence and retry control.
+    } finally {
+      retryPending.current = false;
+      setRetrying(false);
+    }
+  }
   const query = useQuery({
     ...boardActivityOptions(data, props.identity, props.id, page, () =>
       realtime.revokeBoard(props.id),
@@ -175,8 +190,9 @@ function BoardHistory(props: EntryProps) {
           action={
             <Button
               label="Check Board access"
-              disabled={!active || !online || room.status === 'checking'}
-              onPress={() => void query.refetch({ cancelRefetch: false })}
+              loading={retrying}
+              disabled={!active || !online || retrying}
+              onPress={() => void retryAccess()}
             />
           }
         />

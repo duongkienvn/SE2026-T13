@@ -255,3 +255,12 @@ order, gesture/system Back behavior, real reconnect timing, live PostgreSQL
 privacy filters, concurrent offset-page drift and cross-Web/Mobile access
 changes remain NOT VERIFIED. These require separate authorized native/live
 verification; mock success does not prove them.
+
+## PR review follow-up
+
+1. Verified a stopped `checking` room disabled its own recovery button. Board
+   Activity now tracks an actual in-flight manual retry, deduplicates presses,
+   and calls the existing bounded `realtime.retryBoard(boardId)` path. Rows
+   remain hidden while the room is checking or the resource fence is closed.
+   Regression: the focused `stopped checking room` component case failed before
+   the fix and passed afterward, including failed retry and subsequent recovery.
