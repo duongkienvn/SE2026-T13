@@ -380,10 +380,8 @@ export function createNativeRealtime(options: {
         return;
       }
       if (event === 'member:removed' && hint.userId === identity.userId) {
-        if (hint.retainsReadAccess !== true) {
-          rooms.revoke(hint.boardId!);
-          return;
-        }
+        // Removal is a hint, including retainsReadAccess. Suspend immediately;
+        // the same REST probe decides PRIVATE denial vs Workspace read-only.
         fenceGuestRosters(identity);
       }
       if (
@@ -417,6 +415,33 @@ export function createNativeRealtime(options: {
         event === 'notifications:changed' ||
         (hint.boardId && rooms.isLive(hint.boardId))
       ) {
+        if (hint.boardId && event.startsWith('member:')) {
+          const root = queryKeys.board(identity, hint.boardId);
+          // Membership hints do not invalidate unrelated comments/attachments.
+          void data.queryClient.invalidateQueries(
+            { queryKey: root, exact: true },
+            { cancelRefetch: false },
+          );
+          if (event === 'member:removed') {
+            const workspaceId = rooms.getSnapshot(hint.boardId).workspaceId;
+            const stale = [
+              queryKeys.members(identity, hint.boardId),
+              queryKeys.cards(identity, hint.boardId),
+              [...root, 'cards'] as const,
+              [...root, 'previews'] as const,
+              ...(workspaceId
+                ? [
+                    [
+                      ...queryKeys.workspace(identity, workspaceId),
+                      'guests',
+                    ] as const,
+                  ]
+                : []),
+            ];
+            for (const key of stale) data.cancelResourceRequests(key);
+            data.evict(identity, stale);
+          }
+        }
         void data
           .invalidateHints(
             identity,

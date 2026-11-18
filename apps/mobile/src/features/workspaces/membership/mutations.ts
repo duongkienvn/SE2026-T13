@@ -6,6 +6,7 @@ import {
   type SessionIdentity,
 } from '../../../infrastructure/api/session-client.ts';
 import type { MobileDataLayer } from '../../../infrastructure/query/data-layer.ts';
+import { queryKeys } from '../../../infrastructure/query/keys.ts';
 import type { ResourceId } from '../../../navigation/routes.ts';
 import type { WorkspaceSummary } from '../decoder.ts';
 import { isWorkspaceDenied } from '../queries.ts';
@@ -175,6 +176,19 @@ export function updateWorkspacePolicies(
         workspaceCollaborationKeys.policies(identity, id),
         result,
       );
+      // MOB-25: open Board sharing screens must re-read effective per-action policy.
+      const boardPolicies = [...data.resources.trackedBoardIds()]
+        .filter((boardId) => data.resources.boardWorkspace(boardId) === id)
+        .map(
+          (boardId) =>
+            [
+              ...queryKeys.board(identity, boardId),
+              'settings',
+              'policy',
+            ] as const,
+        );
+      for (const key of boardPolicies) data.cancelResourceRequests(key);
+      void data.invalidate(identity, boardPolicies).catch(() => undefined);
       return result;
     },
   );

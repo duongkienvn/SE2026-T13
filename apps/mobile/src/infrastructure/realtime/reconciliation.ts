@@ -107,6 +107,27 @@ export function hintTargets(
   if (event === 'card:updated' && hint.changeScope === 'checklists')
     return [queryKeys.checklists(identity, board, card!), ...previews];
   const result: PrivateQueryKey[] = [];
+  if (event.startsWith('member:')) {
+    const root = queryKeys.board(identity, board);
+    return [
+      queryKeys.members(identity, board),
+      [...root, 'membership-access'],
+      [...root, 'settings'],
+      queryKeys.boardLists(identity),
+      queryKeys.home(identity),
+      queryKeys.tasks(identity),
+      queryKeys.search(identity),
+      queryKeys.notifications(identity),
+      ...(workspaceId ? [queryKeys.workspace(identity, workspaceId)] : []),
+      ...(event === 'member:removed'
+        ? [
+            queryKeys.cards(identity, board),
+            [...root, 'cards'] as PrivateQueryKey,
+            [...root, 'previews'] as PrivateQueryKey,
+          ]
+        : []),
+    ];
+  }
   if (event.startsWith('card:'))
     result.push(
       queryKeys.cards(identity, board),
