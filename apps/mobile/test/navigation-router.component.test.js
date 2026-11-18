@@ -110,6 +110,12 @@ function routesFor(adapter) {
     '(private)/(tabs)/inbox': () => <Text>Inbox content</Text>,
     '(private)/search': () => <Text>Search content</Text>,
     '(private)/invitation': () => <Text>Invitation content</Text>,
+    '(private)/workspaces/[workspaceId]/activity': () => (
+      <Text>Workspace activity navigation fixture</Text>
+    ),
+    '(private)/boards/[boardId]/activity': () => (
+      <Text>Board activity navigation fixture</Text>
+    ),
     // This suite supplies only a navigation session, with no REST access grant.
     // The auth router integration exercises the actual Board and Card entries.
     '(private)/boards/[boardId]/cards/[cardId]': () => (
@@ -122,6 +128,24 @@ test('the production route directory can be resolved by Expo Router', () => {
   const config = getMockConfig('./src/app');
   expect(config.screens.__root.screens).toBeTruthy();
 });
+
+for (const path of [
+  '/workspaces/01234567-89ab-cdef-0123-456789abcdef/activity',
+  '/boards/01234567-89ab-cdef-0123-456789abcdef/activity',
+])
+  test(`${path} uses a pushed native stack with a working Back path`, async () => {
+    const adapter = createAdapter({
+      status: 'authenticated',
+      sessionKey: 'activity-test',
+    });
+    await renderRouter(routesFor(adapter), { initialUrl: '/boards' });
+    await waitFor(() => expect(screen).toHavePathname('/boards'));
+    await act(() => router.push(path));
+    await waitFor(() => expect(screen).toHavePathname(path));
+    expect(router.canGoBack()).toBe(true);
+    await act(() => router.back());
+    await waitFor(() => expect(screen).toHavePathname('/boards'));
+  });
 
 test('a canonical Card link remains protected and fails closed after authentication', async () => {
   const adapter = createAdapter({ status: 'unauthenticated' });
