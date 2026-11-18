@@ -589,6 +589,12 @@ function SettingsContent({
           )}
         </View>
       </Surface>
+      <Button
+        label="Board activity"
+        variant="secondary"
+        disabled={!ready || pending}
+        onPress={() => router.push(`/boards/${boardId}/activity`)}
+      />
       {(ownsActive || canRestore || sampleReview || sampleBlocked) && (
         <Surface>
           <View style={{ gap: spacing.sm }}>

@@ -18,10 +18,11 @@ export type WorkspaceSection = (typeof workspaceSections)[number];
 export const invitationRecipientPath = '/invitations/workspace';
 export type ResourcePath =
   | `/workspaces/${ResourceId}`
+  | `/workspaces/${ResourceId}/activity`
   | `/workspaces/${ResourceId}/${WorkspaceSection}`
   | `/boards/${ResourceId}`
   | `/boards/${ResourceId}/cards/${ResourceId}`
-  | `/boards/${ResourceId}/${'calendar' | 'table' | 'settings' | 'members'}`;
+  | `/boards/${ResourceId}/${'calendar' | 'table' | 'settings' | 'members' | 'activity'}`;
 export type DestinationPath =
   | `/${'home' | 'tasks' | 'boards' | 'inbox' | 'search' | 'settings' | 'invitation'}`
   | typeof invitationRecipientPath
@@ -31,6 +32,7 @@ export type Destination =
   | { kind: 'tab'; tab: 'home' | 'tasks' | 'boards' | 'inbox' }
   | { kind: 'workspaceInvitation' }
   | { kind: 'workspace'; workspaceId: ResourceId }
+  | { kind: 'workspaceActivity'; workspaceId: ResourceId }
   | {
       kind: 'workspaceSection';
       workspaceId: ResourceId;
@@ -41,6 +43,7 @@ export type Destination =
   | { kind: 'boardView'; boardId: ResourceId; view: 'calendar' | 'table' }
   | { kind: 'boardSettings'; boardId: ResourceId }
   | { kind: 'boardMembers'; boardId: ResourceId }
+  | { kind: 'boardActivity'; boardId: ResourceId }
   | { kind: 'screen'; screen: 'search' | 'settings' | 'invitation' };
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -71,6 +74,8 @@ export function parsePath(path: string): Destination | null {
   if (parts.length === 2 && parts[0] === 'workspaces' && resourceId)
     return { kind: 'workspace', workspaceId: resourceId };
   if (parts.length === 3 && parts[0] === 'workspaces' && resourceId) {
+    if (parts[2] === 'activity')
+      return { kind: 'workspaceActivity', workspaceId: resourceId };
     const section = workspaceSections.find((value) => value === parts[2]);
     if (section)
       return { kind: 'workspaceSection', workspaceId: resourceId, section };
@@ -84,6 +89,8 @@ export function parsePath(path: string): Destination | null {
       return { kind: 'boardSettings', boardId };
     if (parts.length === 3 && parts[2] === 'members')
       return { kind: 'boardMembers', boardId };
+    if (parts.length === 3 && parts[2] === 'activity')
+      return { kind: 'boardActivity', boardId };
     const cardId = parseResourceId(parts[3] ?? '');
     if (parts.length === 4 && parts[2] === 'cards' && cardId)
       return { kind: 'card', boardId, cardId };
@@ -101,6 +108,8 @@ export function destinationPath(destination: Destination): DestinationPath {
       return `/${destination.screen}`;
     case 'workspace':
       return `/workspaces/${destination.workspaceId}`;
+    case 'workspaceActivity':
+      return `/workspaces/${destination.workspaceId}/activity`;
     case 'workspaceSection':
       return `/workspaces/${destination.workspaceId}/${destination.section}`;
     case 'board':
@@ -113,6 +122,8 @@ export function destinationPath(destination: Destination): DestinationPath {
       return `/boards/${destination.boardId}/settings`;
     case 'boardMembers':
       return `/boards/${destination.boardId}/members`;
+    case 'boardActivity':
+      return `/boards/${destination.boardId}/activity`;
   }
 }
 

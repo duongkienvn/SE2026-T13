@@ -384,6 +384,16 @@ function VerifiedOverview({
                 }
               />
             ))}
+          <Button
+            label="Workspace activity"
+            variant="secondary"
+            disabled={!active || !online || detail.isFetching}
+            onPress={() =>
+              router.push(
+                destinationPath({ kind: 'workspaceActivity', workspaceId: id }),
+              )
+            }
+          />
           {overview.data && (
             <Surface>
               <Text style={[typography.strong, { color: c.text }]}>
