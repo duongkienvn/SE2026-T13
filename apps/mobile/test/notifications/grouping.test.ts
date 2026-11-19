@@ -14,6 +14,7 @@ test('Today/Yesterday use saved local calendar days across DST gap/fold rather t
   const cases = [
     ['2026-03-09T04:30:00Z', '2026-03-08T05:30:00Z'],
     ['2026-11-02T05:30:00Z', '2026-11-01T04:30:00Z'],
+    ['2026-11-02T04:30:00Z', '2026-11-01T03:30:00Z'],
   ];
   for (const [now, yesterday] of cases) {
     const groups = groupNotifications(

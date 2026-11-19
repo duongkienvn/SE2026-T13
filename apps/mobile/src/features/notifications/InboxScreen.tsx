@@ -89,14 +89,21 @@ function Inbox({ identity }: { identity: SessionIdentity }) {
     setNotice('');
     try {
       if (mutation.mustReview) await commands.review(inbox.filter);
-      else
-        await Promise.all([
+      else {
+        const [, countResult] = await Promise.all([
           data.queryClient.resetQueries({
             queryKey: inbox.options.queryKey,
             exact: true,
           }),
           unread.refetch({ cancelRefetch: false }),
         ]);
+        if (
+          countResult.isSuccess &&
+          data.queryClient.getQueryState(inbox.options.queryKey)?.status ===
+            'success'
+        )
+          commands.clearDefiniteError();
+      }
     } catch {
       /* Query/command stores expose safe recovery state. */
     }
@@ -302,9 +309,18 @@ function Inbox({ identity }: { identity: SessionIdentity }) {
           </View>
         )}
         {!!mutation.error && !mutation.mustReview && (
-          <Text accessibilityLiveRegion="polite" style={{ color: c.text }}>
-            {inboxErrorMessage(mutation.error)}
-          </Text>
+          <View style={{ gap: spacing.sm }}>
+            <Text accessibilityLiveRegion="polite" style={{ color: c.text }}>
+              {inboxErrorMessage(mutation.error)}
+            </Text>
+            {!!rows.length && !notice && !message && (
+              <Button
+                label="Refresh Inbox"
+                disabled={!canRefresh}
+                onPress={() => void refresh()}
+              />
+            )}
+          </View>
         )}
         {!!notice && (
           <View style={{ gap: spacing.sm }}>

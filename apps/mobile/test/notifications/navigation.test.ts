@@ -118,3 +118,33 @@ test('revoke during target fetch prevents a delayed grant from navigating or res
     env.dispose();
   }
 });
+
+test('a stale denial cannot revoke a newer authoritative Board grant', async () => {
+  const env = await integration();
+  try {
+    const response = deferred<Response>();
+    env.respond((url) =>
+      new URL(url).pathname === '/api/notifications'
+        ? Promise.resolve(json(page([notification()])))
+        : response.promise,
+    );
+    const request = verifyNotificationDestination(
+      env.data,
+      env.identity,
+      notification(),
+      { filter: 'all', page: 1 },
+      new AbortController().signal,
+    );
+    await flush();
+    env.data.resources.fenceBoard(boardId);
+    env.data.resources.confirmBoard(boardId, true, workspaceId);
+    const key = queryKeys.board(env.identity, boardId);
+    env.data.queryClient.setQueryData(key, { current: true });
+    response.resolve(json({}, 403));
+    await assert.rejects(request);
+    assert.equal(env.data.resources.readable(key), true);
+    assert.deepEqual(env.data.queryClient.getQueryData(key), { current: true });
+  } finally {
+    env.dispose();
+  }
+});

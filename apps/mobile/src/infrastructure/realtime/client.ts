@@ -14,7 +14,8 @@ import {
 } from './reconciliation.ts';
 import { parseHint } from './contracts.ts';
 import type { SocketFactory } from './socket.ts';
-import type { SessionIdentity } from '../api/session-client.ts';
+import { sameIdentity, type SessionIdentity } from '../api/session-client.ts';
+import type { InfiniteData } from '@tanstack/react-query';
 
 function crossWorkspaceKeys(identity: SessionIdentity): PrivateQueryKey[] {
   return [
@@ -51,6 +52,61 @@ export function createNativeRealtime(options: {
   const workspaceChecks = new Set<string>();
   let verificationTimer: unknown;
   let notificationTimer: unknown;
+  let notificationWait: (() => void) | undefined;
+  function queueNotificationRefresh(identity: SessionIdentity) {
+    if (
+      !sameIdentity(identity, data.getIdentity()) ||
+      notificationTimer !== undefined ||
+      notificationWait
+    )
+      return;
+    notificationTimer = timers.setTimeout(() => {
+      notificationTimer = undefined;
+      if (!sameIdentity(identity, data.getIdentity())) return;
+      const root = queryKeys.notifications(identity);
+      const fetching = () =>
+        data.queryClient
+          .getQueryCache()
+          .findAll({ queryKey: root })
+          .some((query) => query.state.fetchStatus === 'fetching');
+      if (fetching()) {
+        // A hint during a read gets one trailing refresh, never repeated aborts.
+        notificationWait = data.queryClient.getQueryCache().subscribe(() => {
+          if (fetching()) return;
+          const stop = notificationWait;
+          notificationWait = undefined;
+          stop?.();
+          queueNotificationRefresh(identity);
+        });
+        return;
+      }
+      for (const query of data.queryClient
+        .getQueryCache()
+        .findAll({ queryKey: [...root, 'list'] })) {
+        const previous = data.queryClient.getQueryData<InfiniteData<unknown>>(
+          query.queryKey,
+        );
+        if (
+          !Array.isArray(previous?.pages) ||
+          previous.pages.length <= 1 ||
+          !Array.isArray(previous.pageParams)
+        )
+          continue;
+        data.queryClient.setQueryData(
+          query.queryKey,
+          {
+            ...previous,
+            pages: previous.pages.slice(0, 1),
+            pageParams: previous.pageParams.slice(0, 1),
+          },
+          { updatedAt: query.state.dataUpdatedAt },
+        );
+      }
+      // Debouncing above supplies the hint window; the existing coordinator
+      // still owns session validation, active-query filtering and write holds.
+      void data.invalidate(identity, [root]).catch(() => undefined);
+    }, 200);
+  }
   let unsubscribeErrors: (() => void) | undefined;
   let unsubscribeDenied: (() => void) | undefined;
   let unsubscribeWorkspaceDenied: (() => void) | undefined;
@@ -94,6 +150,8 @@ export function createNativeRealtime(options: {
     }
   }
   function clearChecks() {
+    notificationWait?.();
+    notificationWait = undefined;
     if (notificationTimer !== undefined) timers.clearTimeout(notificationTimer);
     notificationTimer = undefined;
     accessEpoch++;
@@ -384,13 +442,7 @@ export function createNativeRealtime(options: {
       const identity = data.getIdentity();
       if (!hint || !identity) return;
       if (event === 'notifications:changed') {
-        if (notificationTimer === undefined)
-          notificationTimer = timers.setTimeout(() => {
-            notificationTimer = undefined;
-            void data
-              .invalidateHints(identity, [queryKeys.notifications(identity)])
-              .catch(() => undefined);
-          }, 150);
+        queueNotificationRefresh(identity);
         return;
       }
       if (hint.boardId && event.startsWith('board:'))

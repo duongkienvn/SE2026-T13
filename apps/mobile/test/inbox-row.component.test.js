@@ -7,6 +7,53 @@ import {
 import { ThemeContext } from '../src/ui';
 import { notification } from './notifications/fixtures';
 const preferences = { timeZone: 'UTC', dateFormat: 'YYYY-MM-DD' };
+let mockMetrics = { width: 390, height: 844, fontScale: 1, scale: 3 };
+jest.mock('react-native', () => {
+  const native = jest.requireActual('react-native');
+  return Object.create(Object.getPrototypeOf(native), {
+    ...Object.getOwnPropertyDescriptors(native),
+    useWindowDimensions: { value: () => mockMetrics },
+  });
+});
+test.each([320, 390, 768])(
+  'long native rows retain accessible actions at width %s and large font scale',
+  async (width) => {
+    mockMetrics = { ...mockMetrics, width, fontScale: 2 };
+    const item = notification(1, { summary: '長い通知 😀 '.repeat(60) });
+    const mark = jest.fn();
+    await render(
+      <NotificationRow
+        item={item}
+        preferences={preferences}
+        onOpen={jest.fn()}
+        onRead={mark}
+        disabled={false}
+      />,
+    );
+    expect(screen.getByText(item.summary)).toBeTruthy();
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Mark as read: ' + item.summary }),
+    );
+    expect(mark).toHaveBeenCalledWith(item);
+    mockMetrics = { ...mockMetrics, fontScale: 1 };
+  },
+);
+test('an actionable row exposes the exact absolute server instant to screen readers', async () => {
+  const item = notification(1, { createdAt: '2026-11-19T01:00:12.345Z' });
+  await render(
+    <NotificationRow
+      item={item}
+      preferences={preferences}
+      onOpen={jest.fn()}
+      onRead={jest.fn()}
+      disabled={false}
+    />,
+  );
+  expect(
+    screen.getByRole('button', { name: /Open notification:/ }).props
+      .accessibilityLabel,
+  ).toContain(item.createdAt);
+});
 test.each(['light', 'dark'])(
   'all six native kinds and plain Unicode summaries are accessible in %s',
   async (theme) => {

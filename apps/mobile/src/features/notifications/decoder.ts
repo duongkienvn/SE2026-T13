@@ -162,10 +162,9 @@ export function decodeList(value: unknown) {
   for (let i = 1; i < rows.length; i++) {
     const previous = rows[i - 1]!,
       current = rows[i]!;
-    if (
-      Date.parse(previous.createdAt) < Date.parse(current.createdAt) ||
-      (previous.createdAt === current.createdAt && previous.id <= current.id)
-    )
+    // PostgreSQL orders microseconds which are truncated by Date.toISOString().
+    // Equal wire instants do not prove equal database timestamps; keep server order.
+    if (Date.parse(previous.createdAt) < Date.parse(current.createdAt))
       throw invalidResponse(200);
   }
   return rows;

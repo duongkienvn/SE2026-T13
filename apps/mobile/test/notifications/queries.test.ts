@@ -73,7 +73,10 @@ test('0/1/20/21/100+ pages validate requested windows, sorting and unread filter
     }
     for (const bad of [
       page([notification()], 2),
-      page([notification(1), notification(2)]),
+      page([
+        notification(1, { createdAt: '2026-11-18T00:00:00Z' }),
+        notification(2),
+      ]),
       page([notification(1, { readAt: '2026-11-19T02:00:00Z' })]),
     ]) {
       response = bad;

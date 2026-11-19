@@ -2,11 +2,19 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   decodeNotification,
+  decodeList,
   decodeCount,
   decodeReadAll,
   notificationDestination,
 } from '../../src/features/notifications/decoder.ts';
 import { notification, proof } from './fixtures.ts';
+test('server ordering survives millisecond serialization of distinct PostgreSQL microsecond instants', () => {
+  const rows = [notification(1), notification(2)];
+  assert.deepEqual(
+    decodeList(rows).map(({ id }) => id),
+    rows.map(({ id }) => id),
+  );
+});
 test('canonical DTOs keep only allowed fields and sanitize unavailable and deleted actors before cache insertion', () => {
   const value = notification();
   assert.deepEqual(decodeNotification({ ...value, secret: 'private' }), value);

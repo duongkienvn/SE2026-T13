@@ -344,6 +344,17 @@ test('one-row 404 refreshes owned history without declaring the whole Inbox unau
         queryKeys.board(env.data.getIdentity(), boardId),
       ),
     ).toBe(true);
+    await screen.findByText(
+      'That notification is no longer available. Refresh your Inbox.',
+    );
+    await press('Refresh Inbox');
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          'That notification is no longer available. Refresh your Inbox.',
+        ),
+      ).toBeNull(),
+    );
   } finally {
     await env.dispose();
   }
@@ -543,6 +554,75 @@ test('401 removes authenticated Inbox and cancels protected reads', async () => 
   try {
     await waitFor(() => expect(screen.queryByText('Inbox')).toBeNull());
     expect(env.manager.getSnapshot().status).not.toBe('authenticated');
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('partial pagination failure retains loaded rows and retries only the requested page', async () => {
+  const rows = Array.from({ length: 21 }, (_, n) =>
+    notification(300 - n, { summary: 'Page item ' + n }),
+  );
+  let fail = true;
+  const env = await setup(rows, (url) =>
+    url.pathname === '/api/notifications' &&
+    url.searchParams.get('page') === '2' &&
+    fail
+      ? wire({}, 500)
+      : null,
+  );
+  try {
+    await screen.findByText('Page item 0');
+    await press('Load more notifications');
+    await screen.findByText(
+      'Couldn’t load the next page. Your loaded notifications are below.',
+    );
+    expect(screen.getByText('Page item 0')).toBeTruthy();
+    fail = false;
+    await press('Retry load more');
+    await screen.findByText('Page item 20');
+    expect(
+      env.requests.filter((r) => r.url.searchParams.get('page') === '2'),
+    ).toHaveLength(2);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('preference failure falls back to UTC and local calendar labels advance at midnight without refetch', async () => {
+  jest.useFakeTimers();
+  jest.setSystemTime(new Date('2026-11-19T23:59:30Z'));
+  const env = await setup([notification()], (url) =>
+    url.pathname === '/api/users/me/preferences' ? wire({}, 500) : null,
+  );
+  try {
+    await screen.findByRole('header', { name: 'Today' });
+    expect(screen.getByText('Dates in UTC')).toBeTruthy();
+    const before = env.requests.length;
+    await act(() => jest.advanceTimersByTimeAsync(30_001));
+    expect(screen.getByRole('header', { name: 'Yesterday' })).toBeTruthy();
+    expect(env.requests).toHaveLength(before);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('saved timezone and date format determine grouping and time independently of the device', async () => {
+  const env = await setup(
+    [notification(1, { createdAt: '2026-11-19T01:00:00Z' })],
+    (url) =>
+      url.pathname === '/api/users/me/preferences'
+        ? wire({ timeZone: 'America/New_York', dateFormat: 'DD/MM/YYYY' })
+        : null,
+    'light',
+  );
+  try {
+    await screen.findByText('Dates in America/New_York');
+    expect(screen.getByText('18/11/2026 · 20:00')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: /Open notification:/ }).props
+        .accessibilityLabel,
+    ).toContain('UTC−05:00');
   } finally {
     await env.dispose();
   }

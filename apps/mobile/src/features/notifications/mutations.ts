@@ -96,6 +96,7 @@ function createCommands(data: MobileDataLayer, identity: SessionIdentity) {
               [
                 'timeout',
                 'network',
+                'offline',
                 'invalid-response',
                 'aborted',
                 'session-changed',
@@ -110,6 +111,14 @@ function createCommands(data: MobileDataLayer, identity: SessionIdentity) {
   }
   return {
     getSnapshot: () => state,
+    clearDefiniteError() {
+      if (
+        !state.pending &&
+        !state.mustReview &&
+        canRetryWorkspace(state.error, state.errorUpdatedAt)
+      )
+        publish({ error: null });
+    },
     subscribe(listener: () => void) {
       listeners.add(listener);
       return () => {

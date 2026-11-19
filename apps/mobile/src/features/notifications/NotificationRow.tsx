@@ -62,6 +62,7 @@ export function NotificationRow({
             ? 'Workspace update'
             : '';
   const time = notificationTime(item.createdAt, preferences);
+  const exactTime = `${time.absolute}. Server timestamp ${item.createdAt}`;
   const unread = item.readAt === null;
   const canOpen = !!notificationDestination(item);
   const icon =
@@ -72,6 +73,8 @@ export function NotificationRow({
     <View style={{ flexDirection: 'row', gap: spacing.sm, flex: 1 }}>
       <View
         accessible={false}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
         style={{
           width: 36,
           height: 36,
@@ -117,7 +120,7 @@ export function NotificationRow({
           </Text>
         )}
         <Text
-          accessibilityLabel={`${time.absolute}. Server timestamp ${item.createdAt}`}
+          accessibilityLabel={exactTime}
           style={[typography.supporting, { color: c.textSecondary }]}
         >
           {time.short}
@@ -156,7 +159,7 @@ export function NotificationRow({
       {canOpen ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Open notification: ${unread ? 'Unread. ' : ''}${label}. ${actor ? (actor.isDeleted ? 'Deleted user' : actor.displayName) + '. ' : ''}${item.summary}. ${scope}. ${time.absolute}`}
+          accessibilityLabel={`Open notification: ${unread ? 'Unread. ' : ''}${label}. ${actor ? (actor.isDeleted ? 'Deleted user' : actor.displayName) + '. ' : ''}${item.summary}. ${scope}. ${exactTime}`}
           accessibilityState={{ disabled, busy: opening }}
           disabled={disabled}
           onPress={() => onOpen(item)}
