@@ -28,6 +28,7 @@ import {
 import { results, cardHit } from './search/fixtures';
 import { uuid } from './workspaces/fixtures';
 import { ApiError } from '../src/infrastructure/api/errors';
+import { queryKeys } from '../src/infrastructure/query/keys';
 
 const mockNavigate = jest.fn();
 let mockFocused = true;
@@ -443,6 +444,122 @@ test('pagination failure keeps verified rows and explicit retry recovers without
     expect(
       env.requests.filter((r) => r.url.searchParams.get('page') === '2'),
     ).toHaveLength(2);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('route blur cancels a pending search and Back preserves query/type while verifying results again', async () => {
+  jest.useFakeTimers();
+  let finish;
+  let pending = false;
+  const deferred = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const env = await setup(
+    (url) => (url.pathname === '/api/search' && pending ? deferred : null),
+    'light',
+  );
+  try {
+    await fireEvent.press(screen.getByRole('button', { name: 'Cards' }));
+    await enter('design');
+    await screen.findByText('Design card');
+    pending = true;
+    await enter('slow');
+    mockFocused = false;
+    await env.rerender();
+    const request = env.requests.find(
+      (r) => r.url.searchParams.get('q') === 'slow',
+    );
+    expect(request.init.signal.aborted).toBe(true);
+    await act(async () => finish(wire(results('cards', 'slow'))));
+    expect(screen.queryByText('Design card')).toBeNull();
+    pending = false;
+    mockFocused = true;
+    await env.rerender();
+    await screen.findByText('Design card');
+    expect(input().props.value).toBe('slow');
+    expect(
+      screen.getByRole('button', { name: 'Cards · 1' }).props.accessibilityState
+        .selected,
+    ).toBe(true);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('ACL eviction hides rows during revalidation and blocks a pending result tap', async () => {
+  let finish;
+  let revoked = false;
+  const pending = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const env = await setup((url) =>
+    url.pathname.startsWith('/api/boards/')
+      ? pending
+      : url.pathname === '/api/search' && revoked
+        ? pending
+        : null,
+  );
+  try {
+    await enter('design');
+    await screen.findByText('Design card');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Open Design card, Design board' }),
+    );
+    revoked = true;
+    await act(() =>
+      env.data.evict(env.data.getIdentity(), [
+        queryKeys.search(env.data.getIdentity()),
+      ]),
+    );
+    expect(
+      env.data.queryClient
+        .getQueryCache()
+        .findAll({ queryKey: queryKeys.search(env.data.getIdentity()) })
+        .every((query) => query.state.data === undefined),
+    ).toBe(true);
+    await waitFor(() => expect(screen.queryByText('Design card')).toBeNull());
+    await act(async () =>
+      finish(
+        wire({
+          id: cardHit.boardId,
+          workspaceId: cardHit.workspaceId,
+          isArchived: false,
+          capabilities: { canReadBoard: true, canWriteBoard: true },
+        }),
+      ),
+    );
+    expect(mockNavigate).not.toHaveBeenCalled();
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('account switch clears input/type and old protected responses cannot return', async () => {
+  let finish;
+  const pending = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const env = await setup((url) =>
+    url.pathname === '/api/search' ? pending : null,
+  );
+  try {
+    await fireEvent.press(screen.getByRole('button', { name: 'Cards' }));
+    await enter('private');
+    await act(() => env.manager.establishSession(loginResponse(USER_B)));
+    expect(input().props.value).toBe('');
+    expect(
+      screen.getByRole('button', { name: 'All' }).props.accessibilityState
+        .selected,
+    ).toBe(true);
+    await act(async () => finish(wire(results('cards', 'private'))));
+    expect(screen.queryByText('Design card')).toBeNull();
+    expect(
+      env.data.queryClient
+        .getQueryCache()
+        .findAll({ queryKey: ['mobile', 'private', USER_A] }),
+    ).toHaveLength(0);
   } finally {
     await env.dispose();
   }
