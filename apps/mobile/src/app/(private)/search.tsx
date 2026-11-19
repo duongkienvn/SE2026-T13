@@ -1,4 +1,1 @@
-import { Scaffold } from '../../navigation/scaffold';
-export default function Search() {
-  return <Scaffold title="Search" header />;
-}
+export { SearchScreen as default } from '../../features/search/SearchScreen';
