@@ -54,6 +54,7 @@ function SearchContent({ identity }: { identity: SessionIdentity }) {
   const usable =
     eligible &&
     current &&
+    !search.pagesChanged &&
     !denied &&
     query.isFetchedAfterMount &&
     !query.isRefetching &&
@@ -143,15 +144,18 @@ function SearchContent({ identity }: { identity: SessionIdentity }) {
   }
   const message = !online
     ? 'You’re offline. Reconnect to search.'
-    : query.isError && current
-      ? searchErrorMessage(query.error, query.isFetchNextPageError)
-      : '';
+    : !search.endpointReady
+      ? 'Too many requests. Wait before trying again.'
+      : query.isError && current
+        ? searchErrorMessage(query.error, query.isFetchNextPageError)
+        : '';
   return (
     <SafeAreaView
       edges={['left', 'right', 'bottom']}
       style={{ flex: 1, backgroundColor: c.background }}
     >
       <ScrollView
+        automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         contentContainerStyle={{ padding: spacing.xl, gap: spacing.lg }}
@@ -171,7 +175,7 @@ function SearchContent({ identity }: { identity: SessionIdentity }) {
             search.input ? (
               <Button
                 label="Clear search"
-                variant="ghost"
+                variant="link"
                 onPress={() => change('')}
               />
             ) : undefined

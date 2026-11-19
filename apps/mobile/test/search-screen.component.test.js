@@ -341,7 +341,8 @@ test('429 respects Retry-After across focus transitions and retries after the co
     expect(env.requests).toHaveLength(count);
     limited = false;
     await act(() => jest.advanceTimersByTimeAsync(270_000));
-    await fireEvent.press(screen.getByRole('button', { name: 'Retry search' }));
+    const retry = screen.queryByRole('button', { name: 'Retry search' });
+    if (retry) await fireEvent.press(retry);
     await screen.findByText('Design card');
   } finally {
     await env.dispose();
@@ -590,4 +591,144 @@ test('a failed target probe offers a working search retry instead of a dead-end 
   } finally {
     await env.dispose();
   }
+});
+
+test('query edits, type changes and clearing cannot bypass the Search endpoint cooldown', async () => {
+  jest.useFakeTimers();
+  const env = await setup((url) =>
+    url.pathname === '/api/search' ? wire({}, 429, '300') : null,
+  );
+  try {
+    await enter('design');
+    await screen.findByRole('button', { name: 'Retry search' });
+    const count = env.requests.length;
+    await enter('another');
+    await fireEvent.press(screen.getByRole('button', { name: 'Cards' }));
+    await act(() => jest.advanceTimersByTimeAsync(250));
+    await fireEvent.press(screen.getByRole('button', { name: 'Clear search' }));
+    await enter('design');
+    await act(() => jest.advanceTimersByTimeAsync(1000));
+    expect(env.requests).toHaveLength(count);
+    expect(screen.getByRole('button', { name: 'Retry search' })).toBeDisabled();
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('shrinking page totals hide obsolete rows and reload from page one before displaying results', async () => {
+  let first = true;
+  let finish;
+  const pending = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const env = await setup((url) => {
+    if (url.pathname !== '/api/search') return null;
+    const value = results('cards', url.searchParams.get('q'));
+    if (url.searchParams.get('page') === '2') {
+      value.groups.cards.items = [];
+      return wire(value);
+    }
+    if (!first) return pending;
+    first = false;
+    value.groups.cards = {
+      total: 21,
+      hasMore: true,
+      items: Array.from({ length: 20 }, (_, i) => ({
+        ...cardHit,
+        id: uuid(i),
+        title: 'Obsolete ' + i,
+        path: `/boards/${cardHit.boardId}/cards/${uuid(i)}`,
+      })),
+    };
+    return wire(value);
+  });
+  try {
+    await fireEvent.press(screen.getByRole('button', { name: 'Cards' }));
+    await enter('design');
+    await screen.findByText('Obsolete 0');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Load more results' }),
+    );
+    await waitFor(() => expect(screen.queryByText('Obsolete 0')).toBeNull());
+    await act(async () => finish(wire(results('cards'))));
+    await screen.findByText('Design card');
+    expect(
+      env.requests
+        .filter((r) => r.url.pathname === '/api/search')
+        .map((r) => r.url.searchParams.get('page')),
+    ).toEqual(['1', '2', '1']);
+    expect(screen.queryByText('Obsolete 19')).toBeNull();
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('a page cooldown cannot revive pre-blur rows without a new authorized read', async () => {
+  jest.useFakeTimers();
+  const env = await setup((url) => {
+    if (url.pathname !== '/api/search') return null;
+    if (url.searchParams.get('page') === '2') return wire({}, 429, '300');
+    const value = results('cards', url.searchParams.get('q'));
+    value.groups.cards = {
+      total: 21,
+      hasMore: true,
+      items: Array.from({ length: 20 }, (_, i) => ({
+        ...cardHit,
+        id: uuid(i),
+        title: 'Previous ' + i,
+        path: `/boards/${cardHit.boardId}/cards/${uuid(i)}`,
+      })),
+    };
+    return wire(value);
+  });
+  try {
+    await fireEvent.press(screen.getByRole('button', { name: 'Cards' }));
+    await enter('design');
+    await screen.findByText('Previous 0');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Load more results' }),
+    );
+    await screen.findByRole('button', { name: 'Retry load more' });
+    mockFocused = false;
+    await env.rerender();
+    mockFocused = true;
+    await env.rerender();
+    expect(screen.queryByText('Previous 0')).toBeNull();
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('401 ends only the matching session and removes protected Search UI', async () => {
+  const env = await setup((url) =>
+    url.pathname === '/api/search' ? wire({}, 401) : null,
+  );
+  try {
+    await enter('design');
+    await waitFor(() =>
+      expect(
+        screen.queryByLabelText('Search workspaces, boards and cards'),
+      ).toBeNull(),
+    );
+    expect(env.manager.getSnapshot().status).not.toBe('authenticated');
+    expect(screen.queryByText('Design card')).toBeNull();
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('abandoning Search cancels its request even if the transport ignores abort', async () => {
+  let finish;
+  const pending = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const env = await setup((url) =>
+    url.pathname === '/api/search' ? pending : null,
+  );
+  await enter('design');
+  const request = env.requests.find((r) => r.url.pathname === '/api/search');
+  await env.dispose();
+  expect(request.init.signal.aborted).toBe(true);
+  await act(async () => finish(wire(results())));
+  expect(mockNavigate).not.toHaveBeenCalled();
 });

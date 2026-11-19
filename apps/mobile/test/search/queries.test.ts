@@ -9,6 +9,7 @@ import {
 import { searchRequest } from '../../src/features/search/input.ts';
 import { queryKeys } from '../../src/infrastructure/query/keys.ts';
 import { integration, json, ok } from '../realtime/integration-support.ts';
+import { deferred, flush } from '../auth/support.ts';
 import { results, cardHit } from './fixtures.ts';
 
 test('Search API uses the envelope data and omits page in All; blank skips network', async () => {
@@ -83,6 +84,74 @@ test('aggregate denial drops all search snapshots', async () => {
       env.data.queryClient.getQueryData(options.queryKey),
       undefined,
     );
+  } finally {
+    env.dispose();
+  }
+});
+
+test('endpoint Retry-After survives query cache eviction without restarting its deadline', async (t) => {
+  const env = await integration();
+  let now = 1000;
+  t.mock.method(Date, 'now', () => now);
+  try {
+    env.respond(() =>
+      Promise.resolve(
+        new Response('{}', {
+          status: 429,
+          headers: { 'content-type': 'application/json', 'retry-after': '300' },
+        }),
+      ),
+    );
+    await assert.rejects(
+      env.data.queryClient.fetchInfiniteQuery(
+        searchOptions(env.data, env.identity, 'design', 'all'),
+      ),
+    );
+    const before = env.requests.length;
+    env.data.evict(env.identity, [queryKeys.search(env.identity)]);
+    now += 30_000;
+    await assert.rejects(
+      env.data.queryClient.fetchInfiniteQuery(
+        searchOptions(env.data, env.identity, 'different', 'cards'),
+      ),
+      (error: unknown) => {
+        assert.ok(
+          error && typeof error === 'object' && 'retryAfterMs' in error,
+        );
+        assert.equal(error.retryAfterMs, 270_000);
+        return true;
+      },
+    );
+    assert.equal(env.requests.length, before);
+    now += 270_000;
+    env.respond(() => Promise.resolve(ok(results('cards', 'different'))));
+    await env.data.queryClient.fetchInfiniteQuery(
+      searchOptions(env.data, env.identity, 'different', 'cards'),
+    );
+    assert.equal(env.requests.length, before + 1);
+  } finally {
+    env.dispose();
+  }
+});
+
+test('an old aggregate denial cannot evict a newer authoritative Search snapshot', async () => {
+  const env = await integration();
+  try {
+    const response = deferred<Response>();
+    env.respond(() => response.promise);
+    const first = env.data.queryClient
+      .fetchInfiniteQuery(
+        searchOptions(env.data, env.identity, 'design', 'all'),
+      )
+      .catch(() => undefined);
+    await flush();
+    env.data.resources.bumpKey(queryKeys.search(env.identity));
+    const key = searchOptions(env.data, env.identity, 'newer', 'all').queryKey;
+    const latest = { pages: [results('all', 'newer')], pageParams: [1] };
+    env.data.queryClient.setQueryData(key, latest);
+    response.resolve(json({}, 403));
+    await first;
+    assert.deepEqual(env.data.queryClient.getQueryData(key), latest);
   } finally {
     env.dispose();
   }

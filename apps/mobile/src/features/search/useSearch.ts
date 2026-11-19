@@ -2,7 +2,10 @@ import type { GlobalSearchType } from '@kanban/shared';
 import { focusManager, useInfiniteQuery } from '@tanstack/react-query';
 import { useIsFocused } from 'expo-router';
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import type { SessionIdentity } from '../../infrastructure/api/session-client';
+import {
+  sameIdentity,
+  type SessionIdentity,
+} from '../../infrastructure/api/session-client';
 import { useMobileData } from '../../infrastructure/query/DataProvider';
 import { queryKeys } from '../../infrastructure/query/keys';
 import {
@@ -11,7 +14,7 @@ import {
   useWorkspaceRetryReady,
 } from '../workspaces/status';
 import { searchInput } from './input';
-import { searchOptions } from './queries';
+import { searchOptions, searchCooldown, searchPagesChanged } from './queries';
 
 const subscribeFocus = focusManager.subscribe.bind(focusManager);
 const isForeground = () => focusManager.isFocused();
@@ -39,14 +42,25 @@ export function useSearch(identity: SessionIdentity) {
     validation.error ? '' : validation.query,
     type,
   );
+  const cooldown = searchCooldown(data, identity);
+  const endpointReady = useWorkspaceRetryReady(
+    cooldown?.error,
+    cooldown?.updatedAt ?? 0,
+  );
   const query = useInfiniteQuery({
     ...options,
     enabled: ({ state }) =>
       eligible &&
       current &&
+      endpointReady &&
       canRetryWorkspace(state.error, state.errorUpdatedAt),
   });
-  const retryReady = useWorkspaceRetryReady(query.error, query.errorUpdatedAt);
+  const queryRetryReady = useWorkspaceRetryReady(
+    query.error,
+    query.errorUpdatedAt,
+  );
+  const retryReady = endpointReady && queryRetryReady;
+  const pagesChanged = searchPagesChanged(query.data?.pages ?? []);
 
   function change(text: string, nextType = type) {
     const next = searchInput(text);
@@ -82,14 +96,26 @@ export function useSearch(identity: SessionIdentity) {
     return () => clearTimeout(timer);
   }, [validation.query, validation.error, type, current]);
   useEffect(() => {
-    if (!eligible)
-      void data.queryClient.cancelQueries({
-        queryKey: queryKeys.search(identity),
-      });
-    else if (current && canRetryWorkspace(query.error, query.errorUpdatedAt))
+    if (!eligible && sameIdentity(identity, data.getIdentity()))
+      data.evict(identity, [queryKeys.search(identity)]);
+    else if (current && retryReady)
       void query.refetch({ cancelRefetch: false });
     // Route/foreground/reconnect transitions require a fresh authoritative read.
   }, [eligible]);
+  useEffect(() => {
+    if (pagesChanged && eligible && current && retryReady && !query.isFetching)
+      void data.queryClient
+        .resetQueries({ queryKey: options.queryKey, exact: true })
+        .catch(() => undefined);
+  }, [
+    pagesChanged,
+    eligible,
+    current,
+    retryReady,
+    query.isFetching,
+    data,
+    query.data,
+  ]);
   useEffect(
     () => () => {
       void data.queryClient.cancelQueries({
@@ -110,5 +136,7 @@ export function useSearch(identity: SessionIdentity) {
     eligible,
     online,
     retryReady,
+    pagesChanged,
+    endpointReady,
   };
 }

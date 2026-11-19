@@ -21,7 +21,8 @@ function text(value: unknown, max: number, allowEmpty = false) {
     typeof value !== 'string' ||
     (!allowEmpty && !value.trim()) ||
     [...value].length > max ||
-    /[\u0000\uD800-\uDFFF]/u.test(value)
+    value.includes('\0') ||
+    /[\uD800-\uDFFF]/u.test(value)
   )
     throw invalidResponse(200);
   return value;
