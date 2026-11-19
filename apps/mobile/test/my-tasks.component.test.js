@@ -182,8 +182,11 @@ async function setup(rows = [row(1)], override) {
             success: true,
             statusCode: 200,
             message: 'OK',
-            data: [{ id: uuid(42), boardId, name: 'Review', color: '#336699' }],
-            meta: { page: 1, limit: 100, total: 1, totalPages: 1 },
+            data: [
+              { id: uuid(42), boardId, name: 'Review', color: '#336699' },
+              { id: uuid(43), boardId, name: 'Design', color: '#336699' },
+            ],
+            meta: { page: 1, limit: 100, total: 2, totalPages: 1 },
           });
         return wire({}, 404);
       },
@@ -417,6 +420,7 @@ test('filter sheet sends Board labels with OR, saved-zone civil dates and server
     await press('Filter and sort tasks');
     await press('Board 1');
     await press('Review');
+    await press('Design');
     await press('Due from: Any date');
     await act(() =>
       DateTimePickerAndroid.open.mock.calls
@@ -440,7 +444,7 @@ test('filter sheet sends Board labels with OR, saved-zone civil dates and server
         limit: '20',
         sort: 'updatedAt',
         boardId,
-        labelIds: uuid(42),
+        labelIds: [uuid(42), uuid(43)].join(','),
         dueFrom: '2026-03-08T05:00:00.000Z',
         dueTo: '2026-03-09T04:00:00.000Z',
       });
@@ -498,6 +502,157 @@ test('filter Back guards unsaved changes and rejects inverted due days before a 
     await press('Cancel');
     await press('Discard changes');
     expect(screen.queryByTestId('task-modal')).toBeNull();
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('an empty server result has real zero badges and offline state hides cached task rows', async () => {
+  const env = await setup([]);
+  try {
+    await screen.findByText('No assigned tasks match these filters.');
+    expect(screen.getByRole('button', { name: 'All · 0' })).toBeTruthy();
+    expect(
+      screen.queryByRole('button', { name: 'Load more tasks' }),
+    ).toBeNull();
+  } finally {
+    await env.dispose();
+  }
+  const next = await setup([row(1)]);
+  try {
+    await screen.findByText('Task 1');
+    await act(() => onlineManager.setOnline(false));
+    await screen.findByText('You’re offline. Reconnect to load your tasks.');
+    expect(screen.queryByText('Task 1')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Retry tasks' })).toBeDisabled();
+    await act(() => onlineManager.setOnline(true));
+    await screen.findByText('Task 1');
+  } finally {
+    await next.dispose();
+  }
+});
+
+test.each([400, 401, 403, 404, 503])(
+  'a background task read returning %s suppresses the private cached rows',
+  async (status) => {
+    let fail = false;
+    const env = await setup([row(1)], (url) =>
+      fail && url.pathname.endsWith('/tasks') ? wire({}, status) : null,
+    );
+    try {
+      await screen.findByText('Task 1');
+      fail = true;
+      await fireEvent(screen.getByTestId('task-refresh'), 'touchEnd');
+      await waitFor(() => expect(screen.queryByText('Task 1')).toBeNull());
+      expect(mockNavigate).not.toHaveBeenCalled();
+      if (status === 401)
+        expect(env.manager.getSnapshot().status).toBe('unauthenticated');
+    } finally {
+      await env.dispose();
+    }
+  },
+);
+
+test('revoked Board labels stay unavailable and cannot apply a stale label filter', async () => {
+  const env = await setup([row(1)], (url) =>
+    url.pathname.endsWith('/labels') ? wire({}, 403) : null,
+  );
+  try {
+    await screen.findByText('Task 1');
+    await press('Filter and sort tasks');
+    await press('Board 1');
+    await screen.findByText(
+      'Labels are unavailable for this Board. Clear labels to continue.',
+    );
+    expect(screen.queryByRole('button', { name: 'Review' })).toBeNull();
+    await press('All boards');
+    await press('Apply filters');
+    expect(
+      env.requests
+        .filter(({ url }) => url.pathname.endsWith('/tasks'))
+        .at(-1)
+        .url.searchParams.get('labelIds'),
+    ).toBeNull();
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('a paginated label catalog retains a later-page selection when reopening filters', async () => {
+  const labels = Array.from({ length: 101 }, (_, index) => ({
+    id: uuid(1000 + index),
+    boardId,
+    name: 'Catalog label ' + index,
+    color: '#336699',
+  }));
+  const env = await setup([row(1)], (url) => {
+    if (!url.pathname.endsWith('/labels')) return null;
+    const page = Number(url.searchParams.get('page'));
+    return wire({
+      success: true,
+      statusCode: 200,
+      message: 'OK',
+      data: labels.slice((page - 1) * 100, page * 100),
+      meta: { page, limit: 100, total: 101, totalPages: 2 },
+    });
+  });
+  try {
+    await screen.findByText('Task 1');
+    await press('Filter and sort tasks');
+    await press('Board 1');
+    await press('More labels');
+    await press('Catalog label 100');
+    await press('Apply filters');
+    await waitFor(() => {
+      const last = env.requests
+        .filter(({ url }) => url.pathname.endsWith('/tasks'))
+        .at(-1);
+      expect(last.url.searchParams.get('labelIds')).toBe(labels[100].id);
+    });
+    await press('Filter and sort tasks');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Catalog label 100' }).props
+          .accessibilityState.selected,
+      ).toBe(true),
+    );
+    await press('Apply filters');
+    expect(
+      env.requests
+        .filter(({ url }) => url.pathname.endsWith('/tasks'))
+        .at(-1)
+        .url.searchParams.get('labelIds'),
+    ).toBe(labels[100].id);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('reopening a selected Board hides cached label names until fresh access is verified', async () => {
+  let delayed = false;
+  let finish;
+  const pending = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const env = await setup([row(1)], (url) =>
+    delayed && url.pathname === `/api/boards/${boardId}` ? pending : null,
+  );
+  try {
+    await screen.findByText('Task 1');
+    await press('Filter and sort tasks');
+    await press('Board 1');
+    await press('Review');
+    await press('Apply filters');
+    await screen.findByText('Task 1');
+    delayed = true;
+    await press('Filter and sort tasks');
+    expect(screen.queryByRole('button', { name: 'Review' })).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Apply filters' }),
+    ).toBeDisabled();
+    await act(() => finish(wire({}, 403)));
+    await screen.findByRole('button', { name: 'Retry Board access' });
+    expect(screen.queryByRole('button', { name: 'Review' })).toBeNull();
   } finally {
     await env.dispose();
   }

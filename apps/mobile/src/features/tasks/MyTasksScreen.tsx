@@ -169,7 +169,6 @@ function TaskList({ identity }: { identity: SessionIdentity }) {
     )
       void tasks.refetch({ cancelRefetch: false });
     // Refresh once on a tab/foreground/reconnect transition. Query owns request deduplication.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eligible]);
   useEffect(() => {
     if (!focused) navigation.current?.abort();

@@ -9,10 +9,11 @@ import {
 import { createBoardApi } from '../boards/api';
 import { createWorkspaceApi } from '../workspaces/api';
 import { workspaceDirectoryOptions } from '../workspaces/queries';
-import { useKanbanCatalogs } from '../boards/kanban-queries';
+import { createKanbanApi } from '../boards/kanban-api';
 import { decodeBoardAccess } from '../../infrastructure/realtime/rooms';
 import { ApiError } from '../../infrastructure/api/errors';
 import { parseResourceId } from '../../navigation/routes';
+import { canRetryWorkspace } from '../workspaces/status';
 
 export function useTaskCatalogs(
   identity: SessionIdentity,
@@ -23,17 +24,21 @@ export function useTaskCatalogs(
   const data = useMobileData();
   const workspaces = useQuery({
     ...workspaceDirectoryOptions(data, identity),
-    enabled,
+    enabled: ({ state }) =>
+      enabled && canRetryWorkspace(state.error, state.errorUpdatedAt),
+    refetchOnWindowFocus: ({ state }) =>
+      canRetryWorkspace(state.error, state.errorUpdatedAt),
+    refetchOnReconnect: ({ state }) =>
+      canRetryWorkspace(state.error, state.errorUpdatedAt),
     retry: false,
     staleTime: 0,
+    gcTime: 0,
   });
   const parent = workspaceId ? parseResourceId(workspaceId) : null;
   const boards = useInfiniteQuery({
-    queryKey: [
-      ...queryKeys.boardLists(identity),
-      'task-filter-options',
-      workspaceId,
-    ] as const,
+    queryKey: queryKeys.boards(identity, workspaceId ?? null, {
+      source: 'task-filter-options',
+    }),
     initialPageParam: 1,
     queryFn: ({ pageParam, signal }) =>
       parent
@@ -45,9 +50,15 @@ export function useTaskCatalogs(
           )
         : createBoardApi(data.api, identity).list(pageParam, 'active', signal),
     getNextPageParam: (page) => nextPage(page.meta),
-    enabled,
+    enabled: ({ state }) =>
+      enabled && canRetryWorkspace(state.error, state.errorUpdatedAt),
+    refetchOnWindowFocus: ({ state }) =>
+      canRetryWorkspace(state.error, state.errorUpdatedAt),
+    refetchOnReconnect: ({ state }) =>
+      canRetryWorkspace(state.error, state.errorUpdatedAt),
     retry: false,
     staleTime: 0,
+    gcTime: 0,
   });
   const access = useQuery({
     queryKey: [
@@ -79,25 +90,58 @@ export function useTaskCatalogs(
       );
       return board;
     },
-    enabled: enabled && !!boardId,
+    enabled: ({ state }) =>
+      enabled &&
+      !!boardId &&
+      canRetryWorkspace(state.error, state.errorUpdatedAt),
+    refetchOnWindowFocus: ({ state }) =>
+      canRetryWorkspace(state.error, state.errorUpdatedAt),
+    refetchOnReconnect: ({ state }) =>
+      canRetryWorkspace(state.error, state.errorUpdatedAt),
     staleTime: 0,
     retry: false,
   });
-  const labels = useKanbanCatalogs(
-    data.api,
-    identity,
-    boardId ?? '',
-    enabled && access.isSuccess && !access.isFetching,
-    false,
-  );
+  const labels = useInfiniteQuery({
+    queryKey: queryKeys.labels(identity, boardId ?? ''),
+    initialPageParam: 1,
+    queryFn: ({ pageParam, signal }) =>
+      createKanbanApi(data.api, identity, boardId ?? '').labels(
+        pageParam,
+        signal,
+      ),
+    getNextPageParam: (page) => (page ? nextPage(page.meta) : undefined),
+    enabled: ({ state }) =>
+      enabled &&
+      access.isSuccess &&
+      !access.isFetching &&
+      canRetryWorkspace(state.error, state.errorUpdatedAt),
+    refetchOnWindowFocus: ({ state }) =>
+      canRetryWorkspace(state.error, state.errorUpdatedAt),
+    refetchOnReconnect: ({ state }) =>
+      canRetryWorkspace(state.error, state.errorUpdatedAt),
+    retry: false,
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
   return {
     workspaces,
     boards,
     access,
-    labels: labels.labels,
-    labelItems: labels.labelItems,
-    boardItems: deduplicatePages(
-      boards.data?.pages.map(({ data }) => data) ?? [],
-    ),
+    labels,
+    labelItems:
+      !access.isSuccess ||
+      access.isFetching ||
+      !labels.isFetchedAfterMount ||
+      labels.isFetching ||
+      labels.isError ||
+      labels.data?.pages.some((page) => page === null)
+        ? []
+        : deduplicatePages(
+            labels.data?.pages.map((page) => page?.data ?? []) ?? [],
+          ),
+    boardItems:
+      boards.isFetching || boards.isError || !boards.isFetchedAfterMount
+        ? []
+        : deduplicatePages(boards.data?.pages.map(({ data }) => data) ?? []),
   };
 }

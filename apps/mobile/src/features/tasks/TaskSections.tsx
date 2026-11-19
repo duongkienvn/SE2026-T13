@@ -78,7 +78,16 @@ export function TaskSections({
                     }}
                   >
                     {task.labels.map((label) => (
-                      <Chip key={label.id} label={label.name} compact />
+                      <Chip
+                        key={label.id}
+                        label={label.name}
+                        compact
+                        colors={{
+                          foreground: c.text,
+                          background: c.surfaceSoft,
+                          border: label.color,
+                        }}
+                      />
                     ))}
                   </View>
                 )}

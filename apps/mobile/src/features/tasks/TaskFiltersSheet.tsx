@@ -142,6 +142,34 @@ export function TaskFiltersSheet({
     access.errorUpdatedAt,
   );
   const unavailableLabels = labels.data?.pages.some((page) => page === null);
+  useEffect(() => {
+    if (
+      !access.isSuccess ||
+      access.isFetching ||
+      !labels.isFetchedAfterMount ||
+      !labels.isSuccess ||
+      labels.isFetching ||
+      labels.hasNextPage ||
+      unavailableLabels
+    )
+      return;
+    const known = new Set(labelItems.map(({ id }) => id));
+    setDraft((current) => {
+      const labelIds = current.labelIds.filter((id) => known.has(id));
+      return labelIds.length === current.labelIds.length
+        ? current
+        : { ...current, labelIds };
+    });
+  }, [
+    access.isSuccess,
+    access.isFetching,
+    labels.isFetchedAfterMount,
+    labels.isSuccess,
+    labels.isFetching,
+    labels.hasNextPage,
+    unavailableLabels,
+    labelItems,
+  ]);
   const dirty = JSON.stringify(current) !== JSON.stringify(draft);
   const dismiss = () => {
     if (discard) setDiscard(false);
@@ -229,6 +257,8 @@ export function TaskFiltersSheet({
               onPress={() => void workspaces.refetch()}
             />
           ) : (
+            !workspaces.isFetching &&
+            workspaces.isFetchedAfterMount &&
             workspaces.data?.map((workspace) => (
               <FilterChip
                 key={workspace.id}
