@@ -335,6 +335,7 @@ export function AvatarStack({
 }
 export function Chip({
   label,
+  accessibilityLabel = label,
   selected,
   onPress,
   tone = 'neutral',
@@ -343,6 +344,7 @@ export function Chip({
   compact = false,
 }: {
   label: string;
+  accessibilityLabel?: string;
   selected?: boolean;
   onPress?: () => void;
   tone?: 'neutral' | 'success' | 'warning' | 'danger' | 'info';
@@ -376,7 +378,7 @@ export function Chip({
   return onPress ? (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected, disabled }}
       disabled={disabled}
       onPress={onPress}
