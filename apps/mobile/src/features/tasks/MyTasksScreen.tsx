@@ -21,6 +21,7 @@ import {
 } from '../../infrastructure/api/session-client';
 import { ApiError } from '../../infrastructure/api/errors';
 import { useMobileData } from '../../infrastructure/query/DataProvider';
+import { queryKeys } from '../../infrastructure/query/keys';
 import { TabHeader } from '../../navigation/scaffold';
 import {
   Button,
@@ -103,6 +104,7 @@ function TaskList({ identity }: { identity: SessionIdentity }) {
     ...options,
     enabled: ({ state }) =>
       eligible &&
+      !preferences.isPending &&
       !filters.error &&
       canRetryWorkspace(state.error, state.errorUpdatedAt),
   });
@@ -161,6 +163,7 @@ function TaskList({ identity }: { identity: SessionIdentity }) {
   useEffect(() => {
     if (
       eligible &&
+      !preferences.isPending &&
       !filters.error &&
       canRetryWorkspace(tasks.error, tasks.errorUpdatedAt)
     )
@@ -175,6 +178,11 @@ function TaskList({ identity }: { identity: SessionIdentity }) {
   useEffect(() => {
     const reset = (boardId?: string) => {
       if (boardId && boardId !== selection.boardId) return;
+      if (
+        boardId &&
+        data.resources.readable(queryKeys.board(identity, boardId))
+      )
+        return;
       navigation.current?.abort();
       setOpening(undefined);
       setSheet(false);
@@ -182,7 +190,7 @@ function TaskList({ identity }: { identity: SessionIdentity }) {
       setNotice('Board access changed. Board and label filters were cleared.');
     };
     return data.resources.subscribeBoardTeardown(reset);
-  }, [data, selection.boardId]);
+  }, [data, identity, selection.boardId]);
   useEffect(
     () =>
       data.resources.subscribeDenied((boardId, key) => {

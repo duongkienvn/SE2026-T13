@@ -15,6 +15,7 @@ export async function verifyTaskDestination(
   const boardId = parseResourceId(task.boardId);
   const cardId = parseResourceId(task.id);
   if (!boardId || !cardId) throw new ApiError('configuration');
+  const checkBoard = data.resources.captureBoardProbe(boardId);
   try {
     // The resource probe is deliberately untagged so suspended Board reads can recover.
     const board = await data.api.json('/boards/' + boardId, decodeBoardAccess, {
@@ -24,6 +25,7 @@ export async function verifyTaskDestination(
       retries: 0,
     });
     data.assertCurrent(identity);
+    checkBoard();
     if (
       signal.aborted ||
       board.id !== boardId ||
