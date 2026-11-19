@@ -50,6 +50,7 @@ export function createNativeRealtime(options: {
   const verifications = new Map<string, AbortController>();
   const workspaceChecks = new Set<string>();
   let verificationTimer: unknown;
+  let notificationTimer: unknown;
   let unsubscribeErrors: (() => void) | undefined;
   let unsubscribeDenied: (() => void) | undefined;
   let unsubscribeWorkspaceDenied: (() => void) | undefined;
@@ -93,6 +94,8 @@ export function createNativeRealtime(options: {
     }
   }
   function clearChecks() {
+    if (notificationTimer !== undefined) timers.clearTimeout(notificationTimer);
+    notificationTimer = undefined;
     accessEpoch++;
     cancelVerification();
     if (accessTimer !== undefined) timers.clearTimeout(accessTimer);
@@ -380,6 +383,16 @@ export function createNativeRealtime(options: {
       const hint = parseHint(event, value);
       const identity = data.getIdentity();
       if (!hint || !identity) return;
+      if (event === 'notifications:changed') {
+        if (notificationTimer === undefined)
+          notificationTimer = timers.setTimeout(() => {
+            notificationTimer = undefined;
+            void data
+              .invalidateHints(identity, [queryKeys.notifications(identity)])
+              .catch(() => undefined);
+          }, 150);
+        return;
+      }
       if (hint.boardId && event.startsWith('board:'))
         fenceWorkspaceActivity(
           hint.boardId,
@@ -429,10 +442,7 @@ export function createNativeRealtime(options: {
       }
       if (event === 'presence:sync')
         rooms.presence(hint.boardId!, hint.userIds!);
-      else if (
-        event === 'notifications:changed' ||
-        (hint.boardId && rooms.isLive(hint.boardId))
-      ) {
+      else if (hint.boardId && rooms.isLive(hint.boardId)) {
         if (hint.boardId && event.startsWith('member:')) {
           const root = queryKeys.board(identity, hint.boardId);
           // Membership hints do not invalidate unrelated comments/attachments.
