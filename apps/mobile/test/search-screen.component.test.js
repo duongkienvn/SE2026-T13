@@ -26,6 +26,8 @@ import {
   user,
 } from './auth/support';
 import { results, cardHit } from './search/fixtures';
+import { uuid } from './workspaces/fixtures';
+import { ApiError } from '../src/infrastructure/api/errors';
 
 const mockNavigate = jest.fn();
 let mockFocused = true;
@@ -181,6 +183,266 @@ test('Return submits immediately, renders server groups and opens a canonical gu
     await waitFor(() =>
       expect(mockNavigate).toHaveBeenCalledWith(cardHit.path),
     );
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('typing debounces for 250ms, hides prior rows and rejects ignored-abort responses', async () => {
+  jest.useFakeTimers();
+  let finish;
+  const pending = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const env = await setup((url) =>
+    url.searchParams.get('q') === 'slow' ? pending : null,
+  );
+  try {
+    await enter('design');
+    await screen.findByText('Design card');
+    await fireEvent.changeText(input(), 's');
+    expect(screen.queryByText('Design card')).toBeNull();
+    await act(() => jest.advanceTimersByTimeAsync(249));
+    expect(
+      env.requests.filter((r) => r.url.pathname === '/api/search'),
+    ).toHaveLength(1);
+    await fireEvent.changeText(input(), 'slow');
+    await act(() => jest.advanceTimersByTimeAsync(250));
+    const slow = env.requests.find(
+      (r) => r.url.searchParams.get('q') === 'slow',
+    );
+    expect(slow).toBeTruthy();
+    await enter('latest');
+    await screen.findByText('Design card');
+    expect(slow.init.signal.aborted).toBe(true);
+    const stale = results('all', 'slow');
+    stale.groups.cards.items[0] = { ...cardHit, title: 'Stale secret' };
+    await act(async () => finish(wire(stale)));
+    expect(screen.queryByText('Stale secret')).toBeNull();
+    expect(screen.getByText('3 results for “latest”')).toBeTruthy();
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('Unicode validation blocks malformed/121 code point queries and supports 120 emoji', async () => {
+  const env = await setup();
+  try {
+    for (const q of ['😀'.repeat(121), 'bad\0text', '\ud800']) {
+      await enter(q);
+      expect(
+        env.requests.filter((r) => r.url.pathname === '/api/search'),
+      ).toHaveLength(0);
+    }
+    await enter('😀'.repeat(120));
+    await screen.findByText('Design card');
+    expect(
+      env.requests.filter((r) => r.url.pathname === '/api/search'),
+    ).toHaveLength(1);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('View all starts at page one, duplicate taps fetch one next page, and changing type resets pagination', async () => {
+  jest.useFakeTimers();
+  const env = await setup((url) => {
+    if (url.pathname !== '/api/search') return null;
+    const type = url.searchParams.get('type');
+    const value = results(type, url.searchParams.get('q'));
+    const page = Number(url.searchParams.get('page') || 1);
+    value.groups.cards = {
+      total: 21,
+      hasMore: type === 'all' || page === 1,
+      items: Array.from(
+        { length: type === 'all' ? 5 : page === 1 ? 20 : 1 },
+        (_, i) => ({
+          ...cardHit,
+          id: uuid(page * 100 + i),
+          title: `Paged card ${page * 100 + i}`,
+          path: `/boards/${cardHit.boardId}/cards/${uuid(page * 100 + i)}`,
+        }),
+      ),
+    };
+    return wire(value);
+  });
+  try {
+    await enter('design');
+    await screen.findByText('Paged card 100');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'View all Cards' }),
+    );
+    await act(() => jest.advanceTimersByTimeAsync(250));
+    await screen.findByRole('button', { name: 'Load more results' });
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Load more results' }),
+    );
+    await screen.findByText('Paged card 200');
+    expect(
+      screen.queryByRole('button', { name: 'Load more results' }),
+    ).toBeNull();
+    expect(
+      env.requests.filter((r) => r.url.searchParams.get('page') === '2'),
+    ).toHaveLength(1);
+    await fireEvent.press(screen.getByRole('button', { name: 'All' }));
+    await act(() => jest.advanceTimersByTimeAsync(250));
+    await screen.findByRole('button', { name: 'View all Cards' });
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'View all Cards' }),
+    );
+    await act(() => jest.advanceTimersByTimeAsync(250));
+    await screen.findByRole('button', { name: 'Load more results' });
+    expect(screen.queryByText('Paged card 200')).toBeNull();
+    expect(
+      env.requests
+        .filter((r) => r.url.searchParams.get('type') === 'cards')
+        .map((r) => r.url.searchParams.get('page')),
+    ).toEqual(['1', '2', '1']);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('offline hides protected rows and reconnect revalidates the current query', async () => {
+  const env = await setup();
+  try {
+    await enter('design');
+    await screen.findByText('Design card');
+    await act(() => onlineManager.setOnline(false));
+    expect(screen.queryByText('Design card')).toBeNull();
+    expect(
+      screen.getByText('You’re offline. Reconnect to search.'),
+    ).toBeTruthy();
+    await act(() => onlineManager.setOnline(true));
+    await screen.findByText('Design card');
+    expect(
+      env.requests.filter((r) => r.url.pathname === '/api/search').length,
+    ).toBeGreaterThan(1);
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('429 respects Retry-After across focus transitions and retries after the cooldown', async () => {
+  jest.useFakeTimers();
+  let limited = true;
+  const env = await setup((url) =>
+    url.pathname === '/api/search' && limited ? wire({}, 429, '300') : null,
+  );
+  try {
+    await enter('design');
+    await screen.findByRole('button', { name: 'Retry search' });
+    expect(screen.getByRole('button', { name: 'Retry search' })).toBeDisabled();
+    const count = env.requests.length;
+    await act(() => jest.advanceTimersByTimeAsync(30_000));
+    await act(() => focusManager.setFocused(false));
+    await act(() => focusManager.setFocused(true));
+    expect(env.requests).toHaveLength(count);
+    limited = false;
+    await act(() => jest.advanceTimersByTimeAsync(270_000));
+    await fireEvent.press(screen.getByRole('button', { name: 'Retry search' }));
+    await screen.findByText('Design card');
+  } finally {
+    await env.dispose();
+  }
+});
+
+test.each([
+  [400, 'Search could not be accepted. Check your query and try again.'],
+  [403, 'Search access changed. Retry to check what’s available.'],
+  [404, 'Search access changed. Retry to check what’s available.'],
+  [500, 'Couldn’t verify search results. Retry to check what’s available.'],
+])(
+  'HTTP %s is safe and recoverable without protected stale rows',
+  async (status, message) => {
+    let fail = true;
+    const env = await setup((url) =>
+      url.pathname === '/api/search' && fail ? wire({}, status) : null,
+    );
+    try {
+      await enter('design');
+      await screen.findByText(message);
+      expect(screen.queryByText('Design card')).toBeNull();
+      fail = false;
+      await fireEvent.press(
+        screen.getByRole('button', { name: 'Retry search' }),
+      );
+      await screen.findByText('Design card');
+    } finally {
+      await env.dispose();
+    }
+  },
+);
+
+test('timeout and empty result states provide an accessible recovery path', async () => {
+  let fail = true;
+  const env = await setup((url) => {
+    if (url.pathname !== '/api/search') return null;
+    if (fail) return Promise.reject(new ApiError('timeout'));
+    const value = results('all', url.searchParams.get('q'));
+    for (const group of Object.values(value.groups)) {
+      group.items = [];
+      group.total = 0;
+    }
+    return wire(value);
+  });
+  try {
+    await enter('empty');
+    await screen.findByText('Search took too long. Try again.');
+    fail = false;
+    await fireEvent.press(screen.getByRole('button', { name: 'Retry search' }));
+    const empty = await screen.findByText('No results. Try another search.');
+    expect(empty.props.accessibilityLiveRegion).toBe('polite');
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('pagination failure keeps verified rows and explicit retry recovers without duplicate submissions', async () => {
+  let finish;
+  let fail = true;
+  const pending = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const env = await setup((url) => {
+    if (url.pathname !== '/api/search') return null;
+    const value = results('cards', url.searchParams.get('q'));
+    if (url.searchParams.get('page') === '2')
+      return fail ? wire({}, 500) : pending;
+    value.groups.cards = {
+      total: 21,
+      hasMore: true,
+      items: Array.from({ length: 20 }, (_, i) => ({
+        ...cardHit,
+        id: uuid(i),
+        title: 'Loaded ' + i,
+        path: `/boards/${cardHit.boardId}/cards/${uuid(i)}`,
+      })),
+    };
+    return wire(value);
+  });
+  try {
+    await fireEvent.press(screen.getByRole('button', { name: 'Cards' }));
+    await enter('design');
+    await screen.findByText('Loaded 0');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Load more results' }),
+    );
+    await screen.findByText(
+      'Couldn’t load more results. Your loaded results are below.',
+    );
+    expect(screen.getByText('Loaded 0')).toBeTruthy();
+    fail = false;
+    const retry = screen.getByRole('button', { name: 'Retry load more' });
+    await fireEvent.press(retry);
+    await fireEvent.press(retry);
+    const value = results('cards', 'design');
+    value.groups.cards.total = 21;
+    await act(async () => finish(wire(value)));
+    await screen.findByText('Design card');
+    expect(
+      env.requests.filter((r) => r.url.searchParams.get('page') === '2'),
+    ).toHaveLength(2);
   } finally {
     await env.dispose();
   }

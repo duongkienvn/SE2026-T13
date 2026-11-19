@@ -24,6 +24,7 @@ import { searchGroups, searchTypes } from './input';
 import { verifySearchDestination } from './navigation';
 import { searchLabels, SearchSections } from './SearchSections';
 import { useSearch } from './useSearch';
+import { searchErrorMessage } from './status';
 
 export function SearchScreen() {
   const session = useSessionSnapshot();
@@ -141,11 +142,7 @@ function SearchContent({ identity }: { identity: SessionIdentity }) {
   const message = !online
     ? 'You’re offline. Reconnect to search.'
     : query.isError && current
-      ? error?.status === 429
-        ? 'Too many requests. Wait before trying again.'
-        : query.isFetchNextPageError
-          ? 'Couldn’t load more results. Your loaded results are below.'
-          : 'Couldn’t verify search results. Retry to check what’s available.'
+      ? searchErrorMessage(query.error, query.isFetchNextPageError)
       : '';
   return (
     <SafeAreaView
