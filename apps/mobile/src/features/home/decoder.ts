@@ -74,7 +74,7 @@ function decodeLabel(value: unknown): TaskCardSummary['labels'][number] {
   return { id: id(row.id), name: name(row.name), color: row.color };
 }
 
-function decodeTask(value: unknown): TaskCardSummary {
+export function decodeTask(value: unknown): TaskCardSummary {
   const row = record(value);
   const cardId = id(row.id);
   const boardId = id(row.boardId);
