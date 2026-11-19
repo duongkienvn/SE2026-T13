@@ -16,10 +16,10 @@ function object(value: unknown): Record<string, unknown> {
     throw invalidResponse(200);
   return value as Record<string, unknown>;
 }
-function text(value: unknown, max: number) {
+function text(value: unknown, max: number, allowEmpty = false) {
   if (
     typeof value !== 'string' ||
-    !value.trim() ||
+    (!allowEmpty && !value.trim()) ||
     [...value].length > max ||
     /[\u0000\uD800-\uDFFF]/u.test(value)
   )
@@ -86,7 +86,7 @@ function item(value: unknown, group: string): GlobalSearchItem {
         type: 'card',
         boardId: id(row.boardId),
         boardName: text(row.boardName, 500),
-        subtitle: row.subtitle === null ? null : text(row.subtitle, 160),
+        subtitle: row.subtitle === null ? null : text(row.subtitle, 160, true),
       };
     else throw invalidResponse(200);
   }

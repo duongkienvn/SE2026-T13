@@ -97,3 +97,30 @@ test('revocation during a slow Board probe cannot regrant or route', async () =>
     env.dispose();
   }
 });
+
+test('a stale probe denial cannot revoke a newer verified Board grant', async () => {
+  const env = await integration();
+  try {
+    const response = deferred<Response>();
+    env.respond(() => response.promise);
+    const attempt = verifySearchDestination(
+      env.data,
+      env.identity,
+      cardHit,
+      new AbortController().signal,
+    );
+    await flush();
+    env.data.resources.fenceBoard(BOARD);
+    env.data.resources.confirmBoard(BOARD, true, WORKSPACE);
+    const key = queryKeys.board(env.identity, BOARD);
+    env.data.queryClient.setQueryData(key, { title: 'New authoritative data' });
+    response.resolve(json({}, 403));
+    await assert.rejects(attempt);
+    assert.equal(env.data.resources.readable(key), true);
+    assert.deepEqual(env.data.queryClient.getQueryData(key), {
+      title: 'New authoritative data',
+    });
+  } finally {
+    env.dispose();
+  }
+});

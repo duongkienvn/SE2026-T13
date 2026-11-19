@@ -119,8 +119,10 @@ function SearchContent({ identity }: { identity: SessionIdentity }) {
     }
   }
   function refresh() {
-    if (eligible && current && retryReady && !query.isFetching)
+    if (eligible && current && retryReady && !query.isFetching) {
+      setNotice('');
       void query.refetch({ cancelRefetch: false });
+    }
   }
   async function loadMore() {
     if (
@@ -222,12 +224,23 @@ function SearchContent({ identity }: { identity: SessionIdentity }) {
           </View>
         )}
         {!!notice && (
-          <Text
-            accessibilityLiveRegion="polite"
-            style={[typography.body, { color: c.text }]}
-          >
-            {notice}
-          </Text>
+          <View style={{ gap: spacing.sm }}>
+            <Text
+              accessibilityLiveRegion="polite"
+              style={[typography.body, { color: c.text }]}
+            >
+              {notice}
+            </Text>
+            {!message && (
+              <Button
+                label="Retry search"
+                disabled={
+                  !eligible || !current || !retryReady || query.isFetching
+                }
+                onPress={refresh}
+              />
+            )}
+          </View>
         )}
         {!!message && (
           <View style={{ gap: spacing.sm }}>

@@ -6,6 +6,7 @@ import {
   searchDestination,
 } from '../../src/features/search/decoder.ts';
 import { cardHit, results } from './fixtures.ts';
+import { uuid } from '../workspaces/fixtures.ts';
 
 test('search validates trimmed Unicode code points and preserves literal text', () => {
   for (const q of [
@@ -68,6 +69,45 @@ test('decoder checks request binding, all groups, bounds, types, null contexts, 
   ])
     assert.throws(() => decode(bad));
 });
+test('response windows accept 0/1/5/10/20/50 rows with exact totals and reject inconsistent paging', () => {
+  for (const [type, limit] of [
+    ['all', 5],
+    ['all', 10],
+    ['cards', 20],
+    ['cards', 50],
+  ] as const) {
+    for (const count of [0, 1, limit]) {
+      const value = results(type);
+      value.groups.cards = {
+        total: count,
+        hasMore: false,
+        items: Array.from({ length: count }, (_, n) => ({
+          ...cardHit,
+          id: uuid(n),
+          path: `/boards/${cardHit.boardId}/cards/${uuid(n)}`,
+        })),
+      };
+      const request = searchRequest('design', type, undefined, limit);
+      assert.equal(
+        decodeSearch(value, request).groups.cards.items.length,
+        count,
+      );
+      value.groups.cards.hasMore = true;
+      assert.throws(() => decodeSearch(value, request));
+    }
+  }
+  const page = results('cards');
+  page.groups.cards.total = 21;
+  assert.equal(
+    decodeSearch(page, searchRequest('design', 'cards', 2)).groups.cards.items
+      .length,
+    1,
+  );
+  assert.throws(() => decodeSearch(page, searchRequest('design', 'cards', 1)));
+  page.groups.boards = results().groups.boards;
+  assert.throws(() => decodeSearch(page, searchRequest('design', 'cards', 2)));
+});
+
 test('navigation accepts only paths matching the exact item kind and identifiers', () => {
   assert.equal(searchDestination(cardHit), cardHit.path);
   for (const path of [
@@ -81,4 +121,14 @@ test('navigation accepts only paths matching the exact item kind and identifiers
     cardHit.path.replace(cardHit.id, cardHit.boardId),
   ])
     assert.throws(() => searchDestination({ ...cardHit, path }));
+});
+
+test('a sanitized Board name can legitimately produce an empty Card snippet', () => {
+  const value = results('cards');
+  value.groups.cards.items = [{ ...cardHit, boardName: '***', subtitle: '' }];
+  assert.equal(
+    decodeSearch(value, searchRequest('design', 'cards')).groups.cards.items[0]
+      ?.subtitle,
+    '',
+  );
 });

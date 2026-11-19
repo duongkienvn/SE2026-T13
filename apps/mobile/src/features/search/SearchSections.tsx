@@ -77,6 +77,11 @@ export function SearchSections({
                 key={key}
                 accessibilityRole="button"
                 accessibilityLabel={`Open ${row.title}${context ? ', ' + context : ''}`}
+                accessibilityHint={
+                  row.subtitle && row.subtitle !== context
+                    ? row.subtitle
+                    : undefined
+                }
                 accessibilityState={{ disabled, busy: opening === key }}
                 disabled={disabled}
                 onPress={() => open(row)}

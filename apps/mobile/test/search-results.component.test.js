@@ -28,6 +28,10 @@ test('group sections expose true totals, View all, and guest-safe plain text row
     screen.getByRole('button', { name: 'Open Design card, Design board' }),
   );
   expect(open).toHaveBeenCalledWith(cardHit);
+  expect(
+    screen.getByRole('button', { name: 'Open Design card, Design board' }).props
+      .accessibilityHint,
+  ).toBe('A plain snippet');
   expect(screen.queryByText(/Guest workspace|Unknown workspace/)).toBeNull();
   expect(screen.queryByText(/labels|due date/)).toBeNull();
 });

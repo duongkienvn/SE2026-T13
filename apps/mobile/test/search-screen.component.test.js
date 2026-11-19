@@ -564,3 +564,30 @@ test('account switch clears input/type and old protected responses cannot return
     await env.dispose();
   }
 });
+
+test('a failed target probe offers a working search retry instead of a dead-end notice', async () => {
+  const env = await setup((url) =>
+    url.pathname.startsWith('/api/boards/') ? wire({}, 500) : null,
+  );
+  try {
+    await enter('design');
+    await screen.findByText('Design card');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Open Design card, Design board' }),
+    );
+    await screen.findByText(
+      'This result is unavailable or access could not be verified. Retry search to check what’s available.',
+    );
+    const before = env.requests.filter(
+      (r) => r.url.pathname === '/api/search',
+    ).length;
+    await fireEvent.press(screen.getByRole('button', { name: 'Retry search' }));
+    await screen.findByText('Design card');
+    expect(
+      env.requests.filter((r) => r.url.pathname === '/api/search'),
+    ).toHaveLength(before + 1);
+    expect(screen.queryByText(/This result is unavailable/)).toBeNull();
+  } finally {
+    await env.dispose();
+  }
+});

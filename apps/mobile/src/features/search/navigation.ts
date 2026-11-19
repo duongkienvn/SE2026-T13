@@ -65,7 +65,7 @@ export async function verifySearchDestination(
       error instanceof ApiError &&
       [403, 404].includes(error.status)
     ) {
-      data.assertCurrent(identity);
+      verified();
       if (item.type === 'workspace')
         evictWorkspace(data, identity, parseResourceId(item.id)!);
       else {
