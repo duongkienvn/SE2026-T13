@@ -171,12 +171,12 @@ function Inbox({ identity }: { identity: SessionIdentity }) {
     ? 'You’re offline. Reconnect to refresh your Inbox.'
     : mutation.mustReview
       ? 'Read status wasn’t confirmed. Review the Inbox before trying again.'
-      : list.isError
-        ? list.isFetchNextPageError
-          ? 'Couldn’t load the next page. Your loaded notifications are below.'
-          : inboxErrorMessage(list.error)
-        : !inbox.listReady
-          ? 'Too many requests. Wait before trying again.'
+      : !inbox.listReady
+        ? 'Too many requests. Wait before trying again.'
+        : list.isError
+          ? list.isFetchNextPageError
+            ? 'Couldn’t load the next page. Your loaded notifications are below.'
+            : inboxErrorMessage(list.error)
           : '';
   const disabled =
     !usable ||

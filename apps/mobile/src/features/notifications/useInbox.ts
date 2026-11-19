@@ -98,10 +98,16 @@ export function useInbox(identity: SessionIdentity) {
       data.evict(identity, [queryKeys.notifications(identity)]);
   }, [eligible]);
   useEffect(() => {
-    if (changed && writableReads && listBudgetReady && !list.isFetching)
+    if (changed && writableReads && listBudgetReady && !list.isFetching) {
       void data.queryClient
         .resetQueries({ queryKey: options.queryKey, exact: true })
         .catch(() => undefined);
+      if (
+        countBudgetReady &&
+        canRetryWorkspace(unread.error, unread.errorUpdatedAt)
+      )
+        void unread.refetch({ cancelRefetch: false });
+    }
   }, [
     changed,
     writableReads,

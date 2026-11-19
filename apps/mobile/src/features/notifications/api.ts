@@ -79,17 +79,19 @@ export function createInboxApi(
         ...options(signal),
         resourceKey: queryKeys.unreadCount(identity),
       }),
-    read: (id: string, signal: AbortSignal): Promise<NotificationResponse> =>
-      api.json(
-        '/notifications/' + notificationId(id) + '/read',
+    read: (id: string, signal: AbortSignal): Promise<NotificationResponse> => {
+      const canonicalId = notificationId(id);
+      return api.json(
+        '/notifications/' + canonicalId + '/read',
         (value) => {
           const result = decodeNotification(value);
-          if (result.id !== id || result.readAt === null)
+          if (result.id !== canonicalId || result.readAt === null)
             throw invalidResponse(200);
           return result;
         },
         { ...options(signal), method: 'PATCH' },
-      ),
+      );
+    },
     readAll: (signal: AbortSignal) =>
       api.json('/notifications/read-all', decodeReadAll, {
         ...options(signal),
