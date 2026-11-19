@@ -13,7 +13,7 @@ import { createMetadataApi } from './api.ts';
 export function datePreferencesOptions(
   api: Parameters<typeof createKanbanApi>[0],
   identity: SessionIdentity,
-  boardId: string,
+  boardId = '',
 ) {
   return queryOptions({
     queryKey: queryKeys.datePreferences(identity),
