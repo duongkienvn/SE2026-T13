@@ -13,7 +13,6 @@ import { useKanbanCatalogs } from '../boards/kanban-queries';
 import { decodeBoardAccess } from '../../infrastructure/realtime/rooms';
 import { ApiError } from '../../infrastructure/api/errors';
 import { parseResourceId } from '../../navigation/routes';
-import { canRetryWorkspace } from '../workspaces/status';
 
 export function useTaskCatalogs(
   identity: SessionIdentity,
@@ -101,8 +100,4 @@ export function useTaskCatalogs(
       boards.data?.pages.map(({ data }) => data) ?? [],
     ),
   };
-}
-
-export function catalogRetryAllowed(error: unknown, at: number) {
-  return canRetryWorkspace(error, at);
 }
