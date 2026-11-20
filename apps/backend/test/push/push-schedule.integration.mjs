@@ -131,7 +131,6 @@ try {
     PUSH_TOKEN_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
   });
   const registry = new PushRegistryService(source, config);
-  await registry.update(session, true);
   await registry.register(session, {
     installationId: randomUUID(),
     projectId: config.get('PUSH_PROJECT_ID'),
@@ -139,6 +138,7 @@ try {
     platform: 'android',
     expoPushToken: 'ExpoPushToken[quietabcdefghijklmnop]',
   });
+  await registry.update(session, true);
   const recorder = new NotificationService(
     source.getRepository(UserNotification),
     new PushEnqueuer(config),
