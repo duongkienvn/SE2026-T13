@@ -42,6 +42,7 @@ export async function eraseAccountPrivateState(
     'push_devices',
     'push_device_revocations',
     'user_push_preferences',
+    'user_push_schedules',
     'board_user_states',
     'starter_board_provisions',
     'card_assignees',
