@@ -40,6 +40,24 @@ test('a delayed save acknowledgement cannot overwrite a newer local draft', () =
   });
 });
 
+test('a newer same-switch reversal survives a delayed save acknowledgement', () => {
+  const submitted = editDraft(
+    beginDraft(defaults()),
+    'inApp',
+    'cardAssigned',
+    false,
+    true,
+  );
+  const newer = editDraft(submitted, 'inApp', 'cardAssigned', true, true);
+  const acknowledged = defaults();
+  acknowledged.inApp.cardAssigned = false;
+  const result = reconcileSave(newer, submitted, acknowledged, true);
+  assert.equal(result.draft.inApp.cardAssigned, true);
+  assert.deepEqual(preferencesPatch(result.saved, result.draft, true), {
+    inApp: { cardAssigned: true },
+  });
+});
+
 test('clean refetch adopts all fields while dirty refetch keeps only explicit edits', () => {
   const state = beginDraft(defaults()),
     remote = defaults();

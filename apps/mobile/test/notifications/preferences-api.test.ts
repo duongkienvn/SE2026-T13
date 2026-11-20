@@ -128,3 +128,22 @@ test('GET rate limit cannot be bypassed by a new observer or direct refetch', as
     env.dispose();
   }
 });
+
+test('preference response fences isolate own requests from Board aggregate access changes', async () => {
+  const env = await integration();
+  try {
+    const key = queryKeys.notificationPreferences(env.identity);
+    const current = env.data.resources.capture(key, false);
+    const dates = env.data.resources.capture(
+      queryKeys.datePreferences(env.identity),
+      false,
+    );
+    env.data.resources.fenceAggregates();
+    assert.doesNotThrow(current);
+    env.data.resources.bumpKey(key);
+    assert.throws(current);
+    assert.doesNotThrow(dates);
+  } finally {
+    env.dispose();
+  }
+});

@@ -235,9 +235,7 @@ test('server count includes unavailable history and compact 99+ retains the exac
     );
     expect(write.init.method).toBe('POST');
     expect(write.init.body).toBeUndefined();
-    expect(
-      screen.queryByText(/Push|Quiet hours/),
-    ).toBeNull();
+    expect(screen.queryByText(/Push|Quiet hours/)).toBeNull();
   } finally {
     await env.dispose();
   }

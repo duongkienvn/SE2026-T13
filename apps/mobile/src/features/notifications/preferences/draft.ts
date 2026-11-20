@@ -27,9 +27,21 @@ export function reconcileSave(
   authoritative: NotificationPreferences,
   emailEnabled: boolean,
 ): PreferencesDraft {
-  return !current || current === submitted
-    ? beginDraft(authoritative)
-    : receivePreferences(current, authoritative, emailEnabled);
+  if (!current || current === submitted) return beginDraft(authoritative);
+  if (equalPreferences(current.saved, submitted.saved)) {
+    // The ACK has not been adopted yet. Preserve changes made *since submit*,
+    // including a same-switch reversal back to the old saved value.
+    const newer = preferencesPatch(
+      submitted.draft,
+      current.draft,
+      emailEnabled,
+    );
+    return {
+      ...beginDraft(authoritative),
+      draft: applyPatch(authoritative, newer),
+    };
+  }
+  return receivePreferences(current, authoritative, emailEnabled);
 }
 export function editDraft(
   state: PreferencesDraft,

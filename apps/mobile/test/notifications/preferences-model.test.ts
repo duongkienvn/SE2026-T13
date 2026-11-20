@@ -33,6 +33,15 @@ test('decoder fails closed on missing, unknown and nonboolean fields without coe
   ]) {
     assert.throws(() => decodePreferences(value));
   }
+  for (const channel of ['inApp', 'email'] as const) {
+    for (const key of Object.keys(defaults()[channel])) {
+      for (const wrong of [undefined, null, 'true', 1, {}, []]) {
+        const value = defaults();
+        Object.assign(value[channel], { [key]: wrong });
+        assert.throws(() => decodePreferences(value));
+      }
+    }
+  }
 });
 
 test('diff emits only changed known leaves, supports both groups and gates email', () => {

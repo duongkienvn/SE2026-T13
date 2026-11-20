@@ -187,3 +187,83 @@ test('expired-session render lookup is passive while subsequent actions remain g
     env.dispose();
   }
 });
+
+test('5xx and malformed 200 writes fail closed and require successful verification', async () => {
+  for (const response of [json({}, 503), ok({ inApp: {} })]) {
+    const env = await integration();
+    try {
+      const commands = preferenceCommands(env.data, env.identity, true);
+      env.respond(async () => response);
+      await assert.rejects(commands.save({ inApp: { dueReminder: false } }));
+      assert.equal(commands.getSnapshot().mustVerify, true);
+      env.respond(async () => json({}, 503));
+      await assert.rejects(commands.verify());
+      assert.equal(commands.getSnapshot().mustVerify, true);
+      await assert.rejects(commands.save({ inApp: { dueReminder: false } }));
+      assert.equal(env.requests.length, 2);
+      env.respond(async () => ok(defaults()));
+      await commands.verify();
+      assert.equal(commands.getSnapshot().mustVerify, false);
+    } finally {
+      env.dispose();
+    }
+  }
+});
+
+test('timeout and unmount cancellation cannot cache a late successful write', async () => {
+  for (const outcome of ['timeout', 'unmount']) {
+    const env = await integration();
+    try {
+      let finish!: (response: Response) => void;
+      env.respond((url) =>
+        url.endsWith('/notification-preferences')
+          ? new Promise((resolve) => {
+              finish = resolve;
+            })
+          : null,
+      );
+      const commands = preferenceCommands(env.data, env.identity, true);
+      const pending = commands.save({ inApp: { cardAssigned: false } });
+      const failed = assert.rejects(pending);
+      await flush();
+      if (outcome === 'timeout') env.time.advance(31_000);
+      else commands.abort();
+      await failed;
+      finish(ok(defaults()));
+      await flush();
+      assert.equal(commands.getSnapshot().mustVerify, true);
+      assert.equal(
+        env.data.queryClient.getQueryData(
+          queryKeys.notificationPreferences(env.identity),
+        ),
+        undefined,
+      );
+      assert.equal(
+        env.requests.filter(({ init }) => init.method === 'PATCH').length,
+        1,
+      );
+    } finally {
+      env.dispose();
+    }
+  }
+});
+
+test('offline before transport never queues a PATCH and retains a definite retry path', async () => {
+  const env = await integration();
+  try {
+    env.environment(true, false);
+    const commands = preferenceCommands(env.data, env.identity, true);
+    await assert.rejects(commands.save({ inApp: { cardAssigned: false } }));
+    assert.equal(commands.getSnapshot().mustVerify, false);
+    assert.equal(env.requests.length, 0);
+    env.environment(true, true);
+    env.respond(async () => ok(defaults()));
+    await commands.save({ inApp: { cardAssigned: false } });
+    assert.equal(
+      env.requests.filter(({ init }) => init.method === 'PATCH').length,
+      1,
+    );
+  } finally {
+    env.dispose();
+  }
+});
