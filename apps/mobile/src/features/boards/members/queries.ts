@@ -25,7 +25,9 @@ export const boardMembershipAccessKey = (
 export const boardPolicyKey = (identity: SessionIdentity, boardId: string) =>
   [...queryKeys.board(identity, boardId), 'settings', 'policy'] as const;
 
-export function hasExplicitBoardMembership(board: LifecycleBoard | undefined) {
+export function hasExplicitBoardMembership(
+  board: Pick<LifecycleBoard, 'capabilities' | 'currentUserRole'> | undefined,
+) {
   return (
     board?.capabilities.canReadBoard === true &&
     (board.currentUserRole === BoardRole.OWNER ||

@@ -570,6 +570,47 @@ test('Back, tab replacement and warm deep link prompt Keep editing/Discard using
   }
 });
 
+test('MOB-26 unsent comment uses real Card navigation prevention without changing Card title or other sections', async () => {
+  const env = await setup({
+    initialUrl: '/home',
+    override: ({ path, page: number }) =>
+      path.endsWith('/comments') || path.endsWith('/members')
+        ? response(page([], number, 20))
+        : null,
+  });
+  try {
+    await press('Open card from Home');
+    await screen.findByText('Card 1');
+    await env.board({ currentUserRole: 'MEMBER' });
+    await screen.findByRole('button', { name: 'Send comment' });
+    await fireEvent.changeText(
+      screen.getByLabelText('New comment'),
+      'Unsent comment draft',
+    );
+    await press('Back');
+    await screen.findByText('Discard changes?');
+    await press('Keep editing');
+    expect(screen.getByLabelText('New comment').props.value).toBe(
+      'Unsent comment draft',
+    );
+    expect(screen.getByText('Card 1')).toBeTruthy();
+    expect(screen.getByText('Description')).toBeTruthy();
+    await act(() => router.replace('/tasks'));
+    await screen.findByText('Discard changes?');
+    await press('Keep editing');
+    await press('Back');
+    await press('Discard');
+    await waitFor(() => expect(screen).toHavePathname('/home'));
+    expect(
+      env.requests.some(
+        ({ path, method }) => path.endsWith('/comments') && method === 'POST',
+      ),
+    ).toBe(false);
+  } finally {
+    await env.dispose();
+  }
+});
+
 test('late permission loss clears content and aborts pending save; no double submission', async () => {
   const held = deferred();
   const env = await setup({
