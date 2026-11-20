@@ -257,8 +257,15 @@ try {
   };
   // A fresh login is required after a DELETE has retired the previous JWT.
   B.expiresAt += 60_000;
-  await assert.rejects(()=>registry.register(B,{...rotated,expoPushToken:'ExpoPushToken[foreignabcdefghijkl]'}),e=>e.getStatus()===409);
-  assert.equal((await registry.current(A,installationId)).eligible,true);
+  await assert.rejects(
+    () =>
+      registry.register(B, {
+        ...rotated,
+        expoPushToken: 'ExpoPushToken[foreignabcdefghijkl]',
+      }),
+    (e) => e.getStatus() === 409,
+  );
+  assert.equal((await registry.current(A, installationId)).eligible, true);
   await registry.register(B, rotated);
   assert.deepEqual(await registry.current(A, installationId), {
     registered: false,
@@ -271,7 +278,31 @@ try {
   await registry.remove(A, installationId);
   assert.equal((await registry.current(B, installationId)).eligible, true);
   const freshA = { ...A, expiresAt: B.expiresAt + 60_000 };
-  await registry.register(freshA, rotated);
+  // Concurrent renewals and an ownership transfer share the identity lock. A
+  // renewal ordered after the transfer must be fenced; either ordering leaves
+  // exactly one fresh-A-owned installation and cannot resurrect B's jobs.
+  const transfer = await Promise.allSettled([
+    registry.register(B, rotated),
+    registry.register(freshA, rotated),
+    registry.register(freshA, rotated),
+  ]);
+  assert.equal(transfer[1].status, 'fulfilled');
+  assert.equal(transfer[2].status, 'fulfilled');
+  assert.equal((await registry.current(freshA, installationId)).eligible, true);
+  assert.equal((await registry.current(B, installationId)).registered, false);
+  assert.equal(
+    (
+      await source.query(
+        'SELECT count(*)::int AS n FROM push_devices WHERE installation_id=$1',
+        [installationId],
+      )
+    )[0].n,
+    1,
+  );
+  await assert.rejects(
+    () => registry.register(B, rotated),
+    (e) => e.getStatus() === 409,
+  );
   pass(
     'token rotation cancels old jobs, atomic A→B transfer fences stale A and foreign operations',
   );
@@ -458,21 +489,59 @@ try {
   pass(
     'canonical UUID routing and durable logout fence reject delayed POST even before first enrollment',
   );
-  const scratch={...rotated,installationId:randomUUID(),expoPushToken:'ExpoPushToken[scratchabcdefghijkl]'};
-  await registry.register(freshA,scratch);await registry.remove(freshA,scratch.installationId);
-  await registry.register(B,{...scratch,expoPushToken:'ExpoPushToken[scratchrotatedabcdef]'});
-  assert.equal((await registry.current(B,scratch.installationId)).eligible,true);
+  const scratch = {
+    ...rotated,
+    installationId: randomUUID(),
+    expoPushToken: 'ExpoPushToken[scratchabcdefghijkl]',
+  };
+  await registry.register(freshA, scratch);
+  await registry.remove(freshA, scratch.installationId);
+  await registry.register(B, {
+    ...scratch,
+    expoPushToken: 'ExpoPushToken[scratchrotatedabcdef]',
+  });
+  assert.equal(
+    (await registry.current(B, scratch.installationId)).eligible,
+    true,
+  );
   // Expired active markers cannot consume quota or permit a 21st live renewal.
-  const historical=[];
-  for(let i=0;i<20;i++) {
-    const id=randomUUID();historical.push(id);
-    await source.query(`INSERT INTO push_devices(user_id,installation_id,token_fingerprint,encrypted_token,platform,app_environment,project_id,active,auth_version,session_expires_at,enrollment_revision,lease_until)
-      VALUES ($1,$2,$3,'v1.test','ios','development',$4,true,0,now()+interval '1 hour',$5,now()-interval '1 second')`,[b.id,id,randomBytes(32).toString('hex'),input.projectId,randomUUID()]);
+  const historical = [];
+  for (let i = 0; i < 20; i++) {
+    const id = randomUUID();
+    historical.push(id);
+    await source.query(
+      `INSERT INTO push_devices(user_id,installation_id,token_fingerprint,encrypted_token,platform,app_environment,project_id,active,auth_version,session_expires_at,enrollment_revision,lease_until)
+      VALUES ($1,$2,$3,'v1.test','ios','development',$4,true,0,now()+interval '1 hour',$5,now()-interval '1 second')`,
+      [
+        b.id,
+        id,
+        randomBytes(32).toString('hex'),
+        input.projectId,
+        randomUUID(),
+      ],
+    );
   }
-  await registry.register(B,{...input,installationId:randomUUID(),expoPushToken:'ExpoPushToken[quotaabcdefghijklmn]'});
-  await source.query("UPDATE push_devices SET lease_until=now()+interval '1 hour' WHERE installation_id=ANY($1::uuid[])",[historical.slice(1,19)]);
-  await assert.rejects(()=>registry.register(B,{...input,installationId:historical[0],expoPushToken:'ExpoPushToken[renewabcdefghijklmn]'}),e=>e.getStatus()===429);
-  pass('live foreign credential protected, revoked rotation transferable and expired device quota bounded');
+  await registry.register(B, {
+    ...input,
+    installationId: randomUUID(),
+    expoPushToken: 'ExpoPushToken[quotaabcdefghijklmn]',
+  });
+  await source.query(
+    "UPDATE push_devices SET lease_until=now()+interval '1 hour' WHERE installation_id=ANY($1::uuid[])",
+    [historical.slice(1, 19)],
+  );
+  await assert.rejects(
+    () =>
+      registry.register(B, {
+        ...input,
+        installationId: historical[0],
+        expoPushToken: 'ExpoPushToken[renewabcdefghijklmn]',
+      }),
+    (e) => e.getStatus() === 429,
+  );
+  pass(
+    'live foreign credential protected, revoked rotation transferable and expired device quota bounded',
+  );
   // Valid invitations intentionally have no direct resource target/proof.
   const invitationResolvers = new NotificationInvitationResolvers();
   const {

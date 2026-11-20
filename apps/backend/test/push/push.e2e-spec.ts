@@ -92,10 +92,12 @@ describe('push HTTP contracts', () => {
       token: 'private',
     });
   });
-  const send = (method: 'get' | 'patch' | 'post' | 'delete', path: string) =>
-    request(app.getHttpServer())
-      [method]('/api/users/me/' + path)
-      .auth('valid', { type: 'bearer' });
+  const send = (method: 'get' | 'patch' | 'post' | 'delete', path: string) => {
+    const client = request(app.getHttpServer());
+    return client[method]('/api/users/me/' + path).auth('valid', {
+      type: 'bearer',
+    });
+  };
   it('envelopes allowlisted responses, no-store, fixed status and bodyless 204', async () => {
     const get = await send('get', 'push-preferences').expect(200);
     expect(get.body.data).toEqual({ enabled: false, deliveryAvailable: true });

@@ -89,7 +89,13 @@ export class PushDispatcher {
         await m.query('SELECT id FROM workspaces WHERE id=$1 FOR SHARE', [
           notification.workspaceId,
         ]);
-      if (notification?.workspaceId)
+      if (notification?.boardId)
+        await m.query(
+          `SELECT wm.user_id FROM workspace_members wm JOIN boards b ON b.workspace_id=wm.workspace_id
+           WHERE b.id=$1 AND wm.user_id=$2 FOR KEY SHARE OF wm`,
+          [notification.boardId, snapshot.recipientUserId],
+        );
+      else if (notification?.workspaceId)
         await m.query(
           'SELECT user_id FROM workspace_members WHERE workspace_id=$1 AND user_id=$2 FOR KEY SHARE',
           [notification.workspaceId, snapshot.recipientUserId],

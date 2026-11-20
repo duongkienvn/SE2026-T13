@@ -1,5 +1,9 @@
 import { ConfigService } from '@nestjs/config';
-import type { DataSource } from 'typeorm';
+import type { DataSource, EntityManager } from 'typeorm';
+import { UserNotification } from '../../src/api/notifications/entities/user-notification.entity';
+import { User } from '../../src/api/users/entities/user.entity';
+import { PushDevice } from '../../src/api/push/entities/push-device.entity';
+import { PushDeliveryOutbox } from '../../src/api/push/entities/push-delivery-outbox.entity';
 import type { NotificationResolver } from '../../src/api/notifications/notification-resolver.service';
 import {
   PushDispatcher,
@@ -17,6 +21,66 @@ describe('push dispatcher boundaries', () => {
       {} as NotificationResolver,
     ).drain();
     expect(source.query).not.toHaveBeenCalled();
+    expect(provider.send).not.toHaveBeenCalled();
+  });
+  it('locks the live Board Workspace grant before the recipient and device', async () => {
+    const order: string[] = [];
+    const job = {
+      id: 'job',
+      notificationId: 'notification',
+      recipientUserId: 'user',
+      deviceId: 'device',
+    };
+    const manager = {
+      query: jest.fn(async (sql: string) => {
+        order.push(sql);
+        return [];
+      }),
+      getRepository: (entity: unknown) => {
+        if (entity === PushDeliveryOutbox)
+          return { findOneBy: async () => job, findOne: async () => null };
+        if (entity === UserNotification)
+          return {
+            findOneBy: async () => ({ boardId: 'board', workspaceId: null }),
+          };
+        return {
+          findOne: async () => {
+            order.push(
+              entity === User
+                ? 'user'
+                : entity === PushDevice
+                  ? 'device'
+                  : 'other',
+            );
+            return null;
+          },
+        };
+      },
+    };
+    const source = {
+      query: jest.fn(async (sql: string) =>
+        sql.includes('WITH ready')
+          ? [[{ id: 'job', status: 'PROCESSING' }], 1]
+          : [],
+      ),
+      transaction: async (run: (m: EntityManager) => Promise<unknown>) => {
+        source.query.mockImplementation(async () => [[], 0]);
+        return run(manager as unknown as EntityManager);
+      },
+    };
+    const provider = { send: jest.fn(), receipt: jest.fn() };
+    await new PushDispatcher(
+      source as unknown as DataSource,
+      new ConfigService({ PUSH_NOTIFICATIONS_ENABLED: true }),
+      provider as ExpoPushProvider,
+      {} as NotificationResolver,
+    ).drain();
+    expect(order[0]).toContain('FROM boards');
+    expect(order[1]).toContain(
+      'JOIN boards b ON b.workspace_id=wm.workspace_id',
+    );
+    expect(order[1]).toContain('FOR KEY SHARE OF wm');
+    expect(order.slice(2)).toEqual(['user', 'device']);
     expect(provider.send).not.toHaveBeenCalled();
   });
   it('bounds exponential backoff and jitter', () => {
