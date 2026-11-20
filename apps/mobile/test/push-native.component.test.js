@@ -16,7 +16,10 @@ jest.mock('expo-constants', () => ({
   __esModule: true,
   default: { executionEnvironment: 'storeClient' },
 }));
-jest.mock('expo', () => ({ requireOptionalNativeModule: () => ({}) }));
+const mockOptionalModule = jest.fn(() => ({}));
+jest.mock('expo', () => ({
+  requireOptionalNativeModule: (...args) => mockOptionalModule(...args),
+}));
 jest.mock('expo-notifications', () => {
   mockImport();
   return {
@@ -39,6 +42,7 @@ jest.mock('expo-notifications', () => {
 beforeEach(() => {
   jest.clearAllMocks();
   Constants.executionEnvironment = 'storeClient';
+  mockOptionalModule.mockImplementation(() => ({}));
 });
 test('Expo Go does not import or call native push', async () => {
   const loader = jest.fn(async () => jest.requireMock('expo-notifications'));
@@ -54,6 +58,24 @@ test('Expo Go does not import or call native push', async () => {
   expect(loader).not.toHaveBeenCalled();
   expect(mockImport).not.toHaveBeenCalled();
   expect(mockRequest).not.toHaveBeenCalled();
+});
+test('an older native binary missing Push modules stays unavailable without importing the SDK', async () => {
+  Constants.executionEnvironment = 'standalone';
+  mockOptionalModule.mockReturnValue(null);
+  const loader = jest.fn(async () => jest.requireMock('expo-notifications'));
+  const adapter = createNativePushAdapter(
+    '45269d99-0d21-44b6-ab8f-e73e80576fee',
+    loader,
+  );
+  expect(adapter.capability()).toBe('needs-build');
+  await adapter.listen(jest.fn(), jest.fn(), jest.fn());
+  await adapter.clearResponse();
+  await expect(adapter.token()).rejects.toThrow('Native push unavailable');
+  expect(loader).not.toHaveBeenCalled();
+  mockOptionalModule.mockImplementation(() => {
+    throw new Error('native lookup failed');
+  });
+  expect(adapter.capability()).toBe('needs-build');
 });
 test('native listeners suppress foreground presentation, dedupe cold/warm taps and clean up', async () => {
   Constants.executionEnvironment = 'standalone';

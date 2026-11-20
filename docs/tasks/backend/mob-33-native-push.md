@@ -101,6 +101,16 @@ Commands below run from repository root unless a working directory is stated. Fo
 
 Verification transparency: initial Mobile typecheck failed because the locked native package was not installed, then passed after frozen install. Initial Backend focused run accidentally used Jest-30's unsupported `--testPathPatterns` on Jest 29; stopped when unrelated tests began, reran with explicit paths (no root/Web suite run). First correct six-suite run had one HTTP test exceed 5 seconds under cold concurrent tooling; isolated rerun and final six-suite run both passed without changing timeouts. Default Prettier across the inherited branch flagged CRLF endings on Windows; `--end-of-line auto` isolated one inherited substantive fixture-formatting defect, now fixed. No repository-wide formatting rewrite.
 
+## Supplemental safety verification (continuation round 2)
+
+No additional production code or UI change. Added direct abort/deadline and oversized/broken response tests to the existing Expo provider suite, worker lifecycle tests (OFF/no polling, redacted failure, bounded next cycle, no overlap and shutdown lease release), and an older-native-binary fallback test that proves missing/throwing module lookup never imports Push SDK.
+
+- `pnpm --filter @kanban/backend exec jest --runInBand --runTestsByPath test/push/push-worker.spec.ts test/push/push-dispatcher.spec.ts test/push/push.e2e-spec.ts test/push/expo-push.provider.spec.ts test/push/push-security.spec.ts test/push/push-registry.spec.ts test/push/push-enqueuer.spec.ts`: **PASS 7 suites / 40 tests, exit 0**. All provider traffic is mocked.
+- `pnpm --filter @kanban/mobile exec jest --runInBand --runTestsByPath test/push-native.component.test.js test/push.component.test.js`: **PASS 2 suites / 10 tests, exit 0**.
+- Changed-test Prettier, targeted ESLint and `git diff --check`: **PASS**. Source/config did not change, so previous typecheck/build/Metro evidence remains applicable.
+- Docker recheck: `com.docker.service` stopped; no PostgreSQL service or designated DB environment. No service/configuration was changed.
+- Whole-component `pnpm --filter @kanban/mobile exec jest --runInBand --detectOpenHandles`: **40 suites / 516 tests PASS** in 380 seconds; process retained after results with no attributed handle printed; no owned TCP connections found. Diagnostic was cancelled after completion (not a clean command PASS). No test timeout, production code or exit-suppression change was made.
+
 ## Final criterion reconciliation
 
 - Initial PARTIAL implementation gaps are repaired with focused regressions; initial TODO handoff is consolidated here. Inherited DONE modules, migration, contracts, Inbox navigation and Preferences UI remain intact.

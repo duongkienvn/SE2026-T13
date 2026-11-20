@@ -84,6 +84,65 @@ describe('Expo HTTPS boundary', () => {
       code: 'SEND_UNCERTAIN',
     });
   });
+  it('treats an actual request abort as unknown send, but allows receipt lookup retry', async () => {
+    const deadlines: AbortController[] = [];
+    const timeout = jest
+      .spyOn(AbortSignal, 'timeout')
+      .mockImplementation((ms) => {
+        expect(ms).toBe(10_000);
+        const controller = new AbortController();
+        deadlines.push(controller);
+        return controller.signal;
+      });
+    const call = jest.spyOn(globalThis, 'fetch').mockImplementation(
+      async (_url, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init!.signal!.addEventListener(
+            'abort',
+            () => reject(new Error('private timeout details')),
+            { once: true },
+          );
+        }),
+    );
+    const sending = provider().send(
+      'ExpoPushToken[abcdefghijklmnop]',
+      'notification-id',
+    );
+    deadlines[0].abort();
+    expect(await sending).toEqual({ type: 'unknown', code: 'SEND_UNCERTAIN' });
+    const lookup = provider().receipt('accepted-ticket');
+    deadlines[1].abort();
+    expect(await lookup).toEqual({
+      type: 'retry',
+      code: 'PROVIDER_UNAVAILABLE',
+    });
+    expect(timeout).toHaveBeenCalledTimes(2);
+    expect(call).toHaveBeenCalledTimes(2);
+    expect(call.mock.calls[0][1]).toMatchObject({ redirect: 'error' });
+  });
+  it('bounds response bytes and never replays an uncertain oversized or broken body', async () => {
+    const call = jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('x'.repeat(128_001)));
+    expect(await provider().send('token', 'id')).toEqual({
+      type: 'unknown',
+      code: 'SEND_UNCERTAIN',
+    });
+    call.mockResolvedValue(
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.error(new Error('private body error'));
+          },
+        }),
+      ),
+    );
+    expect(await provider().send('token', 'id')).toEqual({
+      type: 'unknown',
+      code: 'SEND_UNCERTAIN',
+    });
+    expect(call).toHaveBeenCalledTimes(2);
+  });
   it('revokes DeviceNotRegistered and distinguishes accepted receipts', async () => {
     jest.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
