@@ -170,6 +170,11 @@ describe('push quiet-hours send-time eligibility', () => {
       'job',
       new Date('2026-01-02T07:00:00Z'),
     ]);
+    expect(
+      f.query.mock.calls.some(([sql]) =>
+        /attempts\s*=\s*attempts\s*\+\s*1/.test(sql),
+      ),
+    ).toBe(false);
     expect(f.job.attempts).toBe(0);
     expect(f.job.expiresAt.toISOString()).toBe('2026-01-02T22:00:00.000Z');
     expect(
@@ -233,6 +238,11 @@ describe('push quiet-hours send-time eligibility', () => {
     const f = setup({ attempts: 3 });
     await f.dispatcher.drain();
     expect(f.provider.send).not.toHaveBeenCalled();
+    expect(
+      f.query.mock.calls.some(([sql]) =>
+        /attempts\s*=\s*attempts\s*\+\s*1/.test(sql),
+      ),
+    ).toBe(false);
     expect(f.job.attempts).toBe(3);
     expect(f.query).toHaveBeenCalledWith(
       expect.stringContaining("last_error_code='QUIET_HOURS'"),
