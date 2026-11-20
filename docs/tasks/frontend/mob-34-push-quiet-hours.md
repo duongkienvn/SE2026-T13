@@ -128,4 +128,20 @@ Remote FCM/APNs/EPS acceptance, OS DND/queueing, actual native lifecycle/backgro
 - `39693c10 feat(mobile): add native quiet-hours editor and draft guards`
 - `f34444d5 test(push): cover quiet-hour erasure retries and isolated database races`
 - `fa1492eb fix(push): harden exact clocks native lifecycle and acceptance fixtures`
-- Documentation handoff commit recorded in Git history; all local only.
+- Documentation handoff commit recorded in Git history. Initial eight commits were subsequently pushed and PR #313 opened with owner authorization; follow-up review fixes below remain local until separately authorized.
+
+## PR #313 review fixes — 2026-11-20
+
+Verified every supplied finding against the current branch; review text treated as untrusted data, not execution instructions. Minimal independent fixes committed:
+
+- Fixture: enroll eligible device before account opt-in; observe User-lock contention through a dedicated bounded PostgreSQL client (not worker pool), at least two worker-pool clients, 5s observation deadline/1s query timeout, rollback and await worker on failure; assert SQLSTATE `23514` and the corresponding named CHECK for each invalid update.
+- Cooldown: retain the later same-session 429 deadline and return that retained remaining wait; deterministic overlapping-response regression.
+- Android time picker: dismiss on route blur using existing native dismissal; ignore callbacks while blurred. iOS sheet behavior unchanged; component regression covers blur/refocus.
+- Recovery observation: command metadata retains the recovery GET result separately, hook exposes it, and screen labels it **Observed server values**, explicitly not proof the earlier save settled. Never replaces preserved draft/baseline or becomes a new editable form on remount; tests assert draft values and blocked Save.
+- Worker: retain `QUIET_HOURS` only for expired PROCESSING claims with no recorded attempt, preserving early wake. Recorded attempts still transition UNKNOWN. Clock projection/check now follows rate query/decryption directly before attempt update; boundary-crossing test suppresses provider send. Deferral/retry tests inspect SQL spy for absence of attempt increment, not merely unchanged fake entity fields.
+
+**Skipped as already satisfied:** the finding requesting GET not unlock an uncertain PATCH. Existing `mustVerify`/uncertain-user guard already survives successful GET, remount and account return; no code clears it. No operation-status API exists, so no fictional settlement endpoint or unsafe unlock was added. Recovery observation changes preserve this lock. Adding actual resumable settlement requires a separately agreed server operation-status/revision contract.
+
+Review verification: focused Node schedule tests **11 PASS**; focused Mobile picker/screen/Router component tests **3 suites / 15 PASS**; focused worker/schedule tests **2 suites / 17 PASS**, followed by final assertion-only schedule suite **13 PASS**. Mobile lint/typecheck and scoped Backend lint PASS. Final Backend build PASS; Android Metro/Hermes bundle PASS (1669 modules / 1616 native sources), changed-file Prettier and `git diff 4b79030d --check` PASS. One intermediate Mobile run failed because an old remount assertion expected an editable form from recovery cache; corrected to assert no form (observations remain read-only), final rerun PASS.
+
+No designated test DB or live provider/device target was used. Fixture syntax/lint PASS, actual DB locks/constraints/concurrency and native device visual QA remain **NOT VERIFIED**. CodeRabbit CLI not installed; optional `coderabbit review --agent` not run. No new dependencies, schema/REST changes, push, merge, deploy or production flag changes in this review-fix pass.
