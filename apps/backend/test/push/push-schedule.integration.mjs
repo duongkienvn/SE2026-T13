@@ -52,7 +52,12 @@ try {
   await admin.connect();
   await admin.query(`CREATE DATABASE "${name}"`);
   created = true;
-  source = await new DataSource({ ...options, database: name }).initialize();
+  source = await new DataSource({
+    ...options,
+    database: name,
+    // One held mutation connection and one worker connection, even in small CI pools.
+    poolSize: Math.max(2, options.poolSize),
+  }).initialize();
   const all = source.migrations;
   source.migrations = all.filter((m) => !m.name.startsWith('PushQuietHours'));
   await source.runMigrations();
@@ -238,9 +243,20 @@ try {
   await schedules.update(session, { enabled: false });
   await record();
   const lock = source.createQueryRunner();
-  await lock.connect();
-  await lock.startTransaction();
+  // Not from the worker pool: observation must work while both pool clients wait.
+  const observer = new Client({
+    ...options,
+    user: options.username,
+    database: name,
+    connectionTimeoutMillis: 2_000,
+    query_timeout: 1_000,
+    statement_timeout: 1_000,
+  });
+  let draining;
   try {
+    await observer.connect();
+    await lock.connect();
+    await lock.startTransaction();
     await lock.query('SELECT id FROM users WHERE id=$1 FOR NO KEY UPDATE', [
       user.id,
     ]);
@@ -248,11 +264,16 @@ try {
       'UPDATE user_push_schedules SET enabled=true WHERE user_id=$1',
       [user.id],
     );
-    const draining = worker().drain();
-    // Wait for observable PG lock state, never infer ordering from a fixed sleep.
+    draining = worker().drain();
+    // Attach rejection handling immediately, including the failed-observation path.
+    void draining.catch(() => undefined);
+    // Bound both the observation loop and each query so failure reaches rollback.
     let blocked = false;
-    for (let i = 0; i < 500 && !blocked; i++) {
-      const [state] = await source.query(
+    const deadline = Date.now() + 5_000;
+    while (Date.now() < deadline && !blocked) {
+      const {
+        rows: [state],
+      } = await observer.query(
         "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock') AS blocked",
       );
       blocked = state.blocked;
@@ -264,6 +285,9 @@ try {
   } finally {
     if (lock.isTransactionActive) await lock.rollbackTransaction();
     await lock.release();
+    await observer.end();
+    // Rollback above releases the worker even when the lock assertion failed.
+    await draining;
   }
   console.log(
     'PASS late schedule edit serializes before worker send-time preparation',
