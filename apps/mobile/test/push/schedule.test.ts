@@ -16,6 +16,11 @@ import {
   scheduleKey,
 } from '../../src/features/push/schedule/api.ts';
 import { scheduleCommands } from '../../src/features/push/schedule/mutations.ts';
+import {
+  guardScheduleCooldown,
+  rememberScheduleFailure,
+} from '../../src/features/push/schedule/cooldown.ts';
+import { ApiError } from '../../src/infrastructure/api/errors.ts';
 import { integration, json, ok } from '../realtime/integration-support.ts';
 import { flush, loginResponse, USER_B } from '../auth/support.ts';
 import { onlineManager } from '@tanstack/react-query';
@@ -195,6 +200,32 @@ test('400 recoverable; 429 endpoint cooldown prevents reads/writes/remount bypas
       env.data.queryClient.fetchQuery(scheduleOptions(env.data, env.identity)),
     );
     assert.equal(env.requests.length, 2);
+  } finally {
+    env.dispose();
+  }
+});
+test('overlapping 429 responses retain the later same-session deadline', async (t) => {
+  const env = await integration();
+  let now = Date.now();
+  t.mock.method(Date, 'now', () => now);
+  try {
+    const failure = (delay: number) =>
+      rememberScheduleFailure(
+        env.data,
+        env.identity,
+        new ApiError('http', { status: 429, retryAfterMs: delay }),
+      ) as ApiError;
+    assert.equal(failure(60_000).retryAfterMs, 60_000);
+    now += 10_000;
+    assert.equal(failure(1_000).retryAfterMs, 50_000);
+    assert.throws(
+      () => guardScheduleCooldown(env.data, env.identity),
+      (error: unknown) =>
+        error instanceof ApiError && error.retryAfterMs === 50_000,
+    );
+    assert.equal(failure(90_000).retryAfterMs, 90_000);
+    now += 90_000;
+    assert.doesNotThrow(() => guardScheduleCooldown(env.data, env.identity));
   } finally {
     env.dispose();
   }

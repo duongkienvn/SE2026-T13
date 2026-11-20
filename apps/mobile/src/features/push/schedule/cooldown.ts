@@ -41,10 +41,16 @@ export function rememberScheduleFailure(
     error.retryAfterMs !== undefined && Number.isFinite(error.retryAfterMs)
       ? Math.max(0, error.retryAfterMs)
       : MAX_AUTOMATIC_RETRY_DELAY_MS;
-  budgets.set(data, { identity, until: Date.now() + delay });
+  const now = Date.now();
+  const previous = budgets.get(data);
+  const until = Math.max(
+    now + delay,
+    previous && sameIdentity(previous.identity, identity) ? previous.until : 0,
+  );
+  budgets.set(data, { identity, until });
   return new ApiError(error.kind, {
     ...error,
     message: error.message,
-    retryAfterMs: delay,
+    retryAfterMs: until - now,
   });
 }
