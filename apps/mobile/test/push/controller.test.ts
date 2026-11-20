@@ -178,6 +178,11 @@ function fixture() {
       live = { userId, generation: 2 };
       controller.sessionStarted();
     },
+    switchTo: (nextUserId: string) => {
+      controller.sessionEnded();
+      live = { userId: nextUserId, generation: 2 };
+      controller.sessionStarted();
+    },
   };
 }
 test('launch/reconnect never prompts; explicit grant registers before account enable', async () => {
@@ -192,6 +197,36 @@ test('launch/reconnect never prompts; explicit grant registers before account en
   assert(f.calls.indexOf('register') < f.calls.indexOf('patch:true'));
   assert.equal(f.controller.getSnapshot().eligible, true);
 });
+test('observed permission revocation immediately clears eligibility even if unregister fails', async () => {
+  const f = fixture();
+  f.setEnabled(true);
+  f.setPermission('granted');
+  await f.controller.reconcile();
+  assert.equal(f.controller.getSnapshot().eligible, true);
+  f.setPermission('denied');
+  f.api.remove = async () => {
+    throw new ApiError('network');
+  };
+  await f.controller.reconcile();
+  assert.equal(f.controller.getSnapshot().permission, 'denied');
+  assert.equal(f.controller.getSnapshot().eligible, false);
+  assert.deepEqual(await f.storage.pending(), {
+    userId,
+    installationId: install,
+  });
+});
+test('reconnect while backgrounded defers automatic registration until foreground', async () => {
+  const f = fixture();
+  f.setEnabled(true);
+  f.setPermission('granted');
+  f.controller.setEnvironment({ online: false, foreground: false });
+  f.controller.setEnvironment({ online: true, foreground: false });
+  await new Promise((r) => setImmediate(r));
+  assert(!f.calls.includes('register'));
+  f.controller.setEnvironment({ online: true, foreground: true });
+  await new Promise((r) => setImmediate(r));
+  assert(f.calls.includes('register'));
+});
 test('account enable on another device never implies OS consent', async () => {
   const f = fixture();
   f.setEnabled(true);
@@ -201,14 +236,33 @@ test('account enable on another device never implies OS consent', async () => {
   assert(!f.calls.includes('permission:true'));
   assert(!f.calls.includes('register'));
 });
-test('disable saves account gate before current device cleanup', async () => {
+test('disable preserves the installation session for a later explicit re-enable', async () => {
+  const f = fixture();
+  let retired = false;
+  f.setEnabled(true);
+  f.setPermission('granted');
+  f.api.remove = async () => {
+    retired = true;
+  };
+  f.api.register = async () => {
+    if (retired) throw new ApiError('http', { status: 409 });
+    f.calls.push('register');
+  };
+  await f.controller.reconcile();
+  await f.controller.disable();
+  assert.equal(f.controller.getSnapshot().preferences?.enabled, false);
+  await f.controller.enable();
+  assert.equal(f.controller.getSnapshot().preferences?.enabled, true);
+  assert.equal(f.controller.getSnapshot().eligible, true);
+});
+test('disable uses the authoritative account gate without retiring the current session', async () => {
   const f = fixture();
   f.setEnabled(true);
   f.setPermission('granted');
   await f.controller.reconcile();
   f.calls.length = 0;
   await f.controller.disable();
-  assert.deepEqual(f.calls, ['patch:false', 'remove']);
+  assert.deepEqual(f.calls, ['patch:false']);
   assert.equal(f.controller.getSnapshot().preferences?.enabled, false);
 });
 test('ambiguous PATCH followed by stale GET never unlocks writes or claims success', async () => {
@@ -235,6 +289,33 @@ test('session change during token fetch cannot enroll the old account', async ()
   assert(!f.calls.includes('register'));
   assert.equal(f.controller.getSnapshot().preferences, undefined);
 });
+test('User A token completing after a switch cannot register or enable; B enrolls afresh', async () => {
+  const f = fixture();
+  f.setPermission('granted');
+  let started!: () => void, release!: (token: string) => void;
+  const ready = new Promise<void>((r) => {
+    started = r;
+  });
+  f.native.token = () => {
+    started();
+    return new Promise((r) => {
+      release = r;
+    });
+  };
+  const enablingA = f.controller.enable();
+  await ready;
+  f.setEnabled(false);
+  f.switchTo(install);
+  release('ExpoPushToken[oldaccountabcdefghijkl]');
+  await enablingA;
+  await new Promise((r) => setImmediate(r));
+  assert(!f.calls.includes('register'));
+  assert(!f.calls.includes('patch:true'));
+  f.native.token = async () => 'ExpoPushToken[newaccountabcdefghijkl]';
+  await f.controller.enable();
+  assert.equal(f.calls.filter((call) => call === 'register').length, 1);
+  assert.equal(f.controller.getSnapshot().preferences?.enabled, true);
+});
 test('offline logout stores IDs only and clears rendering immediately', async () => {
   const f = fixture();
   await f.controller.reconcile();
@@ -247,6 +328,64 @@ test('offline logout stores IDs only and clears rendering immediately', async ()
   });
   assert(!f.calls.includes('remove'));
   assert.equal(f.controller.getSnapshot().preferences, undefined);
+});
+test('a hung Expo token request times out without enabling; late token cannot register', async (t) => {
+  const f = fixture();
+  f.setPermission('granted');
+  let tokenStarted!: () => void, release!: (token: string) => void;
+  const started = new Promise<void>((resolve) => {
+    tokenStarted = resolve;
+  });
+  f.native.token = () => {
+    tokenStarted();
+    return new Promise((resolve) => {
+      release = resolve;
+    });
+  };
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const enabling = f.controller.enable();
+  await started;
+  t.mock.timers.tick(15_000);
+  await enabling;
+  assert.equal(f.controller.getSnapshot().busy, false);
+  assert.equal(f.controller.getSnapshot().preferences?.enabled, false);
+  assert(!f.calls.includes('register'));
+  release('ExpoPushToken[abcdefghijklmnop]');
+  await new Promise((r) => setImmediate(r));
+  assert(!f.calls.includes('register'));
+});
+test('logout cancels a hung native token promise without waiting for the deadline', async () => {
+  const f = fixture();
+  f.setPermission('granted');
+  let started!: () => void;
+  const ready = new Promise<void>((r) => {
+    started = r;
+  });
+  f.native.token = () => {
+    started();
+    return new Promise(() => {});
+  };
+  const enabling = f.controller.enable();
+  await ready;
+  f.switchOut();
+  await enabling;
+  assert(!f.calls.includes('register'));
+  assert.equal(f.controller.getSnapshot().busy, false);
+});
+test('registration failure never writes account opt-in or retains provider details', async () => {
+  const f = fixture();
+  f.setPermission('granted');
+  f.api.register = async () => {
+    throw new Error('ExpoPushToken[private-routing-material]');
+  };
+  await f.controller.enable();
+  assert(!f.calls.includes('patch:true'));
+  assert.equal(f.controller.getSnapshot().preferences?.enabled, false);
+  assert(
+    !JSON.stringify(f.controller.getSnapshot()).includes(
+      'private-routing-material',
+    ),
+  );
 });
 test('forged push target is ignored and UUID taps only open Inbox', async () => {
   const f = fixture();

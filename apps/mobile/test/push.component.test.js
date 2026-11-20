@@ -1,6 +1,31 @@
 /* global jest, test, expect, afterEach */
 import { render, screen, fireEvent } from '@testing-library/react-native';
 import { PushControls } from '../src/features/push/context';
+import { PushBridge } from '../src/features/push/PushBridge';
+import { subscribeIncomingLinks } from '../src/navigation/incoming-link';
+
+let mockNavigationReady = true,
+  mockOpenInbox;
+const mockNavigate = jest.fn(),
+  mockListen = jest.fn(),
+  mockUnsubscribe = jest.fn();
+const mockRouter = { navigate: mockNavigate };
+jest.mock('expo-router', () => ({
+  useRouter: () => mockRouter,
+  useRootNavigationState: () =>
+    mockNavigationReady ? { key: 'root' } : undefined,
+}));
+jest.mock('../src/features/push/native-runtime', () => ({
+  nativePush: {
+    setOpenInbox: (callback) => {
+      mockOpenInbox = callback;
+    },
+    receive: jest.fn(),
+    tap: jest.fn(),
+    reconcile: jest.fn(),
+  },
+  nativePushAdapter: { listen: (...args) => mockListen(...args) },
+}));
 
 function controller(patch = {}) {
   const state = {
@@ -21,6 +46,28 @@ function controller(patch = {}) {
   };
 }
 afterEach(() => jest.clearAllMocks());
+test('push bridge waits for router and uses guarded Inbox intent, never payload routes', async () => {
+  mockNavigationReady = false;
+  mockListen.mockResolvedValue(mockUnsubscribe);
+  const view = await render(<PushBridge />);
+  expect(mockListen).not.toHaveBeenCalled();
+  mockNavigationReady = true;
+  await view.rerender(<PushBridge />);
+  const stop = subscribeIncomingLinks((destination) => {
+    expect(destination).toEqual({ kind: 'tab', tab: 'inbox' });
+    return '/notification-preferences';
+  });
+  try {
+    mockOpenInbox();
+    expect(mockNavigate).toHaveBeenLastCalledWith('/notification-preferences');
+  } finally {
+    stop();
+  }
+  mockOpenInbox();
+  expect(mockNavigate).toHaveBeenLastCalledWith('/inbox');
+  await view.unmount();
+  expect(mockUnsubscribe).toHaveBeenCalledTimes(1);
+});
 test('push account control explicitly enables and identifies immediate saving', async () => {
   const c = controller();
   await render(<PushControls controller={c} />);

@@ -79,13 +79,34 @@ export function createPushController(deps: Dependencies) {
     }
     return 'Push setup could not be confirmed. Retry setup or check notification permissions in system settings.';
   }
+  async function fetchToken(signal: AbortSignal): Promise<string> {
+    // Expo's native token/HTTPS promise has no AbortSignal or deadline. A late
+    // result must never keep setup busy forever or enroll a superseded session.
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    let cancel = () => {};
+    try {
+      return await new Promise<string>((resolve, reject) => {
+        cancel = () => reject(new ApiError('aborted'));
+        timeout = setTimeout(() => reject(new ApiError('timeout')), 15_000);
+        signal.addEventListener('abort', cancel, { once: true });
+        if (signal.aborted) {
+          cancel();
+          return;
+        }
+        void deps.native.token().then(resolve, reject);
+      });
+    } finally {
+      clearTimeout(timeout);
+      signal.removeEventListener('abort', cancel);
+    }
+  }
   async function run(mode: 'reconcile' | 'enable' | 'disable') {
     if (operation) {
       if (mode === 'reconcile') queued = true;
       return;
     }
     const identity = deps.identity();
-    if (!identity || suspended) return;
+    if (!identity || suspended || (mode === 'reconcile' && !foreground)) return;
     if (!online) {
       publish({
         error: 'You’re offline. Reconnect to change push settings.',
@@ -125,13 +146,9 @@ export function createPushController(deps: Dependencies) {
         check(identity, version);
         patchStarted = false;
         publish({ preferences, eligible: false });
-        const installationId = await deps.storage.installation();
-        check(identity, version);
-        try {
-          await api.remove(installationId, abort.signal);
-        } catch {
-          await deps.storage.markCleanup(identity.userId, installationId);
-        }
+        // PATCH already deactivates every account device and cancels its jobs.
+        // DELETE is a session-retiring logout fence: using it here would make
+        // a later explicit re-enable fail until the user signs in again.
         return;
       }
       const preferences = await api.get(abort.signal);
@@ -170,8 +187,14 @@ export function createPushController(deps: Dependencies) {
       check(identity, version);
       publish({ permission });
       if (permission !== 'granted') {
+        // OS revocation is known locally even when the server cannot ACK cleanup.
+        publish({ eligible: false });
         if (preferences.enabled) {
+          await deps.storage.markCleanup(identity.userId, installationId);
+          check(identity, version);
           await api.remove(installationId, abort.signal);
+          check(identity, version);
+          await deps.storage.clearCleanup();
           check(identity, version);
         }
         publish({
@@ -193,7 +216,7 @@ export function createPushController(deps: Dependencies) {
         publish({ eligible: false });
         return;
       }
-      const token = await deps.native.token();
+      const token = await fetchToken(abort.signal);
       check(identity, version);
       if (
         hadPendingSave ||
