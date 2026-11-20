@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { PushEnqueuer } from '../push/push-enqueuer.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { NotificationKind } from '@kanban/shared';
 import { isUUID } from 'class-validator';
@@ -33,6 +34,7 @@ export class NotificationService {
   constructor(
     @InjectRepository(UserNotification)
     private readonly notifications: Repository<UserNotification>,
+    @Optional() private readonly push?: PushEnqueuer,
   ) {}
 
   async record(
@@ -86,7 +88,10 @@ export class NotificationService {
       .returning('id')
       .execute();
     const id = (inserted.raw as { id: string }[])[0]?.id;
-    if (id) return result('created', id);
+    if (id) {
+      await this.push?.enqueue(manager, id, recipientUserId);
+      return result('created', id);
+    }
     // Unique recipient+dedupe is the final database fence, even if another
     // correctly scoped writer did not use this process/recipient lock.
     const duplicate = await repository.findOneByOrFail({
