@@ -32,6 +32,9 @@ function Preferences({ identity }: { identity: SessionIdentity }) {
     router = useRouter(),
     editor = usePreferences(identity);
   const { form, query, mutation } = editor;
+  // An observation after an uncertain write is read-only, never a draft baseline.
+  const preferences =
+    form?.draft ?? (mutation.mustVerify ? query.data : undefined);
   const navigation = useDraftNavigation(editor, '/notification-preferences');
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
@@ -83,7 +86,7 @@ function Preferences({ identity }: { identity: SessionIdentity }) {
             preferences.
           </Text>
         )}
-        {!form && !query.isError && (
+        {!preferences && !query.isError && (
           <View accessibilityLiveRegion="polite" style={{ gap: spacing.sm }}>
             <Text style={[typography.body, { color: c.textSecondary }]}>
               Loading notification preferences…
@@ -125,8 +128,10 @@ function Preferences({ identity }: { identity: SessionIdentity }) {
               accessibilityLiveRegion="polite"
               style={[typography.body, { color: c.text }]}
             >
-              Save wasn’t confirmed. Check server preferences before another
-              save. Your draft is kept.
+              Save wasn’t confirmed. This server cannot confirm when that save
+              has finished. Further saves are blocked to protect your choices.
+              Checking values cannot unlock saving.{' '}
+              {form ? 'Your draft is kept.' : 'Reported values are read-only.'}
             </Text>
             <Button
               label="Check server preferences"
@@ -154,7 +159,7 @@ function Preferences({ identity }: { identity: SessionIdentity }) {
             <Button
               label="Reload server values"
               variant="secondary"
-              disabled={editor.pending}
+              disabled={editor.pending || mutation.mustVerify}
               onPress={editor.cancel}
             />
           </View>
@@ -167,10 +172,10 @@ function Preferences({ identity }: { identity: SessionIdentity }) {
             {editor.notice}
           </Text>
         )}
-        {form && (
+        {preferences && (
           <>
             <PreferenceSections
-              draft={form.draft}
+              draft={preferences}
               emailEnabled={editor.emailEnabled}
               disabled={editor.pending || !editor.online || mutation.mustVerify}
               onEdit={editor.edit}

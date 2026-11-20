@@ -24,6 +24,9 @@ type State = {
   error: unknown;
   errorUpdatedAt: number;
 };
+// Only uncertainty metadata survives account changes, never preference values.
+const uncertainUsers = new WeakMap<MobileDataLayer, Set<string>>();
+const pendingUsers = new WeakMap<MobileDataLayer, Set<string>>();
 function uncertain(error: unknown) {
   return (
     !(error instanceof ApiError) ||
@@ -49,7 +52,7 @@ function createCommands(
   const listeners = new Set<() => void>();
   let state: State = {
     pending: null,
-    mustVerify: false,
+    mustVerify: uncertainUsers.get(data)?.has(identity.userId) ?? false,
     error: null,
     errorUpdatedAt: 0,
   };
@@ -58,9 +61,21 @@ function createCommands(
     state = { ...state, ...patch };
     listeners.forEach((listener) => listener());
   }
+  function retainUncertainty() {
+    const users = uncertainUsers.get(data) ?? new Set<string>();
+    users.add(identity.userId);
+    uncertainUsers.set(data, users);
+    publish({ mustVerify: true });
+  }
   function guard(verify: boolean) {
     guardPreferencesCooldown(data, identity);
-    if (state.pending || (!verify && state.mustVerify))
+    if (uncertainUsers.get(data)?.has(identity.userId) && !state.mustVerify)
+      publish({ mustVerify: true });
+    if (
+      state.pending ||
+      (!verify &&
+        (state.mustVerify || pendingUsers.get(data)?.has(identity.userId)))
+    )
       throw new ApiError('http', {
         status: 409,
         code: 'PREFERENCES_REVIEW_REQUIRED',
@@ -75,14 +90,20 @@ function createCommands(
     patch?: UpdateNotificationPreferences,
   ): Promise<NotificationPreferences> {
     guard(kind === 'verify');
+    if (kind === 'save') {
+      const users = pendingUsers.get(data) ?? new Set<string>();
+      users.add(identity.userId);
+      pendingUsers.set(data, users);
+    }
     const controller = new AbortController();
+    let attempted = false;
     active = controller;
     publish({ pending: kind, error: null });
     // Cancel/fence reads before writing; a pre-save response cannot replace the ACK.
-    data.cancelResourceRequests(key);
-    await data.queryClient.cancelQueries({ queryKey: key, exact: true });
-    data.resources.bumpKey(key);
     try {
+      data.cancelResourceRequests(key);
+      await data.queryClient.cancelQueries({ queryKey: key, exact: true });
+      data.resources.bumpKey(key);
       const result =
         kind === 'verify'
           ? await api.get(controller.signal)
@@ -93,8 +114,13 @@ function createCommands(
                 retry: false,
                 networkMode: 'always',
                 gcTime: 0,
-                mutationFn: (input: UpdateNotificationPreferences) =>
-                  api.patch(input, controller.signal),
+                mutationFn: (input: UpdateNotificationPreferences) => {
+                  if (controller.signal.aborted)
+                    throw new ApiError('aborted', { requestStarted: false });
+                  data.assertCurrent(identity);
+                  attempted = true;
+                  return api.patch(input, controller.signal);
+                },
               })
               .execute(patch!);
       data.assertCurrent(identity);
@@ -105,18 +131,21 @@ function createCommands(
       void data.queryClient.cancelQueries({ queryKey: key, exact: true });
       data.resources.bumpKey(key);
       data.queryClient.setQueryData(key, result);
-      publish({ mustVerify: false, error: null });
+      // GET is only an observation: it can precede the timed-out PATCH commit.
+      // This API has no operation receipt/status or revision to prove settlement.
+      publish({ error: null });
       return result;
     } catch (failure) {
       const error = rememberPreferencesFailure(data, identity, failure);
+      if (kind === 'save' && attempted && uncertain(error)) retainUncertainty();
       if (sameIdentity(identity, data.getIdentity()))
         publish({
           error,
           errorUpdatedAt: Date.now(),
-          mustVerify: state.mustVerify || (kind === 'save' && uncertain(error)),
         });
       throw error;
     } finally {
+      if (kind === 'save') pendingUsers.get(data)?.delete(identity.userId);
       if (active === controller) active = null;
       publish({ pending: null });
     }
@@ -136,13 +165,12 @@ function createCommands(
     },
     verify: () => execute('verify'),
     abort() {
-      if (state.pending === 'save') publish({ mustVerify: true });
       active?.abort();
     },
   };
 }
 // Only command metadata lives across screen lifetimes. Drafts remain React-local.
-// An uncertain write must still require GET verification after leaving/reopening.
+// A plain GET cannot unlock an uncertain write after leaving/reopening.
 const stores = new WeakMap<
   MobileDataLayer,
   {

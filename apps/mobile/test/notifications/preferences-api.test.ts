@@ -35,6 +35,8 @@ test('GET/PATCH use exact existing envelopes, identity and sparse body without I
       ),
       server,
     );
+    const unreadKey = queryKeys.unreadCount(env.identity);
+    env.data.queryClient.setQueryData(unreadKey, 7);
     assert.deepEqual(
       await api.patch({ inApp: { cardAssigned: false } }, signal),
       server,
@@ -49,10 +51,10 @@ test('GET/PATCH use exact existing envelopes, identity and sparse body without I
       preferencesOptions(env.data, env.identity).queryKey,
       queryKeys.notificationPreferences(env.identity),
     );
-    assert.equal(
-      env.data.queryClient.getQueryState(queryKeys.unreadCount(env.identity)),
-      undefined,
-    );
+    const unread = env.data.queryClient.getQueryState(unreadKey);
+    assert.ok(unread);
+    assert.equal(unread.data, 7);
+    assert.equal(unread.isInvalidated, false);
   } finally {
     env.dispose();
   }
@@ -67,6 +69,19 @@ test('malformed authoritative response fails and 401 follows the existing sessio
       env.data.queryClient.fetchQuery(
         preferencesOptions(env.data, env.identity),
       ),
+    );
+    env.respond(async () => ok(defaults()));
+    await env.data.queryClient.fetchQuery(
+      preferencesOptions(env.data, identity),
+    );
+    const preferencesKey = queryKeys.notificationPreferences(identity);
+    assert.deepEqual(
+      env.data.queryClient.getQueryData(preferencesKey),
+      defaults(),
+    );
+    assert.equal(
+      env.data.queryClient.getQueryState(preferencesKey)?.status,
+      'success',
     );
     env.respond(
       async () =>
@@ -86,12 +101,7 @@ test('malformed authoritative response fails and 401 follows the existing sessio
       ),
     );
     assert.equal(env.data.getIdentity(), null);
-    assert.equal(
-      env.data.queryClient.getQueryData(
-        queryKeys.notificationPreferences(identity),
-      ),
-      undefined,
-    );
+    assert.equal(env.data.queryClient.getQueryState(preferencesKey), undefined);
   } finally {
     env.dispose();
   }

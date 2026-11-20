@@ -1,6 +1,12 @@
 import { focusManager, useQuery } from '@tanstack/react-query';
 import { useIsFocused } from 'expo-router';
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import {
   sameIdentity,
   type SessionIdentity,
@@ -60,7 +66,9 @@ export function usePreferences(identity: SessionIdentity) {
   const mounted = useRef(true),
     latest = useRef(form),
     editRevision = useRef(0);
-  latest.current = form;
+  useLayoutEffect(() => {
+    latest.current = form;
+  }, [form]);
   const current = () =>
     mounted.current && sameIdentity(identity, data.getIdentity());
   useEffect(() => {
@@ -83,17 +91,31 @@ export function usePreferences(identity: SessionIdentity) {
       );
     }
   }, [query.data, mutation.pending, mutation.mustVerify]);
-  // Recover uncertain writes on entry/reconnect/resume, once per eligibility edge.
+  const wasEligible = useRef(false),
+    recoveryRequested = useRef(false);
+  // Keep one entry/reconnect/resume check through a pending PATCH. A read can
+  // observe values, never prove settlement or automatically unlock another write.
   useEffect(() => {
-    if (
-      eligible &&
-      commands.getSnapshot().mustVerify &&
-      !commands.getSnapshot().pending &&
-      writeReady &&
-      readReady
-    )
-      void commands.verify().catch(() => undefined);
-  }, [eligible, commands, writeReady, readReady]);
+    if (eligible && !wasEligible.current) recoveryRequested.current = true;
+    wasEligible.current = eligible;
+    if (!eligible) return;
+    const command = commands.getSnapshot();
+    if (command.pending === 'save') return;
+    if (!command.mustVerify || command.pending === 'verify') {
+      recoveryRequested.current = false;
+      return;
+    }
+    if (!recoveryRequested.current || !writeReady || !readReady) return;
+    recoveryRequested.current = false;
+    void commands.verify().catch(() => undefined);
+  }, [
+    eligible,
+    commands,
+    mutation.pending,
+    mutation.mustVerify,
+    writeReady,
+    readReady,
+  ]);
   const dirty =
     !!form && hasPatch(preferencesPatch(form.saved, form.draft, emailEnabled));
   const pending = !!mutation.pending;
@@ -145,15 +167,10 @@ export function usePreferences(identity: SessionIdentity) {
       setNotice('');
       if (commands.getSnapshot().mustVerify) {
         try {
-          const result = await commands.verify();
+          await commands.verify();
           if (current()) {
-            setForm((previous) =>
-              previous
-                ? receivePreferences(previous, result, emailEnabled)
-                : beginDraft(result),
-            );
             setNotice(
-              'Latest preferences loaded. Review your choices before saving again.',
+              'Server values checked. The earlier save is still unconfirmed; saving remains blocked. Your draft is unchanged.',
             );
           }
         } catch {
@@ -163,7 +180,13 @@ export function usePreferences(identity: SessionIdentity) {
     },
     async save() {
       const editing = latest.current;
-      if (!canSave || !editing || commands.getSnapshot().pending) return;
+      if (
+        !canSave ||
+        !editing ||
+        editing.conflict ||
+        commands.getSnapshot().pending
+      )
+        return;
       const fresh = data.queryClient.getQueryData(
         preferencesOptions(data, identity).queryKey,
       );

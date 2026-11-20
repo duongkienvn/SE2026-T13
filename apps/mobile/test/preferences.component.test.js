@@ -1,5 +1,7 @@
 /* global jest, test, expect, afterEach */
 import { URL } from 'node:url';
+import { Suspense, startTransition, useLayoutEffect } from 'react';
+import { Text } from 'react-native';
 import {
   act,
   fireEvent,
@@ -10,7 +12,10 @@ import {
 import { focusManager, onlineManager } from '@tanstack/react-query';
 import { NotificationPreferencesScreen } from '../src/features/notifications/preferences/NotificationPreferencesScreen';
 import { createHttpClient } from '../src/infrastructure/api/client';
-import { SessionProvider } from '../src/infrastructure/auth/SessionProvider';
+import {
+  SessionProvider,
+  useSessionSnapshot,
+} from '../src/infrastructure/auth/SessionProvider';
 import { createSessionManager } from '../src/infrastructure/auth/session-manager';
 import { createCredentialStore } from '../src/infrastructure/auth/credential-store';
 import { DataProvider } from '../src/infrastructure/query/DataProvider';
@@ -28,6 +33,7 @@ import {
 import { defaults } from './notifications/preferences-fixtures';
 import { queryKeys } from '../src/infrastructure/query/keys';
 import Settings from '../src/app/(private)/settings';
+import { usePreferences } from '../src/features/notifications/preferences/usePreferences';
 
 test('GET cooldown survives offline/reconnect and disables Retry until Retry-After', async () => {
   const env = await setup(() => wire({}, 429, '60'));
@@ -91,7 +97,11 @@ function wire(data, status = 200, retryAfter = null) {
       }),
   };
 }
-async function setup(override, mode = 'light') {
+async function setup(
+  override,
+  mode = 'light',
+  Content = NotificationPreferencesScreen,
+) {
   const clock = new FakeTime(),
     auth = new FakeSessionApi();
   auth.auto = (token) => ({
@@ -111,6 +121,8 @@ async function setup(override, mode = 'light') {
     manager,
     createHttpClient({
       baseUrl: new URL('https://preferences.example.test/api'),
+      clock,
+      timers: clock,
       fetch: async (input, init) => {
         requests.push({ url: String(input), init });
         const custom = override?.(init, server);
@@ -133,20 +145,23 @@ async function setup(override, mode = 'light') {
       gcTime: Infinity,
     },
   });
-  const view = await render(
+  const tree = (entry = 0) => (
     <SessionProvider manager={manager}>
       <DataProvider layer={data}>
         <ThemeContext.Provider value={mode}>
-          <NotificationPreferencesScreen />
+          <Content key={entry} />
         </ThemeContext.Provider>
       </DataProvider>
-    </SessionProvider>,
+    </SessionProvider>
   );
+  const view = await render(tree());
   await act(() => focusManager.setFocused(true));
   return {
     data,
     manager,
     requests,
+    clock,
+    remount: () => view.rerender(tree(1)),
     get server() {
       return server;
     },
@@ -338,7 +353,7 @@ test('clean refetch adopts Web values; a later failing refetch keeps visible dat
   }
 });
 
-test('uncertain write keeps draft, verifies GET before retry and never claims unconfirmed success', async () => {
+test('uncertain write keeps the original draft and GET observations never unlock saving', async () => {
   let finishRead,
     hold = false;
   const env = await setup((init, server) => {
@@ -364,11 +379,10 @@ test('uncertain write keeps draft, verifies GET before retry and never claims un
     expect(env.requests.filter((r) => r.init.method === 'PATCH')).toHaveLength(
       1,
     );
-    const confirmed = defaults();
-    confirmed.inApp.cardAssigned = false;
-    await act(async () => finishRead(wire(confirmed)));
+    const observed = defaults(); // May precede the server's PATCH commit.
+    await act(async () => finishRead(wire(observed)));
     await screen.findByText(
-      'Latest preferences loaded. Review your choices before saving again.',
+      'Server values checked. The earlier save is still unconfirmed; saving remains blocked. Your draft is unchanged.',
     );
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
     expect(
@@ -377,6 +391,135 @@ test('uncertain write keeps draft, verifies GET before retry and never claims un
         checked: false,
       }),
     ).toBeTruthy();
+    expect(
+      screen.getByText(
+        /This server cannot confirm when that save has finished/,
+      ),
+    ).toBeTruthy();
+  } finally {
+    await env.dispose();
+  }
+});
+
+test.each([200, 503])(
+  'reconnect during a pending PATCH checks once after timeout, without a %s GET loop',
+  async (status) => {
+    let saving = false,
+      recoveryReads = 0;
+    const env = await setup((init) => {
+      if (init.method === 'PATCH') {
+        saving = true;
+        return new Promise(() => {});
+      }
+      if (saving) {
+        recoveryReads++;
+        return wire(defaults(), status);
+      }
+      return null;
+    });
+    try {
+      await toggle('In-app: Card assignments');
+      await press('Save changes');
+      await waitFor(() => expect(saving).toBe(true));
+      await act(() => onlineManager.setOnline(false));
+      await act(() => onlineManager.setOnline(true));
+      expect(recoveryReads).toBe(0);
+      await act(async () => env.clock.advance(15_001));
+      await waitFor(() => expect(recoveryReads).toBe(1));
+      await act(async () => {}); // Drain pending/publish effects after the GET.
+      expect(recoveryReads).toBe(1);
+      expect(
+        screen.getByRole('button', { name: 'Save changes' }),
+      ).toBeDisabled();
+      expect(
+        screen.getByRole('switch', {
+          name: 'In-app: Card assignments',
+          checked: false,
+        }),
+      ).toBeTruthy();
+    } finally {
+      await env.dispose();
+    }
+  },
+);
+
+test('reopening an uncertain editor shows read-only observations without enabling a new draft', async () => {
+  const env = await setup((init) =>
+    init.method === 'PATCH'
+      ? Promise.reject(new TypeError('connection lost'))
+      : null,
+  );
+  try {
+    await toggle('In-app: Card assignments');
+    await press('Save changes');
+    await screen.findByText(/Save wasn’t confirmed/);
+    await env.remount();
+    await waitFor(() => expect(screen.getAllByRole('switch')).toHaveLength(9));
+    expect(
+      screen.getByRole('switch', {
+        name: 'In-app: Card assignments',
+        checked: true,
+      }),
+    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+    expect(screen.queryByText('Loading notification preferences…')).toBeNull();
+    expect(
+      screen.getByText(/Checking values cannot unlock saving/),
+    ).toBeTruthy();
+    expect(env.requests.filter((r) => r.init.method === 'PATCH')).toHaveLength(
+      1,
+    );
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('Save uses the committed draft while a newer concurrent render is suspended', async () => {
+  let committed,
+    suspend = false,
+    suspended = false;
+  const never = new Promise(() => {});
+  function Editor() {
+    const session = useSessionSnapshot();
+    const editor = usePreferences({
+      userId: session.user.id,
+      generation: session.generation,
+    });
+    useLayoutEffect(() => {
+      committed = editor;
+    });
+    if (suspend && editor.form?.draft.inApp.cardAssigned) {
+      suspended = true;
+      throw never;
+    }
+    return (
+      <Text>
+        {editor.dirty ? 'Committed dirty draft' : 'Committed clean draft'}
+      </Text>
+    );
+  }
+  const env = await setup(undefined, 'light', () => (
+    <Suspense fallback={<Text>Suspended editor</Text>}>
+      <Editor />
+    </Suspense>
+  ));
+  try {
+    await waitFor(() => expect(committed?.form).toBeTruthy());
+    await act(() => {
+      committed.edit('inApp', 'cardAssigned', false);
+      committed.edit('inApp', 'dueReminder', false);
+    });
+    expect(committed.canSave).toBe(true);
+    suspend = true;
+    await act(() =>
+      startTransition(() => committed.edit('inApp', 'cardAssigned', true)),
+    );
+    expect(suspended).toBe(true);
+    expect(screen.getByText('Committed dirty draft')).toBeTruthy();
+    await act(async () => committed.save());
+    expect(
+      JSON.parse(env.requests.find((r) => r.init.method === 'PATCH').init.body),
+    ).toEqual({ inApp: { cardAssigned: false, dueReminder: false } });
   } finally {
     await env.dispose();
   }

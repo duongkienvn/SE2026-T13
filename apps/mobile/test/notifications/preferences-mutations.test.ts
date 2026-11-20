@@ -5,7 +5,7 @@ import { preferencesOptions } from '../../src/features/notifications/preferences
 import { queryKeys } from '../../src/infrastructure/query/keys.ts';
 import { integration, json, ok } from '../realtime/integration-support.ts';
 import { defaults } from './preferences-fixtures.ts';
-import { flush, loginResponse, USER_B } from '../auth/support.ts';
+import { flush, loginResponse, USER_A, USER_B } from '../auth/support.ts';
 
 test('single-flight save never retries, blocks empty patches and reconciles the full 200', async () => {
   const env = await integration();
@@ -18,6 +18,8 @@ test('single-flight save never retries, blocks empty patches and reconciles the 
         }),
     );
     const commands = preferenceCommands(env.data, env.identity, true);
+    const unreadKey = queryKeys.unreadCount(env.identity);
+    env.data.queryClient.setQueryData(unreadKey, 7);
     assert.equal(await commands.save({}), undefined);
     assert.equal(env.requests.length, 0);
     const saving = commands.save({ inApp: { cardAssigned: false } });
@@ -36,12 +38,17 @@ test('single-flight save never retries, blocks empty patches and reconciles the 
     );
     assert.equal(env.requests.length, 1);
     assert.equal(commands.getSnapshot().pending, null);
+    assert.equal(env.data.queryClient.getQueryState(unreadKey)?.data, 7);
+    assert.equal(
+      env.data.queryClient.getQueryState(unreadKey)?.isInvalidated,
+      false,
+    );
   } finally {
     env.dispose();
   }
 });
 
-test('ambiguous PATCH requires an authoritative GET before another write, including remount', async () => {
+test('ambiguous PATCH stays write-blocked after GET, including remount', async () => {
   const env = await integration();
   try {
     env.respond(async () => {
@@ -60,10 +67,10 @@ test('ambiguous PATCH requires an authoritative GET before another write, includ
       return ok(response);
     });
     assert.deepEqual(await remount.verify(), response);
-    assert.equal(remount.getSnapshot().mustVerify, false);
+    assert.equal(remount.getSnapshot().mustVerify, true);
     env.respond(async () => ok(response));
-    await remount.save({ inApp: { dueReminder: false } });
-    assert.equal(env.requests.length, 3);
+    await assert.rejects(remount.save({ inApp: { dueReminder: false } }));
+    assert.equal(env.requests.length, 2);
   } finally {
     env.dispose();
   }
@@ -188,7 +195,7 @@ test('expired-session render lookup is passive while subsequent actions remain g
   }
 });
 
-test('5xx and malformed 200 writes fail closed and require successful verification', async () => {
+test('5xx and malformed 200 writes stay uncertain even after successful GET', async () => {
   for (const response of [json({}, 503), ok({ inApp: {} })]) {
     const env = await integration();
     try {
@@ -203,10 +210,126 @@ test('5xx and malformed 200 writes fail closed and require successful verificati
       assert.equal(env.requests.length, 2);
       env.respond(async () => ok(defaults()));
       await commands.verify();
-      assert.equal(commands.getSnapshot().mustVerify, false);
+      assert.equal(commands.getSnapshot().mustVerify, true);
+      await assert.rejects(commands.save({ inApp: { dueReminder: false } }));
     } finally {
       env.dispose();
     }
+  }
+});
+
+test('GET before a delayed PATCH commit cannot unlock sparse writes, even across concurrent edits', async () => {
+  const env = await integration();
+  try {
+    const server = defaults();
+    let commit!: () => void;
+    env.respond((url, init) => {
+      if (!url.endsWith('/notification-preferences')) return null;
+      if (init.method === 'PATCH') {
+        const patch = JSON.parse(init.body as string);
+        return new Promise((resolve) => {
+          commit = () => {
+            Object.assign(server.inApp, patch.inApp);
+            resolve(ok(server));
+          };
+        });
+      }
+      return Promise.resolve(ok(server));
+    });
+    const commands = preferenceCommands(env.data, env.identity, true);
+    const write = commands.save({
+      inApp: { cardAssigned: false, dueReminder: false },
+    });
+    const timedOut = assert.rejects(write);
+    await flush();
+    env.time.advance(31_000);
+    await timedOut;
+    assert.deepEqual(await commands.verify(), defaults());
+    assert.equal(commands.getSnapshot().mustVerify, true);
+    // A stale GET would omit the user's newer assignments=true choice from a
+    // second sparse PATCH. Such a PATCH must never reach the transport.
+    await assert.rejects(commands.save({ inApp: { dueReminder: false } }));
+    server.email.commentMentioned = true; // Concurrent Web edit.
+    commit(); // The timed-out request really does commit after that GET.
+    await flush();
+    assert.equal((await commands.verify()).email.commentMentioned, true);
+    assert.equal(commands.getSnapshot().mustVerify, true);
+    await assert.rejects(commands.save({ inApp: { cardAssigned: true } }));
+    assert.equal(
+      env.requests.filter(({ init }) => init.method === 'PATCH').length,
+      1,
+    );
+  } finally {
+    env.dispose();
+  }
+});
+
+test('account switching cannot discard unresolved write uncertainty for the same user', async () => {
+  const env = await integration();
+  try {
+    env.respond(async () => {
+      throw new TypeError('connection lost');
+    });
+    const first = preferenceCommands(env.data, env.identity, true);
+    await assert.rejects(first.save({ inApp: { cardAssigned: false } }));
+    await env.manager.logout();
+    await env.manager.establishSession(loginResponse(USER_B));
+    assert.equal(
+      preferenceCommands(env.data, env.identity, true).getSnapshot().mustVerify,
+      false,
+    );
+    await env.manager.logout();
+    await env.manager.establishSession(loginResponse(USER_A));
+    const next = preferenceCommands(env.data, env.identity, true);
+    assert.equal(next.getSnapshot().mustVerify, true);
+    env.respond(async () => ok(defaults()));
+    await next.verify();
+    await assert.rejects(next.save({ inApp: { cardAssigned: false } }));
+  } finally {
+    env.dispose();
+  }
+});
+
+test('cancellation before transport starts does not permanently block future saves', async () => {
+  const env = await integration();
+  try {
+    const commands = preferenceCommands(env.data, env.identity, true);
+    const pending = commands.save({ inApp: { cardAssigned: false } });
+    const stopped = assert.rejects(
+      pending,
+      (error: unknown) =>
+        error instanceof Error &&
+        'requestStarted' in error &&
+        error.requestStarted === false,
+    );
+    commands.abort();
+    await stopped;
+    assert.equal(env.requests.length, 0);
+    assert.equal(commands.getSnapshot().mustVerify, false);
+    env.respond(async () => ok(defaults()));
+    await commands.save({ inApp: { cardAssigned: false } });
+    assert.equal(env.requests.length, 1);
+  } finally {
+    env.dispose();
+  }
+});
+
+test('a replacement command owner cannot race an aborted in-flight write before classification', async () => {
+  const env = await integration();
+  try {
+    env.respond(() => new Promise(() => {}));
+    const first = preferenceCommands(env.data, env.identity, true);
+    const write = first.save({ inApp: { cardAssigned: false } });
+    const cancelled = assert.rejects(write);
+    await flush();
+    const replacement = preferenceCommands(env.data, env.identity, false);
+    await assert.rejects(replacement.save({ inApp: { dueReminder: false } }));
+    await cancelled;
+    await assert.rejects(replacement.save({ inApp: { dueReminder: false } }));
+    assert.equal(replacement.getSnapshot().mustVerify, true);
+    assert.equal(env.requests.length, 1);
+  } finally {
+    env.dispose();
   }
 });
 
