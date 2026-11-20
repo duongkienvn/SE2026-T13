@@ -3,6 +3,8 @@ import { Platform } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { TimeSelector } from '../../src/features/push/schedule/TimeSelector';
 import { ThemeContext } from '../../src/ui';
+let mockFocused = true;
+jest.mock('expo-router', () => ({ useIsFocused: () => mockFocused }));
 const mockOpen = jest.fn(),
   mockDismiss = jest.fn(async () => {});
 jest.mock('@react-native-community/datetimepicker', () => ({
@@ -17,6 +19,43 @@ afterEach(() => {
   jest.restoreAllMocks();
   mockOpen.mockClear();
   mockDismiss.mockClear();
+  mockFocused = true;
+});
+test('Android blur dismisses a mounted picker and ignores late native callbacks', async () => {
+  jest.replaceProperty(Platform, 'OS', 'android');
+  const onChange = jest.fn();
+  const tree = () => (
+    <TimeSelector
+      label="Start time"
+      value="22:00"
+      disabled={false}
+      onChange={onChange}
+    />
+  );
+  const view = await render(tree());
+  try {
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Start time, 22:00' }),
+    );
+    const options = mockOpen.mock.calls[0][0];
+    mockFocused = false;
+    await view.rerender(tree());
+    expect(mockDismiss).toHaveBeenCalledWith('time');
+    await act(() =>
+      options.onValueChange({}, new Date('2000-01-01T23:45:00Z')),
+    );
+    await act(() => options.onError());
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.queryByText('Choose start time')).toBeNull();
+    mockFocused = true;
+    await view.rerender(tree());
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Start time, 22:00' }),
+    );
+    expect(mockOpen).toHaveBeenCalledTimes(2);
+  } finally {
+    await view.unmount();
+  }
 });
 test('Android uses UTC digit carrier, native quarter-hour spinner, fences delayed callbacks, cleans up on unmount', async () => {
   jest.replaceProperty(Platform, 'OS', 'android');

@@ -1,6 +1,7 @@
 import DateTimePicker, {
   DateTimePickerAndroid,
 } from '@react-native-community/datetimepicker';
+import { useIsFocused } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Platform, Text, View } from 'react-native';
 import {
@@ -27,9 +28,10 @@ export function TimeSelector({
 }) {
   const [open, setOpen] = useState(false),
     [fallback, setFallback] = useState(false);
+  const focused = useIsFocused();
   const nativeOpen = useRef(false);
-  const latest = useRef({ disabled, onChange });
-  latest.current = { disabled, onChange };
+  const latest = useRef({ disabled, onChange, focused });
+  latest.current = { disabled, onChange, focused };
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
@@ -40,7 +42,12 @@ export function TimeSelector({
   const c = useTheme();
   const carrier = new Date(`2000-01-01T${value}:00.000Z`);
   const pick = (date: Date) => {
-    if (!alive.current || latest.current.disabled) return;
+    if (
+      !alive.current ||
+      latest.current.disabled ||
+      (Platform.OS === 'android' && !latest.current.focused)
+    )
+      return;
     const time = `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`;
     // Older native runtimes can ignore minuteInterval. Reject, never silently round.
     if (clockPattern.test(time)) latest.current.onChange(time);
@@ -50,7 +57,7 @@ export function TimeSelector({
     }
   };
   useEffect(() => {
-    if (disabled && nativeOpen.current) {
+    if ((disabled || !focused) && nativeOpen.current) {
       nativeOpen.current = false;
       void DateTimePickerAndroid.dismiss('time').catch(() => undefined);
     }
@@ -60,8 +67,9 @@ export function TimeSelector({
         void DateTimePickerAndroid.dismiss('time').catch(() => undefined);
       }
     };
-  }, [disabled]);
+  }, [disabled, focused]);
   const show = () => {
+    if (Platform.OS === 'android' && !latest.current.focused) return;
     setFallback(false);
     if (Platform.OS !== 'android') {
       setOpen(true);
@@ -84,7 +92,12 @@ export function TimeSelector({
       },
       onError: () => {
         nativeOpen.current = false;
-        if (!alive.current || latest.current.disabled) return;
+        if (
+          !alive.current ||
+          latest.current.disabled ||
+          (Platform.OS === 'android' && !latest.current.focused)
+        )
+          return;
         setFallback(true);
         setOpen(true);
       },
