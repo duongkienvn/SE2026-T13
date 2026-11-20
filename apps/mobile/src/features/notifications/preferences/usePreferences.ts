@@ -9,6 +9,7 @@ import { useMobileData } from '../../../infrastructure/query/DataProvider';
 import {
   useWorkspaceOnline,
   useWorkspaceRetryReady,
+  canRetryWorkspace,
 } from '../../workspaces/status';
 import { preferencesOptions } from './api';
 import { emailEnabled } from './config';
@@ -17,9 +18,10 @@ import {
   cancelDraft,
   editDraft,
   receivePreferences,
+  reconcileSave,
   type PreferencesDraft,
 } from './draft';
-import { hasPatch, preferencesPatch } from './model';
+import { equalPreferences, hasPatch, preferencesPatch } from './model';
 import { preferenceCommands } from './mutations';
 
 const subscribeFocus = focusManager.subscribe.bind(focusManager);
@@ -41,14 +43,23 @@ export function usePreferences(identity: SessionIdentity) {
   );
   const query = useQuery({
     ...preferencesOptions(data, identity),
-    enabled:
-      eligible && !mutation.pending && !mutation.mustVerify && writeReady,
+    enabled: ({ state }) => {
+      const command = commands.getSnapshot();
+      return (
+        eligible &&
+        !command.pending &&
+        !command.mustVerify &&
+        writeReady &&
+        canRetryWorkspace(state.error, state.errorUpdatedAt)
+      );
+    },
   });
   const readReady = useWorkspaceRetryReady(query.error, query.errorUpdatedAt);
   const [form, setForm] = useState<PreferencesDraft | null>(null),
     [notice, setNotice] = useState('');
   const mounted = useRef(true),
-    latest = useRef(form);
+    latest = useRef(form),
+    editRevision = useRef(0);
   latest.current = form;
   const current = () =>
     mounted.current && sameIdentity(identity, data.getIdentity());
@@ -109,6 +120,7 @@ export function usePreferences(identity: SessionIdentity) {
       )
         return;
       setNotice('');
+      editRevision.current++;
       setForm(
         (previous) =>
           previous && editDraft(previous, channel, key, value, emailEnabled),
@@ -116,11 +128,13 @@ export function usePreferences(identity: SessionIdentity) {
     },
     cancel() {
       if (commands.getSnapshot().pending) return;
+      editRevision.current++;
       setNotice('');
       setForm((previous) => previous && cancelDraft(previous));
     },
     acknowledge() {
       if (commands.getSnapshot().pending) return;
+      editRevision.current++;
       setForm((previous) => previous && { ...previous, conflict: false });
       setNotice(
         'Your edits are kept. Save changes to apply only those choices.',
@@ -150,14 +164,35 @@ export function usePreferences(identity: SessionIdentity) {
     async save() {
       const editing = latest.current;
       if (!canSave || !editing || commands.getSnapshot().pending) return;
+      const fresh = data.queryClient.getQueryData(
+        preferencesOptions(data, identity).queryKey,
+      );
+      if (fresh && !equalPreferences(editing.saved, fresh)) {
+        setForm(receivePreferences(editing, fresh, emailEnabled));
+        setNotice(
+          'Preferences changed. Review the latest server values before saving.',
+        );
+        return;
+      }
       setNotice('');
+      const revision = editRevision.current;
       try {
         const result = await commands.save(
           preferencesPatch(editing.saved, editing.draft, emailEnabled),
         );
         if (result && current()) {
-          setForm(beginDraft(result));
-          setNotice('Notification preferences saved.');
+          setForm((previous) =>
+            reconcileSave(
+              previous,
+              editing,
+              data.queryClient.getQueryData(
+                preferencesOptions(data, identity).queryKey,
+              ) ?? result,
+              emailEnabled,
+            ),
+          );
+          if (revision === editRevision.current)
+            setNotice('Notification preferences saved.');
         }
       } catch {
         /* Preserve the draft; no success without a validated 200. */

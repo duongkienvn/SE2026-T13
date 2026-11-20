@@ -102,3 +102,29 @@ test('public task-email flag is opt-in and never inferred from server values', (
     assert.equal(taskEmailEnabled(flag), false);
   assert.equal(taskEmailEnabled('true'), true);
 });
+
+test('GET rate limit cannot be bypassed by a new observer or direct refetch', async () => {
+  const env = await integration();
+  try {
+    env.respond(
+      async () =>
+        new Response('{}', {
+          status: 429,
+          headers: { 'content-type': 'application/json', 'retry-after': '60' },
+        }),
+    );
+    await assert.rejects(
+      env.data.queryClient.fetchQuery(
+        preferencesOptions(env.data, env.identity),
+      ),
+    );
+    await assert.rejects(
+      env.data.queryClient.fetchQuery(
+        preferencesOptions(env.data, env.identity),
+      ),
+    );
+    assert.equal(env.requests.length, 1);
+  } finally {
+    env.dispose();
+  }
+});

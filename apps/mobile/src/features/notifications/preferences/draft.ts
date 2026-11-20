@@ -21,6 +21,16 @@ export function beginDraft(value: NotificationPreferences): PreferencesDraft {
   };
 }
 export const cancelDraft = (state: PreferencesDraft) => beginDraft(state.saved);
+export function reconcileSave(
+  current: PreferencesDraft | null,
+  submitted: PreferencesDraft,
+  authoritative: NotificationPreferences,
+  emailEnabled: boolean,
+): PreferencesDraft {
+  return !current || current === submitted
+    ? beginDraft(authoritative)
+    : receivePreferences(current, authoritative, emailEnabled);
+}
 export function editDraft(
   state: PreferencesDraft,
   channel: 'inApp' | 'email',

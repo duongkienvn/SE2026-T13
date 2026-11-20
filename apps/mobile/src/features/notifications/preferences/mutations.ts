@@ -13,6 +13,10 @@ import { queryKeys } from '../../../infrastructure/query/keys.ts';
 import { canRetryWorkspace } from '../../workspaces/status.ts';
 import { createPreferencesApi } from './api.ts';
 import { hasPatch } from './model.ts';
+import {
+  guardPreferencesCooldown,
+  rememberPreferencesFailure,
+} from './cooldown.ts';
 
 type State = {
   pending: 'save' | 'verify' | null;
@@ -55,7 +59,7 @@ function createCommands(
     listeners.forEach((listener) => listener());
   }
   function guard(verify: boolean) {
-    data.assertCurrent(identity);
+    guardPreferencesCooldown(data, identity);
     if (state.pending || (!verify && state.mustVerify))
       throw new ApiError('http', {
         status: 409,
@@ -95,10 +99,16 @@ function createCommands(
               .execute(patch!);
       data.assertCurrent(identity);
       if (controller.signal.aborted) throw new ApiError('aborted');
+      // Reads may also have started while the command was pending. Fence them
+      // synchronously before publishing the authoritative result.
+      data.cancelResourceRequests(key);
+      void data.queryClient.cancelQueries({ queryKey: key, exact: true });
+      data.resources.bumpKey(key);
       data.queryClient.setQueryData(key, result);
       publish({ mustVerify: false, error: null });
       return result;
-    } catch (error) {
+    } catch (failure) {
+      const error = rememberPreferencesFailure(data, identity, failure);
       if (sameIdentity(identity, data.getIdentity()))
         publish({
           error,
@@ -146,7 +156,8 @@ export function preferenceCommands(
   identity: SessionIdentity,
   emailEnabled: boolean,
 ) {
-  data.assertCurrent(identity);
+  // Lookup is called during render. Session expiry belongs to the session flow;
+  // all actions/HTTP calls still assert the identity before touching data.
   const previous = stores.get(data);
   if (
     previous &&

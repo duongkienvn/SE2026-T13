@@ -1,5 +1,8 @@
 import { queryOptions } from '@tanstack/react-query';
-import type { UpdateNotificationPreferences } from '@kanban/shared';
+import type {
+  NotificationPreferences,
+  UpdateNotificationPreferences,
+} from '@kanban/shared';
 import type {
   SessionHttpClient,
   SessionIdentity,
@@ -8,6 +11,10 @@ import type { MobileDataLayer } from '../../../infrastructure/query/data-layer.t
 import { queryKeys } from '../../../infrastructure/query/keys.ts';
 import { canRetryWorkspace } from '../../workspaces/status.ts';
 import { decodePreferences, validatePatch } from './model.ts';
+import {
+  guardPreferencesCooldown,
+  rememberPreferencesFailure,
+} from './cooldown.ts';
 
 export function createPreferencesApi(
   api: SessionHttpClient,
@@ -42,16 +49,22 @@ export function preferencesOptions(
   }: {
     state: { error: unknown; errorUpdatedAt: number };
   }) => canRetryWorkspace(state.error, state.errorUpdatedAt);
-  return queryOptions({
+  return queryOptions<NotificationPreferences>({
     queryKey: queryKeys.notificationPreferences(identity),
-    staleTime: 0,
+    staleTime: 1000,
     retry: false,
-    refetchOnMount: 'always',
+    refetchOnMount: (query) => (canWake(query) ? 'always' : false),
     refetchOnWindowFocus: canWake,
     refetchOnReconnect: canWake,
-    queryFn: ({ signal }) => {
-      data.assertCurrent(identity);
-      return createPreferencesApi(data.api, identity, false).get(signal);
+    queryFn: async ({ signal }) => {
+      guardPreferencesCooldown(data, identity);
+      try {
+        return await createPreferencesApi(data.api, identity, false).get(
+          signal,
+        );
+      } catch (error) {
+        throw rememberPreferencesFailure(data, identity, error);
+      }
     },
   });
 }

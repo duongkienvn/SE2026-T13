@@ -136,3 +136,54 @@ test('pre-save GET cancellation and a late ACK cannot resurrect old-session pref
     env.dispose();
   }
 });
+
+test('a GET begun during PATCH cannot overwrite the authoritative ACK', async () => {
+  const env = await integration();
+  try {
+    let finishWrite!: (response: Response) => void,
+      finishRead!: (response: Response) => void;
+    env.respond(
+      (_url, init) =>
+        new Promise((resolve) => {
+          if (init.method === 'PATCH') finishWrite = resolve;
+          else finishRead = resolve;
+        }),
+    );
+    const write = preferenceCommands(env.data, env.identity, true).save({
+      inApp: { cardAssigned: false },
+    });
+    await flush();
+    const late = env.data.queryClient
+      .fetchQuery(preferencesOptions(env.data, env.identity))
+      .catch(() => undefined);
+    await flush();
+    const authoritative = defaults();
+    authoritative.inApp.cardAssigned = false;
+    finishWrite(ok(authoritative));
+    await write;
+    finishRead(ok(defaults()));
+    await late;
+    assert.deepEqual(
+      env.data.queryClient.getQueryData(
+        queryKeys.notificationPreferences(env.identity),
+      ),
+      authoritative,
+    );
+  } finally {
+    env.dispose();
+  }
+});
+
+test('expired-session render lookup is passive while subsequent actions remain guarded', async () => {
+  const env = await integration();
+  const identity = env.identity;
+  try {
+    await env.manager.logout();
+    const commands = preferenceCommands(env.data, identity, true);
+    await assert.rejects(commands.save({ inApp: { cardAssigned: false } }));
+    await assert.rejects(commands.verify());
+    assert.equal(env.requests.length, 0);
+  } finally {
+    env.dispose();
+  }
+});

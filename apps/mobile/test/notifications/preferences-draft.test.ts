@@ -5,6 +5,7 @@ import {
   editDraft,
   receivePreferences,
   cancelDraft,
+  reconcileSave,
 } from '../../src/features/notifications/preferences/draft.ts';
 import { preferencesPatch } from '../../src/features/notifications/preferences/model.ts';
 import { defaults } from './preferences-fixtures.ts';
@@ -18,6 +19,25 @@ test('editing is a deep draft only and Cancel restores the confirmed snapshot', 
   assert.equal(server.inApp.cardAssigned, true);
   assert.deepEqual(cancelDraft(edited), start);
   assert.throws(() => editDraft(start, 'email', 'dueReminder', true, false));
+});
+
+test('a delayed save acknowledgement cannot overwrite a newer local draft', () => {
+  const submitted = editDraft(
+    beginDraft(defaults()),
+    'inApp',
+    'cardAssigned',
+    false,
+    true,
+  );
+  const newer = editDraft(submitted, 'inApp', 'commentMentioned', false, true);
+  const acknowledged = defaults();
+  acknowledged.inApp.cardAssigned = false;
+  const result = reconcileSave(newer, submitted, acknowledged, true);
+  assert.equal(result.draft.inApp.cardAssigned, false);
+  assert.equal(result.draft.inApp.commentMentioned, false);
+  assert.deepEqual(preferencesPatch(result.saved, result.draft, true), {
+    inApp: { commentMentioned: false },
+  });
 });
 
 test('clean refetch adopts all fields while dirty refetch keeps only explicit edits', () => {
