@@ -28,6 +28,8 @@ chưa triển khai. Mục lục dưới đây liệt kê toàn bộ task documen
 
 ## Backend tasks
 
+- [MOB-33 Native remote push continuation](backend/mob-33-native-push.md)
+
 - [Starter Board onboarding](backend/p5-starter-board-onboarding.md)
 
 - [P5-03 Safe account deletion and identity erasure](backend/p5-account-deletion.md)
