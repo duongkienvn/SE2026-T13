@@ -6,17 +6,7 @@ import {
   validatePatch,
 } from '../../src/features/notifications/preferences/model.ts';
 
-export const defaults = () => ({
-  inApp: {
-    cardAssigned: true,
-    commentMentioned: true,
-    workspaceInvited: true,
-    boardInvited: true,
-    membershipChanged: true,
-    dueReminder: true,
-  },
-  email: { cardAssigned: false, commentMentioned: false, dueReminder: false },
-});
+import { defaults } from './preferences-fixtures.ts';
 
 test('decoder preserves all nine server booleans and deep copies them', () => {
   const source = defaults();
