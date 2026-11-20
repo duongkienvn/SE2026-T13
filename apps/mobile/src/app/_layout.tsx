@@ -17,6 +17,9 @@ import { WorkspaceSelectionProvider } from '../features/workspaces/WorkspaceSele
 import { nativeTransport } from '../infrastructure/query/native-data';
 import { clearPrivateAttachmentFiles } from '../features/cards/attachments/native';
 import { nativeInvitationFlow } from '../features/workspaces/invitations/flow';
+import { nativePush } from '../features/push/native-runtime';
+import { PushContext } from '../features/push/context';
+import { PushBridge } from '../features/push/PushBridge';
 import {
   defaultSessionAdapter,
   type SessionAdapter,
@@ -37,6 +40,10 @@ sessionManager.addLifecycleListener({
 });
 const navigationAdapter = createNavigationSessionAdapter(sessionManager);
 const authApi = createAuthApi(nativeTransport);
+const onEnvironment = (state: { foreground: boolean; online: boolean }) => {
+  nativeRealtime.setEnvironment(state);
+  nativePush.setEnvironment(state);
+};
 
 export function NavigationRoot({
   adapter = defaultSessionAdapter,
@@ -48,6 +55,7 @@ export function NavigationRoot({
       <SessionProvider adapter={adapter}>
         <StatusBar style="auto" />
         <RootStack />
+        <PushBridge />
       </SessionProvider>
     </SafeAreaProvider>
   );
@@ -62,13 +70,12 @@ export default function RootLayout() {
         flow={nativeAuthFlow}
         google={nativeGoogleProvider}
       >
-        <DataProvider
-          layer={nativeData}
-          onEnvironment={nativeRealtime.setEnvironment}
-        >
+        <DataProvider layer={nativeData} onEnvironment={onEnvironment}>
           <RealtimeProvider client={nativeRealtime}>
             <WorkspaceSelectionProvider>
-              <NavigationRoot adapter={navigationAdapter} />
+              <PushContext.Provider value={nativePush}>
+                <NavigationRoot adapter={navigationAdapter} />
+              </PushContext.Provider>
             </WorkspaceSelectionProvider>
           </RealtimeProvider>
         </DataProvider>

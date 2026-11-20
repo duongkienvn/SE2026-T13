@@ -16,6 +16,7 @@ import {
 import { PreferenceSections } from './PreferenceSections';
 import { preferencesError } from './status';
 import { usePreferences } from './usePreferences';
+import { PushSection } from '../../push/context';
 
 export function NotificationPreferencesScreen() {
   const session = useSessionSnapshot();
@@ -206,6 +207,7 @@ function Preferences({ identity }: { identity: SessionIdentity }) {
             </View>
           </>
         )}
+        <PushSection />
       </ScrollView>
       <UnsavedChangesPrompt
         visible={navigation.prompt}

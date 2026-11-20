@@ -3,7 +3,11 @@ import { requireOptionalNativeModule } from 'expo';
 import { Platform } from 'react-native';
 import { uuid4, type PushNative, type Permission } from './contracts';
 
-export function createNativePushAdapter(projectId: string): PushNative {
+export function createNativePushAdapter(
+  projectId: string,
+  loadModule: () => Promise<typeof import('expo-notifications')> = () =>
+    import('expo-notifications'),
+): PushNative {
   let module: Promise<typeof import('expo-notifications')> | undefined;
   const capability = () => {
     if (Platform.OS !== 'android' && Platform.OS !== 'ios')
@@ -25,7 +29,7 @@ export function createNativePushAdapter(projectId: string): PushNative {
   async function load() {
     if (capability() !== 'ready') throw new Error('Native push unavailable');
     // Do not statically load SDK 58 push in Expo Go or an older native binary.
-    return (module ??= import('expo-notifications'));
+    return (module ??= loadModule());
   }
   async function channel() {
     const n = await load();
