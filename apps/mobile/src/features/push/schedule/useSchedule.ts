@@ -129,6 +129,7 @@ export function useSchedule(identity: SessionIdentity) {
     form,
     query,
     mutation,
+    observation: mutation.observation,
     online,
     pending,
     dirty,

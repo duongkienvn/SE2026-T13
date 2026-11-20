@@ -352,15 +352,34 @@ test('concurrent Save blocked and timeout never claims Saved or resets draft, in
     expect(
       screen.getByRole('switch', { name: 'Quiet hours', checked: true }),
     ).toBeTruthy();
+    env.setServer({
+      ...defaults(),
+      startLocal: '23:45',
+      timeZone: 'Asia/Tokyo',
+    });
     await press('Check server schedule');
+    await screen.findByText('Observed server values');
+    expect(
+      screen.getByText('Quiet hours Off · 23:45–07:00 · Asia/Tokyo'),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('switch', { name: 'Quiet hours', checked: true }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Start time, 22:00' }),
+    ).toBeTruthy();
+    expect(screen.getByText('UTC')).toBeTruthy();
     expect(
       screen.getByRole('button', { name: 'Save quiet hours' }),
     ).toBeDisabled();
     await env.remount();
     await screen.findByText(/Save wasn’t confirmed/);
+    // Drafts are screen-local; recovery observations must not become a new form.
     expect(
-      screen.getByRole('button', { name: 'Save quiet hours' }),
-    ).toBeDisabled();
+      screen.queryByRole('button', { name: 'Save quiet hours' }),
+    ).toBeNull();
+    expect(screen.queryByRole('switch', { name: 'Quiet hours' })).toBeNull();
+    expect(screen.getByText('Observed server values')).toBeTruthy();
     await act(() => finish(wire({ ...defaults(), enabled: true })));
     expect(screen.queryByText('Quiet hours saved.')).toBeNull();
   } finally {

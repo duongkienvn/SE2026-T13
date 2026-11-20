@@ -71,8 +71,7 @@ function Schedule({ identity }: { identity: SessionIdentity }) {
     editor = useSchedule(identity);
   const { form, query, mutation } = editor;
   const navigation = useDraftNavigation(editor, '/push-schedule');
-  const schedule =
-    form?.draft ?? (mutation.mustVerify ? query.data : undefined);
+  const schedule = form?.draft;
   const disabled = editor.pending || !editor.online || mutation.mustVerify;
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
@@ -134,7 +133,7 @@ function Schedule({ identity }: { identity: SessionIdentity }) {
               : 'Checking server schedule…'}
           </Text>
         )}
-        {!schedule && !query.isError && (
+        {!schedule && !query.isError && !mutation.mustVerify && (
           <View style={{ gap: spacing.sm }}>
             <Text style={[typography.body, { color: c.textSecondary }]}>
               Loading quiet hours…
@@ -182,6 +181,26 @@ function Schedule({ identity }: { identity: SessionIdentity }) {
               disabled={!editor.canRefresh}
               onPress={() => void editor.refresh()}
             />
+          </View>
+        )}
+        {editor.observation && (
+          <View style={{ gap: spacing.sm }}>
+            <Text style={[typography.strong, { color: c.text }]}>
+              Observed server values
+            </Text>
+            <Text
+              selectable
+              accessibilityLiveRegion="polite"
+              style={[typography.body, { color: c.textSecondary }]}
+            >
+              Quiet hours {editor.observation.enabled ? 'On' : 'Off'} ·{' '}
+              {editor.observation.startLocal}–{editor.observation.endLocal} ·{' '}
+              {editor.observation.timeZone}
+            </Text>
+            <Text style={[typography.supporting, { color: c.textSecondary }]}>
+              From the latest recovery check, not confirmation that the earlier
+              save completed. Your draft is unchanged; saving remains blocked.
+            </Text>
           </View>
         )}
         {form?.conflict && (

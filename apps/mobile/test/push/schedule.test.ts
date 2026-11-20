@@ -170,8 +170,19 @@ test('network/5xx/invalid response uncertainty survives GET and screen remount',
       const commands = scheduleCommands(env.data, env.identity);
       await assert.rejects(commands.save({ enabled: true }));
       assert.equal(commands.getSnapshot().mustVerify, true);
-      env.respond(async () => ok(defaults()));
-      await commands.verify();
+      const observation = {
+        ...defaults(),
+        startLocal: '23:45',
+        timeZone: 'Asia/Tokyo',
+      };
+      env.respond(async () => ok(observation));
+      assert.deepEqual(await commands.verify(), observation);
+      assert.deepEqual(commands.getSnapshot().observation, observation);
+      assert.equal(commands.getSnapshot().mustVerify, true);
+      assert.equal(
+        env.data.queryClient.getQueryData(scheduleKey(env.identity)),
+        undefined,
+      );
       assert.equal(scheduleCommands(env.data, env.identity), commands);
       await assert.rejects(commands.save({ enabled: false }));
       assert.equal(env.requests.length, 2);

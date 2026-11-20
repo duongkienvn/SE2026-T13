@@ -15,6 +15,7 @@ import { guardScheduleCooldown, rememberScheduleFailure } from './cooldown.ts';
 type State = {
   pending: 'save' | 'verify' | null;
   mustVerify: boolean;
+  observation: PushSchedule | null;
   error: unknown;
   errorUpdatedAt: number;
 };
@@ -43,6 +44,7 @@ function createCommands(data: MobileDataLayer, identity: SessionIdentity) {
   let state: State = {
     pending: null,
     mustVerify: uncertainUsers.get(data)?.has(identity.userId) ?? false,
+    observation: null,
     error: null,
     errorUpdatedAt: 0,
   };
@@ -120,10 +122,13 @@ function createCommands(data: MobileDataLayer, identity: SessionIdentity) {
       data.cancelResourceRequests(key);
       void data.queryClient.cancelQueries({ queryKey: key, exact: true });
       data.resources.bumpKey(key);
-      data.queryClient.setQueryData(key, result);
-      // GET is only an observation: it can precede the timed-out PATCH commit.
+      // Recovery GET is a separate observation, never the draft baseline or ACK.
       // This API has no operation receipt/status or revision to prove settlement.
-      publish({ error: null });
+      if (kind === 'verify') publish({ observation: result, error: null });
+      else {
+        data.queryClient.setQueryData(key, result);
+        publish({ error: null });
+      }
       return result;
     } catch (failure) {
       const error = rememberScheduleFailure(data, identity, failure);
