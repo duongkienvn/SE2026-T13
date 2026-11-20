@@ -24,7 +24,7 @@ export type ResourcePath =
   | `/boards/${ResourceId}/cards/${ResourceId}`
   | `/boards/${ResourceId}/${'calendar' | 'table' | 'settings' | 'members' | 'activity'}`;
 export type DestinationPath =
-  | `/${'home' | 'tasks' | 'boards' | 'inbox' | 'search' | 'settings' | 'invitation'}`
+  | `/${'home' | 'tasks' | 'boards' | 'inbox' | 'search' | 'settings' | 'invitation' | 'notification-preferences'}`
   | typeof invitationRecipientPath
   | ResourcePath;
 
@@ -44,7 +44,10 @@ export type Destination =
   | { kind: 'boardSettings'; boardId: ResourceId }
   | { kind: 'boardMembers'; boardId: ResourceId }
   | { kind: 'boardActivity'; boardId: ResourceId }
-  | { kind: 'screen'; screen: 'search' | 'settings' | 'invitation' };
+  | {
+      kind: 'screen';
+      screen: 'search' | 'settings' | 'invitation' | 'notification-preferences';
+    };
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -67,7 +70,12 @@ export function parsePath(path: string): Destination | null {
       name === 'inbox'
     )
       return { kind: 'tab', tab: name };
-    if (name === 'search' || name === 'settings' || name === 'invitation')
+    if (
+      name === 'search' ||
+      name === 'settings' ||
+      name === 'invitation' ||
+      name === 'notification-preferences'
+    )
       return { kind: 'screen', screen: name };
   }
   const resourceId = parseResourceId(parts[1] ?? '');
