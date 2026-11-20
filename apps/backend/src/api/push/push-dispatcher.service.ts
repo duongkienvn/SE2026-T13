@@ -10,6 +10,9 @@ import { IN_APP_KIND_COLUMN } from '../notifications/notification-preferences';
 import { NotificationResolver } from '../notifications/notification-resolver.service';
 import { PushDevice } from './entities/push-device.entity';
 import { UserPushPreference } from './entities/user-push-preference.entity';
+import { UserPushSchedule } from './entities/user-push-schedule.entity';
+import { UserPreferences } from '../users/entities/user-preferences.entity';
+import { isQuietAt, nextAllowedInstant } from './push-schedule-time';
 import {
   PushDeliveryOutbox,
   type PushStatus,
@@ -45,8 +48,23 @@ export class PushDispatcher {
     for (let i = 0; i < 25; i++) {
       const [rows]: [Claimed[], number] = await this.source.query(
         `WITH ready AS (
-        SELECT id FROM push_delivery_outbox WHERE status IN ('PENDING','TICKET') AND next_attempt_at<=clock_timestamp() AND expires_at>clock_timestamp()
-        ORDER BY next_attempt_at,id FOR UPDATE SKIP LOCKED LIMIT 1
+        SELECT j.id FROM push_delivery_outbox j
+        WHERE j.status IN ('PENDING','TICKET') AND j.expires_at>clock_timestamp()
+        AND (j.next_attempt_at<=clock_timestamp() OR (
+          j.status='PENDING' AND j.last_error_code='QUIET_HOURS' AND (
+            NOT EXISTS (SELECT 1 FROM user_push_schedules s WHERE s.user_id=j.recipient_user_id AND s.enabled)
+            OR EXISTS (
+              SELECT 1 FROM user_push_schedules s
+              LEFT JOIN user_preferences p ON p.user_id=s.user_id
+              CROSS JOIN LATERAL (SELECT to_char(clock_timestamp() AT TIME ZONE COALESCE(p.time_zone,'UTC'),'HH24:MI') AS wall) t
+              WHERE s.user_id=j.recipient_user_id AND s.enabled AND NOT (
+                CASE WHEN s.start_local<s.end_local THEN t.wall>=s.start_local AND t.wall<s.end_local
+                ELSE t.wall>=s.start_local OR t.wall<s.end_local END
+              )
+            )
+          )
+        ))
+        ORDER BY j.next_attempt_at,j.id FOR UPDATE OF j SKIP LOCKED LIMIT 1
       ) UPDATE push_delivery_outbox j SET status=CASE WHEN j.status='PENDING' THEN 'PROCESSING' ELSE 'RECEIPT_PROCESSING' END,
         attempted_at=CASE WHEN j.status='PENDING' THEN NULL ELSE j.attempted_at END,
         lease_owner=$1,lease_until=clock_timestamp()+interval '2 minutes',updated_at=clock_timestamp()
@@ -231,6 +249,40 @@ export class PushDispatcher {
         await cancelDeviceJobs(m, device!.id);
         return;
       }
+      // The User lock above also serializes account timezone/schedule updates.
+      // Read only here: receipt polling is never delayed by quiet hours.
+      const schedule = await m.getRepository(UserPushSchedule).findOneBy({
+        userId: job.recipientUserId,
+      });
+      if (schedule?.enabled) {
+        const preferences = await m.getRepository(UserPreferences).findOneBy({
+          userId: job.recipientUserId,
+        });
+        const [{ now }]: { now: Date }[] = await m.query(
+          'SELECT clock_timestamp() AS now',
+        );
+        const zone = preferences?.timeZone ?? 'UTC';
+        if (isQuietAt(now, zone, schedule.startLocal, schedule.endLocal)) {
+          const allowed = nextAllowedInstant(
+            now,
+            zone,
+            schedule.startLocal,
+            schedule.endLocal,
+          );
+          if (allowed >= job.expiresAt) {
+            await this.setState(m, job.id, 'CANCELLED', 'EXPIRED');
+          } else {
+            // No attempt consumed, no TTL extension or new enqueue. Save the exact
+            // permitted instant; claim can wake early only for authoritative edits.
+            await m.query(
+              `UPDATE push_delivery_outbox SET status='PENDING',last_error_code='QUIET_HOURS',
+               lease_owner=NULL,lease_until=NULL,next_attempt_at=$2,updated_at=clock_timestamp() WHERE id=$1`,
+              [job.id, allowed],
+            );
+          }
+          return;
+        }
+      }
       await m.query(
         'UPDATE push_delivery_outbox SET attempts=attempts+1,attempted_at=clock_timestamp(),updated_at=clock_timestamp() WHERE id=$1',
         [job.id],
@@ -339,7 +391,7 @@ export class PushDispatcher {
       (SELECT user_id,installation_id FROM push_device_revocations WHERE session_expires_through<clock_timestamp() LIMIT 200 FOR UPDATE SKIP LOCKED)`);
     await this.source
       .query(`UPDATE push_delivery_outbox SET status=CASE WHEN status='RECEIPT_PROCESSING' THEN 'TICKET' WHEN attempted_at IS NOT NULL THEN 'UNKNOWN' ELSE 'PENDING' END,
-      last_error_code='LEASE_EXPIRED',lease_owner=NULL,lease_until=NULL,updated_at=clock_timestamp()
+      last_error_code=CASE WHEN status='PROCESSING' AND attempted_at IS NULL AND last_error_code='QUIET_HOURS' THEN 'QUIET_HOURS' ELSE 'LEASE_EXPIRED' END,lease_owner=NULL,lease_until=NULL,updated_at=clock_timestamp()
       WHERE id IN (SELECT id FROM push_delivery_outbox WHERE status IN ('PROCESSING','RECEIPT_PROCESSING') AND lease_until<clock_timestamp() LIMIT 200 FOR UPDATE SKIP LOCKED)`);
     await this.source
       .query(`UPDATE push_delivery_outbox SET status=CASE WHEN status IN ('TICKET','RECEIPT_PROCESSING') THEN 'UNKNOWN' ELSE 'CANCELLED' END,last_error_code='EXPIRED',lease_owner=NULL,lease_until=NULL,updated_at=clock_timestamp()

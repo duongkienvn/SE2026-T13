@@ -81,6 +81,7 @@ export default function PrivateLayout() {
         name="notification-preferences"
         options={{ headerShown: false }}
       />
+      <Stack.Screen name="push-schedule" options={{ headerShown: false }} />
       <Stack.Screen name="invitation" options={{ presentation: 'modal' }} />
     </Stack>
   );

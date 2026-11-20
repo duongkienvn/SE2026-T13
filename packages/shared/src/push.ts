@@ -1,3 +1,16 @@
+/** Account wall clocks; timezone is read-only here and comes from user preferences. */
+export interface PushSchedule {
+  enabled: boolean;
+  startLocal: string;
+  endLocal: string;
+  timeZone: string;
+}
+export interface UpdatePushSchedule {
+  enabled?: boolean;
+  startLocal?: string;
+  endLocal?: string;
+}
+
 /** Push is a separate opt-in channel; these are not notification-preference leaves. */
 export interface PushPreferences {
   enabled: boolean;

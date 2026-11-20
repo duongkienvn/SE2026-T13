@@ -208,6 +208,18 @@ function Preferences({ identity }: { identity: SessionIdentity }) {
           </>
         )}
         <PushSection />
+        <Button
+          label="Quiet hours"
+          variant="secondary"
+          disabled={editor.dirty || editor.pending}
+          onPress={() => router.push('/push-schedule')}
+        />
+        {editor.dirty && (
+          <Text style={[typography.supporting, { color: c.textSecondary }]}>
+            Save or cancel notification preference changes before opening quiet
+            hours.
+          </Text>
+        )}
       </ScrollView>
       <UnsavedChangesPrompt
         visible={navigation.prompt}
