@@ -1,6 +1,29 @@
 import { ConfigService } from '@nestjs/config';
 import { HttpExpoPushProvider } from '../../src/api/push/expo-push.provider';
 describe('Expo HTTPS boundary', () => {
+  it('distinguishes definitive receipt rejection from receipt lookup outage', async () => {
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            ticket: {
+              status: 'error',
+              details: { error: 'MessageRateExceeded' },
+            },
+          },
+        }),
+      ),
+    );
+    expect(await provider().receipt('ticket')).toEqual({
+      type: 'rejected',
+      code: 'PROVIDER_UNAVAILABLE',
+    });
+    jest.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network'));
+    expect(await provider().receipt('ticket')).toEqual({
+      type: 'retry',
+      code: 'PROVIDER_UNAVAILABLE',
+    });
+  });
   const provider = () =>
     new HttpExpoPushProvider(
       new ConfigService({ EXPO_PUSH_ACCESS_TOKEN: 'server-only-secret' }),
@@ -62,21 +85,19 @@ describe('Expo HTTPS boundary', () => {
     });
   });
   it('revokes DeviceNotRegistered and distinguishes accepted receipts', async () => {
-    jest
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            data: [
-              {
-                status: 'error',
-                details: { error: 'DeviceNotRegistered' },
-                message: 'private',
-              },
-            ],
-          }),
-        ),
-      );
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [
+            {
+              status: 'error',
+              details: { error: 'DeviceNotRegistered' },
+              message: 'private',
+            },
+          ],
+        }),
+      ),
+    );
     expect(await provider().send('token', 'id')).toEqual({
       type: 'permanent',
       code: 'DEVICE_NOT_REGISTERED',

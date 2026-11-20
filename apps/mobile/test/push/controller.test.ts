@@ -3,6 +3,101 @@ import { test } from 'node:test';
 import { createPushController } from '../../src/features/push/controller.ts';
 import { ApiError } from '../../src/infrastructure/api/errors.ts';
 import { createPushStorage } from '../../src/features/push/storage.ts';
+
+test('uncertain disable keeps the last confirmed account state despite stale GET', async () => {
+  const f = fixture();
+  f.setEnabled(true);
+  f.setPermission('granted');
+  await f.controller.reconcile();
+  f.api.patch = async () => {
+    throw new ApiError('timeout', { requestStarted: true });
+  };
+  await f.controller.disable();
+  f.setEnabled(false);
+  await f.controller.reconcile();
+  assert.equal(f.controller.getSnapshot().preferences?.enabled, true);
+  assert.equal(f.controller.getSnapshot().uncertain, true);
+});
+
+test('reconnect while PATCH is pending runs one verification after settlement', async () => {
+  const f = fixture();
+  f.setPermission('granted');
+  let gets = 0,
+    release!: () => void;
+  f.api.get = async () => {
+    gets++;
+    return { enabled: false, deliveryAvailable: true };
+  };
+  f.api.patch = async () => {
+    await new Promise<void>((r) => {
+      release = r;
+    });
+    return { enabled: true, deliveryAvailable: true };
+  };
+  const saving = f.controller.enable();
+  for (let i = 0; i < 20 && !release; i++)
+    await new Promise((r) => setImmediate(r));
+  assert(release);
+  f.controller.setEnvironment({ online: false, foreground: true });
+  f.controller.setEnvironment({ online: true, foreground: true });
+  release();
+  await saving;
+  await new Promise((r) => setImmediate(r));
+  assert.equal(gets, 2);
+});
+test('same-user login cannot drop uncertainty from an older PATCH', async () => {
+  const f = fixture();
+  f.setPermission('granted');
+  let reject!: (error: Error) => void,
+    patches = 0;
+  f.api.patch = async () => {
+    patches++;
+    return await new Promise((_resolve, rejectCall) => {
+      reject = rejectCall;
+    });
+  };
+  const saving = f.controller.enable();
+  for (let i = 0; i < 20 && !reject; i++)
+    await new Promise((r) => setImmediate(r));
+  assert(reject);
+  f.switchOut();
+  f.switchBack();
+  await new Promise((r) => setImmediate(r));
+  await f.controller.disable();
+  assert.equal(patches, 1);
+  reject(new ApiError('timeout', { requestStarted: true }));
+  await saving;
+  await f.controller.reconcile();
+  await f.controller.enable();
+  assert.equal(f.controller.getSnapshot().uncertain, true);
+  assert.equal(patches, 1);
+});
+test('429 cooldown prevents foreground or reconnect retry loops', async () => {
+  const f = fixture();
+  let gets = 0;
+  f.api.get = async () => {
+    gets++;
+    throw new ApiError('http', { status: 429, retryAfterMs: 60_000 });
+  };
+  await f.controller.reconcile();
+  f.controller.setEnvironment({ online: false, foreground: true });
+  f.controller.setEnvironment({ online: true, foreground: true });
+  await f.controller.reconcile();
+  assert.equal(gets, 1);
+});
+test('received notifications never construct Inbox rows or navigate after logout', async () => {
+  const f = fixture();
+  let opened = 0;
+  f.controller.setOpenInbox(() => {
+    opened++;
+  });
+  f.controller.receive({ notificationId: userId, privateTitle: 'forged' });
+  assert.equal(opened, 0);
+  f.switchOut();
+  f.controller.tap({ notificationId: userId });
+  assert.equal(opened, 0);
+});
+
 const userId = '14f2550e-9359-4c06-a642-6257cb384b53',
   install = '24f2550e-9359-4c06-a642-6257cb384b53';
 function fixture() {
@@ -78,6 +173,10 @@ function fixture() {
     switchOut: () => {
       live = null;
       controller.sessionEnded();
+    },
+    switchBack: () => {
+      live = { userId, generation: 2 };
+      controller.sessionStarted();
     },
   };
 }

@@ -44,7 +44,7 @@ export function validatePushEnvironment(
   }
   return {
     PUSH_NOTIFICATIONS_ENABLED: enabled,
-    PUSH_PROJECT_ID: enabled ? projectId : '',
+    PUSH_PROJECT_ID: enabled ? projectId.toLowerCase() : '',
     PUSH_APP_ENVIRONMENT: enabled
       ? (environment as PushEnvironment['PUSH_APP_ENVIRONMENT'])
       : 'development',

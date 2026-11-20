@@ -17,10 +17,18 @@ export class NativePush1794787200000 implements MigrationInterface {
       app_environment varchar(11) NOT NULL CHECK (app_environment IN ('development','preview','production')),
       project_id uuid NOT NULL, active boolean NOT NULL DEFAULT true,
       auth_version integer NOT NULL, session_expires_at timestamptz NOT NULL,
-      enrollment_revision uuid NOT NULL, retired_sessions jsonb NOT NULL DEFAULT '{}',
+      enrollment_revision uuid NOT NULL,
       lease_until timestamptz NOT NULL, last_seen_at timestamptz NOT NULL DEFAULT now(),
       created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
     )`);
+    await r.query(`CREATE TABLE push_device_revocations (
+      user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      installation_id uuid NOT NULL, session_expires_through timestamptz NOT NULL,
+      PRIMARY KEY(user_id,installation_id)
+    )`);
+    await r.query(
+      'CREATE INDEX "IDX_push_revocations_expiry" ON push_device_revocations (session_expires_through)',
+    );
     await r.query(
       'CREATE INDEX "IDX_push_devices_user" ON push_devices (user_id, active)',
     );
@@ -48,6 +56,9 @@ export class NativePush1794787200000 implements MigrationInterface {
     );
     await r.query(
       'CREATE INDEX "IDX_push_outbox_recipient" ON push_delivery_outbox (recipient_user_id, attempted_at)',
+    );
+    await r.query(
+      `CREATE INDEX "IDX_push_outbox_cleanup" ON push_delivery_outbox (updated_at,id) WHERE status IN ('ACCEPTED','FAILED','CANCELLED','UNKNOWN')`,
     );
   }
   async down(): Promise<void> {

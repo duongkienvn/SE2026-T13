@@ -12,6 +12,7 @@ export type SendResult =
   | { type: 'retry' | 'permanent' | 'unknown'; code: PushErrorCode };
 export type ReceiptResult =
   | { type: 'accepted' | 'pending' }
+  | { type: 'rejected'; code: PushErrorCode }
   | { type: 'retry' | 'permanent'; code: PushErrorCode };
 export abstract class ExpoPushProvider {
   abstract send(token: string, notificationId: string): Promise<SendResult>;
@@ -127,7 +128,12 @@ export class HttpExpoPushProvider extends ExpoPushProvider {
       const item = (result.data as { data?: Record<string, ProviderItem> })
         ?.data?.[ticketId];
       if (item?.status === 'ok') return { type: 'accepted' };
-      if (item?.status === 'error') return failure(item);
+      if (item?.status === 'error') {
+        const result = failure(item);
+        return result.type === 'retry'
+          ? { type: 'rejected', code: result.code }
+          : result;
+      }
       return { type: 'pending' };
     } catch {
       return { type: 'retry', code: 'PROVIDER_UNAVAILABLE' };

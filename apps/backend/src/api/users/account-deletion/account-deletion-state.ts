@@ -40,6 +40,7 @@ export async function eraseAccountPrivateState(
     // Outbox references devices/Inbox rows with CASCADE. Erase routing material
     // before deleting Inbox history; soft-deleted Users retain no enrollment.
     'push_devices',
+    'push_device_revocations',
     'user_push_preferences',
     'board_user_states',
     'starter_board_provisions',

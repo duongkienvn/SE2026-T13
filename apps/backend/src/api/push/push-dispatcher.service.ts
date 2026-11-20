@@ -43,7 +43,7 @@ export class PushDispatcher {
     await this.maintain();
     // Claim one at a time; a slow provider cannot exhaust the batch's leases.
     for (let i = 0; i < 25; i++) {
-      const rows: Claimed[] = await this.source.query(
+      const [rows]: [Claimed[], number] = await this.source.query(
         `WITH ready AS (
         SELECT id FROM push_delivery_outbox WHERE status IN ('PENDING','TICKET') AND next_attempt_at<=clock_timestamp() AND expires_at>clock_timestamp()
         ORDER BY next_attempt_at,id FOR UPDATE SKIP LOCKED LIMIT 1
@@ -84,6 +84,10 @@ export class PushDispatcher {
       if (notification?.boardId)
         await m.query('SELECT id FROM boards WHERE id=$1 FOR UPDATE', [
           notification.boardId,
+        ]);
+      if (notification?.workspaceId && !notification.boardId)
+        await m.query('SELECT id FROM workspaces WHERE id=$1 FOR SHARE', [
+          notification.workspaceId,
         ]);
       if (notification?.workspaceId)
         await m.query(
@@ -154,8 +158,7 @@ export class PushDispatcher {
         const resolved = await this.resolver.resolve(m, job.recipientUserId, [
           notification,
         ]);
-        eligible =
-          !!resolved[0] && !resolved[0].isUnavailable && !!resolved[0].target;
+        eligible = !!resolved[0] && !resolved[0].isUnavailable;
         if (notification.boardId) {
           const [live] = (await m.query(
             'SELECT is_archived FROM boards WHERE id=$1',
@@ -218,6 +221,8 @@ export class PushDispatcher {
         ).decrypt(device!.encryptedToken, tokenContext(device!));
       } catch {
         await this.setState(m, job.id, 'FAILED', 'TOKEN_INVALID');
+        await m.getRepository(PushDevice).update(device!.id, { active: false });
+        await cancelDeviceJobs(m, device!.id);
         return;
       }
       await m.query(
@@ -262,7 +267,20 @@ export class PushDispatcher {
         await this.setState(m, job.id, 'ACCEPTED', null);
       else if (result.type === 'unknown')
         await this.setState(m, job.id, 'UNKNOWN', result.code);
-      else if (result.type === 'pending' || result.type === 'retry') {
+      else if (result.type === 'rejected') {
+        // A definitive receipt rejection permits a bounded new send. Poll
+        // failures/missing receipts above never resend an accepted ticket.
+        await m
+          .getRepository(PushDeliveryOutbox)
+          .update(job.id, { ticketId: null, receiptAttempts: 0 });
+        await this.setState(
+          m,
+          job.id,
+          current.attempts >= 6 ? 'FAILED' : 'PENDING',
+          result.code,
+          pushRetryDelay(current.attempts),
+        );
+      } else if (result.type === 'pending' || result.type === 'retry') {
         const exhausted = receipt
           ? current.receiptAttempts >= 16
           : current.attempts >= 6;
@@ -307,6 +325,12 @@ export class PushDispatcher {
     );
   }
   private async maintain() {
+    await this.source
+      .query(`DELETE FROM push_devices WHERE id IN (SELECT id FROM push_devices
+      WHERE lease_until<clock_timestamp()-interval '7 days' LIMIT 200 FOR UPDATE SKIP LOCKED)`);
+    await this.source
+      .query(`DELETE FROM push_device_revocations WHERE (user_id,installation_id) IN
+      (SELECT user_id,installation_id FROM push_device_revocations WHERE session_expires_through<clock_timestamp() LIMIT 200 FOR UPDATE SKIP LOCKED)`);
     await this.source
       .query(`UPDATE push_delivery_outbox SET status=CASE WHEN status='RECEIPT_PROCESSING' THEN 'TICKET' WHEN attempted_at IS NOT NULL THEN 'UNKNOWN' ELSE 'PENDING' END,
       last_error_code='LEASE_EXPIRED',lease_owner=NULL,lease_until=NULL,updated_at=clock_timestamp()

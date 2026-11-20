@@ -40,7 +40,8 @@ export function createPushController(deps: Dependencies) {
     online: true,
   };
   const listeners = new Set<() => void>(),
-    uncertainUsers = new Set<string>();
+    uncertainUsers = new Set<string>(),
+    savingUsers = new Set<string>();
   let epoch = 0,
     operation: AbortController | undefined,
     queued = false,
@@ -70,7 +71,7 @@ export function createPushController(deps: Dependencies) {
       if (error.kind === 'offline' || error.kind === 'network')
         return 'Push setup needs a connection. Reconnect and retry.';
       if (error.status === 409)
-        return 'Device setup changed. Sign in again or retry setup.';
+        return 'This device enrollment was revoked or changed. Sign out, sign in again, then enable on this device.';
       if (error.status === 503)
         return 'Push delivery is unavailable. Try again later.';
       if (error.kind === 'session-changed' || error.kind === 'unauthenticated')
@@ -96,21 +97,30 @@ export function createPushController(deps: Dependencies) {
       publish({ error: 'Too many requests. Wait before retrying push setup.' });
       return;
     }
-    if (mode !== 'reconcile' && uncertainUsers.has(identity.userId)) return;
+    if (
+      mode !== 'reconcile' &&
+      (uncertainUsers.has(identity.userId) || savingUsers.has(identity.userId))
+    )
+      return;
     const version = epoch,
       abort = new AbortController();
+    const hadPendingSave = savingUsers.has(identity.userId);
     operation = abort;
     const api = deps.api(identity);
     publish({
       busy: true,
       error: undefined,
-      uncertain: uncertainUsers.has(identity.userId),
+      uncertain:
+        uncertainUsers.has(identity.userId) || savingUsers.has(identity.userId),
     });
-    let patchStarted = false;
+    let patchStarted = false,
+      claimedSave = false;
     try {
       // Disabling is the first authoritative write, before device/OS work.
       if (mode === 'disable') {
         patchStarted = true;
+        savingUsers.add(identity.userId);
+        claimedSave = true;
         const preferences = await api.patch(false, abort.signal);
         check(identity, version);
         patchStarted = false;
@@ -126,7 +136,13 @@ export function createPushController(deps: Dependencies) {
       }
       const preferences = await api.get(abort.signal);
       check(identity, version);
-      publish({ preferences, capability: deps.native.capability() });
+      publish({
+        ...(uncertainUsers.has(identity.userId) ||
+        savingUsers.has(identity.userId)
+          ? {}
+          : { preferences }),
+        capability: deps.native.capability(),
+      });
       const installationId = await deps.storage.installation();
       check(identity, version);
       const cleanup = await deps.storage.pending();
@@ -169,13 +185,22 @@ export function createPushController(deps: Dependencies) {
       }
       if (
         mode === 'reconcile' &&
-        (!preferences.enabled || uncertainUsers.has(identity.userId))
+        (!preferences.enabled ||
+          uncertainUsers.has(identity.userId) ||
+          hadPendingSave ||
+          savingUsers.has(identity.userId))
       ) {
         publish({ eligible: false });
         return;
       }
       const token = await deps.native.token();
       check(identity, version);
+      if (
+        hadPendingSave ||
+        savingUsers.has(identity.userId) ||
+        uncertainUsers.has(identity.userId)
+      )
+        return;
       await api.register(
         {
           installationId,
@@ -189,6 +214,8 @@ export function createPushController(deps: Dependencies) {
       check(identity, version);
       if (!preferences.enabled) {
         patchStarted = true;
+        savingUsers.add(identity.userId);
+        claimedSave = true;
         const saved = await api.patch(true, abort.signal);
         check(identity, version);
         publish({ preferences: saved });
@@ -203,7 +230,6 @@ export function createPushController(deps: Dependencies) {
           : 'Device registration is not eligible. Retry setup.',
       });
     } catch (error) {
-      if (version !== epoch || !sameIdentity(identity, deps.identity())) return;
       // A GET cannot prove that a timed-out PATCH has settled. Keep the
       // uncertainty for this app-lifetime owner, even if later GETs look normal.
       if (
@@ -213,14 +239,18 @@ export function createPushController(deps: Dependencies) {
             (error.kind !== 'http' || error.status >= 500)))
       ) {
         uncertainUsers.add(identity.userId);
+        if (version !== epoch || !sameIdentity(identity, deps.identity()))
+          return;
         publish({
           uncertain: true,
           eligible: false,
           error:
             'The push change was not confirmed. Further changes are blocked because this server cannot prove that request has finished. Checking values does not unlock changes.',
         });
-      } else publish({ error: errorText(error) || undefined });
+      } else if (version === epoch && sameIdentity(identity, deps.identity()))
+        publish({ error: errorText(error) || undefined });
     } finally {
+      if (claimedSave) savingUsers.delete(identity.userId);
       if (operation === abort) operation = undefined;
       if (version === epoch) publish({ busy: false });
       if (version === epoch && queued) {

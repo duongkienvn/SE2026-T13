@@ -37,13 +37,6 @@ export class PushDevice {
   sessionExpiresAt!: Date;
   @Column({ name: 'enrollment_revision', type: 'uuid' })
   enrollmentRevision!: string;
-  @Column({
-    name: 'retired_sessions',
-    type: 'jsonb',
-    default: {},
-    select: false,
-  })
-  retiredSessions!: Record<string, number>;
   @Column({ name: 'lease_until', type: 'timestamptz' }) leaseUntil!: Date;
   @Column({ name: 'last_seen_at', type: 'timestamptz' }) lastSeenAt!: Date;
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })

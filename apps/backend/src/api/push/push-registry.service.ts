@@ -10,6 +10,25 @@ import { PushTokenCipher } from './push-token';
 import { PushDevice } from './entities/push-device.entity';
 import { UserPushPreference } from './entities/user-push-preference.entity';
 import type { RegisterPushDeviceDto } from './push.dto';
+import { JWT_EXPIRES_IN_SECONDS } from '../auth/constants/auth.constants';
+
+/** Fixed server JWT lifetime fences every JWT issued through this second. */
+export async function retirePushSession(
+  m: EntityManager,
+  userId: string,
+  installationId: string,
+  expiresAt: number,
+) {
+  const through = Math.max(
+    expiresAt,
+    Math.floor(Date.now() / 1000) * 1000 + JWT_EXPIRES_IN_SECONDS * 1000,
+  );
+  await m.query(
+    `INSERT INTO push_device_revocations(user_id,installation_id,session_expires_through) VALUES ($1,$2,$3)
+    ON CONFLICT(user_id,installation_id) DO UPDATE SET session_expires_through=GREATEST(push_device_revocations.session_expires_through,EXCLUDED.session_expires_through)`,
+    [userId, installationId, new Date(through)],
+  );
+}
 
 export function tokenContext(
   device: Pick<
@@ -134,6 +153,11 @@ export class PushRegistryService {
     });
   }
   async register(session: AuthenticatedUser, input: RegisterPushDeviceDto) {
+    input = {
+      ...input,
+      installationId: input.installationId.toLowerCase(),
+      projectId: input.projectId.toLowerCase(),
+    };
     if (!this.available) this.unavailable();
     if (
       input.projectId !== this.config.get('PUSH_PROJECT_ID', { infer: true }) ||
@@ -168,8 +192,8 @@ export class PushRegistryService {
             id: true,
             userId: true,
             tokenFingerprint: true,
-            retiredSessions: true,
             sessionExpiresAt: true,
+            leaseUntil: true,
             enrollmentRevision: true,
             active: true,
             authVersion: true,
@@ -188,32 +212,38 @@ export class PushRegistryService {
           select: { id: true },
         });
         if (tokenOwner && tokenOwner.id !== previous?.id) this.conflict();
-        const retired = Object.fromEntries(
-          Object.entries(previous?.retiredSessions ?? {}).filter(
-            ([, expiry]) => expiry > Date.now(),
-          ),
+        const revoked: { session_expires_through: Date }[] = await m.query(
+          'SELECT session_expires_through FROM push_device_revocations WHERE user_id=$1 AND installation_id=$2',
+          [session.userId, input.installationId],
         );
-        if ((retired[session.userId] ?? 0) >= session.expiresAt)
+        if (
+          revoked[0] &&
+          session.expiresAt <= revoked[0].session_expires_through.getTime()
+        )
           this.conflict();
         if (previous && previous.userId !== session.userId) {
+          // A public installation UUID cannot transfer a live foreign routing
+          // credential. Rotation is allowed once it is revoked/expired; otherwise
+          // require possession of the same Expo credential as well as the JWT.
           if (
-            previous.tokenFingerprint !== fingerprint ||
-            Object.keys(retired).length >= 32
+            previous.active &&
+            previous.sessionExpiresAt.getTime() > Date.now() &&
+            previous.leaseUntil.getTime() > Date.now() &&
+            previous.tokenFingerprint !== fingerprint
           )
             this.conflict();
-          retired[previous.userId] = Math.max(
-            retired[previous.userId] ?? 0,
+          await retirePushSession(
+            m,
+            previous.userId,
+            input.installationId,
             previous.sessionExpiresAt.getTime(),
           );
         }
-        const count = await repo.countBy({
-          userId: session.userId,
-          active: true,
-        });
-        if (
-          count >= 20 &&
-          (!previous || previous.userId !== session.userId || !previous.active)
-        )
+        const [{ count }]: { count: number }[] = await m.query(
+          'SELECT count(*)::int AS count FROM push_devices WHERE user_id=$1 AND installation_id<>$2 AND active AND lease_until>clock_timestamp() AND session_expires_at>clock_timestamp()',
+          [session.userId, input.installationId],
+        );
+        if (count >= 20)
           throw new ApplicationException(
             429,
             'PUSH_DEVICE_LIMIT',
@@ -245,7 +275,6 @@ export class PushRegistryService {
             enrollmentRevision: changed
               ? randomUUID()
               : previous!.enrollmentRevision,
-            retiredSessions: retired,
             leaseUntil: new Date(
               Math.min(Date.now() + 24 * 3600_000, session.expiresAt),
             ),
@@ -269,8 +298,16 @@ export class PushRegistryService {
     }
   }
   async remove(session: AuthenticatedUser, installationId: string) {
+    installationId = installationId.toLowerCase();
     await this.source.transaction(async (m) => {
       await this.lockUser(m, session);
+      // Persist even if an earlier enrollment POST has not arrived yet.
+      await retirePushSession(
+        m,
+        session.userId,
+        installationId,
+        session.expiresAt,
+      );
       const repo = m.getRepository(PushDevice);
       const device = await repo.findOne({
         where: { userId: session.userId, installationId },
