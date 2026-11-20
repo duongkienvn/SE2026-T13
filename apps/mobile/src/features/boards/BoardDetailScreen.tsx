@@ -52,6 +52,8 @@ import { createBoardApi } from './api';
 import { BoardFiltersSheet, dueOptions } from './BoardFiltersSheet';
 import { BoardKanban, type KanbanScroll } from './BoardKanban';
 import { BoardStar } from './BoardStar';
+import { BoardPresence } from './BoardPresence';
+import type { BoardRealtimeState } from '../../infrastructure/realtime/rooms';
 import { BoardTable } from './table/BoardTable';
 import {
   createKanbanApi,
@@ -220,6 +222,7 @@ function BoardEntry({
           tableScroll={tableScroll.current}
           columnManagement={columnManagement}
           cardManagement={cards}
+          room={room}
         />
       ) : detail.isError && !checking && !detail.isFetching ? (
         <ErrorState
@@ -257,6 +260,7 @@ function BoardContent({
   tableScroll,
   columnManagement,
   cardManagement,
+  room,
 }: {
   boardId: ResourceId;
   board: KanbanBoard;
@@ -270,6 +274,7 @@ function BoardContent({
   tableScroll: { y: number };
   columnManagement: ColumnManagement;
   cardManagement: CardLifecycle;
+  room: BoardRealtimeState;
 }) {
   const c = useTheme();
   const router = useRouter();
@@ -569,6 +574,17 @@ function BoardContent({
           </Text>
         </View>
         <View style={styles.headerActions}>
+          <BoardPresence
+            identity={identity}
+            boardId={boardId}
+            room={room}
+            boardReadable={
+              focused &&
+              board.capabilities.canReadBoard &&
+              data.resources.readable(queryKeys.board(identity, boardId))
+            }
+            explicitMember={board.currentUserRole !== null}
+          />
           {!allowed && (
             <StatusChip
               label={board.isArchived ? 'Archived · Read-only' : 'Read-only'}
