@@ -218,6 +218,37 @@ export class PushDispatcher {
           notificationId: job.notificationId,
         };
       }
+      if (job.attempts >= 6) {
+        await this.setState(m, job.id, 'FAILED', 'ATTEMPTS_EXHAUSTED');
+        return;
+      }
+      const [rate] = (await m.query(
+        `SELECT
+        COALESCE(sum(attempts) FILTER (WHERE device_id=$2),0)::int AS device,
+        COALESCE(sum(attempts),0)::int AS recipient,
+        count(*) FILTER (WHERE device_id=$2 AND attempted_at>clock_timestamp()-interval '1 second')::int AS recent
+        FROM push_delivery_outbox WHERE recipient_user_id=$1 AND created_at>clock_timestamp()-interval '24 hours'`,
+        [job.recipientUserId, job.deviceId],
+      )) as { device: number; recipient: number; recent: number }[];
+      if (rate.device >= 100 || rate.recipient >= 200) {
+        await this.setState(m, job.id, 'CANCELLED', 'RATE_LIMIT');
+        return;
+      }
+      if (rate.recent) {
+        await this.setState(m, job.id, 'PENDING', null, 2_000);
+        return;
+      }
+      let token: string;
+      try {
+        token = new PushTokenCipher(
+          this.config.get('PUSH_TOKEN_ENCRYPTION_KEY', { infer: true }),
+        ).decrypt(device!.encryptedToken, tokenContext(device!));
+      } catch {
+        await this.setState(m, job.id, 'FAILED', 'TOKEN_INVALID');
+        await m.getRepository(PushDevice).update(device!.id, { active: false });
+        await cancelDeviceJobs(m, device!.id);
+        return;
+      }
       // The User lock above also serializes account timezone/schedule updates.
       // Read only here: receipt polling is never delayed by quiet hours.
       const schedule = await m.getRepository(UserPushSchedule).findOneBy({
@@ -251,37 +282,6 @@ export class PushDispatcher {
           }
           return;
         }
-      }
-      if (job.attempts >= 6) {
-        await this.setState(m, job.id, 'FAILED', 'ATTEMPTS_EXHAUSTED');
-        return;
-      }
-      const [rate] = (await m.query(
-        `SELECT
-        COALESCE(sum(attempts) FILTER (WHERE device_id=$2),0)::int AS device,
-        COALESCE(sum(attempts),0)::int AS recipient,
-        count(*) FILTER (WHERE device_id=$2 AND attempted_at>clock_timestamp()-interval '1 second')::int AS recent
-        FROM push_delivery_outbox WHERE recipient_user_id=$1 AND created_at>clock_timestamp()-interval '24 hours'`,
-        [job.recipientUserId, job.deviceId],
-      )) as { device: number; recipient: number; recent: number }[];
-      if (rate.device >= 100 || rate.recipient >= 200) {
-        await this.setState(m, job.id, 'CANCELLED', 'RATE_LIMIT');
-        return;
-      }
-      if (rate.recent) {
-        await this.setState(m, job.id, 'PENDING', null, 2_000);
-        return;
-      }
-      let token: string;
-      try {
-        token = new PushTokenCipher(
-          this.config.get('PUSH_TOKEN_ENCRYPTION_KEY', { infer: true }),
-        ).decrypt(device!.encryptedToken, tokenContext(device!));
-      } catch {
-        await this.setState(m, job.id, 'FAILED', 'TOKEN_INVALID');
-        await m.getRepository(PushDevice).update(device!.id, { active: false });
-        await cancelDeviceJobs(m, device!.id);
-        return;
       }
       await m.query(
         'UPDATE push_delivery_outbox SET attempts=attempts+1,attempted_at=clock_timestamp(),updated_at=clock_timestamp() WHERE id=$1',

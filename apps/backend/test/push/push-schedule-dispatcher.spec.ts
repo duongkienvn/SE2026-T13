@@ -36,6 +36,7 @@ describe('push quiet-hours send-time eligibility', () => {
       deleted?: boolean;
       expiredDevice?: boolean;
       attempts?: number;
+      afterRate?: () => void;
     } = {},
   ) {
     const config = new ConfigService({
@@ -86,8 +87,10 @@ describe('push quiet-hours send-time eligibility', () => {
       void parameters;
       if (sql === 'SELECT clock_timestamp() AS now')
         return [{ now: new Date() }];
-      if (sql.includes('COALESCE(sum(attempts)'))
+      if (sql.includes('COALESCE(sum(attempts)')) {
+        options.afterRate?.();
         return [{ device: 0, recipient: 0, recent: 0 }];
+      }
       return [];
     });
     const update = jest.fn();
@@ -172,6 +175,25 @@ describe('push quiet-hours send-time eligibility', () => {
     expect(
       f.source.query.mock.calls.filter(([sql]) => sql.includes('WITH ready')),
     ).toHaveLength(2);
+  });
+  it('samples quiet time after a rate query that crosses the start boundary', async () => {
+    jest.setSystemTime(new Date('2026-01-01T21:59:59Z'));
+    const f = setup({ afterRate: () => jest.setSystemTime(now) });
+    await f.dispatcher.drain();
+    expect(f.provider.send).not.toHaveBeenCalled();
+    const sql = f.query.mock.calls.map(([statement]) => statement);
+    expect(sql.indexOf('SELECT clock_timestamp() AS now')).toBeGreaterThan(
+      sql.findIndex((statement) =>
+        statement.includes('COALESCE(sum(attempts)'),
+      ),
+    );
+    expect(
+      sql.some((statement) => statement.includes('attempts=attempts+1')),
+    ).toBe(false);
+    expect(f.query).toHaveBeenCalledWith(
+      expect.stringContaining("last_error_code='QUIET_HOURS'"),
+      ['job', new Date('2026-01-02T07:00:00Z')],
+    );
   });
   it('preserves quiet early-wake marker only for expired unattempted claims', async () => {
     const f = setup();
