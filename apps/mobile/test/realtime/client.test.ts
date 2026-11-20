@@ -180,6 +180,7 @@ test('notification hints are session-level, join timeouts/late ACKs cannot dupli
     const before = c.requests.length;
     c.socket.server('notifications:changed', {});
     c.socket.server('notifications:changed', {});
+    c.time.advance(150);
     c.time.advance(50);
     await flush();
     assert.equal(c.requests.length, before + 1);
