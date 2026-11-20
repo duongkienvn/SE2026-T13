@@ -41,6 +41,7 @@ test('strict decoder and patch allowlists, 96 clock choices and effective valida
     { startLocal: '24:00' },
     { endLocal: '07:01' },
     { startLocal: '9:00' },
+    { startLocal: '09:00\n' },
     { timeZone: 'UTC' },
     { userId: 'other' },
   ])

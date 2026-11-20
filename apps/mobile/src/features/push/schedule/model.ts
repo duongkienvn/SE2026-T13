@@ -23,7 +23,9 @@ export function validSchedule(
 ) {
   return (
     typeof value.enabled === 'boolean' &&
+    value.startLocal.length === 5 &&
     clockPattern.test(value.startLocal) &&
+    value.endLocal.length === 5 &&
     clockPattern.test(value.endLocal) &&
     (!value.enabled || value.startLocal !== value.endLocal)
   );
@@ -64,6 +66,7 @@ export function validatePatch(value: unknown): UpdatePushSchedule {
         ? typeof leaf !== 'boolean'
         : !['startLocal', 'endLocal'].includes(key) ||
           typeof leaf !== 'string' ||
+          leaf.length !== 5 ||
           !clockPattern.test(leaf),
     )
   )

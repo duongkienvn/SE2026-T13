@@ -143,7 +143,12 @@ try {
     source.getRepository(UserNotification),
     new PushEnqueuer(config),
   );
-  const resolver = new NotificationResolver();
+  const {
+    NotificationInvitationResolvers,
+  } = require('../../dist/api/notifications/notification-invitation-resolvers.js');
+  const resolver = new NotificationResolver(
+    new NotificationInvitationResolvers(),
+  );
   const sends = [],
     receipts = [];
   const provider = {
@@ -212,6 +217,8 @@ try {
   await worker().drain();
   assert.equal(receipts.length, 1);
   assert.equal(sends.length, 1);
+  // Independent scenarios do not inherit the one-second provider-send throttle.
+  await source.query('DELETE FROM push_delivery_outbox');
   await record();
   job = (await jobs()).find((j) => j.status === 'PENDING');
   await source.query(
@@ -261,6 +268,78 @@ try {
   console.log(
     'PASS late schedule edit serializes before worker send-time preparation',
   );
+  // A timezone edit uses the same User lock. Wake a deferred row immediately
+  // when the saved wall interval is no longer quiet in the new account zone.
+  await schedules.update(session, {
+    startLocal: clock(quarter),
+    endLocal: clock(quarter + 60),
+  });
+  await source.query(
+    "UPDATE push_delivery_outbox SET next_attempt_at=now()-interval '1 second' WHERE status='PENDING'",
+  );
+  await worker().drain();
+  const held = (await jobs()).find((j) => j.status === 'PENDING');
+  assert.ok(held);
+  assert.equal(sends.length, 1);
+  await source.transaction(async (m) => {
+    await m.query('SELECT id FROM users WHERE id=$1 FOR UPDATE', [user.id]);
+    await m.query(
+      "INSERT INTO user_preferences(user_id,time_zone) VALUES ($1,'Asia/Tokyo') ON CONFLICT(user_id) DO UPDATE SET time_zone=EXCLUDED.time_zone",
+      [user.id],
+    );
+  });
+  await Promise.all([worker().drain(), worker().drain()]);
+  assert.equal(sends.length, 2);
+  assert.equal((await jobs()).find((j) => j.id === held.id).status, 'TICKET');
+  assert.equal((await schedules.get(user.id)).startLocal, clock(quarter));
+  console.log(
+    'PASS authoritative account timezone wakes deferred job without rewriting clocks',
+  );
+  const {
+    eraseAccountPrivateState,
+  } = require('../../dist/api/users/account-deletion/account-deletion-state.js');
+  const { User } = require('../../dist/api/users/entities/user.entity.js');
+  // Independent account meets erasure's zero-owned-Board precondition without
+  // destructive cleanup of the collaborative fixture graph.
+  const [erased] = await source.query(
+    "INSERT INTO users(email,display_name) VALUES ('erased@test.invalid','Erased') RETURNING id",
+  );
+  await source.query('INSERT INTO user_push_schedules(user_id) VALUES ($1)', [
+    erased.id,
+  ]);
+  await source.transaction(async (m) => {
+    await m.query('SELECT id FROM users WHERE id=$1 FOR UPDATE', [erased.id]);
+    await eraseAccountPrivateState(
+      m,
+      await m.getRepository(User).findOneByOrFail({ id: erased.id }),
+    );
+  });
+  assert.equal(
+    (
+      await source.query(
+        'SELECT count(*)::int AS n FROM user_push_schedules WHERE user_id=$1',
+        [erased.id],
+      )
+    )[0].n,
+    0,
+  );
+  const [temporary] = await source.query(
+    "INSERT INTO users(email,display_name) VALUES ('cascade@test.invalid','Cascade') RETURNING id",
+  );
+  await source.query('INSERT INTO user_push_schedules(user_id) VALUES ($1)', [
+    temporary.id,
+  ]);
+  await source.query('DELETE FROM users WHERE id=$1', [temporary.id]);
+  assert.equal(
+    (
+      await source.query(
+        'SELECT count(*)::int AS n FROM user_push_schedules WHERE user_id=$1',
+        [temporary.id],
+      )
+    )[0].n,
+    0,
+  );
+  console.log('PASS soft-account private erasure and physical User FK cascade');
   console.log(
     'Quiet-hours PostgreSQL integration PASS; fake provider only, no real EPS',
   );

@@ -84,6 +84,7 @@ export function TimeSelector({
       },
       onError: () => {
         nativeOpen.current = false;
+        if (!alive.current || latest.current.disabled) return;
         setFallback(true);
         setOpen(true);
       },

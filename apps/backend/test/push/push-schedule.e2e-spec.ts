@@ -130,6 +130,7 @@ describe('push schedule HTTP contract', () => {
     { startLocal: '09:01' },
     { startLocal: '09:00:00' },
     { startLocal: ' 09:00' },
+    { startLocal: '09:00\n' },
     { endLocal: 700 },
   ])('strictly rejects %j before service mutation', async (body) => {
     await patch(body).expect(400);

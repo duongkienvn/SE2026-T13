@@ -1,5 +1,6 @@
 /* global jest, test, expect, afterEach */
 import { URL } from 'node:url';
+import { Dimensions } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { focusManager, onlineManager } from '@tanstack/react-query';
 import { PushScheduleScreen } from '../src/features/push/schedule/PushScheduleScreen';
@@ -364,6 +365,67 @@ test('concurrent Save blocked and timeout never claims Saved or resets draft, in
     expect(screen.queryByText('Quiet hours saved.')).toBeNull();
   } finally {
     await env.dispose();
+  }
+});
+test.each(['light', 'dark', 'system'])(
+  '320dp XL-font controls remain accessible in %s mode (render contract, not screenshot proof)',
+  async (mode) => {
+    const previous = Dimensions.get('window');
+    const full = { width: 320, height: 640, scale: 2, fontScale: 2 };
+    await act(() => Dimensions.set({ window: full, screen: full }));
+    const env = await setup(undefined, mode);
+    try {
+      await screen.findByRole('switch', { name: 'Quiet hours' });
+      expect(
+        screen.getByRole('button', { name: 'Start time, 22:00' }),
+      ).toBeTruthy();
+      expect(
+        screen.getByRole('button', { name: 'End time, 07:00' }),
+      ).toBeTruthy();
+      expect(
+        screen.getByRole('button', { name: 'Save quiet hours' }),
+      ).toBeDisabled();
+      await toggle(true);
+      await press('Cancel');
+      expect(
+        screen.getByRole('switch', { name: 'Quiet hours', checked: false }),
+      ).toBeTruthy();
+    } finally {
+      await env.dispose();
+      await act(() => Dimensions.set({ window: previous, screen: previous }));
+    }
+  },
+);
+test('HTTP 401 removes protected editor; failed 500 save retains dirty choice and no success', async () => {
+  const expired = await setup(() => wire({}, 401));
+  try {
+    await act(async () => {});
+    await screen.findByRole('switch', { name: 'Quiet hours' }).then(
+      () => {
+        throw new Error('Unexpected editor');
+      },
+      () => undefined,
+    );
+    expect(expired.data.getIdentity()).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Save quiet hours' }),
+    ).toBeNull();
+  } finally {
+    await expired.dispose();
+  }
+  const failed = await setup((init) =>
+    init.method === 'PATCH' ? wire({}, 500) : null,
+  );
+  try {
+    await toggle(true);
+    await press('Save quiet hours');
+    await screen.findByText(/Save wasn’t confirmed/);
+    expect(
+      screen.getByRole('switch', { name: 'Quiet hours', checked: true }),
+    ).toBeTruthy();
+    expect(screen.queryByText('Quiet hours saved.')).toBeNull();
+  } finally {
+    await failed.dispose();
   }
 });
 test('account switch during delayed Save shows no old draft or ACK in new user', async () => {

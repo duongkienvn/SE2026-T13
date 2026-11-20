@@ -12,7 +12,9 @@ function quietProjection(
   endLocal: string,
 ) {
   if (
+    startLocal.length !== 5 ||
     !PUSH_LOCAL_TIME.test(startLocal) ||
+    endLocal.length !== 5 ||
     !PUSH_LOCAL_TIME.test(endLocal) ||
     startLocal === endLocal
   )
