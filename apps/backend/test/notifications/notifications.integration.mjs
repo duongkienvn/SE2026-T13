@@ -42,6 +42,7 @@ try {
   source.migrations = migrations.filter(
     (migration) =>
       !migration.name.startsWith('NotificationFoundation') &&
+      !migration.name.startsWith('NativePush') &&
       !migration.name.startsWith('CommentMentions') &&
       !migration.name.startsWith('AccountDeletion'),
   );

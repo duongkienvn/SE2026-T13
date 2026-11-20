@@ -18,6 +18,9 @@ const config: ExpoConfig = {
   icon: './assets/brand/kanvexa-logo-v1.png',
   android: {
     package: 'tech.kanvexa.mobile.dev',
+    ...(process.env.GOOGLE_SERVICES_JSON
+      ? { googleServicesFile: process.env.GOOGLE_SERVICES_JSON }
+      : {}),
   },
   ios: {
     bundleIdentifier: 'tech.kanvexa.mobile.dev',
@@ -25,6 +28,7 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
+    ['expo-notifications', { defaultChannel: 'kanvexa', color: '#5C5FEF' }],
     ...(iosGoogleClient
       ? [
           [

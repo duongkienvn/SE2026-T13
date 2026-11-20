@@ -51,7 +51,8 @@
     "test:exports:database": "pnpm build && node test/exports/exports.integration.mjs",
     "test:email-change:database": "pnpm build && node test/auth/email-change.integration.mjs",
     "test:starter-board:database": "pnpm build && node test/boards/starter-board.integration.mjs",
-    "test:account-deletion:database": "pnpm build && node test/users/account-deletion.integration.mjs"
+    "test:account-deletion:database": "pnpm build && node test/users/account-deletion.integration.mjs",
+    "test:push:database": "pnpm build && node test/push/push.integration.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1157.0",

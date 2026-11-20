@@ -15,7 +15,11 @@ jest.mock('../src/features/cards/attachments/native', () => ({
 }));
 
 jest.mock('expo-status-bar', () => ({ StatusBar: () => null }));
-jest.mock('expo-router', () => ({ useFocusEffect: jest.fn() }));
+jest.mock('expo-router', () => ({
+  useFocusEffect: jest.fn(),
+  useRouter: () => ({ navigate: jest.fn() }),
+  useRootNavigationState: () => undefined,
+}));
 
 jest.mock('expo-network', () => ({
   getNetworkStateAsync: async () => ({ isConnected: true }),

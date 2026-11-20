@@ -66,6 +66,8 @@ export type SessionEndReason =
  * visible to the new session.
  */
 export interface SessionLifecycleListener {
+  /** Bounded best-effort cleanup before voluntary logout; never for expiry/revocation. */
+  beforeLogout?(): Promise<void> | void;
   onSessionEnd?(event: {
     readonly previousGeneration: number;
     readonly reason: SessionEndReason;
@@ -463,6 +465,33 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
 
     async logout() {
       const token = credential?.accessToken ?? null;
+      const previousGeneration = snapshot.generation;
+      // Native push cleanup may use the live JWT for at most two seconds.
+      // Offline cleanup returns immediately. Failures never retain credentials.
+      const cleanups = [...lifecycle].flatMap((listener) =>
+        listener.beforeLogout
+          ? [
+              Promise.resolve()
+                .then(() => listener.beforeLogout!())
+                .catch(() => {}),
+            ]
+          : [],
+      );
+      if (cleanups.length) {
+        let timeout: unknown;
+        try {
+          await Promise.race([
+            Promise.all(cleanups),
+            new Promise<void>((resolve) => {
+              timeout = timers.setTimeout(resolve, 2000);
+            }),
+          ]);
+        } finally {
+          if (timeout !== undefined) timers.clearTimeout(timeout);
+        }
+      }
+      if (snapshot.generation !== previousGeneration)
+        return { serverAcknowledged: false, storageCleared: false };
       const storageCleared = await endSession('signed-out', (generation) => ({
         status: 'unauthenticated',
         generation,

@@ -15,9 +15,17 @@ import { MailModule } from '../../mail/mail.module';
 import { DueReminderScanner } from './due-reminder-scanner.service';
 import { TaskEmailDispatcher } from './task-email-dispatcher.service';
 import { TaskNotificationWorker } from './task-notification-worker.service';
+import { PushRegistryModule } from '../push/push-registry.module';
+import { PushDispatcher } from '../push/push-dispatcher.service';
+import { PushWorker } from '../push/push-worker.service';
+import {
+  ExpoPushProvider,
+  HttpExpoPushProvider,
+} from '../push/expo-push.provider';
 
 @Module({
   imports: [
+    PushRegistryModule,
     AuthModule,
     NotificationPersistenceModule,
     RealtimeDeliveryModule,
@@ -25,6 +33,9 @@ import { TaskNotificationWorker } from './task-notification-worker.service';
   ],
   controllers: [NotificationPreferencesController, NotificationsController],
   providers: [
+    PushDispatcher,
+    PushWorker,
+    { provide: ExpoPushProvider, useClass: HttpExpoPushProvider },
     DueReminderScanner,
     TaskEmailDispatcher,
     TaskNotificationWorker,
