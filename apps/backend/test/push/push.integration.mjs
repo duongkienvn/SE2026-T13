@@ -626,6 +626,73 @@ try {
   pass(
     'authorized Workspace invitation with target:null sends only Inbox-safe push',
   );
+  // Board/Card notifications carry boardId, not workspaceId. A concurrent
+  // Workspace revocation must block preparation before its fresh ACL check.
+  job = await seed();
+  const beforeMembershipRevoke = deliveries.length;
+  await source.query(
+    "INSERT INTO workspace_members(workspace_id,user_id,role) VALUES ($1,$2,'MEMBER')",
+    [team.id, a.id],
+  );
+  await source.query(
+    "UPDATE boards SET workspace_id=$2,visibility='WORKSPACE_VISIBLE' WHERE id=$1",
+    [board.id, team.id],
+  );
+  await source.query(
+    'DELETE FROM board_members WHERE board_id=$1 AND user_id=$2',
+    [board.id, a.id],
+  );
+  const membershipLock = source.createQueryRunner();
+  await membershipLock.connect();
+  await membershipLock.startTransaction();
+  let revokedMembership;
+  try {
+    [revokedMembership] = await membershipLock.query(
+      'SELECT role FROM workspace_members WHERE workspace_id=$1 AND user_id=$2 FOR UPDATE',
+      [team.id, a.id],
+    );
+    assert.ok(revokedMembership);
+    await membershipLock.query(
+      'DELETE FROM workspace_members WHERE workspace_id=$1 AND user_id=$2',
+      [team.id, a.id],
+    );
+    const draining = worker().drain();
+    let blocked = false;
+    for (let i = 0; i < 100 && !blocked; i++) {
+      [{ blocked }] = await source.query(
+        "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE 'SELECT wm.user_id FROM workspace_members%') AS blocked",
+      );
+      if (!blocked) await delay(10);
+    }
+    assert.ok(
+      blocked,
+      'Board job must wait for Workspace membership revocation',
+    );
+    assert.equal(deliveries.length, beforeMembershipRevoke);
+    await membershipLock.commitTransaction();
+    await draining;
+  } finally {
+    if (membershipLock.isTransactionActive)
+      await membershipLock.rollbackTransaction();
+    await membershipLock.release();
+  }
+  assert.equal(await status(job.id), 'CANCELLED');
+  assert.equal(deliveries.length, beforeMembershipRevoke);
+  await source.query(
+    'INSERT INTO workspace_members(workspace_id,user_id,role) VALUES ($1,$2,$3)',
+    [team.id, a.id, revokedMembership.role],
+  );
+  await source.query(
+    "UPDATE boards SET workspace_id=$2,visibility='PRIVATE' WHERE id=$1",
+    [board.id, board.workspace_id],
+  );
+  await source.query(
+    "INSERT INTO board_members(board_id,user_id,role) VALUES ($1,$2,'OWNER')",
+    [board.id, a.id],
+  );
+  pass(
+    'Board job waits for concurrent Workspace membership revoke and cancels before provider I/O',
+  );
   for (const change of [
     'preference',
     'archive',

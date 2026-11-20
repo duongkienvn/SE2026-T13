@@ -37,19 +37,19 @@ Status here distinguishes source audit from executed verification. DONE means th
 
 - Node `v24.22.3`, pnpm `10.18.3`.
 - GitHub CLI unavailable; public GitHub REST API used for issue, PR, reviews/comments and check annotations.
-- No explicit test database connection/opt-in environment present. Docker CLI exists but `docker ps` fails because Docker Desktop Linux engine pipe is absent. Do not substitute application/production credentials or run migrations against an undesignated database.
+- Initial rounds: no explicit test DB or running Docker engine. On continuation round 4 the owner explicitly authorized Docker local; started Desktop and created an isolated PostgreSQL 16 container on loopback with disposable tmpfs storage. Existing application containers/databases were not used. No production credentials/configuration were read or changed.
 - Appllama skills loaded; MCP tools unavailable. Approved Inbox/Preferences image viewed directly. Existing Mobile design tokens, native switch and MOB-32 layout remain authority; no redesign is planned. Simulator/device visual QA is NOT VERIFIED.
 
 ## Continuation changes (no architecture or UI replacement)
 
 - Restored the already locked native dependency with `pnpm install --frozen-lockfile`; no dependency/version/lockfile change. pnpm reported ignored optional build scripts; no approval or execution of those scripts was added.
 - Fixed the inherited CI `no-unexpected-multiline` defect using a local Supertest client (Prettier otherwise recreated the offending split computed access).
-- Added the live Board's Workspace membership `FOR KEY SHARE OF wm` before User/device/job locks, matching the existing email dispatcher. Card/Board notifications intentionally store `workspaceId:null`; checking that nullable field alone missed the membership lock. A unit test checks ordering; real locking remains NOT VERIFIED without PostgreSQL.
+- Added the live Board's Workspace membership `FOR KEY SHARE OF wm` before User/device/job locks, matching the existing email dispatcher. Card/Board notifications intentionally store `workspaceId:null`; checking that nullable field alone missed the membership lock. A unit test checks ordering; the authorized PostgreSQL fixture now checks the real Workspace-only grant revocation race.
 - Corrected observed OS revocation: immediately clear device eligibility even if unregister fails; retain the existing non-secret cleanup marker. Automatic reconciliation now skips backgrounded applications.
 - Bounded Expo token acquisition to 15 seconds with cancellation and late-result fencing; no token is cached, logged or allowed to enroll a superseded account. Native OS permission prompts remain explicit user actions and are not timed out behind the user's system dialog.
 - Removed optional DELETE after a confirmed account disable. PATCH already deactivates all account devices and cancels pending jobs. DELETE deliberately retires the current JWT's enrollment and was preventing disable → explicit re-enable until re-login. Logout/observed permission revoke still use the durable DELETE fence; account opt-out remains server-authoritative.
 - Added regressions for timeout/late token, logout, A→B switch, failed registration redaction, permission-revoke failure, background reconnect and disable/re-enable. Native listener tests cover silent foreground policy, duplicate cold/warm response, cleanup, exact EAS project/token format; PushBridge tests cover router readiness and guarded Inbox intent. No UI screen/layout was rewritten.
-- Extended the existing PostgreSQL fixture with concurrent same-install renewal/ownership transfer assertions; formatted only its existing malformed blocks. This fixture was syntax-checked, **not executed against PostgreSQL**.
+- Extended the existing PostgreSQL fixture with concurrent same-install renewal/ownership transfer assertions; formatted only its existing malformed blocks. Initially syntax-checked only; later executed on owner-authorized disposable PostgreSQL (see database evidence below).
 
 ## API, migration and lifecycle handoff
 
@@ -75,7 +75,7 @@ Lock/dispatch boundary: Board → live Workspace membership (or Workspace share 
 - Enabling requires canonical 32-byte base64 `PUSH_TOKEN_ENCRYPTION_KEY`, UUIDv4 `PUSH_PROJECT_ID` and exact `PUSH_APP_ENVIRONMENT`. Optional `EXPO_PUSH_ACCESS_TOKEN` is backend-only. Native `EXPO_PUBLIC_APP_ENVIRONMENT` is non-secret; tokens/keys never belong in public variables.
 - v1 key/fingerprint rotation is a **re-enrollment boundary**, not transparent key replacement: first disable dispatch, revoke/remove old device enrollments and pending jobs on an approved target, then rotate key and require fresh opt-in/enrollment. Do not leave mixed fingerprint keys serving concurrently.
 - Native config retains existing EAS project `45269d99-0d21-44b6-ab8f-e73e80576fee`, SDK-58 plugin and locked package. Actual EAS ownership, FCM/APNs credentials and provider project wiring are NOT VERIFIED. No EAS build, APK, ADB, credential creation, production enablement or live push was performed.
-- Before rollout: owner provides a designated test DB and runs the existing guarded Push fixture; review migrations/backup, deploy with flag OFF, then authorize isolated development/preview FCM/APNs/device acceptance. Do not enable production delivery until those gates and review/CI are green.
+- Before rollout: PostgreSQL fixture has now passed on an isolated authorized test server; review migration/backup for the actual rollout target, keep flag OFF, then separately authorize development/preview FCM/APNs/device acceptance. Do not enable production delivery until native/provider gates and review/CI are green.
 
 ## Executed verification (2026-11-20)
 
@@ -111,21 +111,32 @@ No additional production code or UI change. Added direct abort/deadline and over
 - Docker recheck: `com.docker.service` stopped; no PostgreSQL service or designated DB environment. No service/configuration was changed.
 - Whole-component `pnpm --filter @kanban/mobile exec jest --runInBand --detectOpenHandles`: **40 suites / 516 tests PASS** in 380 seconds; process retained after results with no attributed handle printed; no owned TCP connections found. Diagnostic was cancelled after completion (not a clean command PASS). No test timeout, production code or exit-suppression change was made.
 
+## Authorized local PostgreSQL evidence (continuation round 4)
+
+Owner explicitly authorized starting Docker local. Used only new `kanvexa-mob33-push-test-20261120` (`postgres:16-alpine`), loopback `127.0.0.1:55661`, tmpfs data and disposable test-only credentials; no application DB/volume or production configuration. `pnpm --filter @kanban/backend build` PASS, then process-local `PUSH_DATABASE_TESTS=local-only`, `NODE_ENV=test`, explicit loopback `DATABASE_*`, `DATABASE_SSL=false` and `node apps/backend/test/push/push.integration.mjs`.
+
+- Existing fixture: **14 groups PASS, exit 0**. Extended only the same fixture with real `pg_stat_activity` lock-wait evidence for Board/Card jobs whose `workspaceId` is null and read access comes exclusively from Workspace membership.
+- Final extended fixture: **15 groups PASS twice consecutively, exit 0**. Includes migration/legacy preservation/default OFF, uniqueness/encrypted storage, transactional duplicate/suppression/rollback, concurrent renewals/A→B ownership fencing, ticket/receipt distinction, max attempts/UNKNOWN, restart and two-worker ownership, disable during paused fake provider I/O, TTL/quota/logout fence, invitation revoke, Workspace-only grant revoke, send-time ACL/session/lease and account erasure.
+- Test development transparency: first new race setup incorrectly retained Board OWNER access, so TICKET was valid under existing ACL. Corrected setup to TEAM/WORKSPACE_VISIBLE without Board membership, without changing authorization. A second run passed race assertions but exposed TypeORM raw DELETE result shape in fixture restoration; replaced RETURNING extraction with a locked SELECT. Final two runs pass; production source unchanged.
+- Provider is injectable in-memory fake throughout, no Expo HTTPS or native delivery. Fixture creates/drops only random `kanban_push_*` databases. Disposable-container cleanup verified separately; no claim about real device/provider delivery.
+
 ## Final criterion reconciliation
 
 - Initial PARTIAL implementation gaps are repaired with focused regressions; initial TODO handoff is consolidated here. Inherited DONE modules, migration, contracts, Inbox navigation and Preferences UI remain intact.
-- Source/targeted JS verification is complete for this continuation, but **MOB-33 is not fully accepted**: PostgreSQL behavior and native/provider gates below remain unverified. No full Push E2E COMPLETE claim.
+- Source/targeted JS and isolated PostgreSQL verification are complete for this continuation, but **MOB-33 is not fully accepted**: native/provider gates below remain unverified. No full Push E2E COMPLETE claim.
 - Whole-Mobile suite assertions pass; its non-clean exit is a verification limitation, not silently upgraded to PASS. Push/native/root diagnostic with `--detectOpenHandles` passed 3 suites/10 tests, exit 0. No unrelated timer/navigation changes were made merely to quiet the complete suite.
 
 ## Local continuation commits
 
 - `15936dcc fix(push): lock workspace grants and repair focused verification` — one missing send-time grant lock, CI lint fix, existing database fixture formatting and concurrent transfer coverage.
 - `45544ea1 fix(mobile): harden push consent and installation lifecycle` — bounded token request, accurate revoke/background handling, re-enable recovery and native/bridge/account-switch regressions.
-- Documentation commit follows these two fixes; no amend/rebase/history replacement and no push. All eight inherited commits remain ancestors. No secrets, APKs, generated bundles, dependency artifacts or production configuration are staged.
+- `d5bdaf31 docs(push): record inherited audit verification and rollout gates` — consolidated task handoff.
+- `28593af2 test(push): verify provider deadlines worker lifecycle and native fallback` — direct transport abort/size/stream safety, worker lifecycle isolation and older-binary fallback tests.
+- PostgreSQL evidence commit follows: extended only the existing fixture with the Workspace-only revoke race and updated this record. No amend/rebase/history replacement or push; all eight inherited commits remain ancestors. No secrets, APKs, generated bundles, dependency artifacts or production configuration are staged.
 
 ## Outstanding acceptance gates
 
-- PostgreSQL migration/legacy upgrade, unique constraints, concurrent transfer/opt-out and real two-worker lease/restart behavior: **NOT VERIFIED**, despite runnable fixture and unit assertions. Do not use mocks as proof of PostgreSQL concurrency.
+- Isolated PostgreSQL fixture now verifies migration/legacy upgrade, unique constraints, concurrent transfer/opt-out, real two-worker leases/restart and Workspace grant revocation. This is not proof of production migration performance, provider delivery or native OS behavior.
 - Whole-Mobile Jest retained handles after all assertions passed; exact remaining handle attribution is unresolved outside the clean Push/root subset. Investigate in the existing Mobile testing task rather than broadening MOB-33 or using `--forceExit`.
 - Native Android/iOS permissions, background/terminated delivery/tap, notification channel/icon behavior, actual FCM/APNs receipts, live account-swap timing and native accessibility/visual light/dark/font/back QA: **NOT VERIFIED**. JS bundle/component tests do not satisfy them.
 - PR #309 remains the existing remote PR at inherited HEAD; local fixes will not appear there until owner elects to push. Owner must update the minimal PR description with this handoff and obtain fresh CI/review; no new PR/merge/deploy is performed here.
