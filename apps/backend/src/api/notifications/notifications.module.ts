@@ -15,9 +15,11 @@ import { MailModule } from '../../mail/mail.module';
 import { DueReminderScanner } from './due-reminder-scanner.service';
 import { TaskEmailDispatcher } from './task-email-dispatcher.service';
 import { TaskNotificationWorker } from './task-notification-worker.service';
+import { PushRegistryModule } from '../push/push-registry.module';
 
 @Module({
   imports: [
+    PushRegistryModule,
     AuthModule,
     NotificationPersistenceModule,
     RealtimeDeliveryModule,
