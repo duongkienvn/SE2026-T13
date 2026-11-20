@@ -3,10 +3,12 @@ import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSessionSnapshot } from '../../../infrastructure/auth/SessionProvider';
 import type { SessionIdentity } from '../../../infrastructure/api/session-client';
+import { useDraftNavigation } from '../../../navigation/useDraftNavigation';
 import {
   Button,
   ScreenHeader,
   Skeleton,
+  UnsavedChangesPrompt,
   spacing,
   typography,
   useTheme,
@@ -30,6 +32,7 @@ function Preferences({ identity }: { identity: SessionIdentity }) {
     router = useRouter(),
     editor = usePreferences(identity);
   const { form, query, mutation } = editor;
+  const navigation = useDraftNavigation(editor, '/notification-preferences');
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
       <ScrollView
@@ -63,6 +66,14 @@ function Preferences({ identity }: { identity: SessionIdentity }) {
             />
           }
         />
+        {mutation.pending === 'save' && (
+          <Text
+            accessibilityLiveRegion="polite"
+            style={[typography.body, { color: c.text }]}
+          >
+            Saving preferences… Please wait before leaving.
+          </Text>
+        )}
         {!editor.online && (
           <Text
             accessibilityLiveRegion="polite"
@@ -191,6 +202,12 @@ function Preferences({ identity }: { identity: SessionIdentity }) {
           </>
         )}
       </ScrollView>
+      <UnsavedChangesPrompt
+        visible={navigation.prompt}
+        onDiscard={navigation.discard}
+        onKeepEditing={navigation.keepEditing}
+        message="Your notification preference changes have not been saved."
+      />
     </SafeAreaView>
   );
 }

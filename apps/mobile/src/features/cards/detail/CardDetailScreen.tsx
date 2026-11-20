@@ -31,7 +31,7 @@ import {
 import { cardOptions } from '../queries';
 import type { CardDetailSections } from './sections';
 import { useCardDraft } from './useCardDraft';
-import { useDraftNavigation } from './useDraftNavigation';
+import { useDraftNavigation } from '../../../navigation/useDraftNavigation';
 import {
   CardDocument,
   DetailHeader,

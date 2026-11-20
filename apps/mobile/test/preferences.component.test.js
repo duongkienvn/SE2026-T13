@@ -37,6 +37,7 @@ jest.mock('expo-router', () => ({
     replace: mockReplace,
   }),
   useIsFocused: () => true,
+  usePreventRemove: () => () => {},
 }));
 jest.mock('../src/features/notifications/preferences/config', () => ({
   get emailEnabled() {
