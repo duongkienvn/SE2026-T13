@@ -173,6 +173,19 @@ describe('push quiet-hours send-time eligibility', () => {
       f.source.query.mock.calls.filter(([sql]) => sql.includes('WITH ready')),
     ).toHaveLength(2);
   });
+  it('preserves quiet early-wake marker only for expired unattempted claims', async () => {
+    const f = setup();
+    await f.dispatcher.drain();
+    const recovery = f.source.query.mock.calls.find(([sql]) =>
+      sql.includes('last_error_code=CASE'),
+    );
+    expect(recovery?.[0]).toContain(
+      "WHEN status='PROCESSING' AND attempted_at IS NULL AND last_error_code='QUIET_HOURS' THEN 'QUIET_HOURS' ELSE 'LEASE_EXPIRED'",
+    );
+    expect(recovery?.[0]).toContain(
+      "WHEN attempted_at IS NOT NULL THEN 'UNKNOWN' ELSE 'PENDING'",
+    );
+  });
   it('marks terminal expiry if the allowed instant reaches or exceeds original expiry', async () => {
     const f = setup({ expiry: '2026-01-02T07:00:00Z' });
     await f.dispatcher.drain();

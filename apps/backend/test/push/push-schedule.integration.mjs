@@ -210,6 +210,16 @@ try {
   );
   await Promise.all([worker().drain(), worker().drain()]);
   assert.equal(sends.length, 0);
+  // Recover a crashed claim without losing its schedule-OFF early-wake marker.
+  await source.query(
+    "UPDATE push_delivery_outbox SET status='PROCESSING',attempted_at=NULL,lease_owner=$2,lease_until=now()-interval '1 second' WHERE id=$1",
+    [job.id, randomUUID()],
+  );
+  await worker().drain();
+  const recovered = (await jobs())[0];
+  assert.equal(recovered.status, 'PENDING');
+  assert.equal(recovered.last_error_code, 'QUIET_HOURS');
+  assert.equal(recovered.attempts, 0);
   await schedules.update(session, { enabled: false });
   await Promise.all([worker().drain(), worker().drain()]);
   assert.equal(sends.length, 1);

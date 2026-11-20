@@ -391,7 +391,7 @@ export class PushDispatcher {
       (SELECT user_id,installation_id FROM push_device_revocations WHERE session_expires_through<clock_timestamp() LIMIT 200 FOR UPDATE SKIP LOCKED)`);
     await this.source
       .query(`UPDATE push_delivery_outbox SET status=CASE WHEN status='RECEIPT_PROCESSING' THEN 'TICKET' WHEN attempted_at IS NOT NULL THEN 'UNKNOWN' ELSE 'PENDING' END,
-      last_error_code='LEASE_EXPIRED',lease_owner=NULL,lease_until=NULL,updated_at=clock_timestamp()
+      last_error_code=CASE WHEN status='PROCESSING' AND attempted_at IS NULL AND last_error_code='QUIET_HOURS' THEN 'QUIET_HOURS' ELSE 'LEASE_EXPIRED' END,lease_owner=NULL,lease_until=NULL,updated_at=clock_timestamp()
       WHERE id IN (SELECT id FROM push_delivery_outbox WHERE status IN ('PROCESSING','RECEIPT_PROCESSING') AND lease_until<clock_timestamp() LIMIT 200 FOR UPDATE SKIP LOCKED)`);
     await this.source
       .query(`UPDATE push_delivery_outbox SET status=CASE WHEN status IN ('TICKET','RECEIPT_PROCESSING') THEN 'UNKNOWN' ELSE 'CANCELLED' END,last_error_code='EXPIRED',lease_owner=NULL,lease_until=NULL,updated_at=clock_timestamp()
