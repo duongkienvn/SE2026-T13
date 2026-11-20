@@ -33,6 +33,9 @@ describe('push quiet-hours send-time eligibility', () => {
       push?: boolean;
       revoked?: boolean;
       acl?: boolean;
+      deleted?: boolean;
+      expiredDevice?: boolean;
+      attempts?: number;
     } = {},
   ) {
     const config = new ConfigService({
@@ -51,7 +54,9 @@ describe('push quiet-hours send-time eligibility', () => {
       appEnvironment: 'development',
       installationId: 'installation',
       tokenFingerprint: 'fingerprint',
-      leaseUntil: new Date('2026-01-03Z'),
+      leaseUntil: new Date(
+        options.expiredDevice ? '2026-01-01T21:59:59Z' : '2026-01-03Z',
+      ),
       sessionExpiresAt: new Date('2026-01-03Z'),
       encryptedToken: '',
     };
@@ -68,7 +73,7 @@ describe('push quiet-hours send-time eligibility', () => {
       leaseUntil: new Date('2026-01-01T22:02:00Z'),
       enrollmentRevision: 'revision',
       expiresAt: new Date(options.expiry ?? '2026-01-02T22:00:00Z'),
-      attempts: 0,
+      attempts: options.attempts ?? 0,
       receiptAttempts: 0,
       ticketId: options.receipt ? 'ticket' : null,
     };
@@ -97,7 +102,11 @@ describe('push quiet-hours send-time eligibility', () => {
                 kind: 'CARD_ASSIGNED',
               }
             : entity === User
-              ? { authVersion: 0, emailVerifiedAt: now }
+              ? {
+                  authVersion: 0,
+                  emailVerifiedAt: now,
+                  deletedAt: options.deleted ? now : null,
+                }
               : entity === PushDevice
                 ? device
                 : entity === PushDeliveryOutbox
@@ -185,6 +194,16 @@ describe('push quiet-hours send-time eligibility', () => {
       expect(f.job.attempts).toBe(1);
     },
   );
+  it('holds provider retries through quiet time without consuming another attempt', async () => {
+    const f = setup({ attempts: 3 });
+    await f.dispatcher.drain();
+    expect(f.provider.send).not.toHaveBeenCalled();
+    expect(f.job.attempts).toBe(3);
+    expect(f.query).toHaveBeenCalledWith(
+      expect.stringContaining("last_error_code='QUIET_HOURS'"),
+      ['job', new Date('2026-01-02T07:00:00Z')],
+    );
+  });
   it('continues receipt polling during quiet hours without a new send', async () => {
     const f = setup({ receipt: true });
     await f.dispatcher.drain();
@@ -195,16 +214,21 @@ describe('push quiet-hours send-time eligibility', () => {
       f.query.mock.calls.some(([sql]) => sql.includes('QUIET_HOURS')),
     ).toBe(false);
   });
-  it.each([{ push: false }, { revoked: true }, { acl: false }])(
-    'preserves opt-out/device/ACL rejection %j',
-    async (options) => {
-      const f = setup(options);
-      await f.dispatcher.drain();
-      expect(f.provider.send).not.toHaveBeenCalled();
-      expect(f.query).toHaveBeenCalledWith(
-        expect.stringContaining('status=$2'),
-        ['job', 'CANCELLED', 'INELIGIBLE', 0],
-      );
-    },
-  );
+  it.each([
+    { push: false },
+    { revoked: true },
+    { acl: false },
+    { deleted: true },
+    { expiredDevice: true },
+  ])('preserves opt-out/device/ACL rejection %j', async (options) => {
+    const f = setup(options);
+    await f.dispatcher.drain();
+    expect(f.provider.send).not.toHaveBeenCalled();
+    expect(f.query).toHaveBeenCalledWith(expect.stringContaining('status=$2'), [
+      'job',
+      'CANCELLED',
+      'INELIGIBLE',
+      0,
+    ]);
+  });
 });
