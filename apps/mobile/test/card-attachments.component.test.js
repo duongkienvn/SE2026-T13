@@ -753,3 +753,35 @@ test('section failure/retry and offline remain local, dark theme/320dp/160% text
     await act(() => Dimensions.set({ window: original }));
   }
 });
+
+test('a sibling comment author-only 403 does not abort an in-flight attachment save (MOB-28)', async () => {
+  const gate = deferred();
+  const env = await setup({
+    override: ({ path, method }) =>
+      path === base && method === 'POST' ? gate.promise : null,
+  });
+  await screen.findByText('No attachments');
+  await press('Add attachment');
+  await press('Add HTTPS link');
+  await fireEvent.changeText(
+    screen.getByLabelText('HTTPS URL'),
+    'https://example.test/prototype',
+  );
+  await press('Save attachment');
+  const identity = env.data.getIdentity();
+  await act(() =>
+    env.data.resources.denied([
+      ...queryKeys.comments(identity, boardId, cardId),
+      'write',
+    ]),
+  );
+  await act(async () =>
+    gate.resolve(response(attachment({ displayName: 'example.test' }), 201)),
+  );
+  // Saved: the sheet closed and the list was refetched, with no abort error.
+  expect(screen.queryByLabelText('HTTPS URL')).toBeNull();
+  expect(
+    env.requests.filter(({ path, method }) => path === base && method === 'GET')
+      .length,
+  ).toBeGreaterThan(1);
+});

@@ -98,6 +98,7 @@ chưa triển khai. Mục lục dưới đây liệt kê toàn bộ task documen
 ## Frontend tasks
 
 - [MOB-26 Native Card Comments and secure mentions](frontend/mob-26-card-comments-mentions.md)
+- [MOB-28 Native Board presence and collaboration hardening](frontend/mob-28-realtime-collaboration-hardening.md)
 - [MOB-27 Native Workspace and Board activity history](frontend/mob-27-activity-history.md)
 - [MOB-25 Native Board membership](frontend/mob-25-board-membership.md)
 - [MOB-24 Native Workspace invitations](frontend/mob-24-workspace-invitations.md)
