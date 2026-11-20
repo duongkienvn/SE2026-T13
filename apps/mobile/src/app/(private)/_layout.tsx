@@ -77,6 +77,10 @@ export default function PrivateLayout() {
       }}
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="notification-preferences"
+        options={{ headerShown: false }}
+      />
       <Stack.Screen name="invitation" options={{ presentation: 'modal' }} />
     </Stack>
   );

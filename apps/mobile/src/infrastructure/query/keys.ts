@@ -103,6 +103,8 @@ export const queryKeys = {
     ] as const,
   datePreferences: (identity: SessionIdentity) =>
     [...scope(identity), 'me', 'date-preferences'] as const,
+  notificationPreferences: (identity: SessionIdentity) =>
+    [...scope(identity), 'me', 'notification-preferences'] as const,
   comments: (identity: SessionIdentity, boardId: string, cardId: string) =>
     [
       ...board(identity, boardId),

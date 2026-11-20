@@ -443,11 +443,19 @@ export function ProgressBar({
 }
 export function PreferenceSwitch({
   label,
+  description,
+  accessibilityLabel = label,
+  accessibilityHint = description,
+  icon,
   value,
   onValueChange,
   disabled,
 }: {
   label: string;
+  description?: string;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
+  icon?: ReactNode;
   value: boolean;
   onValueChange: (value: boolean) => void;
   disabled?: boolean;
@@ -455,9 +463,20 @@ export function PreferenceSwitch({
   const c = useTheme();
   return (
     <View style={styles.row}>
-      <Text style={[typography.body, { color: c.text, flex: 1 }]}>{label}</Text>
+      {icon}
+      <View style={{ flex: 1, gap: spacing.xs }}>
+        <Text style={[typography.body, { color: c.text }]}>{label}</Text>
+        {description && (
+          <Text style={[typography.supporting, { color: c.textSecondary }]}>
+            {description}
+          </Text>
+        )}
+      </View>
       <NativeSwitch
-        accessibilityLabel={label}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityHint={accessibilityHint}
+        accessibilityState={{ checked: value, disabled: !!disabled }}
+        style={{ minHeight: sizes.touch, minWidth: sizes.touch }}
         value={value}
         onValueChange={(nextValue) => {
           if (!disabled) onValueChange(nextValue);

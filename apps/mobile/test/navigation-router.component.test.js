@@ -31,6 +31,9 @@ test('the retired preview flag cannot open the protected shell', async () => {
     await act(() => router.push('/search'));
     await waitFor(() => expect(screen).toHavePathname('/sign-in'));
     expect(screen.queryByText('Search content')).toBeNull();
+    await act(() => router.push('/notification-preferences'));
+    await waitFor(() => expect(screen).toHavePathname('/sign-in'));
+    expect(screen.queryByText('Preferences content')).toBeNull();
     expect(adapter.getSnapshot()).toEqual({ status: 'unauthenticated' });
     await act(() => router.push(cardPath));
     await waitFor(() => expect(screen).toHavePathname('/sign-in'));
@@ -109,6 +112,9 @@ function routesFor(adapter) {
     '(private)/(tabs)/boards': () => <Text>Boards content</Text>,
     '(private)/(tabs)/inbox': () => <Text>Inbox content</Text>,
     '(private)/search': () => <Text>Search content</Text>,
+    '(private)/notification-preferences': () => (
+      <Text>Preferences content</Text>
+    ),
     '(private)/invitation': () => <Text>Invitation content</Text>,
     '(private)/workspaces/[workspaceId]/activity': () => (
       <Text>Workspace activity navigation fixture</Text>
@@ -130,6 +136,7 @@ test('the production route directory can be resolved by Expo Router', () => {
 });
 
 for (const path of [
+  '/notification-preferences',
   '/workspaces/01234567-89ab-cdef-0123-456789abcdef/activity',
   '/boards/01234567-89ab-cdef-0123-456789abcdef/activity',
 ])

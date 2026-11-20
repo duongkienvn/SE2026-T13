@@ -169,6 +169,21 @@ afterEach(() => {
   focusManager.setFocused(true);
   jest.useRealTimers();
 });
+
+test('Inbox opens Notification preferences without changing notification read state', async () => {
+  const env = await setup();
+  try {
+    await press('Notification preferences');
+    expect(mockPush).toHaveBeenCalledWith('/notification-preferences');
+    expect(
+      env.requests.filter(
+        (r) => r.init.method === 'PATCH' || r.init.method === 'POST',
+      ),
+    ).toHaveLength(0);
+  } finally {
+    await env.dispose();
+  }
+});
 test('Inbox loads actual rows, exact unread count and bodyless read actions without auto-marking on open', async () => {
   const env = await setup();
   try {
@@ -220,9 +235,7 @@ test('server count includes unavailable history and compact 99+ retains the exac
     );
     expect(write.init.method).toBe('POST');
     expect(write.init.body).toBeUndefined();
-    expect(
-      screen.queryByText(/Push|Quiet hours|Notification preferences/),
-    ).toBeNull();
+    expect(screen.queryByText(/Push|Quiet hours/)).toBeNull();
   } finally {
     await env.dispose();
   }

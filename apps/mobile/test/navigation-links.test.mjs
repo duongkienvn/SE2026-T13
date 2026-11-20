@@ -13,6 +13,19 @@ const board = '01234567-89ab-cdef-0123-456789abcdef';
 const card = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 const path = `/boards/${board}/cards/${card}`;
 
+test('notification preferences is one explicit private destination, not a route prefix', () => {
+  const destination = { kind: 'screen', screen: 'notification-preferences' };
+  assert.deepEqual(parsePath('/notification-preferences'), destination);
+  assert.equal(destinationPath(destination), '/notification-preferences');
+  for (const path of [
+    '/notification-preferences/extra',
+    '/notification-preferences?x=1',
+    '/notification-preferences/',
+    '/notification-preferences%2fsettings',
+  ])
+    assert.equal(parsePath(path), null);
+});
+
 test('the native shell exposes precisely the four approved tabs', () => {
   assert.deepEqual(
     tabs.map(({ name, label }) => [name, label]),

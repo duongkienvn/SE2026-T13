@@ -210,6 +210,11 @@ function Inbox({ identity }: { identity: SessionIdentity }) {
         }
       >
         <TabHeader search={false} />
+        <Button
+          label="Notification preferences"
+          variant="link"
+          onPress={() => router.push('/notification-preferences')}
+        />
         <View style={{ gap: spacing.xs }}>
           <Text
             accessibilityRole="header"

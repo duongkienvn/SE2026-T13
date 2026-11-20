@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useIsFocused, usePreventRemove, useRouter } from 'expo-router';
-import { subscribeIncomingLinks } from '../../../navigation/incoming-link';
-import { destinationPath } from '../../../navigation/routes';
-import type { CardDraftController } from './useCardDraft';
+import { subscribeIncomingLinks } from './incoming-link';
+import { destinationPath } from './routes';
 
 /** Screen removal covers Back, gestures, replacement and navigation back to tabs.
  * Warm app links can push instead of removing; hold them before Expo handles them.
  */
 export function useDraftNavigation(
-  editor: CardDraftController,
+  editor: { dirty: boolean; pending: boolean; cancel(): void },
   path: string,
   enabled = true,
 ) {

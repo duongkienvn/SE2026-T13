@@ -56,7 +56,9 @@ export function createResourceAccess() {
         (key[4] === 'board-lists' ? aggregates : 0) +
         scoped
       );
-    return key[4] === 'me' ? 0 : aggregates + scoped;
+    // Account data ignores Board aggregate changes, but still honors its own
+    // request/response fences (for example a notification preference save).
+    return key[4] === 'me' ? scoped : aggregates + scoped;
   }
   function readable(key: readonly unknown[]) {
     const workspace = workspaceId(key);
