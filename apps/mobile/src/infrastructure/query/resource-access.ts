@@ -15,6 +15,9 @@ export function createResourceAccess() {
     }
   >();
   const workspaces = new Map<string, number>();
+  // Confirmations order access probes without invalidating ordinary scoped reads.
+  const workspaceProbes = new Map<string, number>();
+  let workspaceProbeRevision = 0; // Remains monotonic across scope resets.
   const revokedWorkspaces = new Set<string>();
   let workspaceDirectory = 0;
   const deniedListeners = new Set<
@@ -120,6 +123,21 @@ export function createResourceAccess() {
   }
   return {
     capture,
+    captureWorkspaceProbe(id: string) {
+      if (!workspaces.has(id)) workspaces.set(id, 0);
+      const revision = workspaces.get(id)!;
+      const probeRevision = workspaceProbes.get(id) ?? ++workspaceProbeRevision;
+      workspaceProbes.set(id, probeRevision);
+      return () => {
+        if (
+          workspaces.get(id) !== revision ||
+          workspaceProbes.get(id) !== probeRevision
+        )
+          throw new ApiError('session-changed', {
+            code: 'RESOURCE_ACCESS_CHANGED',
+          });
+      };
+    },
     captureBoardProbe(id: string) {
       const revision = boards.get(id)?.version ?? 0;
       return () => {
@@ -184,6 +202,7 @@ export function createResourceAccess() {
     },
     confirmWorkspace(id: string) {
       revokedWorkspaces.delete(id);
+      workspaceProbes.set(id, ++workspaceProbeRevision);
     },
     fenceAll() {
       aggregates++;
@@ -225,6 +244,7 @@ export function createResourceAccess() {
       boards.clear();
       resources.clear();
       workspaces.clear();
+      workspaceProbes.clear();
       revokedWorkspaces.clear();
       workspaceDirectory++;
       aggregates++;

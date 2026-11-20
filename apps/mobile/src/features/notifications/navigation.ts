@@ -30,11 +30,13 @@ export async function verifyNotificationDestination(
     current = data.resources.capture(root, false);
   let boardId: string | undefined,
     workspaceId: string | undefined,
-    checkBoard: (() => void) | undefined;
+    checkBoard: (() => void) | undefined,
+    checkWorkspace: (() => void) | undefined;
   const verified = () => {
     data.assertCurrent(identity);
     current();
     checkBoard?.();
+    checkWorkspace?.();
     if (signal.aborted) throw new ApiError('aborted');
   };
   try {
@@ -62,6 +64,7 @@ export async function verifyNotificationDestination(
       flow.bind(identity);
     } else if (destination.kind === 'workspace') {
       workspaceId = destination.workspaceId;
+      checkWorkspace = data.resources.captureWorkspaceProbe(workspaceId);
       const workspace = await data.api.json(
         '/workspaces/' + workspaceId,
         decodeWorkspace,
