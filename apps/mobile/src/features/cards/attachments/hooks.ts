@@ -96,8 +96,23 @@ export function useAttachmentActions(context: CardDetailContext) {
         clearPrivateAttachmentFiles();
       },
     });
-    const denied = data.resources.subscribeDenied((id) => {
-      if (id === context.boardId.toLowerCase()) stop();
+    // Only this Card's attachments or the Board itself; a sibling section's
+    // child 403/404 (for example an author-only comment edit) is not ours.
+    const own = queryKeys.attachments(
+      context.identity,
+      context.boardId,
+      context.cardId,
+    );
+    const denied = data.resources.subscribeDenied((id, key) => {
+      if (
+        id === context.boardId.toLowerCase() &&
+        (key.length <= 6 ||
+          own.every((part, index) => key[index] === part) ||
+          !data.resources.readable(
+            queryKeys.board(context.identity, context.boardId),
+          ))
+      )
+        stop();
     });
     const background = AppState.addEventListener('change', (state) => {
       if (task.current?.kind === 'viewing') {
