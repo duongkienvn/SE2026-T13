@@ -106,9 +106,11 @@ try {
     source.query(
       "UPDATE user_push_schedules SET enabled=true,start_local='07:00',end_local='07:00'",
     ),
+    { code: '23514', constraint: 'CHK_push_schedule_range' },
   );
   await assert.rejects(
     source.query("UPDATE user_push_schedules SET start_local='22:01'"),
+    { code: '23514', constraint: 'CHK_push_schedule_start' },
   );
   console.log(
     'PASS migration upgrade, default/no-op no-write, SQL constraints and concurrent sparse PATCH',
