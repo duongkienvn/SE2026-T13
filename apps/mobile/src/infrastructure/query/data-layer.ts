@@ -71,6 +71,15 @@ export function createMobileDataLayer(
     api: network.client,
     getIdentity,
     assertCurrent,
+    adoptUser(
+      identity: SessionIdentity,
+      user: Parameters<SessionManager['updateUser']>[1],
+    ) {
+      assertCurrent(identity);
+      if (!manager.updateUser(identity.generation, user))
+        throw new ApiError('session-changed');
+      queryClient.setQueryData(queryKeys.me(identity), user);
+    },
     resetPrivateState,
     cancelRequests: network.cancelRequests,
     cancelResourceRequests: network.cancelResourceRequests,
