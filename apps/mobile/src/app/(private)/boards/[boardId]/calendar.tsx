@@ -1,4 +1,12 @@
-import { ResourceBoundary } from '../../../../navigation/resource-boundary';
+import { useLocalSearchParams } from 'expo-router';
+import { CalendarMonthScreen } from '../../../../features/calendar/CalendarMonthScreen';
+import { parseResourceId } from '../../../../navigation/routes';
+
 export default function Calendar() {
-  return <ResourceBoundary access="unavailable" />;
+  const { boardId } = useLocalSearchParams();
+  return (
+    <CalendarMonthScreen
+      boardId={typeof boardId === 'string' ? parseResourceId(boardId) : null}
+    />
+  );
 }

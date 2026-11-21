@@ -16,7 +16,12 @@ import {
 
 export function calendarFilters(filters: KanbanFilters): KanbanFilters {
   // Calendar is always active; ordering within a day is independent of Board sort.
-  return { ...filters, status: 'active' };
+  return {
+    ...filters,
+    status: 'active',
+    sortBy: undefined,
+    sortDirection: undefined,
+  };
 }
 
 export class IncompleteCalendarError extends ApiError {
