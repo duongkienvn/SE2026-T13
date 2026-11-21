@@ -42,7 +42,10 @@ import {
   useTheme,
 } from '../../ui';
 import { BoardFiltersSheet } from '../boards/BoardFiltersSheet';
-import { useBoardViewFilters } from '../boards/BoardViewFilters';
+import {
+  useBoardViewFilters,
+  useCalendarViewState,
+} from '../boards/BoardViewFilters';
 import { useScrollRestore } from '../boards/BoardKanban';
 import {
   createKanbanApi,
@@ -62,6 +65,7 @@ import { CalendarAgendaCard } from './CalendarAgenda';
 import { MonthGrid } from './MonthGrid';
 import { calendarToday, cardsByDueDay } from './due-groups';
 import { dayCaption, shiftSelectedMonth } from './month-grid';
+import { shiftSelectedWeek } from './week';
 import { calendarCardOptions, calendarFilters } from './queries';
 import { useCalendarClock } from './useCalendarClock';
 
@@ -97,8 +101,21 @@ function CalendarEntry({
   const room = useBoardRealtime(boardId, focused, true);
   const [sharedFilters, setFilters] = useBoardViewFilters(boardId);
   const filters = calendarFilters(sharedFilters);
-  const [selected, setSelected] = useState<string | null>(null);
-  const scroll = useRef({ y: 0 });
+  const restoration = useCalendarViewState(boardId);
+  const [selected, select] = useState(restoration.selectedDay);
+  const [view, changeView] = useState(restoration.view);
+  const setSelected = (day: string | null) => {
+    restoration.selectedDay = day;
+    select(day);
+  };
+  const setView = (next: 'month' | 'week') => {
+    // Pin even the initial Today selection: switching never changes the civil day.
+    setSelected(day);
+    restoration.view = next;
+    scroll.current.y = restoration.scroll[next];
+    changeView(next);
+  };
+  const scroll = useRef({ y: restoration.scroll[view] });
   const [sheet, setSheet] = useState(false);
   const checking = room.status === 'checking';
   const revoked = room.status === 'unavailable';
@@ -202,6 +219,24 @@ function CalendarEntry({
   const now = useCalendarClock(focused, boundary);
   const today = calendarToday(prefs.timeZone, now);
   const day = selected ?? today;
+  useEffect(() => {
+    // Resolve the initial account-zone Today once; later preference changes keep
+    // the chosen civil day. The clock still updates Today markers truthfully.
+    if (
+      !revoked &&
+      board.data !== null &&
+      selected === null &&
+      (preferences.isSuccess || preferences.isError)
+    )
+      setSelected(today);
+  }, [
+    selected,
+    preferences.isSuccess,
+    preferences.isError,
+    today,
+    revoked,
+    board.data === null,
+  ]);
   const complete =
     verified &&
     cards.isSuccess &&
@@ -282,6 +317,9 @@ function CalendarEntry({
     if (revoked || board.data === null) {
       setSelected(null);
       setFilters({});
+      restoration.view = 'month';
+      restoration.scroll = { month: 0, week: 0 };
+      changeView('month');
       scroll.current.y = 0;
       setSheet(false);
     }
@@ -295,9 +333,13 @@ function CalendarEntry({
     preferences.error,
     preferences.errorUpdatedAt,
   );
-  const saveScroll = useCallback((y: number) => {
-    scroll.current.y = y;
-  }, []);
+  const saveScroll = useCallback(
+    (y: number) => {
+      scroll.current.y = y;
+      restoration.scroll[view] = y;
+    },
+    [restoration, view],
+  );
 
   function apply(next: Parameters<typeof calendarFilters>[0]) {
     setSheet(false);
@@ -332,6 +374,8 @@ function CalendarEntry({
       <CalendarDocument
         {...{
           boardId,
+          view,
+          setView,
           focused,
           online,
           verified,
@@ -403,6 +447,8 @@ function useRemainingCatalogPages(
 
 type DocumentProps = {
   boardId: ResourceId;
+  view: 'month' | 'week';
+  setView: (view: 'month' | 'week') => void;
   focused: boolean;
   online: boolean;
   verified: boolean;
@@ -528,7 +574,7 @@ function CalendarDocument(p: DocumentProps) {
           )}
         </>
       ) : (
-        <CalendarList {...p} header={header} />
+        <CalendarList key={p.view} {...p} header={header} />
       )}
     </SafeAreaView>
   );
@@ -573,14 +619,30 @@ function CalendarList(p: DocumentProps & { header: React.ReactElement }) {
             </View>
           )}
           <MonthGrid
+            view={p.view}
+            onViewChange={p.setView}
             selected={p.day}
             today={p.today}
             weekStartsOn={p.prefs.weekStartsOn ?? 'monday'}
             counts={p.complete ? p.counts : undefined}
             onSelect={p.setSelected}
-            onPrevious={() => p.setSelected(shiftSelectedMonth(p.day, -1))}
-            onNext={() => p.setSelected(shiftSelectedMonth(p.day, 1))}
-            onToday={() => p.setSelected(p.today)}
+            onPrevious={() =>
+              p.setSelected(
+                p.view === 'week'
+                  ? shiftSelectedWeek(p.day, -1)
+                  : shiftSelectedMonth(p.day, -1),
+              )
+            }
+            onNext={() =>
+              p.setSelected(
+                p.view === 'week'
+                  ? shiftSelectedWeek(p.day, 1)
+                  : shiftSelectedMonth(p.day, 1),
+              )
+            }
+            onToday={() =>
+              p.setSelected(calendarToday(p.prefs.timeZone, Date.now()))
+            }
           />
           <View style={styles.agendaHeading}>
             <Text

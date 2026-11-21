@@ -267,11 +267,12 @@ test('real Month route, due-only counts, selected day, canonical Card push and f
     expect(mockRouter.push).toHaveBeenCalledWith(
       `/boards/${boardId}/cards/${dated(1).id}`,
     );
+    await fireEvent.press(screen.getByRole('radio', { name: 'Week' }));
     expect(
-      screen.getByRole('tab', { name: 'Week unavailable, coming in MOB-36' })
-        .props.accessibilityState.disabled,
+      screen.getByRole('radio', { name: 'Week' }).props.accessibilityState
+        .checked,
     ).toBe(true);
-    expect(screen.queryByRole('button', { name: /Week/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Next week' })).toBeTruthy();
   } finally {
     await env.dispose();
     now.mockRestore();

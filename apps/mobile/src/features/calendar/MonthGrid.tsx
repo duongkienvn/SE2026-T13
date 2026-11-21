@@ -1,6 +1,7 @@
 import {
   Image,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -8,7 +9,15 @@ import {
 } from 'react-native';
 import backIcon from 'expo-router/assets/react-navigation/elements/back-icon.png';
 import { useState } from 'react';
-import { Button, radius, spacing, typography, useTheme } from '../../ui';
+import {
+  Button,
+  SegmentedControl,
+  radius,
+  spacing,
+  typography,
+  useTheme,
+} from '../../ui';
+import { weekCaption, weekDays } from './week';
 import {
   dayCaption,
   monthCaption,
@@ -17,6 +26,8 @@ import {
 } from './month-grid';
 
 export function MonthGrid({
+  view = 'month',
+  onViewChange,
   selected,
   today,
   weekStartsOn,
@@ -26,6 +37,8 @@ export function MonthGrid({
   onNext,
   onToday,
 }: {
+  view?: 'month' | 'week';
+  onViewChange?: (view: 'month' | 'week') => void;
   selected: string;
   today: string;
   weekStartsOn: WeekStart;
@@ -36,99 +49,25 @@ export function MonthGrid({
   onToday: () => void;
 }) {
   const c = useTheme();
-  const { fontScale } = useWindowDimensions();
+  const { fontScale, width } = useWindowDimensions();
+  const week = view === 'week';
   const [focusedDay, setFocusedDay] = useState<string | null>(null);
   const month = selected.slice(0, 7);
-  const days = monthDays(month, weekStartsOn);
+  const days = week
+    ? weekDays(selected, weekStartsOn)
+    : monthDays(month, weekStartsOn);
   const weekdays =
     weekStartsOn === 'monday'
       ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
       : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  return (
-    <View style={styles.calendar}>
-      <View style={styles.tools}>
-        <View style={styles.views} accessibilityRole="tablist">
-          <View
-            accessible
-            accessibilityRole="tab"
-            accessibilityState={{ selected: true }}
-            style={[styles.segment, { backgroundColor: c.primary }]}
-          >
-            <Text style={[typography.strong, { color: c.onPrimary }]}>
-              Month
-            </Text>
-          </View>
-          <View
-            accessible
-            accessibilityRole="tab"
-            accessibilityState={{ disabled: true }}
-            accessibilityLabel="Week unavailable, coming in MOB-36"
-            style={[styles.segment, { backgroundColor: c.surfaceSoft }]}
-          >
-            <Text style={[typography.supporting, { color: c.textMuted }]}>
-              Week · Soon
-            </Text>
-          </View>
-        </View>
-        <Button label="Today" variant="secondary" onPress={onToday} />
-      </View>
-      <View style={styles.caption}>
-        <Button
-          label="Previous month"
-          variant="icon"
-          icon={
-            <Image
-              source={backIcon}
-              style={{ width: 16, height: 20, tintColor: c.textSecondary }}
-            />
-          }
-          onPress={onPrevious}
-        />
-        <Text
-          accessibilityRole="header"
-          accessibilityLiveRegion="polite"
-          style={[typography.section, styles.month, { color: c.text }]}
-        >
-          {monthCaption(month)}
-        </Text>
-        <Button
-          label="Next month"
-          variant="icon"
-          icon={
-            <Image
-              source={backIcon}
-              style={{
-                width: 16,
-                height: 20,
-                tintColor: c.textSecondary,
-                transform: [{ rotate: '180deg' }],
-              }}
-            />
-          }
-          onPress={onNext}
-        />
-      </View>
-      <View style={styles.week}>
-        {weekdays.map((day) => (
-          <Text
-            key={day}
-            accessibilityLabel={day}
-            style={[
-              typography.caption,
-              styles.weekday,
-              { color: c.textSecondary },
-            ]}
-          >
-            {fontScale >= 1.5 ? day.slice(0, 1) : day}
-          </Text>
-        ))}
-      </View>
+  const rows = (
+    <>
       {Array.from({ length: days.length / 7 }, (_, row) => (
         <View key={row} style={styles.week}>
-          {days.slice(row * 7, row * 7 + 7).map((day) => {
+          {days.slice(row * 7, row * 7 + 7).map((day, index) => {
             const chosen = selected === day;
             const count = counts?.get(day) ?? 0;
-            const adjacent = day.slice(0, 7) !== month;
+            const adjacent = !week && day.slice(0, 7) !== month;
             return (
               <Pressable
                 key={day}
@@ -142,7 +81,7 @@ export function MonthGrid({
                 style={({ pressed }) => [
                   styles.day,
                   {
-                    minHeight: 48 * Math.max(1, fontScale),
+                    minHeight: (week ? 76 : 48) * Math.max(1, fontScale),
                     backgroundColor: chosen
                       ? c.primary
                       : pressed
@@ -157,6 +96,18 @@ export function MonthGrid({
                   },
                 ]}
               >
+                {week && (
+                  <Text
+                    style={[
+                      typography.caption,
+                      { color: chosen ? c.onPrimary : c.textSecondary },
+                    ]}
+                  >
+                    {fontScale >= 1.5 || width < 360
+                      ? weekdays[index]!.slice(0, 1)
+                      : weekdays[index]}
+                  </Text>
+                )}
                 <Text
                   style={[
                     typography.strong,
@@ -209,6 +160,92 @@ export function MonthGrid({
           })}
         </View>
       ))}
+    </>
+  );
+  return (
+    <View style={styles.calendar}>
+      <View style={styles.tools}>
+        {onViewChange && (
+          <SegmentedControl
+            label="Calendar view"
+            value={view}
+            options={[
+              { value: 'month', label: 'Month' },
+              { value: 'week', label: 'Week' },
+            ]}
+            onChange={(next) => {
+              if (next === 'month' || next === 'week') onViewChange(next);
+            }}
+          />
+        )}
+        <Button label="Today" variant="secondary" onPress={onToday} />
+      </View>
+      <View style={styles.caption}>
+        <Button
+          label={week ? 'Previous week' : 'Previous month'}
+          variant="icon"
+          icon={
+            <Image
+              source={backIcon}
+              style={{ width: 16, height: 20, tintColor: c.textSecondary }}
+            />
+          }
+          onPress={onPrevious}
+        />
+        <Text
+          accessibilityRole="header"
+          accessibilityLiveRegion="polite"
+          style={[typography.section, styles.month, { color: c.text }]}
+        >
+          {week ? weekCaption(days) : monthCaption(month)}
+        </Text>
+        <Button
+          label={week ? 'Next week' : 'Next month'}
+          variant="icon"
+          icon={
+            <Image
+              source={backIcon}
+              style={{
+                width: 16,
+                height: 20,
+                tintColor: c.textSecondary,
+                transform: [{ rotate: '180deg' }],
+              }}
+            />
+          }
+          onPress={onNext}
+        />
+      </View>
+      {!week && (
+        <View style={styles.week}>
+          {weekdays.map((day) => (
+            <Text
+              key={day}
+              accessibilityLabel={day}
+              style={[
+                typography.caption,
+                styles.weekday,
+                { color: c.textSecondary },
+              ]}
+            >
+              {fontScale >= 1.5 ? day.slice(0, 1) : day}
+            </Text>
+          ))}
+        </View>
+      )}
+      {week ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator
+          contentContainerStyle={{ flexGrow: 1 }}
+        >
+          <View style={{ flex: 1, minWidth: 7 * 48 * Math.max(1, fontScale) }}>
+            {rows}
+          </View>
+        </ScrollView>
+      ) : (
+        rows
+      )}
     </View>
   );
 }
@@ -222,15 +259,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
-  },
-  views: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  segment: {
-    minHeight: 48,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: radius.control,
-    borderCurve: 'continuous',
-    justifyContent: 'center',
   },
   caption: {
     flexDirection: 'row',
