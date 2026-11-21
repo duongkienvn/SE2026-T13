@@ -42,7 +42,7 @@ function save(bytes: Uint8Array, name: string) {
   try {
     const file = new File(directory, name);
     file.create();
-    file.write(bytes);
+    file.writeSync(bytes);
     return { uri: file.uri, dispose };
   } catch {
     dispose();
@@ -56,6 +56,17 @@ export function savePrivateAvatar(bytes: Uint8Array) {
   if (!bytes.length || bytes.length > MAX_PRIVATE_AVATAR_BYTES)
     throw new ApiError('invalid-response');
   return save(bytes, 'avatar.webp');
+}
+function isPickerCacheCopy(uri: string) {
+  // Paths.cache is trusted native state and may contain Expo Go's encoded
+  // experience name. Check the directory boundary before inspecting the suffix.
+  const prefix = Paths.cache.uri.replace(/\/+$/, '') + '/';
+  if (!uri.startsWith(prefix)) return false;
+  const relative = uri.slice(prefix.length);
+  return (
+    !/[\\%?#\p{Cc}]/u.test(relative) &&
+    relative.split('/').every((part) => part && part !== '.' && part !== '..')
+  );
 }
 /** Modern system photo picker grants only the selected file; no startup/broad library permission. */
 export async function selectPrivatePhoto(
@@ -145,10 +156,7 @@ export async function selectPrivatePhoto(
     }
   } finally {
     // Never delete the user's original or an arbitrary content URI.
-    if (
-      asset.uri.startsWith(Paths.cache.uri) &&
-      !/\/\.\.?(?:\/|$)|%/i.test(asset.uri)
-    ) {
+    if (isPickerCacheCopy(asset.uri)) {
       try {
         if (source.exists) source.delete();
       } catch {

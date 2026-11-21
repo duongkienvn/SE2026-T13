@@ -1,7 +1,14 @@
 /* global jest, test, expect, afterEach */
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import { focusManager, onlineManager } from '@tanstack/react-query';
 import { ProfileScreen } from '../src/features/profile/ProfileScreen';
+import { profileKey } from '../src/features/profile/api';
 import { SessionProvider } from '../src/infrastructure/auth/SessionProvider';
 import { DataProvider } from '../src/infrastructure/query/DataProvider';
 import { integration, ok, json } from './realtime/integration-support';
@@ -51,6 +58,16 @@ const profile = (patch = {}) => ({
   ...patch,
 });
 let cleanup;
+async function pressReadyButton(name) {
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name })).toBeEnabled(),
+  );
+  await fireEvent.press(screen.getByRole('button', { name }));
+}
+async function openEditProfile() {
+  await pressReadyButton('Edit profile');
+  return screen.findByLabelText('Display name');
+}
 async function setup(mode = 'light') {
   const env = await integration();
   let server = profile();
@@ -93,9 +110,7 @@ test.each(['light', 'dark'])(
     const env = await setup(mode);
     expect(await screen.findByText('a@example.com')).toBeTruthy();
     expect(screen.queryByLabelText(/Bio|Timezone/)).toBeNull();
-    await fireEvent.press(
-      await screen.findByRole('button', { name: 'Edit profile' }),
-    );
+    await openEditProfile();
     await fireEvent.changeText(screen.getByLabelText('Display name'), ' X ');
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
     await fireEvent.changeText(
@@ -110,7 +125,7 @@ test.each(['light', 'dark'])(
     expect(JSON.parse(writes[0].init.body)).toEqual({
       displayName: 'New Name',
     });
-    await fireEvent.press(screen.getByRole('button', { name: 'Edit profile' }));
+    await openEditProfile();
     await fireEvent.changeText(
       screen.getByLabelText('Display name'),
       'Discard me',
@@ -122,7 +137,7 @@ test.each(['light', 'dark'])(
 test('closed photo picker keeps server avatar and makes no upload request', async () => {
   const env = await setup();
   await screen.findByText('a@example.com');
-  await fireEvent.press(screen.getByRole('button', { name: 'Choose photo' }));
+  await pressReadyButton('Choose photo');
   expect(env.requests.some(({ url }) => url.includes('/avatar/uploads'))).toBe(
     false,
   );
@@ -137,9 +152,10 @@ test('offline profile stays readable with disabled mutations', async () => {
 });
 
 test('dirty hardware Back offers Keep editing and Discard without dropping the draft silently', async () => {
+  mockBack.mockClear();
   await setup();
   await screen.findByText('a@example.com');
-  await fireEvent.press(screen.getByRole('button', { name: 'Edit profile' }));
+  await openEditProfile();
   await fireEvent.changeText(
     screen.getByLabelText('Display name'),
     'Unsaved draft',
@@ -151,6 +167,7 @@ test('dirty hardware Back offers Keep editing and Discard without dropping the d
   expect(screen.getByLabelText('Display name').props.value).toBe(
     'Unsaved draft',
   );
+  expect(mockBack).not.toHaveBeenCalled();
   await act(() => prevent({ repeat: mockBack }));
   await fireEvent.press(screen.getByRole('button', { name: 'Discard' }));
   expect(mockBack).toHaveBeenCalled();
@@ -158,7 +175,7 @@ test('dirty hardware Back offers Keep editing and Discard without dropping the d
 test('Web refresh keeps dirty text and requires review before another name save', async () => {
   const env = await setup();
   await screen.findByText('a@example.com');
-  await fireEvent.press(screen.getByRole('button', { name: 'Edit profile' }));
+  await openEditProfile();
   await fireEvent.changeText(
     screen.getByLabelText('Display name'),
     'Native draft',
@@ -174,6 +191,39 @@ test('Web refresh keeps dirty text and requires review before another name save'
     'Native draft',
   );
   expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+});
+
+test('visible account text does not mean Edit profile is ready during revalidation', async () => {
+  const env = await setup();
+  await screen.findByText('a@example.com');
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Edit profile' })).toBeEnabled(),
+  );
+  let finish;
+  env.respond(
+    async () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  let refreshing;
+  await act(() => {
+    refreshing = env.data.queryClient.refetchQueries({
+      queryKey: profileKey(env.identity),
+      exact: true,
+    });
+  });
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Edit profile' })).toBeDisabled(),
+  );
+  expect(screen.getByText('a@example.com')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: 'Edit profile' }));
+  expect(screen.queryByLabelText('Display name')).toBeNull();
+  await act(async () => {
+    finish(ok(profile()));
+    await refreshing;
+  });
+  expect(await openEditProfile()).toBeTruthy();
 });
 test('upload waits for completion ACK, disables duplicates and disposes its private file', async () => {
   const env = await setup();
@@ -215,7 +265,7 @@ test('upload waits for completion ACK, disables duplicates and disposes its priv
       });
     return ok(current);
   });
-  await fireEvent.press(screen.getByRole('button', { name: 'Choose photo' }));
+  await pressReadyButton('Choose photo');
   await screen.findByText('Selected photo preview — not saved yet.');
   await fireEvent.press(screen.getByRole('button', { name: 'Upload photo' }));
   expect(await screen.findByText('Verifying photo…')).toBeTruthy();

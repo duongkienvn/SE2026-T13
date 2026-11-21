@@ -7,7 +7,7 @@ import {
   beginProfile,
   type Profile,
 } from '../../src/features/profile/model.ts';
-import { integration, ok } from '../realtime/integration-support.ts';
+import { integration, ok, json } from '../realtime/integration-support.ts';
 import { flush, USER_A, USER_B, loginResponse } from '../auth/support.ts';
 import { ApiError } from '../../src/infrastructure/api/errors.ts';
 
@@ -191,3 +191,191 @@ test('a prior avatar receipt cannot unlock a later uncertain name PATCH', async 
     env.dispose();
   }
 });
+
+for (const [status, code] of [
+  [409, 'AVATAR_UPLOAD_EXPIRED'],
+  [409, 'AVATAR_CHANGED'],
+  [404, 'AVATAR_UPLOAD_NOT_FOUND'],
+] as const) {
+  test(`terminal recovery ${code} clears its receipt, refreshes the profile and permits new edits`, async () => {
+    const env = await integration();
+    try {
+      const commands = profileCommands(env.data, env.identity);
+      await assert.rejects(() =>
+        commands.run('photo', async () => {
+          commands.rememberAvatar({
+            kind: 'complete',
+            uploadId: USER_B,
+            baseRevision: 0,
+          });
+          throw new ApiError('http', { status: 503 });
+        }),
+      );
+      let reads = 0;
+      env.respond(async (url) => {
+        if (url.endsWith('/complete'))
+          return json(
+            {
+              success: false,
+              statusCode: status,
+              code,
+              message: 'Unavailable',
+            },
+            status,
+          );
+        reads++;
+        return ok(
+          profile({ displayName: 'Latest Web name', avatarRevision: 1 }),
+        );
+      });
+      await assert.rejects(() => commands.retryAvatar());
+      assert.equal(commands.getSnapshot().uncertain, false);
+      assert.equal(commands.getSnapshot().recovery, null);
+      assert.equal(reads, 1);
+      assert.equal(
+        env.data.queryClient.getQueryData<Profile>(profileKey(env.identity))
+          ?.displayName,
+        'Latest Web name',
+      );
+      // Also exercises the user-level uncertainty set, not only the screen flag.
+      await commands.run('name', async () =>
+        profile({ displayName: 'New edit' }),
+      );
+    } finally {
+      env.dispose();
+    }
+  });
+}
+
+test('terminal recovery keeps new writes blocked during refresh and fences an account switch', async () => {
+  const env = await integration();
+  try {
+    const commands = profileCommands(env.data, env.identity);
+    await assert.rejects(() =>
+      commands.run('photo', async () => {
+        commands.rememberAvatar({
+          kind: 'complete',
+          uploadId: USER_B,
+          baseRevision: 0,
+        });
+        throw new ApiError('timeout');
+      }),
+    );
+    let finish!: (response: Response) => void;
+    env.respond(async (url) =>
+      url.endsWith('/complete')
+        ? json(
+            {
+              success: false,
+              statusCode: 409,
+              code: 'AVATAR_UPLOAD_EXPIRED',
+              message: 'Expired',
+            },
+            409,
+          )
+        : new Promise((resolve) => {
+            finish = resolve;
+          }),
+    );
+    const recovery = commands.retryAvatar().catch(() => null);
+    await flush();
+    assert.equal(commands.getSnapshot().uncertain, false);
+    assert.equal(commands.getSnapshot().pending, 'verify photo');
+    await assert.rejects(() => commands.run('name', async () => profile()));
+    await env.manager.establishSession(loginResponse(USER_B));
+    finish(ok(profile({ displayName: 'Stale A' })));
+    await recovery;
+    assert.equal(
+      env.data.queryClient.getQueryData(profileKey(env.identity)),
+      undefined,
+    );
+    const session = env.manager.getSnapshot();
+    assert.equal(session.status, 'authenticated');
+    if (session.status === 'authenticated')
+      assert.equal(session.user.id, USER_B);
+  } finally {
+    env.dispose();
+  }
+});
+
+test('failed terminal refresh drops the obsolete receipt and leaves the query stale for retry', async () => {
+  const env = await integration();
+  try {
+    const commands = profileCommands(env.data, env.identity);
+    env.data.queryClient.setQueryData(profileKey(env.identity), profile());
+    await assert.rejects(() =>
+      commands.run('photo', async () => {
+        commands.rememberAvatar({
+          kind: 'complete',
+          uploadId: USER_B,
+          baseRevision: 0,
+        });
+        throw new ApiError('timeout');
+      }),
+    );
+    env.respond(async (url) =>
+      url.endsWith('/complete')
+        ? json(
+            {
+              success: false,
+              statusCode: 409,
+              code: 'AVATAR_UPLOAD_EXPIRED',
+              message: 'Expired',
+            },
+            409,
+          )
+        : json({}, 503),
+    );
+    await assert.rejects(() => commands.retryAvatar());
+    assert.equal(commands.getSnapshot().uncertain, false);
+    assert.equal(commands.getSnapshot().recovery, null);
+    assert.equal(
+      env.data.queryClient.getQueryState(profileKey(env.identity))
+        ?.isInvalidated,
+      true,
+    );
+    env.respond(async () => ok(profile({ displayName: 'Current' })));
+    await commands.refresh(new AbortController().signal);
+    assert.equal(
+      env.data.queryClient.getQueryData<Profile>(profileKey(env.identity))
+        ?.displayName,
+      'Current',
+    );
+  } finally {
+    env.dispose();
+  }
+});
+for (const [status, code] of [
+  [409, 'AVATAR_UPLOAD_UNAVAILABLE'],
+  [503, 'AVATAR_STORAGE_UNAVAILABLE'],
+  [404, 'NOT_FOUND'],
+] as const) {
+  test(`recovery ${code} may still commit and remains uncertain`, async () => {
+    const env = await integration();
+    try {
+      const commands = profileCommands(env.data, env.identity);
+      await assert.rejects(() =>
+        commands.run('photo', async () => {
+          commands.rememberAvatar({
+            kind: 'complete',
+            uploadId: USER_B,
+            baseRevision: 0,
+          });
+          throw new ApiError('timeout');
+        }),
+      );
+      env.respond(async () =>
+        json(
+          { success: false, statusCode: status, code, message: 'Unavailable' },
+          status,
+        ),
+      );
+      await assert.rejects(() => commands.retryAvatar());
+      assert.equal(commands.getSnapshot().uncertain, true);
+      assert.ok(commands.getSnapshot().recovery);
+      await assert.rejects(() => commands.run('name', async () => profile()));
+    } finally {
+      env.dispose();
+    }
+  });
+}

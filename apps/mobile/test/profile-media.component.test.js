@@ -1,6 +1,6 @@
 /* global jest, test, expect, beforeEach, AbortController */
 import { launchImageLibraryAsync } from 'expo-image-picker';
-import { __files, __state } from 'expo-file-system';
+import { Paths, __files, __state } from 'expo-file-system';
 import {
   clearPrivateAvatarFiles,
   selectPrivatePhoto,
@@ -15,7 +15,7 @@ jest.mock('expo-crypto', () => {
 });
 jest.mock('expo-file-system', () => {
   const files = new Map(),
-    state = { failDelete: false };
+    state = { failDelete: false, failWrite: false };
   const path = (parts) =>
     parts
       .map((v) => (typeof v === 'string' ? v : v.uri))
@@ -57,7 +57,12 @@ jest.mock('expo-file-system', () => {
     create() {
       files.set(this.uri, {});
     }
-    write(bytes) {
+    async write(bytes) {
+      await Promise.resolve();
+      files.set(this.uri, { bytes: bytes.slice() });
+    }
+    writeSync(bytes) {
+      if (state.failWrite) throw new Error('private write failed');
       files.set(this.uri, { bytes: bytes.slice() });
     }
     delete() {
@@ -96,6 +101,8 @@ const png = () => {
 };
 beforeEach(() => {
   __state.failDelete = false;
+  __state.failWrite = false;
+  Paths.cache.uri = 'file:///cache/';
   clearPrivateAvatarFiles();
   __files.clear();
   launchImageLibraryAsync.mockReset();
@@ -152,3 +159,60 @@ test('session cleanup deletes downloads and fails closed when storage cannot be 
   clearPrivateAvatarFiles();
   expect(__files.size).toBe(0);
 });
+
+test('snapshot bytes are fully written before its URI is returned', () => {
+  const bytes = new Uint8Array([1, 2, 3]);
+  const file = savePrivateAvatar(bytes);
+  expect(__files.get(file.uri).bytes).toEqual(bytes);
+  file.dispose();
+});
+test('snapshot write failure deletes its directory and never returns a URI', () => {
+  __state.failWrite = true;
+  expect(() => savePrivateAvatar(new Uint8Array([1]))).toThrow();
+  expect(
+    [...__files.keys()].filter((uri) => uri.includes('/random-')),
+  ).toHaveLength(0);
+});
+test('encoded trusted Expo Go cache prefix still permits cleanup of the picker copy', async () => {
+  Paths.cache.uri = 'file:///cache/ExperienceData/%2540owner%252Fkanvexa/';
+  const uri = Paths.cache.uri + 'ImagePicker/photo.png';
+  __files.set(uri, { bytes: png(), type: 'image/png' });
+  launchImageLibraryAsync.mockResolvedValue({
+    canceled: false,
+    assets: [{ uri, mimeType: 'image/png', fileSize: 33 }],
+  });
+  const selected = await selectPrivatePhoto(
+    () => {},
+    new AbortController().signal,
+  );
+  expect(__files.has(uri)).toBe(false);
+  selected.dispose();
+});
+test.each([
+  'file:///cache-adjacent/photo.png',
+  'file:///original/photo.png',
+  'content://picker/photo.png',
+  'file:///cache/../original/photo.png',
+  'file:///cache/./photo.png',
+  'file:///cache/%2e%2e/photo.png',
+  'file:///cache/%252e%252e/photo.png',
+  'file:///cache/sub\\..\\original/photo.png',
+  'file:///cache/photo.png?outside',
+  'file:///cache/photo.png#outside',
+])(
+  'picker cleanup never deletes an original or an unsafe suffix: %s',
+  async (uri) => {
+    Paths.cache.uri = 'file:///cache';
+    __files.set(uri, { bytes: png(), type: 'image/png' });
+    launchImageLibraryAsync.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri, mimeType: 'image/png', fileSize: 33 }],
+    });
+    const selected = await selectPrivatePhoto(
+      () => {},
+      new AbortController().signal,
+    );
+    expect(__files.has(uri)).toBe(true);
+    selected.dispose();
+  },
+);

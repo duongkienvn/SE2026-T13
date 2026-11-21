@@ -13,6 +13,18 @@ type AvatarRecovery =
   | { kind: 'complete'; uploadId: string; baseRevision: number }
   | { kind: 'remove'; expectedRevision: number };
 
+function terminalAvatarFailure(error: unknown, receipt: AvatarRecovery) {
+  if (!(error instanceof ApiError)) return false;
+  // UNAVAILABLE can mean another completion is processing. A GET cannot prove
+  // it settled; only these backend outcomes rule out a future commit.
+  return (
+    (error.status === 409 && error.code === 'AVATAR_CHANGED') ||
+    (receipt.kind === 'complete' &&
+      ((error.status === 409 && error.code === 'AVATAR_UPLOAD_EXPIRED') ||
+        (error.status === 404 && error.code === 'AVATAR_UPLOAD_NOT_FOUND')))
+  );
+}
+
 type State = {
   pending: string | null;
   uncertain: boolean;
@@ -171,7 +183,29 @@ function createCommands(data: MobileDataLayer, identity: SessionIdentity) {
         publish({ uncertain: false, recovery: null, observation: null });
         return result;
       } catch (error) {
-        if (ambiguous(error)) {
+        if (
+          state.recovery &&
+          terminalAvatarFailure(error, state.recovery) &&
+          sameIdentity(identity, data.getIdentity()) &&
+          !controller.signal.aborted
+        ) {
+          uncertainUsers.get(data)?.delete(identity.userId);
+          publish({ uncertain: false, recovery: null, observation: null });
+          try {
+            const current = await api.get(controller.signal);
+            if (controller.signal.aborted) throw new ApiError('aborted');
+            adopt(current);
+          } catch {
+            // Keep the terminal rejection truthful. Entry/manual revalidation
+            // can retry a failed read, and all writes still preflight the user.
+            if (sameIdentity(identity, data.getIdentity()))
+              void data.queryClient.invalidateQueries({
+                queryKey: key,
+                exact: true,
+                refetchType: 'none',
+              });
+          }
+        } else if (ambiguous(error)) {
           const users = uncertainUsers.get(data) ?? new Set<string>();
           users.add(identity.userId);
           uncertainUsers.set(data, users);

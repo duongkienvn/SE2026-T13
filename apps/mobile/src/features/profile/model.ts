@@ -41,6 +41,15 @@ export function displayNamePatch(value: unknown) {
     throw new ApiError('http', { status: 400, code: 'INVALID_DISPLAY_NAME' });
   return { displayName: value.trim() };
 }
+function storedDisplayName(value: unknown): value is string {
+  // Existing Google/legacy names need not meet today's edit minimum. Preserve
+  // the server value so the account can load and the user can correct it.
+  return (
+    typeof value === 'string' &&
+    !!value.trim() &&
+    Array.from(value).length <= 80
+  );
+}
 export function decodeProfile(input: unknown): Profile {
   const v = object(input);
   exact(v, [
@@ -58,7 +67,7 @@ export function decodeProfile(input: unknown): Profile {
     typeof v.email !== 'string' ||
     !v.email ||
     v.email.length > 254 ||
-    !validDisplayName(v.displayName) ||
+    !storedDisplayName(v.displayName) ||
     (v.avatarUrl !== null &&
       (typeof v.avatarUrl !== 'string' || v.avatarUrl.length > 2048)) ||
     !Number.isSafeInteger(v.avatarRevision) ||

@@ -67,6 +67,13 @@ test('only a trimmed 2–80 character display name can be patched', () => {
   ])
     assert.throws(() => displayNamePatch(value));
 });
+
+test('stored Unicode names decode without applying the new-edit minimum', () => {
+  const existing = profile({ displayName: '𠮷' });
+  assert.deepEqual(decodeProfile(existing), existing);
+  assert.throws(() => displayNamePatch('𠮷'));
+  assert.deepEqual(displayNamePatch('𠮷田'), { displayName: '𠮷田' });
+});
 test('private avatar paths require an exact relative own-user path, never legacy URLs', () => {
   const path = `/users/${USER_A}/avatar/${USER_B}`;
   assert.equal(privateAvatarPath(path, USER_A), path);
