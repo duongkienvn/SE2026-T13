@@ -9,6 +9,7 @@ export interface SessionUser {
   readonly email: string;
   readonly displayName: string;
   readonly avatarUrl: string | null;
+  readonly avatarRevision?: number;
 }
 
 export type VerifyResult =
@@ -35,15 +36,16 @@ export { parseApiBaseUrl } from '../api/config.ts';
 export function decodeSessionUser(data: unknown): SessionUser {
   if (typeof data !== 'object' || data === null)
     throw new Error('Invalid user');
-  const { id, email, displayName, avatarUrl, isDeleted } = data as Record<
-    string,
-    unknown
-  >;
+  const { id, email, displayName, avatarUrl, avatarRevision, isDeleted } =
+    data as Record<string, unknown>;
   if (
     !isUuid(id) ||
     typeof email !== 'string' ||
     typeof displayName !== 'string' ||
     (avatarUrl !== null && typeof avatarUrl !== 'string') ||
+    (avatarRevision !== undefined &&
+      (!Number.isSafeInteger(avatarRevision) ||
+        (avatarRevision as number) < 0)) ||
     isDeleted === true
   )
     throw new Error('Invalid user');
@@ -52,6 +54,9 @@ export function decodeSessionUser(data: unknown): SessionUser {
     email,
     displayName,
     avatarUrl: avatarUrl as string | null,
+    ...(avatarRevision === undefined
+      ? {}
+      : { avatarRevision: avatarRevision as number }),
   };
 }
 

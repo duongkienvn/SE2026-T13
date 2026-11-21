@@ -15,6 +15,16 @@ export default function Settings() {
       >
         <ScreenHeader title="Settings" />
         <Button
+          label="Profile"
+          variant="secondary"
+          onPress={() => router.push('/profile')}
+        />
+        <Button
+          label="Change email"
+          variant="secondary"
+          onPress={() => router.push('/change-email')}
+        />
+        <Button
           label="Notification preferences"
           variant="secondary"
           onPress={() => router.push('/notification-preferences')}

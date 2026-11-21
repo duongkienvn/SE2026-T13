@@ -127,6 +127,8 @@ export interface SessionManager {
   handleUnauthorized(generation: number): boolean;
   /** Server-confirmed password/email/account change that revokes tokens. */
   handleSecurityInvalidation(generation: number): boolean;
+  /** Adopt verified account metadata only; never replace or re-persist a JWT. */
+  updateUser(generation: number, user: SessionUser): boolean;
   /** Re-checks absolute expiry against the wall clock now. */
   checkExpiry(): boolean;
   /** Re-runs `/users/me` from `offline-uncertain`. */
@@ -543,6 +545,29 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     },
 
     checkExpiry,
+
+    updateUser(generation, user) {
+      if (
+        checkExpiry() ||
+        snapshot.status !== 'authenticated' ||
+        snapshot.generation !== generation ||
+        snapshot.user.id !== user.id
+      )
+        return false;
+      publish({
+        ...snapshot,
+        user: {
+          id: user.id,
+          email: user.email,
+          displayName: user.displayName,
+          avatarUrl: user.avatarUrl,
+          ...(user.avatarRevision === undefined
+            ? {}
+            : { avatarRevision: user.avatarRevision }),
+        },
+      });
+      return true;
+    },
 
     retryVerification,
 

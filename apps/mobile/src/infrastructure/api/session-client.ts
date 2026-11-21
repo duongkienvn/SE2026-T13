@@ -93,6 +93,7 @@ export function createSessionHttpClient(
   async function run<T>(
     options: SessionRequestOptions = {},
     operation: (options: RequestOptions) => Promise<T>,
+    emailProofRequest = false,
   ): Promise<T> {
     if (disposed) throw new ApiError('session-changed');
     const identity = currentIdentity(manager);
@@ -151,7 +152,11 @@ export function createSessionHttpClient(
       )
         // Resource failures request verification; they do not prove Board loss.
         resources?.denied(options.resourceKey);
-      if (error instanceof ApiError && error.status === 401)
+      if (
+        error instanceof ApiError &&
+        error.status === 401 &&
+        !(emailProofRequest && error.code === 'INVALID_GOOGLE_CREDENTIAL')
+      )
         manager.handleUnauthorized(identity.generation);
       else if (!(
         error instanceof ApiError && [403, 404].includes(error.status)
@@ -167,7 +172,11 @@ export function createSessionHttpClient(
   }
   const client: SessionHttpClient = {
     json: (path, decode, options) =>
-      run(options, (next) => http.json(path, decode, next)),
+      run(
+        options,
+        (next) => http.json(path, decode, next),
+        path === '/auth/email-change/request' && options?.method === 'POST',
+      ),
     envelope: (path, decode, options) =>
       run(options, (next) => http.envelope(path, decode, next)),
     rawJson: (path, decode, options) =>

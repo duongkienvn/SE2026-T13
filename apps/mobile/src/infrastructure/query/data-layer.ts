@@ -25,6 +25,7 @@ export function createMobileDataLayer(
   const resources = createResourceAccess();
   const network = createSessionHttpClient(transport, manager, resources);
   let disposed = false;
+  const privateCleanups = new Set<() => void>();
   function getIdentity() {
     return disposed ? null : currentIdentity(manager);
   }
@@ -33,6 +34,13 @@ export function createMobileDataLayer(
       throw new ApiError('session-changed');
   }
   function resetPrivateState() {
+    for (const cleanup of privateCleanups) {
+      try {
+        cleanup();
+      } catch {
+        /* Continue every private teardown. */
+      }
+    }
     coordinator.clearPending();
     resources.reset();
     network.cancelRequests();
@@ -71,7 +79,22 @@ export function createMobileDataLayer(
     api: network.client,
     getIdentity,
     assertCurrent,
+    adoptUser(
+      identity: SessionIdentity,
+      user: Parameters<SessionManager['updateUser']>[1],
+    ) {
+      assertCurrent(identity);
+      if (!manager.updateUser(identity.generation, user))
+        throw new ApiError('session-changed');
+      queryClient.setQueryData(queryKeys.me(identity), user);
+    },
     resetPrivateState,
+    onPrivateReset(cleanup: () => void) {
+      privateCleanups.add(cleanup);
+      return () => {
+        privateCleanups.delete(cleanup);
+      };
+    },
     cancelRequests: network.cancelRequests,
     cancelResourceRequests: network.cancelResourceRequests,
     meOptions(identity: SessionIdentity) {
@@ -99,6 +122,7 @@ export function createMobileDataLayer(
     dispose() {
       disposed = true;
       resetPrivateState();
+      privateCleanups.clear();
       unbind();
       network.dispose();
       queryClient.clear();
