@@ -55,14 +55,22 @@ test.each([
   async (before, after) => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date(before));
+    const original = AppState.addEventListener.getMockImplementation();
+    let foreground;
+    AppState.addEventListener.mockImplementation((_, callback) => {
+      foreground = callback;
+      return { remove() {} };
+    });
     const mounted = await render(<Clock active zone="America/New_York" />);
     try {
+      await act(() => foreground('active'));
       const day = calendarToday('America/New_York', Date.parse(before));
       jest.setSystemTime(new Date(after));
       await act(() => jest.advanceTimersByTime(60_000));
       expect(screen.getByText(day)).toBeTruthy();
     } finally {
       await mounted.unmount();
+      AppState.addEventListener.mockImplementation(original);
       jest.useRealTimers();
     }
   },
