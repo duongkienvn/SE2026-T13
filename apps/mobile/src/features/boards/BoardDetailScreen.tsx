@@ -70,6 +70,7 @@ import {
   useKanbanCatalogs,
 } from './kanban-queries';
 import { boardStarKey } from './star';
+import { useBoardViewFilters } from './BoardViewFilters';
 
 export function BoardDetailScreen({ boardId }: { boardId: ResourceId | null }) {
   const session = useSessionSnapshot();
@@ -106,7 +107,7 @@ function BoardEntry({
   const boardKey = queryKeys.board(identity, boardId);
   const recorded = useRef(false);
   const scroll = useRef<KanbanScroll>({ x: 0, cards: new Map() });
-  const [filters, setFilters] = useState<KanbanFilters>({});
+  const [filters, setFilters] = useBoardViewFilters(boardId);
   const [view, setView] = useState<'board' | 'table'>('board');
   const tableScroll = useRef({ y: 0 });
   const checking = room.status === 'checking';
@@ -668,14 +669,24 @@ function BoardContent({
             </Text>
           </Pressable>
         ))}
-        <Text
-          accessibilityRole="tab"
-          accessibilityState={{ disabled: true }}
-          accessibilityLabel="Calendar, coming soon"
-          style={[typography.supporting, { color: c.textMuted }]}
-        >
-          Calendar
-        </Text>
+        <Button
+          label="Calendar"
+          variant="link"
+          disabled={!focused}
+          onPress={() => {
+            if (
+              focused &&
+              data.resources.readable(queryKeys.board(identity, boardId))
+            )
+              router.push(
+                destinationPath({
+                  kind: 'boardView',
+                  boardId,
+                  view: 'calendar',
+                }),
+              );
+          }}
+        />
       </View>
       <ScrollView
         horizontal

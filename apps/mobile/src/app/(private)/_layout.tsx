@@ -5,6 +5,7 @@ import { useReturnTarget, useSession } from '../../navigation/session-context';
 import { Scaffold } from '../../navigation/scaffold';
 import { useTheme } from '../../ui';
 import { isPublicNavigationPreview } from '../../navigation/preview';
+import { BoardViewFiltersProvider } from '../../features/boards/BoardViewFilters';
 
 export const unstable_settings = { anchor: '(tabs)' };
 
@@ -62,27 +63,31 @@ export default function PrivateLayout() {
     return <Scaffold title="Checking session" message="Please wait." />;
   if ((!authenticated && !preview) || !safeReturnTarget(pathname)) return null;
   return (
-    <Stack
-      key={
-        session.status === 'authenticated'
-          ? session.sessionKey
-          : 'public-preview'
-      }
-      screenOptions={{
-        headerShown: true,
-        title: '',
-        headerStyle: { backgroundColor: colors.background },
-        headerTintColor: colors.text,
-        headerShadowVisible: false,
-      }}
+    <BoardViewFiltersProvider
+      key={session.status === 'authenticated' ? session.sessionKey : 'preview'}
     >
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="notification-preferences"
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen name="push-schedule" options={{ headerShown: false }} />
-      <Stack.Screen name="invitation" options={{ presentation: 'modal' }} />
-    </Stack>
+      <Stack
+        key={
+          session.status === 'authenticated'
+            ? session.sessionKey
+            : 'public-preview'
+        }
+        screenOptions={{
+          headerShown: true,
+          title: '',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerShadowVisible: false,
+        }}
+      >
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="notification-preferences"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen name="push-schedule" options={{ headerShown: false }} />
+        <Stack.Screen name="invitation" options={{ presentation: 'modal' }} />
+      </Stack>
+    </BoardViewFiltersProvider>
   );
 }

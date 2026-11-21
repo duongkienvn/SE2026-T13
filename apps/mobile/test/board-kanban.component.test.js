@@ -1501,10 +1501,8 @@ test.each([0, 1, 20, 100, 101, 251])(
       expect(
         screen.queryByRole('button', { name: /^Card actions for/ }),
       ).toBeNull();
-      expect(
-        screen.getByRole('tab', { name: 'Calendar, coming soon' }).props
-          .accessibilityState.disabled,
-      ).toBe(true);
+      await fireEvent.press(screen.getByRole('button', { name: 'Calendar' }));
+      expect(mockPush).toHaveBeenCalledWith(`/boards/${boardId}/calendar`);
       const readCount = env.reads('/cards').length;
       await fireEvent.press(screen.getByRole('tab', { name: 'Board' }));
       await screen.findByTestId('board-columns');

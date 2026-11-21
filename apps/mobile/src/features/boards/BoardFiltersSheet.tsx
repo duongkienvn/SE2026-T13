@@ -150,7 +150,11 @@ export function BoardFiltersSheet({
   timeZone,
   onCancel,
   onApply,
+  calendar = false,
+  columns,
 }: {
+  calendar?: boolean;
+  columns?: readonly { id: string; name: string }[];
   initial: KanbanFilters;
   startWithLabels: boolean;
   catalogs: Catalogs;
@@ -184,7 +188,7 @@ export function BoardFiltersSheet({
   return (
     <BottomSheet
       visible
-      title="Board filters"
+      title={calendar ? 'Calendar filters' : 'Board filters'}
       onDismiss={onCancel}
       dismissLabel="Dismiss filters"
       respectReducedMotion
@@ -243,6 +247,26 @@ export function BoardFiltersSheet({
         selected={draft.labelIds ?? []}
         onSelect={(labelIds) => update({ labelIds })}
       />
+      {columns && (
+        <>
+          <Text style={[typography.strong, { color: c.text }]}>Column</Text>
+          <View style={row}>
+            <FilterChip
+              label="All columns"
+              selected={!draft.columnId}
+              onPress={() => update({ columnId: undefined })}
+            />
+            {columns.map((column) => (
+              <FilterChip
+                key={column.id}
+                label={column.name}
+                selected={draft.columnId === column.id}
+                onPress={() => update({ columnId: column.id })}
+              />
+            ))}
+          </View>
+        </>
+      )}
       <Text style={[typography.strong, { color: c.text }]}>Due date</Text>
       <View style={row}>
         <FilterChip
@@ -250,63 +274,77 @@ export function BoardFiltersSheet({
           selected={!draft.dueStatus}
           onPress={() => update({ dueStatus: undefined })}
         />
-        {dueOptions.map(([dueStatus, label]) => (
-          <FilterChip
-            key={dueStatus}
-            label={label}
-            selected={draft.dueStatus === dueStatus}
-            onPress={() => update({ dueStatus })}
-          />
-        ))}
+        {dueOptions
+          .filter(([value]) => !calendar || value !== 'NO_DUE_DATE')
+          .map(([dueStatus, label]) => (
+            <FilterChip
+              key={dueStatus}
+              label={label}
+              selected={draft.dueStatus === dueStatus}
+              onPress={() => update({ dueStatus })}
+            />
+          ))}
       </View>
-      <Text style={[typography.supporting, { color: c.textSecondary }]}>
-        {timeZone ? `Your account time zone is ${timeZone}. ` : ''}
-        Enter a date and time with a UTC offset, for example
-        2026-11-15T09:00+07:00.
-      </Text>
-      <TextField
-        label="Due from (inclusive)"
-        value={draft.dueFrom ?? ''}
-        maxLength={40}
-        autoCapitalize="none"
-        autoCorrect={false}
-        onChangeText={(dueFrom) => update({ dueFrom })}
-      />
-      <TextField
-        label="Due before (exclusive)"
-        value={draft.dueTo ?? ''}
-        maxLength={40}
-        autoCapitalize="none"
-        autoCorrect={false}
-        onChangeText={(dueTo) => update({ dueTo })}
-      />
-      <Text style={[typography.strong, { color: c.text }]}>Sort by</Text>
-      <View style={row}>
-        <FilterChip
-          label="Default order"
-          selected={!draft.sortBy}
-          onPress={() =>
-            update({ sortBy: undefined, sortDirection: undefined })
-          }
-        />
-        {sortOptions.map(([sortBy, sortDirection, label]) => (
-          <FilterChip
-            key={label}
-            label={label}
-            selected={
-              draft.sortBy === sortBy && draft.sortDirection === sortDirection
+      {!calendar && (
+        <>
+          <Text style={[typography.supporting, { color: c.textSecondary }]}>
+            {timeZone ? `Your account time zone is ${timeZone}. ` : ''}
+            Enter a date and time with a UTC offset, for example
+            2026-11-15T09:00+07:00.
+          </Text>
+          <TextField
+            label="Due from (inclusive)"
+            value={draft.dueFrom ?? ''}
+            maxLength={40}
+            autoCapitalize="none"
+            autoCorrect={false}
+            onChangeText={(dueFrom) => update({ dueFrom })}
+          />
+          <TextField
+            label="Due before (exclusive)"
+            value={draft.dueTo ?? ''}
+            maxLength={40}
+            autoCapitalize="none"
+            autoCorrect={false}
+            onChangeText={(dueTo) => update({ dueTo })}
+          />
+          <Text style={[typography.strong, { color: c.text }]}>Sort by</Text>
+          <View style={row}>
+            <FilterChip
+              label="Default order"
+              selected={!draft.sortBy}
+              onPress={() =>
+                update({ sortBy: undefined, sortDirection: undefined })
+              }
+            />
+            {sortOptions.map(([sortBy, sortDirection, label]) => (
+              <FilterChip
+                key={label}
+                label={label}
+                selected={
+                  draft.sortBy === sortBy &&
+                  draft.sortDirection === sortDirection
+                }
+                onPress={() => update({ sortBy, sortDirection })}
+              />
+            ))}
+          </View>
+          <PreferenceSwitch
+            label="View archived cards"
+            value={draft.status === 'archived'}
+            onValueChange={(archived) =>
+              update({ status: archived ? 'archived' : undefined })
             }
-            onPress={() => update({ sortBy, sortDirection })}
           />
-        ))}
-      </View>
-      <PreferenceSwitch
-        label="View archived cards"
-        value={draft.status === 'archived'}
-        onValueChange={(archived) =>
-          update({ status: archived ? 'archived' : undefined })
-        }
-      />
+        </>
+      )}
+      {calendar && (
+        <Text style={[typography.supporting, { color: c.textSecondary }]}>
+          Active Cards with a due date only.{' '}
+          {timeZone ? `Account time zone: ${timeZone}.` : ''} Labels and
+          assignees match any selected option within each group.
+        </Text>
+      )}
     </BottomSheet>
   );
 }
