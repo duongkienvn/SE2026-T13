@@ -1526,3 +1526,87 @@ test('confirmed read-only downgrade cancels late roster and removes cached membe
     now.mockRestore();
   }
 });
+
+test('zone change cancels due-filter walk while Board re-verification is pending', async () => {
+  const now = clock();
+  const cardsGate = deferred();
+  const boardGate = deferred();
+  let checking = false;
+  let firstSignal;
+  let reads = 0;
+  const preferences = {
+    timeZone: 'UTC',
+    dateFormat: 'YYYY-MM-DD',
+    weekStartsOn: 'monday',
+    theme: 'light',
+  };
+  const fresh = {
+    ...dated(2, '2026-11-17T12:00:00.000Z'),
+    title: 'Verified new-zone deadline',
+  };
+  const env = await setup({
+    preferences,
+    override(url, _, init) {
+      if (checking && url.pathname === `/api/boards/${boardId}`)
+        return boardGate.promise;
+      if (
+        !url.pathname.endsWith('/cards') ||
+        url.searchParams.get('dueStatus') !== 'DUE_TODAY'
+      )
+        return null;
+      reads++;
+      if (reads === 1) {
+        firstSignal = init.signal;
+        return cardsGate.promise;
+      }
+      return response(page([fresh], 1, 100));
+    },
+  });
+  try {
+    await openCard();
+    await fireEvent.press(screen.getByRole('button', { name: 'Filters' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Due today' }));
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Apply filters (1)' }),
+    );
+    await waitFor(() => expect(reads).toBe(1));
+    checking = true;
+    await act(() => {
+      void env.data.queryClient.invalidateQueries({
+        queryKey: queryKeys.board(env.data.getIdentity(), boardId),
+        exact: true,
+      });
+    });
+    await waitFor(() =>
+      expect(
+        env.data.queryClient.getQueryState(
+          queryKeys.board(env.data.getIdentity(), boardId),
+        ).fetchStatus,
+      ).toBe('fetching'),
+    );
+    preferences.timeZone = 'America/Los_Angeles';
+    await act(() =>
+      env.data.queryClient.invalidateQueries({
+        queryKey: queryKeys.datePreferences(env.data.getIdentity()),
+        exact: true,
+      }),
+    );
+    await waitFor(() => expect(firstSignal.aborted).toBe(true));
+    expect(reads).toBe(1);
+    await act(() => boardGate.resolve(result(boardDetail)));
+    await screen.findByRole('button', {
+      name: 'Open card: Verified new-zone deadline',
+    });
+    expect(reads).toBe(2);
+    await act(() => cardsGate.resolve(response(page([dated(1)], 1, 100))));
+    expect(
+      screen.queryByRole('button', { name: 'Open card: Card 1' }),
+    ).toBeNull();
+    expect(screen.getByText('2026-11-17 · 04:00')).toBeTruthy();
+  } finally {
+    cardsGate.resolve(response(page([], 1, 100)));
+    boardGate.resolve(result(boardDetail));
+    await env.dispose();
+    now.mockRestore();
+  }
+});

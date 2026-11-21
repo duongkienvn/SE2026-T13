@@ -208,14 +208,14 @@ function CalendarEntry({
     previousZone.current = prefs.timeZone;
     // The server evaluates dueStatus in account timeZone, so regrouping alone
     // is insufficient when the saved zone changes under an active due filter.
-    if (changed && filters.dueStatus && focused && verified) {
-      // refetch alone reuses an initial fetch with no data. Cancel synchronously
-      // first so its old-zone response cannot win or suppress the new walk.
+    if (changed && filters.dueStatus && focused) {
+      // Cancel even while Board verification disables the query: re-enabling
+      // must start a new-zone walk rather than reusing the old request.
       void data.queryClient.cancelQueries({
         queryKey: cardsOptions.queryKey,
         exact: true,
       });
-      void cards.refetch();
+      if (verified) void cards.refetch();
     }
   }, [
     prefs.timeZone,
