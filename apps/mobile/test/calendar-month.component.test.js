@@ -1449,3 +1449,80 @@ test.each([false, true])(
     }
   },
 );
+
+test('confirmed read-only downgrade cancels late roster and removes cached member payloads', async () => {
+  const now = clock();
+  const gate = deferred();
+  const board = { ...boardDetail, currentUserRole: 'MEMBER' };
+  const roster = [
+    { id: USER_B, displayName: 'Formerly authorized member', avatarUrl: null },
+  ];
+  let delayed = false;
+  let signal;
+  const env = await setup({
+    board,
+    cards: [{ ...dated(1), assignees: [{ userId: USER_B }] }],
+    override(url, _, init) {
+      if (!url.pathname.endsWith('/members')) return null;
+      if (delayed) {
+        signal = init.signal;
+        return gate.promise;
+      }
+      return response(
+        page(
+          roster.map((user) => ({ user })),
+          1,
+          100,
+        ),
+      );
+    },
+  });
+  try {
+    await openCard();
+    await switchView('Week');
+    await screen.findByText('Assigned to Formerly authorized member');
+    const key = queryKeys.members(env.data.getIdentity(), boardId);
+    delayed = true;
+    await act(() => {
+      void env.data.queryClient.invalidateQueries({
+        queryKey: key,
+        exact: true,
+      });
+    });
+    await waitFor(() => expect(signal).toBeDefined());
+    board.currentUserRole = null;
+    board.capabilities = {
+      ...board.capabilities,
+      canReadBoard: true,
+      canWriteBoard: false,
+    };
+    await act(() =>
+      env.data.queryClient.invalidateQueries({
+        queryKey: queryKeys.board(env.data.getIdentity(), boardId),
+        exact: true,
+      }),
+    );
+    await openCard();
+    await waitFor(() => expect(signal.aborted).toBe(true));
+    expect(env.data.queryClient.getQueryData(key)).toBeUndefined();
+    expect(screen.queryByText(/Formerly authorized member/)).toBeNull();
+    await act(() =>
+      gate.resolve(
+        response(
+          page(
+            roster.map((user) => ({ user })),
+            1,
+            100,
+          ),
+        ),
+      ),
+    );
+    expect(env.data.queryClient.getQueryData(key)).toBeUndefined();
+    expect(screen.queryByText(/Formerly authorized member/)).toBeNull();
+    expect(screen.getByText('Assignee details unavailable')).toBeTruthy();
+  } finally {
+    gate.resolve(response(page([], 1, 100)));
+    await env.dispose();
+    now.mockRestore();
+  }
+});

@@ -54,7 +54,10 @@ import {
   type KanbanCard,
 } from '../boards/kanban-api';
 import { useKanbanCatalogs } from '../boards/kanban-queries';
-import { hasExplicitBoardMembership } from '../boards/members/queries';
+import {
+  clearBoardRoster,
+  hasExplicitBoardMembership,
+} from '../boards/members/queries';
 import { datePreferencesOptions } from '../cards/metadata/queries';
 import { utcPreferences } from '../cards/metadata/dates';
 import {
@@ -301,6 +304,22 @@ function CalendarEntry({
     focused && verified,
     focused && canReadMembers,
   );
+  useEffect(() => {
+    if (!verified || !board.data || hasExplicitBoardMembership(board.data))
+      return;
+    clearBoardRoster(data, identity, boardId);
+    data.queryClient.removeQueries({
+      queryKey: queryKeys.members(identity, boardId),
+      exact: true,
+    });
+  }, [
+    verified,
+    board.data,
+    data,
+    identity.userId,
+    identity.generation,
+    boardId,
+  ]);
   // Workspace-visible readers can read Cards, not the restricted Board roster.
   // Even an older authorized roster cache must not supply names after downgrade.
   const authorizedCatalogs = {
