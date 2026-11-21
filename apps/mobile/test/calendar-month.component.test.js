@@ -9,6 +9,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react-native';
 import { focusManager, onlineManager } from '@tanstack/react-query';
 import CalendarRoute from '../src/app/(private)/boards/[boardId]/calendar';
@@ -854,8 +855,24 @@ test.each([320, 390, 768])(
           screen.getByTestId('calendar-day-2027-01-03').props.style,
         ).borderColor,
       ).toBe(palettes.dark.focus);
-      // No horizontal-only target: all seven remain in the rendered two-row strip.
-      expect(screen.getAllByTestId(/^calendar-day-/)).toHaveLength(7);
+      // Assert component row membership, not native touch geometry.
+      const dates = screen.getAllByTestId(/^calendar-day-/);
+      const rowDates = (day) => {
+        for (let row = day.parent; row; row = row.parent) {
+          const ids = within(row)
+            .queryAllByTestId(/^calendar-day-/)
+            .map((node) => node.props.testID);
+          if (ids.length > 1) return ids;
+        }
+        throw new Error('Calendar day has no row');
+      };
+      const ids = dates.map((day) => day.props.testID);
+      if (width < 768) {
+        expect(rowDates(dates[0])).toEqual(ids.slice(0, 4));
+        expect(rowDates(dates[4])).toEqual(ids.slice(4));
+      } else {
+        expect(rowDates(dates[0])).toEqual(ids);
+      }
       await mounted.rerender(
         <ThemeContext.Provider value="light">
           <MonthGrid {...props} counts={undefined} />
