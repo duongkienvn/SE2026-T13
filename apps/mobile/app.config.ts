@@ -28,6 +28,14 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
+    [
+      'expo-image-picker',
+      {
+        photosPermission: 'Choose a private profile photo for Kanvexa.',
+        cameraPermission: false,
+        microphonePermission: false,
+      },
+    ],
     ['expo-notifications', { defaultChannel: 'kanvexa', color: '#5C5FEF' }],
     ...(iosGoogleClient
       ? [
