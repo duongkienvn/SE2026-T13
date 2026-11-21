@@ -1,7 +1,7 @@
 # MOB-35 — Native Board Calendar Month
 
-Status: implementation in progress; **not CODE COMPLETE**. Device verification is
-**NOT VERIFIED**. No APK/EAS/Expo Go/ADB, backend/Web checks, production calls,
+Status: **CODE COMPLETE — Mobile implementation and automated verification**.
+Device verification is **NOT VERIFIED**. No APK/EAS/Expo Go/ADB, backend/Web checks, production calls,
 push, PR, merge or deploy are authorized for this task.
 
 ## Source and scope
@@ -102,7 +102,7 @@ Large fonts use shorter weekday visual labels with accessible names. Counts abov
 Native screenshot/physical layout, TalkBack/VoiceOver, motion, device safe-area and
 Android/iOS device E2E remain **NOT VERIFIED**; component tests are not device QA.
 
-## Automated verification (in progress)
+## Automated verification — final
 
 Focused command:
 
@@ -140,11 +140,23 @@ verification. Final rerun after the timezone fix also passed (Hermes hash `d1dac
 
 Full `pnpm --filter @kanban/mobile test`: Node stage **548 PASS**, Jest **46 suites /
 545 tests PASS**, but its process retained handles after the summary and was
-terminated (so this command's exit is **INTERRUPTED**, not a clean pass). A final
-Mobile Jest run with `--detectOpenHandles --silent` is in progress. Earlier
-targeted Jest runs retained Query garbage-collection timers; the Calendar harness
-now uses test-only gcTime Infinity and exits naturally. No forceExit is used. Existing Router harness warnings for omitted fixture routes
-and unrelated act warnings are not treated as device evidence.
+terminated (so this command's exit is **INTERRUPTED**, not a clean pass). The final
+`pnpm --filter @kanban/mobile exec jest --runInBand --detectOpenHandles --silent`
+reported **46 suites / 547 tests PASS**, including both final regressions, and
+**exited naturally with code 0** after retained timers drained. No forceExit or
+production infrastructure fix was used. The Calendar-only harness uses test-only
+gcTime Infinity and exits promptly. Existing Router fixture-route warnings and
+unrelated act warnings are not treated as device evidence.
+
+Additional final checks:
+
+- Same date tests with `$env:TZ='Pacific/Honolulu'`: **3 PASS**, proving projection
+  does not depend on the process/device zone.
+- `pnpm exec prettier --check` with explicit changed-file paths/patterns: **PASS**.
+- Task-record relative repository links (9 targets): **PASS**.
+- `git diff --check`, full source/diff review, final `git status --short`: **PASS**.
+- Backend/Web/root suites, device/APK/Expo Go/ADB, native iOS: **NOT RUN** as
+  explicitly excluded. No screenshots fabricated or UI device-verification claim.
 
 ## MOB-36 handoff (no Week implementation)
 
@@ -183,8 +195,14 @@ Prettier check and `git diff --check` passed; no root suites were run. The first
 PowerShell array-based Prettier command passed bundle then failed argument
 expansion; the explicit-pattern rerun checked all intended files successfully.
 
-## Next continuation
+## Local delivery
 
-Collect final full Mobile Jest diagnostic job `pwsh-a209bb78ccec4ce9` (no duplicate
-suite). Complete final evidence/docs/commit after it exits or diagnose any handles.
-Seven meaningful local commits exist. Do not repeat setup or reset the branch.
+Branch `feat/mobile-calendar-month` contains meaningful local Conventional Commits
+for date primitives, account preferences, complete pagination, compatible shared
+filters, Month/agenda UI, navigation/security/realtime tests, timezone reconciliation,
+and task documentation. No push, PR, merge or deploy was performed. Final evidence
+is committed separately rather than claiming an interrupted test command passed.
+
+Remaining risks are native rendering/accessibility/motion/device E2E and the
+server's non-snapshot OFFSET contract described above. These do not become
+VERIFIED through Metro export or component tests. MOB-36 remains unimplemented.
