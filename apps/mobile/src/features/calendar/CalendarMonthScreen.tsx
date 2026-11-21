@@ -54,6 +54,7 @@ import {
   type KanbanCard,
 } from '../boards/kanban-api';
 import { useKanbanCatalogs } from '../boards/kanban-queries';
+import { hasExplicitBoardMembership } from '../boards/members/queries';
 import { datePreferencesOptions } from '../cards/metadata/queries';
 import { utcPreferences } from '../cards/metadata/dates';
 import {
@@ -111,6 +112,7 @@ function CalendarEntry({
     select(day);
   };
   const setView = (next: 'month' | 'week') => {
+    if (next === view) return;
     // Pin even the initial Today selection: switching never changes the civil day.
     setSelected(day);
     restoration.view = next;
@@ -290,13 +292,21 @@ function CalendarEntry({
         : deduplicatePages(columns.data?.pages.map((page) => page.data) ?? []),
     [columns.data, columns.isError],
   );
+  const canReadMembers =
+    verified && hasExplicitBoardMembership(board.data ?? undefined);
   const catalogs = useKanbanCatalogs(
     data.api,
     identity,
     boardId,
     focused && verified,
-    focused && verified,
+    focused && canReadMembers,
   );
+  // Workspace-visible readers can read Cards, not the restricted Board roster.
+  // Even an older authorized roster cache must not supply names after downgrade.
+  const authorizedCatalogs = {
+    ...catalogs,
+    memberItems: canReadMembers ? catalogs.memberItems : [],
+  };
   const ids = agenda.map(({ id }) => id).sort();
   const batches = Array.from({ length: Math.ceil(ids.length / 100) }, (_, n) =>
     ids.slice(n * 100, n * 100 + 100),
@@ -317,7 +327,7 @@ function CalendarEntry({
   // Metadata catalogs are independent and optional. Load all pages when needed;
   // denied catalogs remain empty rather than inventing names from assignment IDs.
   useRemainingCatalogPages(catalogs.labels, focused && verified);
-  useRemainingCatalogPages(catalogs.members, focused && verified);
+  useRemainingCatalogPages(catalogs.members, focused && canReadMembers);
   useEffect(() => {
     if (revoked || board.data === null) {
       setSelected(null);
@@ -397,7 +407,7 @@ function CalendarEntry({
           counts,
           agenda,
           columnItems,
-          catalogs,
+          catalogs: authorizedCatalogs,
           previews,
           now,
           saveScroll,
@@ -418,9 +428,10 @@ function CalendarEntry({
       {sheet && focused && verified && (
         <BoardFiltersSheet
           calendar
+          assigneesAvailable={canReadMembers}
           initial={filters}
           startWithLabels={false}
-          catalogs={catalogs}
+          catalogs={authorizedCatalogs}
           columns={columnItems}
           online={online}
           timeZone={prefs.timeZone}

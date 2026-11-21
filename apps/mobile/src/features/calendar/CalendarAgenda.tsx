@@ -40,6 +40,10 @@ export const CalendarAgendaCard = memo(function CalendarAgendaCard({
   const people = members.filter((member) =>
     card.assignees.some(({ userId }) => userId === member.id),
   );
+  const unresolvedPeople = card.assignees.length - people.length;
+  const unresolvedLabels = (summary?.labelIds ?? []).filter(
+    (id) => !labels.some((label) => label.id === id),
+  ).length;
   return (
     <Pressable
       accessibilityRole="button"
@@ -55,6 +59,10 @@ export const CalendarAgendaCard = memo(function CalendarAgendaCard({
             .filter((label) => summary?.labelIds.includes(label.id))
             .map(({ name }) => name),
           ...people.map(({ name }) => name),
+          unresolvedPeople
+            ? `${unresolvedPeople} assigned, details unavailable`
+            : '',
+          unresolvedLabels ? `${unresolvedLabels} labels unavailable` : '',
         ]
           .filter(Boolean)
           .join(', '),
@@ -89,6 +97,16 @@ export const CalendarAgendaCard = memo(function CalendarAgendaCard({
               <MetadataLabel key={label.id} label={label} />
             ))}
         </View>
+      )}
+      {unresolvedLabels > 0 && (
+        <Text style={[typography.supporting, { color: c.textSecondary }]}>
+          Label details unavailable
+        </Text>
+      )}
+      {unresolvedPeople > 0 && (
+        <Text style={[typography.supporting, { color: c.textSecondary }]}>
+          Assignee details unavailable
+        </Text>
       )}
       {people.length > 0 && (
         <Text style={[typography.supporting, { color: c.textSecondary }]}>

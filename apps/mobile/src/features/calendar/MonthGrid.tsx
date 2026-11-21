@@ -1,14 +1,13 @@
 import {
   Image,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
   useWindowDimensions,
 } from 'react-native';
 import backIcon from 'expo-router/assets/react-navigation/elements/back-icon.png';
-import { useEffect, useRef, useState, type ComponentRef } from 'react';
+import { useState } from 'react';
 import {
   Button,
   SegmentedControl,
@@ -56,121 +55,116 @@ export function MonthGrid({
   const days = week
     ? weekDays(selected, weekStartsOn)
     : monthDays(month, weekStartsOn);
-  const strip = useRef<ComponentRef<typeof ScrollView>>(null);
-  const cellWidth = Math.max(48 * Math.max(1, fontScale), width / 7);
-  const revealSelected = () => {
-    if (week)
-      strip.current?.scrollTo({
-        x: Math.max(
-          0,
-          days.indexOf(selected) * cellWidth - (width - cellWidth) / 2,
-        ),
-        animated: false,
-      });
-  };
-  useEffect(revealSelected, [selected, week, weekStartsOn, width, fontScale]);
+  // Seven targets must remain directly reachable at 320dp and large font.
+  // Narrow layouts use two rows, rather than requiring a horizontal gesture.
+  const narrowWeek = week && width < 7 * 48 * Math.max(1, fontScale);
+  const columns = narrowWeek ? 4 : 7;
   const weekdays =
     weekStartsOn === 'monday'
       ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
       : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const rows = (
     <>
-      {Array.from({ length: days.length / 7 }, (_, row) => (
+      {Array.from({ length: Math.ceil(days.length / columns) }, (_, row) => (
         <View key={row} style={styles.week}>
-          {days.slice(row * 7, row * 7 + 7).map((day, index) => {
-            const chosen = selected === day;
-            const count = counts?.get(day) ?? 0;
-            const adjacent = !week && day.slice(0, 7) !== month;
-            return (
-              <Pressable
-                key={day}
-                testID={`calendar-day-${day}`}
-                accessibilityRole="button"
-                accessibilityState={{ selected: chosen }}
-                accessibilityLabel={`${dayCaption(day)}, ${counts ? `${count} due ${count === 1 ? 'Card' : 'Cards'}` : 'counts unavailable'}${day === today ? ', Today' : ''}${chosen ? ', selected' : ''}`}
-                onPress={() => onSelect(day)}
-                onFocus={() => setFocusedDay(day)}
-                onBlur={() => setFocusedDay(null)}
-                style={({ pressed }) => [
-                  styles.day,
-                  {
-                    minHeight: (week ? 76 : 48) * Math.max(1, fontScale),
-                    backgroundColor: chosen
-                      ? c.primary
-                      : pressed
-                        ? c.primaryTint
-                        : 'transparent',
-                    borderColor:
-                      focusedDay === day
-                        ? c.focus
-                        : day === today
-                          ? c.primaryBorder
-                          : 'transparent',
-                  },
-                ]}
-              >
-                {week && (
-                  <Text
-                    style={[
-                      typography.caption,
-                      { color: chosen ? c.onPrimary : c.textSecondary },
-                    ]}
-                  >
-                    {fontScale >= 1.5 || width < 360
-                      ? weekdays[index]!.slice(0, 1)
-                      : weekdays[index]}
-                  </Text>
-                )}
-                <Text
-                  style={[
-                    typography.strong,
-                    typography.numeric,
+          {days
+            .slice(row * columns, row * columns + columns)
+            .map((day, index) => {
+              const chosen = selected === day;
+              const count = counts?.get(day) ?? 0;
+              const adjacent = !week && day.slice(0, 7) !== month;
+              return (
+                <Pressable
+                  key={day}
+                  testID={`calendar-day-${day}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: chosen }}
+                  accessibilityLabel={`${dayCaption(day)}, ${counts ? `${count} due ${count === 1 ? 'Card' : 'Cards'}` : 'counts unavailable'}${day === today ? ', Today' : ''}${chosen ? ', selected' : ''}`}
+                  onPress={() => onSelect(day)}
+                  onFocus={() => setFocusedDay(day)}
+                  onBlur={() => setFocusedDay(null)}
+                  style={({ pressed }) => [
+                    styles.day,
                     {
-                      color: chosen
-                        ? c.onPrimary
-                        : adjacent
-                          ? c.textMuted
-                          : c.text,
+                      minHeight: (week ? 76 : 48) * Math.max(1, fontScale),
+                      backgroundColor: chosen
+                        ? c.primary
+                        : pressed
+                          ? c.primaryTint
+                          : 'transparent',
+                      borderColor:
+                        focusedDay === day
+                          ? c.focus
+                          : day === today
+                            ? c.primaryBorder
+                            : 'transparent',
                     },
                   ]}
                 >
-                  {Number(day.slice(-2))}
-                </Text>
-                {counts && count > 0 && (
-                  <View
-                    accessible={false}
-                    accessibilityElementsHidden
-                    importantForAccessibility="no-hide-descendants"
-                    style={styles.markers}
+                  {week && (
+                    <Text
+                      style={[
+                        typography.caption,
+                        { color: chosen ? c.onPrimary : c.textSecondary },
+                      ]}
+                    >
+                      {fontScale >= 1.5 || width < 360
+                        ? weekdays[row * columns + index]!.slice(0, 1)
+                        : weekdays[row * columns + index]}
+                    </Text>
+                  )}
+                  <Text
+                    style={[
+                      typography.strong,
+                      typography.numeric,
+                      {
+                        color: chosen
+                          ? c.onPrimary
+                          : adjacent
+                            ? c.textMuted
+                            : c.text,
+                      },
+                    ]}
                   >
-                    {count <= 3 ? (
-                      Array.from({ length: count }, (_, index) => (
-                        <View
-                          key={index}
+                    {Number(day.slice(-2))}
+                  </Text>
+                  {counts && count > 0 && (
+                    <View
+                      accessible={false}
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                      style={styles.markers}
+                    >
+                      {count <= 3 ? (
+                        Array.from({ length: count }, (_, index) => (
+                          <View
+                            key={index}
+                            style={[
+                              styles.dot,
+                              {
+                                backgroundColor: chosen
+                                  ? c.onPrimary
+                                  : c.primary,
+                              },
+                            ]}
+                          />
+                        ))
+                      ) : (
+                        <Text
                           style={[
-                            styles.dot,
-                            {
-                              backgroundColor: chosen ? c.onPrimary : c.primary,
-                            },
+                            typography.caption,
+                            typography.numeric,
+                            { color: chosen ? c.onPrimary : c.primaryPressed },
                           ]}
-                        />
-                      ))
-                    ) : (
-                      <Text
-                        style={[
-                          typography.caption,
-                          typography.numeric,
-                          { color: chosen ? c.onPrimary : c.primaryPressed },
-                        ]}
-                      >
-                        {count > 99 ? '99+' : count}
-                      </Text>
-                    )}
-                  </View>
-                )}
-              </Pressable>
-            );
-          })}
+                        >
+                          {count > 99 ? '99+' : count}
+                        </Text>
+                      )}
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })}
         </View>
       ))}
     </>
@@ -246,21 +240,7 @@ export function MonthGrid({
           ))}
         </View>
       )}
-      {week ? (
-        <ScrollView
-          ref={strip}
-          onContentSizeChange={revealSelected}
-          horizontal
-          showsHorizontalScrollIndicator
-          contentContainerStyle={{ flexGrow: 1 }}
-        >
-          <View style={{ flex: 1, minWidth: 7 * 48 * Math.max(1, fontScale) }}>
-            {rows}
-          </View>
-        </ScrollView>
-      ) : (
-        rows
-      )}
+      {rows}
     </View>
   );
 }

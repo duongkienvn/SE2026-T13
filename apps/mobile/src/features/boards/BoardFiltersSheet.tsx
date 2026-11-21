@@ -153,7 +153,9 @@ export function BoardFiltersSheet({
   onApply,
   calendar = false,
   columns,
+  assigneesAvailable = true,
 }: {
+  assigneesAvailable?: boolean;
   calendar?: boolean;
   columns?: readonly { id: string; name: string }[];
   initial: KanbanFilters;
@@ -230,16 +232,31 @@ export function BoardFiltersSheet({
         maxLength={200}
         onChangeText={(q) => update({ q })}
       />
-      <FilterCatalog
-        title="Assignees"
-        open={membersOpen}
-        onToggle={() => setMembersOpen(!membersOpen)}
-        items={catalogs.memberItems}
-        query={catalogs.members}
-        online={online}
-        selected={draft.assigneeIds ?? []}
-        onSelect={(assigneeIds) => update({ assigneeIds })}
-      />
+      {assigneesAvailable ? (
+        <FilterCatalog
+          title="Assignees"
+          open={membersOpen}
+          onToggle={() => setMembersOpen(!membersOpen)}
+          items={catalogs.memberItems}
+          query={catalogs.members}
+          online={online}
+          selected={draft.assigneeIds ?? []}
+          onSelect={(assigneeIds) => update({ assigneeIds })}
+        />
+      ) : (
+        <View style={{ gap: spacing.sm }}>
+          <Text style={[typography.supporting, { color: c.textSecondary }]}>
+            Assignee options unavailable for this Board access.
+          </Text>
+          {!!draft.assigneeIds?.length && (
+            <Button
+              label="Clear assignees"
+              variant="link"
+              onPress={() => update({ assigneeIds: [] })}
+            />
+          )}
+        </View>
+      )}
       <FilterCatalog
         title="Labels"
         open={labelsOpen}
