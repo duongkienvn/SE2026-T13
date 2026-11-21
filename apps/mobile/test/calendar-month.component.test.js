@@ -648,3 +648,29 @@ test('saved timezone update refetches server dueStatus membership, retaining exp
     now.mockRestore();
   }
 });
+
+test('failed preferences disclose UTC fallback and allow explicit retry without fake zero counts', async () => {
+  const now = clock();
+  let fail = true;
+  const env = await setup({
+    override(url) {
+      return fail && url.pathname.endsWith('/preferences')
+        ? response({}, 503)
+        : null;
+    },
+  });
+  try {
+    await openCard();
+    expect(screen.getByText(/Using UTC, Monday first/)).toBeTruthy();
+    expect(screen.getByText('2026-11-17 · 09:00')).toBeTruthy();
+    fail = false;
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Retry date preferences' }),
+    );
+    await screen.findByText('17/11/2026 · 16:00');
+    expect(screen.queryByText(/Using UTC, Monday first/)).toBeNull();
+  } finally {
+    await env.dispose();
+    now.mockRestore();
+  }
+});

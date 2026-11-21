@@ -99,6 +99,8 @@ chưa triển khai. Mục lục dưới đây liệt kê toàn bộ task documen
 
 ## Frontend tasks
 
+- [MOB-35 Native Board Calendar Month](frontend/mob-35-native-calendar-month.md)
+
 - [MOB-34 Server-enforced Push Quiet Hours](frontend/mob-34-push-quiet-hours.md)
 
 - [MOB-26 Native Card Comments and secure mentions](frontend/mob-26-card-comments-mentions.md)
