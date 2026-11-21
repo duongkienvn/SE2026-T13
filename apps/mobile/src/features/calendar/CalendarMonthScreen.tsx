@@ -113,8 +113,8 @@ function CalendarEntry({
   };
   const setView = (next: 'month' | 'week') => {
     if (next === view) return;
-    // Pin even the initial Today selection: switching never changes the civil day.
-    setSelected(day);
+    // Both views derive the same provisional day while preferences load.
+    // Switching must not turn the UTC fallback into an explicit selection.
     restoration.view = next;
     scroll.current.y = restoration.scroll[next];
     changeView(next);

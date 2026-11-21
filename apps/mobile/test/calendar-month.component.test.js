@@ -1401,3 +1401,51 @@ test('session expiry removes private Week and its protected query payloads', asy
     now.mockRestore();
   }
 });
+
+test.each([false, true])(
+  'view switches keep initial day provisional until account preferences resolve (explicit=%s)',
+  async (explicit) => {
+    const now = clock();
+    const gate = deferred();
+    const preferences = {
+      timeZone: 'America/Los_Angeles',
+      dateFormat: 'YYYY-MM-DD',
+      weekStartsOn: 'monday',
+      theme: 'light',
+    };
+    const env = await setup({
+      preferences,
+      override(url) {
+        return url.pathname.endsWith('/preferences') ? gate.promise : null;
+      },
+    });
+    try {
+      await screen.findByRole('radio', { name: 'Week' });
+      expect(
+        screen.getByTestId('calendar-day-2026-11-17').props.accessibilityState
+          .selected,
+      ).toBe(true);
+      if (explicit) await pick('2026-11-18');
+      await switchView('Week');
+      await switchView('Month');
+      await switchView('Week');
+      await act(() => gate.resolve(result(preferences)));
+      const expected = explicit ? '2026-11-18' : '2026-11-16';
+      await waitFor(() =>
+        expect(
+          screen.getByTestId(`calendar-day-${expected}`).props
+            .accessibilityState.selected,
+        ).toBe(true),
+      );
+      await switchView('Month');
+      expect(
+        screen.getByTestId(`calendar-day-${expected}`).props.accessibilityState
+          .selected,
+      ).toBe(true);
+    } finally {
+      gate.resolve(result(preferences));
+      await env.dispose();
+      now.mockRestore();
+    }
+  },
+);
