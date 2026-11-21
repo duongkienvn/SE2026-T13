@@ -946,7 +946,7 @@ test.each([0, 1, 20, 21, 100, 101, 251, 351])(
         expect(
           screen.getByTestId('calendar-day-2026-11-17').props
             .accessibilityLabel,
-        ).toContain(`${size} due`);
+        ).toContain(`, ${size} due ${size === 1 ? 'Card' : 'Cards'},`);
         expect(
           screen.getByTestId('calendar-day-2026-11-17').props.accessibilityState
             .selected,
