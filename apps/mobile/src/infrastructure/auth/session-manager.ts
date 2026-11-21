@@ -561,6 +561,9 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
           email: user.email,
           displayName: user.displayName,
           avatarUrl: user.avatarUrl,
+          ...(user.avatarRevision === undefined
+            ? {}
+            : { avatarRevision: user.avatarRevision }),
         },
       });
       return true;

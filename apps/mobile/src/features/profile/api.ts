@@ -43,7 +43,12 @@ export function profileOptions(
 ) {
   return queryOptions({
     queryKey: profileKey(identity),
-    queryFn: ({ signal }) => createProfileApi(data.api, identity).get(signal),
+    queryFn: async ({ signal }) => {
+      const user = await createProfileApi(data.api, identity).get(signal);
+      if (signal.aborted) throw new Error('Canceled profile read');
+      data.adoptUser(identity, user);
+      return user;
+    },
     staleTime: 0,
   });
 }
