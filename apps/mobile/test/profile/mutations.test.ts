@@ -165,3 +165,29 @@ test('session end synchronously clears profile observations and avatar recovery'
     env.dispose();
   }
 });
+test('a prior avatar receipt cannot unlock a later uncertain name PATCH', async () => {
+  const env = await integration();
+  try {
+    const commands = profileCommands(env.data, env.identity);
+    await assert.rejects(() =>
+      commands.run('photo', async () => {
+        commands.rememberAvatar({
+          kind: 'complete',
+          uploadId: USER_B,
+          baseRevision: 0,
+        });
+        throw new ApiError('http', { status: 409 });
+      }),
+    );
+    await assert.rejects(() =>
+      commands.run('name', async () => {
+        throw new ApiError('timeout');
+      }),
+    );
+    assert.equal(commands.getSnapshot().recovery, null);
+    assert.throws(() => commands.retryAvatar());
+    assert.equal(commands.getSnapshot().uncertain, true);
+  } finally {
+    env.dispose();
+  }
+});

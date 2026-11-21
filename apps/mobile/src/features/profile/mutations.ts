@@ -156,7 +156,11 @@ function createCommands(data: MobileDataLayer, identity: SessionIdentity) {
       users.add(identity.userId);
       active = new AbortController();
       const controller = active;
-      publish({ pending: kind, error: null });
+      publish({
+        pending: kind,
+        error: null,
+        ...(!recovering ? { recovery: null } : {}),
+      });
       fenceReads();
       try {
         const result = await action(api, controller.signal);

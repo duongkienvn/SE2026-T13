@@ -4,8 +4,9 @@ import { focusManager, onlineManager } from '@tanstack/react-query';
 import { ProfileScreen } from '../src/features/profile/ProfileScreen';
 import { SessionProvider } from '../src/infrastructure/auth/SessionProvider';
 import { DataProvider } from '../src/infrastructure/query/DataProvider';
-import { integration, ok } from './realtime/integration-support';
-import { USER_A } from './auth/support';
+import { integration, ok, json } from './realtime/integration-support';
+import { USER_A, USER_B, loginResponse } from './auth/support';
+import { selectPrivatePhoto } from '../src/features/profile/native-media';
 import { ThemeContext } from '../src/ui';
 const mockBack = jest.fn(),
   mockPrevent = jest.fn();
@@ -31,7 +32,13 @@ jest.mock('expo-network', () => ({
 jest.mock('../src/features/profile/native-media', () => ({
   selectPrivatePhoto: jest.fn(async () => null),
   savePrivateAvatar: jest.fn(),
-  avatarTransferPorts: {},
+  avatarTransferPorts: {
+    now: Date.now,
+    multipart: () => ({
+      kind: 'native-upload',
+      createBody: () => new globalThis.FormData(),
+    }),
+  },
 }));
 const profile = (patch = {}) => ({
   id: USER_A,
@@ -76,6 +83,8 @@ async function setup(mode = 'light') {
 afterEach(async () => {
   await cleanup?.();
   cleanup = null;
+  selectPrivatePhoto.mockReset();
+  selectPrivatePhoto.mockResolvedValue(null);
   onlineManager.setOnline(true);
 });
 test.each(['light', 'dark'])(
@@ -125,4 +134,105 @@ test('offline profile stays readable with disabled mutations', async () => {
   await act(() => onlineManager.setOnline(false));
   expect(screen.getByText(/You’re offline/)).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Choose photo' })).toBeDisabled();
+});
+
+test('dirty hardware Back offers Keep editing and Discard without dropping the draft silently', async () => {
+  await setup();
+  await screen.findByText('a@example.com');
+  await fireEvent.press(screen.getByRole('button', { name: 'Edit profile' }));
+  await fireEvent.changeText(
+    screen.getByLabelText('Display name'),
+    'Unsaved draft',
+  );
+  const [, prevent] = mockPrevent.mock.calls.findLast(([blocked]) => blocked);
+  await act(() => prevent({ repeat: mockBack }));
+  expect(screen.getByText('Discard changes?')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: 'Keep editing' }));
+  expect(screen.getByLabelText('Display name').props.value).toBe(
+    'Unsaved draft',
+  );
+  await act(() => prevent({ repeat: mockBack }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Discard' }));
+  expect(mockBack).toHaveBeenCalled();
+});
+test('Web refresh keeps dirty text and requires review before another name save', async () => {
+  const env = await setup();
+  await screen.findByText('a@example.com');
+  await fireEvent.press(screen.getByRole('button', { name: 'Edit profile' }));
+  await fireEvent.changeText(
+    screen.getByLabelText('Display name'),
+    'Native draft',
+  );
+  env.setServer(profile({ displayName: 'Web name' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Refresh profile' }),
+  );
+  expect(
+    await screen.findByRole('button', { name: 'Review and keep my name' }),
+  ).toBeTruthy();
+  expect(screen.getByLabelText('Display name').props.value).toBe(
+    'Native draft',
+  );
+  expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+});
+test('upload waits for completion ACK, disables duplicates and disposes its private file', async () => {
+  const env = await setup();
+  await screen.findByText('a@example.com');
+  const dispose = jest.fn();
+  selectPrivatePhoto.mockResolvedValue({
+    uri: 'file:///private/selected.png',
+    filename: 'photo.png',
+    contentType: 'image/png',
+    fileSize: 33,
+    dispose,
+  });
+  let finish,
+    current = profile();
+  env.respond(async (url) => {
+    if (url.endsWith('/uploads'))
+      return json(
+        {
+          success: true,
+          statusCode: 201,
+          message: 'Created',
+          data: {
+            uploadId: USER_B,
+            expiresAt: new Date(Date.now() + 60000).toISOString(),
+            upload: {
+              kind: 'memory',
+              url: `/users/me/avatar/uploads/${USER_B}/file`,
+              fields: {},
+            },
+          },
+        },
+        201,
+      );
+    if (url.endsWith('/file'))
+      return new globalThis.Response(null, { status: 204 });
+    if (url.endsWith('/complete'))
+      return new Promise((resolve) => {
+        finish = resolve;
+      });
+    return ok(current);
+  });
+  await fireEvent.press(screen.getByRole('button', { name: 'Choose photo' }));
+  await screen.findByText('Selected photo preview — not saved yet.');
+  await fireEvent.press(screen.getByRole('button', { name: 'Upload photo' }));
+  expect(await screen.findByText('Verifying photo…')).toBeTruthy();
+  expect(screen.queryByText('Photo updated.')).toBeNull();
+  expect(screen.getByRole('button', { name: 'Upload photo' })).toBeDisabled();
+  current = profile({
+    avatarRevision: 1,
+    avatarUrl: `/users/${USER_A}/avatar/${USER_B}`,
+  });
+  await act(() => finish(ok(current)));
+  expect(await screen.findByText('Photo updated.')).toBeTruthy();
+  expect(dispose).toHaveBeenCalledTimes(1);
+});
+test('account switch unmounts the old private profile even when the next server response is stale', async () => {
+  const env = await setup();
+  await screen.findByText('a@example.com');
+  await act(() => env.manager.establishSession(loginResponse(USER_B)));
+  expect(screen.queryByText('a@example.com')).toBeNull();
+  expect(screen.queryByText('Alex')).toBeNull();
 });

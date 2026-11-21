@@ -56,19 +56,43 @@ export function createAvatarApi(
       });
     },
     complete: (id: string, signal: AbortSignal) =>
-      http.json(`${uploadPath(id)}/complete`, decode, {
-        ...options(signal),
-        method: 'POST',
-        expectedStatus: 200,
-        timeoutMs: 45_000,
-      }),
+      http.json(
+        `${uploadPath(id)}/complete`,
+        (value) => {
+          const user = decode(value);
+          if (
+            user.avatarUrl !== `/users/${identity.userId}/avatar/${id}` ||
+            user.avatarRevision < 1
+          )
+            throw invalidResponse(200);
+          return user;
+        },
+        {
+          ...options(signal),
+          method: 'POST',
+          expectedStatus: 200,
+          timeoutMs: 45_000,
+        },
+      ),
     remove: (expectedRevision: number, signal: AbortSignal) =>
-      http.json(root, decode, {
-        ...options(signal),
-        method: 'DELETE',
-        expectedStatus: 200,
-        body: { expectedRevision: revision(expectedRevision) },
-      }),
+      http.json(
+        root,
+        (value) => {
+          const user = decode(value);
+          if (
+            user.avatarUrl !== null ||
+            user.avatarRevision <= expectedRevision
+          )
+            throw invalidResponse(200);
+          return user;
+        },
+        {
+          ...options(signal),
+          method: 'DELETE',
+          expectedStatus: 200,
+          body: { expectedRevision: revision(expectedRevision) },
+        },
+      ),
     memory: (
       id: string,
       upload: NativeUpload,

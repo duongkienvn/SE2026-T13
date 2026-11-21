@@ -142,7 +142,11 @@ function ProfileContent({ identity }: { identity: SessionIdentity }) {
                   paddingVertical: spacing.lg,
                 }}
               >
-                <PrivateAvatar profile={profile} identity={identity} />
+                <PrivateAvatar
+                  profile={profile}
+                  identity={identity}
+                  refreshKey={editor.query.dataUpdatedAt}
+                />
                 <Text
                   accessibilityRole="header"
                   style={[

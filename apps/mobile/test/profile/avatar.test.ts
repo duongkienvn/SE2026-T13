@@ -264,3 +264,25 @@ test('S3 redirect/error outcome is rejected without parsing XML or claiming comp
     env.dispose();
   }
 });
+test('completion ACK must identify the reserved private asset, and remove ACK must be empty', async () => {
+  const env = await integration();
+  try {
+    const response = {
+      id: USER_A,
+      email: 'a@example.com',
+      displayName: 'Alex',
+      avatarUrl: `/users/${USER_A}/avatar/${USER_A}`,
+      avatarRevision: 1,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+    };
+    env.respond(async () => ok(response));
+    const api = createAvatarApi(env.data.api, env.identity);
+    await assert.rejects(() =>
+      api.complete(USER_B, new AbortController().signal),
+    );
+    await assert.rejects(() => api.remove(0, new AbortController().signal));
+  } finally {
+    env.dispose();
+  }
+});

@@ -11,15 +11,17 @@ export function PrivateAvatar({
   profile,
   identity,
   size = 112,
+  refreshKey = 0,
 }: {
   profile: Pick<Profile, 'displayName' | 'avatarUrl' | 'avatarRevision'>;
   identity: SessionIdentity;
   size?: number;
+  refreshKey?: number;
 }) {
   const data = useMobileData();
   const [file, setFile] = useState<{ uri: string; key: string } | null>(null);
   const path = privateAvatarPath(profile.avatarUrl, identity.userId);
-  const key = `${identity.userId}:${identity.generation}:${profile.avatarRevision}:${path}`;
+  const key = `${identity.userId}:${identity.generation}:${profile.avatarRevision}:${path}:${refreshKey}`;
   useEffect(() => {
     const controller = new AbortController();
     let temporary: ReturnType<typeof savePrivateAvatar> | undefined;

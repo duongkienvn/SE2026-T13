@@ -114,6 +114,7 @@ export function useProfile(identity: SessionIdentity) {
     if (
       error instanceof ApiError &&
       error.status === 409 &&
+      !commands.getSnapshot().pending &&
       !commands.getSnapshot().uncertain
     )
       await query.refetch({ cancelRefetch: false });
@@ -193,6 +194,7 @@ export function useProfile(identity: SessionIdentity) {
     async save() {
       if (
         !ready ||
+        commands.getSnapshot().pending ||
         !form ||
         !validDisplayName(form.text) ||
         form.conflict ||
@@ -221,7 +223,7 @@ export function useProfile(identity: SessionIdentity) {
       }
     },
     async choose() {
-      if (!ready || selection.current) return;
+      if (!ready || selection.current || commands.getSnapshot().pending) return;
       const controller = new AbortController();
       selection.current = controller;
       setPhase('Selecting photo…');
@@ -264,7 +266,13 @@ export function useProfile(identity: SessionIdentity) {
       }
     },
     async upload() {
-      if (!ready || !selected.current || !form) return;
+      if (
+        !ready ||
+        commands.getSnapshot().pending ||
+        !selected.current ||
+        !form
+      )
+        return;
       const file = selected.current;
       let completionStarted = false;
       setNotice('');
@@ -334,7 +342,13 @@ export function useProfile(identity: SessionIdentity) {
       }
     },
     async remove() {
-      if (!ready || !form || !form.saved.avatarUrl) return;
+      if (
+        !ready ||
+        commands.getSnapshot().pending ||
+        !form ||
+        !form.saved.avatarUrl
+      )
+        return;
       setNotice('');
       setLocalError(null);
       try {

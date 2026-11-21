@@ -79,3 +79,18 @@ test('unknown legacy source stays initials-only and stale revision bytes are nev
   expect(JSON.stringify(view.toJSON())).not.toContain('attacker.test');
   await view.unmount();
 });
+test('manual profile revalidation retries an unavailable private image at the same revision', async () => {
+  mockBinary.mockClear();
+  mockBinary
+    .mockRejectedValueOnce(new Error('offline'))
+    .mockResolvedValue({ bytes: new Uint8Array([1, 2, 3]).buffer });
+  const view = await render(
+    <PrivateAvatar profile={profile} identity={identity} refreshKey={1} />,
+  );
+  expect(screen.queryByText('AU')).toBeTruthy();
+  await view.rerender(
+    <PrivateAvatar profile={profile} identity={identity} refreshKey={2} />,
+  );
+  expect(mockBinary).toHaveBeenCalledTimes(2);
+  await view.unmount();
+});

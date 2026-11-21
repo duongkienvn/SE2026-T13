@@ -8,6 +8,11 @@ import {
 import { createProfileApi } from '../../src/features/profile/api.ts';
 import { integration, ok } from '../realtime/integration-support.ts';
 import { USER_A, USER_B } from '../auth/support.ts';
+import {
+  parsePath,
+  parseLink,
+  destinationPath,
+} from '../../src/navigation/routes.ts';
 
 export const profile = (patch = {}) => ({
   id: USER_A,
@@ -18,6 +23,18 @@ export const profile = (patch = {}) => ({
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
   ...patch,
+});
+test('profile routes are allowlisted internal screens and email confirmation tokens have no mobile handler', () => {
+  for (const screen of ['profile', 'change-email']) {
+    const target = parsePath(`/${screen}`);
+    assert.deepEqual(target, { kind: 'screen', screen });
+    assert.equal(destinationPath(target!), `/${screen}`);
+  }
+  assert.equal(
+    parseLink('https://kanvexa.tech/confirm-email-change?token=private'),
+    null,
+  );
+  assert.equal(parsePath('/profile?token=private'), null);
 });
 test('profile decoder requires revision, dates, identity and allowlisted public fields', () => {
   assert.deepEqual(decodeProfile(profile()), profile());
