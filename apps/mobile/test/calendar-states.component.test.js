@@ -33,6 +33,7 @@ test.each(['light', 'dark'])(
     expect(screen.getByText(title).props.numberOfLines).toBeUndefined();
     expect(screen.queryByText(/private-id/)).toBeNull();
     expect(screen.queryByText(/Assigned to/)).toBeNull();
+    expect(screen.getByText('Assignee details unavailable')).toBeTruthy();
     expect(screen.getByText('2026-11-17 · 09:00')).toBeTruthy();
     const row = screen.getByRole('button', { name: `Open card: ${title}` });
     expect(StyleSheet.flatten(row.props.style).minHeight).toBe(48);

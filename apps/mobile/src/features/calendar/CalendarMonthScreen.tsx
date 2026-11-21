@@ -42,7 +42,10 @@ import {
   useTheme,
 } from '../../ui';
 import { BoardFiltersSheet } from '../boards/BoardFiltersSheet';
-import { useBoardViewFilters } from '../boards/BoardViewFilters';
+import {
+  useBoardViewFilters,
+  useCalendarViewState,
+} from '../boards/BoardViewFilters';
 import { useScrollRestore } from '../boards/BoardKanban';
 import {
   createKanbanApi,
@@ -51,6 +54,10 @@ import {
   type KanbanCard,
 } from '../boards/kanban-api';
 import { useKanbanCatalogs } from '../boards/kanban-queries';
+import {
+  clearBoardRoster,
+  hasExplicitBoardMembership,
+} from '../boards/members/queries';
 import { datePreferencesOptions } from '../cards/metadata/queries';
 import { utcPreferences } from '../cards/metadata/dates';
 import {
@@ -62,6 +69,7 @@ import { CalendarAgendaCard } from './CalendarAgenda';
 import { MonthGrid } from './MonthGrid';
 import { calendarToday, cardsByDueDay } from './due-groups';
 import { dayCaption, shiftSelectedMonth } from './month-grid';
+import { shiftSelectedWeek } from './week';
 import { calendarCardOptions, calendarFilters } from './queries';
 import { useCalendarClock } from './useCalendarClock';
 
@@ -97,8 +105,24 @@ function CalendarEntry({
   const room = useBoardRealtime(boardId, focused, true);
   const [sharedFilters, setFilters] = useBoardViewFilters(boardId);
   const filters = calendarFilters(sharedFilters);
-  const [selected, setSelected] = useState<string | null>(null);
-  const scroll = useRef({ y: 0 });
+  const restoration = useCalendarViewState(
+    `${identity.userId}:${identity.generation}:${boardId}`,
+  );
+  const [selected, select] = useState(restoration.selectedDay);
+  const [view, changeView] = useState(restoration.view);
+  const setSelected = (day: string | null) => {
+    restoration.selectedDay = day;
+    select(day);
+  };
+  const setView = (next: 'month' | 'week') => {
+    if (next === view) return;
+    // Both views derive the same provisional day while preferences load.
+    // Switching must not turn the UTC fallback into an explicit selection.
+    restoration.view = next;
+    scroll.current.y = restoration.scroll[next];
+    changeView(next);
+  };
+  const scroll = useRef({ y: restoration.scroll[view] });
   const [sheet, setSheet] = useState(false);
   const checking = room.status === 'checking';
   const revoked = room.status === 'unavailable';
@@ -141,6 +165,9 @@ function CalendarEntry({
   const preferences = useQuery({
     ...datePreferencesOptions(data.api, identity),
     enabled: focused && online,
+    // Preferences have no socket event. Reuse this session query on foreground
+    // and a bounded focused poll to observe Web/device changes while reading.
+    refetchInterval: focused && online ? 60_000 : false,
   });
   const prefs = preferences.data ?? utcPreferences;
   const verified =
@@ -181,14 +208,14 @@ function CalendarEntry({
     previousZone.current = prefs.timeZone;
     // The server evaluates dueStatus in account timeZone, so regrouping alone
     // is insufficient when the saved zone changes under an active due filter.
-    if (changed && filters.dueStatus && focused && verified) {
-      // refetch alone reuses an initial fetch with no data. Cancel synchronously
-      // first so its old-zone response cannot win or suppress the new walk.
+    if (changed && filters.dueStatus && focused) {
+      // Cancel even while Board verification disables the query: re-enabling
+      // must start a new-zone walk rather than reusing the old request.
       void data.queryClient.cancelQueries({
         queryKey: cardsOptions.queryKey,
         exact: true,
       });
-      void cards.refetch();
+      if (verified) void cards.refetch();
     }
   }, [
     prefs.timeZone,
@@ -202,6 +229,24 @@ function CalendarEntry({
   const now = useCalendarClock(focused, boundary);
   const today = calendarToday(prefs.timeZone, now);
   const day = selected ?? today;
+  useEffect(() => {
+    // Resolve the initial account-zone Today once; later preference changes keep
+    // the chosen civil day. The clock still updates Today markers truthfully.
+    if (
+      !revoked &&
+      board.data !== null &&
+      selected === null &&
+      (preferences.isSuccess || preferences.isError)
+    )
+      setSelected(today);
+  }, [
+    selected,
+    preferences.isSuccess,
+    preferences.isError,
+    today,
+    revoked,
+    board.data === null,
+  ]);
   const complete =
     verified &&
     cards.isSuccess &&
@@ -250,13 +295,37 @@ function CalendarEntry({
         : deduplicatePages(columns.data?.pages.map((page) => page.data) ?? []),
     [columns.data, columns.isError],
   );
+  const canReadMembers =
+    verified && hasExplicitBoardMembership(board.data ?? undefined);
   const catalogs = useKanbanCatalogs(
     data.api,
     identity,
     boardId,
     focused && verified,
-    focused && verified,
+    focused && canReadMembers,
   );
+  useEffect(() => {
+    if (!verified || !board.data || hasExplicitBoardMembership(board.data))
+      return;
+    clearBoardRoster(data, identity, boardId);
+    data.queryClient.removeQueries({
+      queryKey: queryKeys.members(identity, boardId),
+      exact: true,
+    });
+  }, [
+    verified,
+    board.data,
+    data,
+    identity.userId,
+    identity.generation,
+    boardId,
+  ]);
+  // Workspace-visible readers can read Cards, not the restricted Board roster.
+  // Even an older authorized roster cache must not supply names after downgrade.
+  const authorizedCatalogs = {
+    ...catalogs,
+    memberItems: canReadMembers ? catalogs.memberItems : [],
+  };
   const ids = agenda.map(({ id }) => id).sort();
   const batches = Array.from({ length: Math.ceil(ids.length / 100) }, (_, n) =>
     ids.slice(n * 100, n * 100 + 100),
@@ -277,11 +346,14 @@ function CalendarEntry({
   // Metadata catalogs are independent and optional. Load all pages when needed;
   // denied catalogs remain empty rather than inventing names from assignment IDs.
   useRemainingCatalogPages(catalogs.labels, focused && verified);
-  useRemainingCatalogPages(catalogs.members, focused && verified);
+  useRemainingCatalogPages(catalogs.members, focused && canReadMembers);
   useEffect(() => {
     if (revoked || board.data === null) {
       setSelected(null);
       setFilters({});
+      restoration.view = 'month';
+      restoration.scroll = { month: 0, week: 0 };
+      changeView('month');
       scroll.current.y = 0;
       setSheet(false);
     }
@@ -295,9 +367,13 @@ function CalendarEntry({
     preferences.error,
     preferences.errorUpdatedAt,
   );
-  const saveScroll = useCallback((y: number) => {
-    scroll.current.y = y;
-  }, []);
+  const saveScroll = useCallback(
+    (y: number) => {
+      scroll.current.y = y;
+      restoration.scroll[view] = y;
+    },
+    [restoration, view],
+  );
 
   function apply(next: Parameters<typeof calendarFilters>[0]) {
     setSheet(false);
@@ -332,6 +408,8 @@ function CalendarEntry({
       <CalendarDocument
         {...{
           boardId,
+          view,
+          setView,
           focused,
           online,
           verified,
@@ -348,7 +426,7 @@ function CalendarEntry({
           counts,
           agenda,
           columnItems,
-          catalogs,
+          catalogs: authorizedCatalogs,
           previews,
           now,
           saveScroll,
@@ -369,9 +447,10 @@ function CalendarEntry({
       {sheet && focused && verified && (
         <BoardFiltersSheet
           calendar
+          assigneesAvailable={canReadMembers}
           initial={filters}
           startWithLabels={false}
-          catalogs={catalogs}
+          catalogs={authorizedCatalogs}
           columns={columnItems}
           online={online}
           timeZone={prefs.timeZone}
@@ -403,6 +482,8 @@ function useRemainingCatalogPages(
 
 type DocumentProps = {
   boardId: ResourceId;
+  view: 'month' | 'week';
+  setView: (view: 'month' | 'week') => void;
   focused: boolean;
   online: boolean;
   verified: boolean;
@@ -528,7 +609,7 @@ function CalendarDocument(p: DocumentProps) {
           )}
         </>
       ) : (
-        <CalendarList {...p} header={header} />
+        <CalendarList key={p.view} {...p} header={header} />
       )}
     </SafeAreaView>
   );
@@ -573,14 +654,30 @@ function CalendarList(p: DocumentProps & { header: React.ReactElement }) {
             </View>
           )}
           <MonthGrid
+            view={p.view}
+            onViewChange={p.setView}
             selected={p.day}
             today={p.today}
             weekStartsOn={p.prefs.weekStartsOn ?? 'monday'}
             counts={p.complete ? p.counts : undefined}
             onSelect={p.setSelected}
-            onPrevious={() => p.setSelected(shiftSelectedMonth(p.day, -1))}
-            onNext={() => p.setSelected(shiftSelectedMonth(p.day, 1))}
-            onToday={() => p.setSelected(p.today)}
+            onPrevious={() =>
+              p.setSelected(
+                p.view === 'week'
+                  ? shiftSelectedWeek(p.day, -1)
+                  : shiftSelectedMonth(p.day, -1),
+              )
+            }
+            onNext={() =>
+              p.setSelected(
+                p.view === 'week'
+                  ? shiftSelectedWeek(p.day, 1)
+                  : shiftSelectedMonth(p.day, 1),
+              )
+            }
+            onToday={() =>
+              p.setSelected(calendarToday(p.prefs.timeZone, Date.now()))
+            }
           />
           <View style={styles.agendaHeading}>
             <Text

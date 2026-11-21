@@ -8,7 +8,15 @@ import {
 } from 'react-native';
 import backIcon from 'expo-router/assets/react-navigation/elements/back-icon.png';
 import { useState } from 'react';
-import { Button, radius, spacing, typography, useTheme } from '../../ui';
+import {
+  Button,
+  SegmentedControl,
+  radius,
+  spacing,
+  typography,
+  useTheme,
+} from '../../ui';
+import { weekCaption, weekDays } from './week';
 import {
   dayCaption,
   monthCaption,
@@ -17,6 +25,8 @@ import {
 } from './month-grid';
 
 export function MonthGrid({
+  view = 'month',
+  onViewChange,
   selected,
   today,
   weekStartsOn,
@@ -26,6 +36,8 @@ export function MonthGrid({
   onNext,
   onToday,
 }: {
+  view?: 'month' | 'week';
+  onViewChange?: (view: 'month' | 'week') => void;
   selected: string;
   today: string;
   weekStartsOn: WeekStart;
@@ -36,45 +48,148 @@ export function MonthGrid({
   onToday: () => void;
 }) {
   const c = useTheme();
-  const { fontScale } = useWindowDimensions();
+  const { fontScale, width } = useWindowDimensions();
+  const week = view === 'week';
   const [focusedDay, setFocusedDay] = useState<string | null>(null);
   const month = selected.slice(0, 7);
-  const days = monthDays(month, weekStartsOn);
+  const days = week
+    ? weekDays(selected, weekStartsOn)
+    : monthDays(month, weekStartsOn);
+  // Seven targets must remain directly reachable at 320dp and large font.
+  // Narrow layouts use two rows, rather than requiring a horizontal gesture.
+  const narrowWeek = week && width < 7 * 48 * Math.max(1, fontScale);
+  const columns = narrowWeek ? 4 : 7;
   const weekdays =
     weekStartsOn === 'monday'
       ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
       : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const rows = (
+    <>
+      {Array.from({ length: Math.ceil(days.length / columns) }, (_, row) => (
+        <View key={row} style={styles.week}>
+          {days
+            .slice(row * columns, row * columns + columns)
+            .map((day, index) => {
+              const chosen = selected === day;
+              const count = counts?.get(day) ?? 0;
+              const adjacent = !week && day.slice(0, 7) !== month;
+              return (
+                <Pressable
+                  key={day}
+                  testID={`calendar-day-${day}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: chosen }}
+                  accessibilityLabel={`${dayCaption(day)}, ${counts ? `${count} due ${count === 1 ? 'Card' : 'Cards'}` : 'counts unavailable'}${day === today ? ', Today' : ''}${chosen ? ', selected' : ''}`}
+                  onPress={() => onSelect(day)}
+                  onFocus={() => setFocusedDay(day)}
+                  onBlur={() => setFocusedDay(null)}
+                  style={({ pressed }) => [
+                    styles.day,
+                    {
+                      minHeight: (week ? 76 : 48) * Math.max(1, fontScale),
+                      backgroundColor: chosen
+                        ? c.primary
+                        : pressed
+                          ? c.primaryTint
+                          : 'transparent',
+                      borderColor:
+                        focusedDay === day
+                          ? c.focus
+                          : day === today
+                            ? c.primaryBorder
+                            : 'transparent',
+                    },
+                  ]}
+                >
+                  {week && (
+                    <Text
+                      style={[
+                        typography.caption,
+                        { color: chosen ? c.onPrimary : c.textSecondary },
+                      ]}
+                    >
+                      {fontScale >= 1.5 || width < 360
+                        ? weekdays[row * columns + index]!.slice(0, 1)
+                        : weekdays[row * columns + index]}
+                    </Text>
+                  )}
+                  <Text
+                    style={[
+                      typography.strong,
+                      typography.numeric,
+                      {
+                        color: chosen
+                          ? c.onPrimary
+                          : adjacent
+                            ? c.textMuted
+                            : c.text,
+                      },
+                    ]}
+                  >
+                    {Number(day.slice(-2))}
+                  </Text>
+                  {counts && count > 0 && (
+                    <View
+                      accessible={false}
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                      style={styles.markers}
+                    >
+                      {count <= 3 ? (
+                        Array.from({ length: count }, (_, index) => (
+                          <View
+                            key={index}
+                            style={[
+                              styles.dot,
+                              {
+                                backgroundColor: chosen
+                                  ? c.onPrimary
+                                  : c.primary,
+                              },
+                            ]}
+                          />
+                        ))
+                      ) : (
+                        <Text
+                          style={[
+                            typography.caption,
+                            typography.numeric,
+                            { color: chosen ? c.onPrimary : c.primaryPressed },
+                          ]}
+                        >
+                          {count > 99 ? '99+' : count}
+                        </Text>
+                      )}
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })}
+        </View>
+      ))}
+    </>
+  );
   return (
     <View style={styles.calendar}>
       <View style={styles.tools}>
-        <View style={styles.views} accessibilityRole="tablist">
-          <View
-            accessible
-            accessibilityRole="tab"
-            accessibilityState={{ selected: true }}
-            style={[styles.segment, { backgroundColor: c.primary }]}
-          >
-            <Text style={[typography.strong, { color: c.onPrimary }]}>
-              Month
-            </Text>
-          </View>
-          <View
-            accessible
-            accessibilityRole="tab"
-            accessibilityState={{ disabled: true }}
-            accessibilityLabel="Week unavailable, coming in MOB-36"
-            style={[styles.segment, { backgroundColor: c.surfaceSoft }]}
-          >
-            <Text style={[typography.supporting, { color: c.textMuted }]}>
-              Week · Soon
-            </Text>
-          </View>
-        </View>
+        {onViewChange && (
+          <SegmentedControl
+            label="Calendar view"
+            value={view}
+            options={[
+              { value: 'month', label: 'Month' },
+              { value: 'week', label: 'Week' },
+            ]}
+            onChange={(next) => {
+              if (next === 'month' || next === 'week') onViewChange(next);
+            }}
+          />
+        )}
         <Button label="Today" variant="secondary" onPress={onToday} />
       </View>
       <View style={styles.caption}>
         <Button
-          label="Previous month"
+          label={week ? 'Previous week' : 'Previous month'}
           variant="icon"
           icon={
             <Image
@@ -89,10 +204,10 @@ export function MonthGrid({
           accessibilityLiveRegion="polite"
           style={[typography.section, styles.month, { color: c.text }]}
         >
-          {monthCaption(month)}
+          {week ? weekCaption(days) : monthCaption(month)}
         </Text>
         <Button
-          label="Next month"
+          label={week ? 'Next week' : 'Next month'}
           variant="icon"
           icon={
             <Image
@@ -108,107 +223,24 @@ export function MonthGrid({
           onPress={onNext}
         />
       </View>
-      <View style={styles.week}>
-        {weekdays.map((day) => (
-          <Text
-            key={day}
-            accessibilityLabel={day}
-            style={[
-              typography.caption,
-              styles.weekday,
-              { color: c.textSecondary },
-            ]}
-          >
-            {fontScale >= 1.5 ? day.slice(0, 1) : day}
-          </Text>
-        ))}
-      </View>
-      {Array.from({ length: days.length / 7 }, (_, row) => (
-        <View key={row} style={styles.week}>
-          {days.slice(row * 7, row * 7 + 7).map((day) => {
-            const chosen = selected === day;
-            const count = counts?.get(day) ?? 0;
-            const adjacent = day.slice(0, 7) !== month;
-            return (
-              <Pressable
-                key={day}
-                testID={`calendar-day-${day}`}
-                accessibilityRole="button"
-                accessibilityState={{ selected: chosen }}
-                accessibilityLabel={`${dayCaption(day)}, ${counts ? `${count} due ${count === 1 ? 'Card' : 'Cards'}` : 'counts unavailable'}${day === today ? ', Today' : ''}${chosen ? ', selected' : ''}`}
-                onPress={() => onSelect(day)}
-                onFocus={() => setFocusedDay(day)}
-                onBlur={() => setFocusedDay(null)}
-                style={({ pressed }) => [
-                  styles.day,
-                  {
-                    minHeight: 48 * Math.max(1, fontScale),
-                    backgroundColor: chosen
-                      ? c.primary
-                      : pressed
-                        ? c.primaryTint
-                        : 'transparent',
-                    borderColor:
-                      focusedDay === day
-                        ? c.focus
-                        : day === today
-                          ? c.primaryBorder
-                          : 'transparent',
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    typography.strong,
-                    typography.numeric,
-                    {
-                      color: chosen
-                        ? c.onPrimary
-                        : adjacent
-                          ? c.textMuted
-                          : c.text,
-                    },
-                  ]}
-                >
-                  {Number(day.slice(-2))}
-                </Text>
-                {counts && count > 0 && (
-                  <View
-                    accessible={false}
-                    accessibilityElementsHidden
-                    importantForAccessibility="no-hide-descendants"
-                    style={styles.markers}
-                  >
-                    {count <= 3 ? (
-                      Array.from({ length: count }, (_, index) => (
-                        <View
-                          key={index}
-                          style={[
-                            styles.dot,
-                            {
-                              backgroundColor: chosen ? c.onPrimary : c.primary,
-                            },
-                          ]}
-                        />
-                      ))
-                    ) : (
-                      <Text
-                        style={[
-                          typography.caption,
-                          typography.numeric,
-                          { color: chosen ? c.onPrimary : c.primaryPressed },
-                        ]}
-                      >
-                        {count > 99 ? '99+' : count}
-                      </Text>
-                    )}
-                  </View>
-                )}
-              </Pressable>
-            );
-          })}
+      {!week && (
+        <View style={styles.week}>
+          {weekdays.map((day) => (
+            <Text
+              key={day}
+              accessibilityLabel={day}
+              style={[
+                typography.caption,
+                styles.weekday,
+                { color: c.textSecondary },
+              ]}
+            >
+              {fontScale >= 1.5 ? day.slice(0, 1) : day}
+            </Text>
+          ))}
         </View>
-      ))}
+      )}
+      {rows}
     </View>
   );
 }
@@ -222,15 +254,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
-  },
-  views: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  segment: {
-    minHeight: 48,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: radius.control,
-    borderCurve: 'continuous',
-    justifyContent: 'center',
   },
   caption: {
     flexDirection: 'row',

@@ -309,6 +309,7 @@ test('real auth adapters and session owner resume a canonical return target, iso
       screen.getByRole('button', { name: 'Apply filters (1)' }),
     );
     await screen.findByRole('button', { name: 'Open card: Calendar deadline' });
+    await fireEvent.press(screen.getByRole('radio', { name: 'Week' }));
     await fireEvent.press(
       screen.getByRole('button', { name: 'Open card: Calendar deadline' }),
     );
@@ -321,6 +322,11 @@ test('real auth adapters and session owner resume a canonical return target, iso
       expect(screen).toHavePathname(`/boards/${boardId}/calendar`),
     );
     await screen.findByRole('button', { name: 'Filters (1)' });
+    expect(
+      screen.getByRole('radio', { name: 'Week' }).props.accessibilityState
+        .checked,
+    ).toBe(true);
+    expect(screen.getAllByTestId(/^calendar-day-/)).toHaveLength(7);
     expect(
       screen.getByTestId('calendar-day-2026-11-17').props.accessibilityState
         .selected,

@@ -262,3 +262,107 @@ test('real socket due-date hints coalesce into one complete REST walk and regrou
     env.dispose();
   }
 });
+
+for (const event of ['card:created', 'card:archived'] as const)
+  test(`${event} refreshes the same full Calendar source used by both views`, async () => {
+    const env = await fixture();
+    let stop: (() => void) | undefined;
+    try {
+      let data = rows(1);
+      env.respond((url) =>
+        url.includes('/cards?')
+          ? Promise.resolve(
+              json(
+                page(data, Number(new URL(url).searchParams.get('page')), 100),
+              ),
+            )
+          : null,
+      );
+      const observer = new QueryObserver(
+        env.data.queryClient,
+        calendarCardOptions(env.data.api, env.identity, BOARD, {}),
+      );
+      stop = observer.subscribe(() => {});
+      await flush();
+      data = event === 'card:created' ? rows(2) : [];
+      env.socket.server(event, {
+        boardId: BOARD,
+        cardId: rows(1)[0]!.id,
+        columnId: rows(1)[0]!.columnId,
+      });
+      await env.time.advance(50);
+      await flush();
+      assert.equal(observer.getCurrentResult().data?.length, data.length);
+      assert.equal(
+        env.requests.filter(({ url }) => url.includes('/cards?')).length,
+        2,
+      );
+    } finally {
+      stop?.();
+      env.dispose();
+    }
+  });
+
+test('socket reconnect reconciles missed due-date changes through existing shared REST query', async () => {
+  const env = await fixture();
+  let stop: (() => void) | undefined;
+  try {
+    let data = rows(1);
+    env.respond((url) =>
+      url.includes('/cards?')
+        ? Promise.resolve(json(page(data, 1, 100)))
+        : null,
+    );
+    const observer = new QueryObserver(
+      env.data.queryClient,
+      calendarCardOptions(env.data.api, env.identity, BOARD, {}),
+    );
+    stop = observer.subscribe(() => {});
+    await flush();
+    env.socket.server('disconnect');
+    data = rows(1, '2026-11-18T12:00:00.000Z');
+    await env.time.advance(500);
+    await flush();
+    env.socket.server('connect');
+    await flush();
+    const index = env.socket.commands.findLastIndex(
+      ({ event }) => event === 'board:join',
+    );
+    env.socket.ack(index);
+    await flush();
+    await env.time.advance(50);
+    await flush();
+    const groups = cardsByDueDay(observer.getCurrentResult().data ?? [], 'UTC');
+    assert.equal(groups.get('2026-11-18')?.length, 1);
+    assert.equal(groups.has('2026-11-17'), false);
+    assert.ok(
+      env.requests.filter(({ url }) => url.includes('/cards?')).length <= 3,
+    );
+  } finally {
+    stop?.();
+    env.dispose();
+  }
+});
+
+test('malformed dueDate fails decoder instead of producing invented Week entries', async () => {
+  const env = await fixture();
+  try {
+    env.respond((url) =>
+      url.includes('/cards?')
+        ? Promise.resolve(
+            json(page([{ ...rows(1)[0]!, dueDate: '2026-11-17' }], 1, 100)),
+          )
+        : null,
+    );
+    const options = calendarCardOptions(env.data.api, env.identity, BOARD, {});
+    await assert.rejects(env.data.queryClient.fetchQuery(options), {
+      kind: 'invalid-response',
+    });
+    assert.equal(
+      env.data.queryClient.getQueryData(options.queryKey),
+      undefined,
+    );
+  } finally {
+    env.dispose();
+  }
+});
