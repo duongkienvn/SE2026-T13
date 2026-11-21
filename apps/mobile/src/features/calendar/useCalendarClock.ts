@@ -9,6 +9,7 @@ export function useCalendarClock(active: boolean, onBoundary?: () => void) {
     let timer: ReturnType<typeof setTimeout> | undefined;
     function sample() {
       const clock = Date.now();
+      clearTimeout(timer);
       setNow(clock);
       timer = setTimeout(
         () => {

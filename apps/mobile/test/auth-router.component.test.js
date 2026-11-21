@@ -43,6 +43,7 @@ import { createNativeRealtime } from '../src/infrastructure/realtime/client';
 import Home from '../src/app/(private)/(tabs)/home';
 import Board from '../src/app/(private)/boards/[boardId]/index';
 import Card from '../src/app/(private)/boards/[boardId]/cards/[cardId]';
+import Calendar from '../src/app/(private)/boards/[boardId]/calendar';
 import {
   boardId,
   cardId,
@@ -75,6 +76,9 @@ jest.spyOn(React, 'useEffectEvent').mockImplementation((callback) => {
 });
 
 test('real auth adapters and session owner resume a canonical return target, isolate logout and permit Home after fresh login', async () => {
+  const clock = jest
+    .spyOn(Date, 'now')
+    .mockReturnValue(Date.parse('2026-11-17T00:00:00Z'));
   let boardReadable = true;
   const time = new FakeTime(),
     store = new MemorySecureStore(),
@@ -84,8 +88,53 @@ test('real auth adapters and session owner resume a canonical return target, iso
     baseUrl: new URL('https://api.example.test/api'),
     fetch: async (input, init) => {
       expect(init.credentials).toBe('omit');
-      const path = new URL(input).pathname;
+      const url = new URL(input);
+      const path = url.pathname;
       calls.push(path);
+      const paginated = ['cards', 'columns', 'labels', 'members'].some(
+        (endpoint) => path === `/api/boards/${boardId}/${endpoint}`,
+      );
+      if (paginated) {
+        const rows = path.endsWith('/cards')
+          ? [
+              {
+                id: cardId,
+                boardId,
+                columnId: boardId,
+                title: 'Calendar deadline',
+                description: null,
+                position: '1.0000000000',
+                isArchived: false,
+                startDate: null,
+                dueDate: '2026-11-17T09:00:00.000Z',
+                createdAt: '2026-11-15T08:00:00.000Z',
+                updatedAt: '2026-11-15T08:00:00.000Z',
+                assignees: [],
+              },
+            ]
+          : [];
+        return {
+          ok: true,
+          status: 200,
+          headers: {
+            get: (name) =>
+              name === 'content-type' ? 'application/json' : null,
+          },
+          text: async () =>
+            JSON.stringify({
+              success: true,
+              statusCode: 200,
+              message: 'OK',
+              data: rows,
+              meta: {
+                page: Number(url.searchParams.get('page')),
+                limit: 100,
+                total: rows.length,
+                totalPages: rows.length ? 1 : 0,
+              },
+            }),
+        };
+      }
       const status = path.endsWith('logout')
         ? 204
         : path.startsWith('/api/boards/') && !boardReadable
@@ -198,6 +247,7 @@ test('real auth adapters and session owner resume a canonical return target, iso
     '(private)/(tabs)/home': Home,
     '(private)/boards/[boardId]/index': Board,
     '(private)/boards/[boardId]/cards/[cardId]': Card,
+    '(private)/boards/[boardId]/calendar': Calendar,
     '(private)/search': () => <Text>Protected Search</Text>,
     '(private)/invitation': () => null,
   };
@@ -243,6 +293,42 @@ test('real auth adapters and session owner resume a canonical return target, iso
     expect(screen.queryByText('Card detail is coming soon.')).toBeNull();
     await act(() => router.back());
     await waitFor(() => expect(screen).toHavePathname('/home'));
+    await act(() => router.push(`/boards/${boardId}`));
+    await screen.findByRole('button', { name: 'Calendar' });
+    await fireEvent.press(screen.getByRole('button', { name: 'Calendar' }));
+    await waitFor(() =>
+      expect(screen).toHavePathname(`/boards/${boardId}/calendar`),
+    );
+    await screen.findByRole('button', { name: 'Open card: Calendar deadline' });
+    await fireEvent.press(screen.getByRole('button', { name: 'Filters' }));
+    await fireEvent.changeText(
+      screen.getByLabelText('Search cards'),
+      'Calendar',
+    );
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Apply filters (1)' }),
+    );
+    await screen.findByRole('button', { name: 'Open card: Calendar deadline' });
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Open card: Calendar deadline' }),
+    );
+    await waitFor(() =>
+      expect(screen).toHavePathname(`/boards/${boardId}/cards/${cardId}`),
+    );
+    await screen.findByText('Detail payload stays private');
+    await act(() => router.back());
+    await waitFor(() =>
+      expect(screen).toHavePathname(`/boards/${boardId}/calendar`),
+    );
+    await screen.findByRole('button', { name: 'Filters (1)' });
+    expect(
+      screen.getByTestId('calendar-day-2026-11-17').props.accessibilityState
+        .selected,
+    ).toBe(true);
+    await act(() => router.back());
+    await waitFor(() => expect(screen).toHavePathname(`/boards/${boardId}`));
+    await act(() => router.back());
+    await waitFor(() => expect(screen).toHavePathname('/home'));
     boardReadable = false;
     await fireEvent.press(
       screen.getByRole('button', {
@@ -263,5 +349,6 @@ test('real auth adapters and session owner resume a canonical return target, iso
     data.dispose();
     manager.dispose();
     flow.clear();
+    clock.mockRestore();
   }
 });

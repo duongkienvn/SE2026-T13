@@ -7,7 +7,11 @@ import type {
   KanbanLabel,
 } from '../boards/kanban-api';
 import { CardDateValue, MetadataLabel } from '../cards/metadata/presentation';
-import type { DatePreferences } from '../cards/metadata/dates';
+import {
+  describeCardDate,
+  dueStatus,
+  type DatePreferences,
+} from '../cards/metadata/dates';
 import { radius, spacing, typography, useTheme } from '../../ui';
 
 export const CalendarAgendaCard = memo(function CalendarAgendaCard({
@@ -40,6 +44,21 @@ export const CalendarAgendaCard = memo(function CalendarAgendaCard({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`Open card: ${card.title}`}
+      accessibilityValue={{
+        text: [
+          boardName,
+          column,
+          card.dueDate
+            ? `Due ${describeCardDate(card.dueDate, preferences).absolute}, ${dueStatus(card.dueDate, preferences.timeZone, now).toLowerCase().replaceAll('_', ' ')}`
+            : '',
+          ...labels
+            .filter((label) => summary?.labelIds.includes(label.id))
+            .map(({ name }) => name),
+          ...people.map(({ name }) => name),
+        ]
+          .filter(Boolean)
+          .join(', '),
+      }}
       accessibilityHint="Opens Card details. Back returns to this calendar."
       onPress={() => onOpen(card)}
       onFocus={() => setFocused(true)}
