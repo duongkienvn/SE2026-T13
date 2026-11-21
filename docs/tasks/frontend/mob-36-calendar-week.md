@@ -1,6 +1,6 @@
 # MOB-36 — Native Calendar Week and Month/Week consistency
 
-Status: implementation complete; final Mobile automated acceptance **in progress**.
+Status: **CODE COMPLETE — MOB-36 implementation, Mobile automated verification and documentation**.
 Native/device verification is **NOT VERIFIED**. No APK, EAS Build, Expo Go, ADB,
 production calls, push, PR, merge or deploy were performed.
 
@@ -158,7 +158,7 @@ running device/simulator screenshots, rotation capture or TalkBack/VoiceOver QA.
 
 ## Acceptance evidence (Mobile only)
 
-Final command totals are recorded below after completion. Focused evidence:
+Final command totals are recorded below. Focused evidence:
 
 | Criterion / owner test group | Automated evidence                                                                                                                                                                           |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -183,18 +183,20 @@ pages and malformed/duplicate responses, not invented deletion API coverage.
 
 Executed from repository root with Node `v24.22.3` / pnpm `10.18.3`:
 
-| Outcome     | Command / evidence                                                                                                                                                                                                                                                                                           |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| PASS        | `pnpm --filter @kanban/mobile lint`                                                                                                                                                                                                                                                                          |
-| PASS        | `pnpm --filter @kanban/mobile typecheck`                                                                                                                                                                                                                                                                     |
-| PASS        | `pnpm --filter @kanban/mobile exec node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/*.test.mjs test/**/*.test.ts` — **556 tests**, natural exit 0                                                                                                                  |
-| PASS        | `node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test apps/mobile/test/calendar/*.test.ts` — **36 focused tests**                                                                                                                                                           |
-| PASS        | `$env:TZ='Pacific/Honolulu'; node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test apps/mobile/test/calendar/dates.test.ts apps/mobile/test/calendar/week.test.ts` — **6 tests** with non-account process/device zone                                                        |
-| PASS        | `pnpm --filter @kanban/mobile exec jest --runInBand test/calendar-month.component.test.js test/calendar-states.component.test.js test/calendar-clock.component.test.js --silent` — **41 tests** at that milestone; two later poll/expiry regressions passed in the Calendar harness, which then had 38 tests |
-| PASS        | `pnpm --filter @kanban/mobile exec jest --runInBand test/calendar-month.component.test.js -t 'focused preference poll' --silent` — **1 test**, 37 intentionally skipped; verifies actual interval with foreground focus enabled, not just focus refetch                                                      |
-| PASS        | `$env:EXPO_NO_DOTENV='1'; $env:EXPO_PUBLIC_API_BASE_URL='https://example.invalid/api'; pnpm --filter @kanban/mobile bundle:android` — 1,678 Metro modules; Hermes `.hbc` and source map; audit **1,625 native sources**, shared ESM and original logo; no Web/backend/Node shims                             |
-| PASS        | Changed-document relative links/path check; `git diff --check`                                                                                                                                                                                                                                               |
-| IN PROGRESS | Full Mobile Jest with `--runInBand --detectOpenHandles --silent`; final changed-file Prettier/static recheck                                                                                                                                                                                                 |
+| Outcome | Command / evidence                                                                                                                                                                                                                                                                                           |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| PASS    | `pnpm --filter @kanban/mobile lint`                                                                                                                                                                                                                                                                          |
+| PASS    | `pnpm --filter @kanban/mobile typecheck`                                                                                                                                                                                                                                                                     |
+| PASS    | `pnpm --filter @kanban/mobile exec node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/*.test.mjs test/**/*.test.ts` — **556 tests**, natural exit 0                                                                                                                  |
+| PASS    | `node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test apps/mobile/test/calendar/*.test.ts` — **36 focused tests**                                                                                                                                                           |
+| PASS    | `$env:TZ='Pacific/Honolulu'; node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test apps/mobile/test/calendar/dates.test.ts apps/mobile/test/calendar/week.test.ts` — **6 tests** with non-account process/device zone                                                        |
+| PASS    | `pnpm --filter @kanban/mobile exec jest --runInBand test/calendar-month.component.test.js test/calendar-states.component.test.js test/calendar-clock.component.test.js --silent` — **41 tests** at that milestone; two later poll/expiry regressions passed in the Calendar harness, which then had 38 tests |
+| PASS    | `pnpm --filter @kanban/mobile exec jest --runInBand test/calendar-month.component.test.js -t 'focused preference poll' --silent` — **1 test**, 37 intentionally skipped; verifies actual interval with foreground focus enabled, not just focus refetch                                                      |
+| PASS    | `$env:EXPO_NO_DOTENV='1'; $env:EXPO_PUBLIC_API_BASE_URL='https://example.invalid/api'; pnpm --filter @kanban/mobile bundle:android` — 1,678 Metro modules; Hermes `.hbc` and source map; audit **1,625 native sources**, shared ESM and original logo; no Web/backend/Node shims                             |
+| PASS    | Changed-document relative links/path check; `git diff --check`                                                                                                                                                                                                                                               |
+| PASS    | `pnpm --filter @kanban/mobile exec jest --runInBand --detectOpenHandles --silent` — **48 suites / 578 tests**, natural exit 0                                                                                                                                                                                |
+| PASS    | Final changed-file `pnpm exec prettier --check @changed`, Mobile lint/typecheck, full branch `git diff --check origin/main...HEAD`; clean worktree before final evidence update                                                                                                                              |
+| PASS    | Final foreground DST clock strengthening: `pnpm --filter @kanban/mobile exec jest --runInBand test/calendar-clock.component.test.js --silent` — **3 tests**, natural exit 0                                                                                                                                  |
 
 No shared build was needed: existing shared ESM prerequisites already resolved.
 No root suites or Web/backend tests/lint/build ran. The two stages of the real
@@ -239,3 +241,14 @@ request time, or foreground refetch), not instant socket delivery.
 
 Local Conventional Commits only; final commit list and verification results are
 included in the owner handoff. No push/PR/merge/deploy.
+
+Final Jest summary took time to settle after all assertions. Process inspection
+confirmed the original runner; a requested stop found it **already completed
+with exit 0**, so no process was killed and no `--forceExit` was used. The final
+DST foreground test improvement was rerun separately (3/3 PASS) after the full
+suite. No application source changed after the successful Android bundle.
+
+Acceptance checklist was reviewed against issue #312 sections 3–6. All in-scope
+implementation and automated Mobile cases are complete; the explicit device,
+visual rendering, audible screen-reader and live multi-device limitations above
+remain **NOT VERIFIED**, not hidden passes.
