@@ -401,8 +401,12 @@ export function createKanbanApi(
           const {
             timeZone = utcPreferences.timeZone,
             dateFormat = utcPreferences.dateFormat,
+            weekStartsOn = 'monday',
+            theme = 'system',
           } = row(value);
           if (
+            (weekStartsOn !== 'monday' && weekStartsOn !== 'sunday') ||
+            (theme !== 'light' && theme !== 'dark' && theme !== 'system') ||
             typeof timeZone !== 'string' ||
             !/^[A-Za-z][A-Za-z0-9_+\-/]*$/.test(timeZone) ||
             (dateFormat !== 'YYYY-MM-DD' &&
@@ -415,7 +419,7 @@ export function createKanbanApi(
           } catch {
             throw invalidResponse(200);
           }
-          return { timeZone, dateFormat };
+          return { timeZone, dateFormat, weekStartsOn, theme };
         },
         options(signal, queryKeys.datePreferences(identity)),
       ),
