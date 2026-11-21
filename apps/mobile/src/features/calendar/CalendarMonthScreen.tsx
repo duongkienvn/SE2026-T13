@@ -101,7 +101,9 @@ function CalendarEntry({
   const room = useBoardRealtime(boardId, focused, true);
   const [sharedFilters, setFilters] = useBoardViewFilters(boardId);
   const filters = calendarFilters(sharedFilters);
-  const restoration = useCalendarViewState(boardId);
+  const restoration = useCalendarViewState(
+    `${identity.userId}:${identity.generation}:${boardId}`,
+  );
   const [selected, select] = useState(restoration.selectedDay);
   const [view, changeView] = useState(restoration.view);
   const setSelected = (day: string | null) => {
@@ -158,6 +160,9 @@ function CalendarEntry({
   const preferences = useQuery({
     ...datePreferencesOptions(data.api, identity),
     enabled: focused && online,
+    // Preferences have no socket event. Reuse this session query on foreground
+    // and a bounded focused poll to observe Web/device changes while reading.
+    refetchInterval: focused && online ? 60_000 : false,
   });
   const prefs = preferences.data ?? utcPreferences;
   const verified =

@@ -8,7 +8,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import backIcon from 'expo-router/assets/react-navigation/elements/back-icon.png';
-import { useState } from 'react';
+import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import {
   Button,
   SegmentedControl,
@@ -56,6 +56,19 @@ export function MonthGrid({
   const days = week
     ? weekDays(selected, weekStartsOn)
     : monthDays(month, weekStartsOn);
+  const strip = useRef<ComponentRef<typeof ScrollView>>(null);
+  const cellWidth = Math.max(48 * Math.max(1, fontScale), width / 7);
+  const revealSelected = () => {
+    if (week)
+      strip.current?.scrollTo({
+        x: Math.max(
+          0,
+          days.indexOf(selected) * cellWidth - (width - cellWidth) / 2,
+        ),
+        animated: false,
+      });
+  };
+  useEffect(revealSelected, [selected, week, weekStartsOn, width, fontScale]);
   const weekdays =
     weekStartsOn === 'monday'
       ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -235,6 +248,8 @@ export function MonthGrid({
       )}
       {week ? (
         <ScrollView
+          ref={strip}
+          onContentSizeChange={revealSelected}
           horizontal
           showsHorizontalScrollIndicator
           contentContainerStyle={{ flexGrow: 1 }}
