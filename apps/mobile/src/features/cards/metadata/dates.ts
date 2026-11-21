@@ -4,6 +4,8 @@ export type DateField = 'startDate' | 'dueDate';
 export type DatePreferences = {
   timeZone: string;
   dateFormat: 'YYYY-MM-DD' | 'DD/MM/YYYY' | 'MM/DD/YYYY';
+  weekStartsOn?: 'monday' | 'sunday';
+  theme?: 'light' | 'dark' | 'system';
 };
 export const utcPreferences: DatePreferences = {
   timeZone: 'UTC',
