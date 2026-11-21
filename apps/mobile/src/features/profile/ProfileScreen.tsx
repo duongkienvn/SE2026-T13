@@ -110,6 +110,13 @@ function ProfileContent({ identity }: { identity: SessionIdentity }) {
           status(`Try again in ${editor.cooldown} seconds.`)}
         {editor.mutation.uncertain && (
           <Surface>
+            {editor.mutation.recovery && (
+              <Button
+                label="Retry same photo operation"
+                disabled={!editor.online || editor.pending || !!editor.cooldown}
+                onPress={() => void editor.retryAvatar()}
+              />
+            )}
             {status(
               'The earlier change was not confirmed. Further changes are blocked to prevent a late operation overwriting your choices. A refresh can show observed values, but cannot prove that operation finished.',
             )}

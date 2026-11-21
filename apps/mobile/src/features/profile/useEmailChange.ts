@@ -253,6 +253,8 @@ export function useEmailChange(
           }
         }
       } finally {
+        // Deliberately release the transient proof reference, never retained in a cache.
+        // eslint-disable-next-line no-useless-assignment
         proof = null;
         if (active.current === controller) active.current = null;
         if (alive.current) {

@@ -7,6 +7,11 @@ import {
 import type { MobileDataLayer } from '../../infrastructure/query/data-layer.ts';
 import { createProfileApi, profileKey } from './api.ts';
 import type { Profile } from './model.ts';
+import { createAvatarApi } from './avatar-api.ts';
+
+type AvatarRecovery =
+  | { kind: 'complete'; uploadId: string; baseRevision: number }
+  | { kind: 'remove'; expectedRevision: number };
 
 type State = {
   pending: string | null;
@@ -14,6 +19,7 @@ type State = {
   error: unknown;
   retryAt: number;
   observation: Profile | null;
+  recovery: AvatarRecovery | null;
 };
 /** No API receipt exists for PATCH. Keep only user IDs blocked across reauthentication. */
 const uncertainUsers = new WeakMap<MobileDataLayer, Set<string>>();
@@ -43,12 +49,17 @@ function createCommands(data: MobileDataLayer, identity: SessionIdentity) {
     error: null,
     retryAt: 0,
     observation: null,
+    recovery: null,
   };
   let active: AbortController | null = null;
   const publish = (patch: Partial<State>) => {
     state = { ...state, ...patch };
     listeners.forEach((fn) => fn());
   };
+  const stop = data.onPrivateReset(() => {
+    active?.abort();
+    publish({ observation: null, recovery: null, error: null });
+  });
   function fenceReads() {
     data.cancelResourceRequests(key);
     void data.queryClient.cancelQueries({ queryKey: key, exact: true });
@@ -61,7 +72,7 @@ function createCommands(data: MobileDataLayer, identity: SessionIdentity) {
     data.adoptUser(identity, user);
     data.queryClient.setQueryData(key, user);
   }
-  return {
+  const commands = {
     getSnapshot: () => state,
     subscribe(fn: () => void) {
       listeners.add(fn);
@@ -71,6 +82,39 @@ function createCommands(data: MobileDataLayer, identity: SessionIdentity) {
     },
     abort() {
       active?.abort();
+    },
+    dispose() {
+      active?.abort();
+      stop();
+    },
+    rememberAvatar(recovery: AvatarRecovery) {
+      data.assertCurrent(identity);
+      publish({ recovery });
+    },
+    retryAvatar() {
+      const receipt = state.recovery;
+      if (!receipt) throw new ApiError('aborted', { requestStarted: false });
+      return commands.run(
+        'verify photo',
+        async (_api, signal) => {
+          const avatar = createAvatarApi(data.api, identity);
+          const result =
+            receipt.kind === 'complete'
+              ? await avatar.complete(receipt.uploadId, signal)
+              : await avatar.remove(receipt.expectedRevision, signal);
+          if (
+            receipt.kind === 'complete'
+              ? result.avatarRevision <= receipt.baseRevision ||
+                result.avatarUrl !==
+                  `/users/${identity.userId}/avatar/${receipt.uploadId}`
+              : result.avatarRevision <= receipt.expectedRevision ||
+                result.avatarUrl !== null
+          )
+            throw new ApiError('invalid-response');
+          return result;
+        },
+        true,
+      );
     },
     async refresh(signal: AbortSignal) {
       data.assertCurrent(identity);
@@ -89,12 +133,13 @@ function createCommands(data: MobileDataLayer, identity: SessionIdentity) {
         api: ReturnType<typeof createProfileApi>,
         signal: AbortSignal,
       ) => Promise<Profile>,
+      recovering = false,
     ) {
       data.assertCurrent(identity);
       if (
         state.pending ||
-        state.uncertain ||
-        uncertainUsers.get(data)?.has(identity.userId) ||
+        ((state.uncertain || uncertainUsers.get(data)?.has(identity.userId)) &&
+          !(recovering && state.recovery)) ||
         pendingUsers.get(data)?.has(identity.userId)
       )
         throw new ApiError('http', {
@@ -118,6 +163,8 @@ function createCommands(data: MobileDataLayer, identity: SessionIdentity) {
         data.assertCurrent(identity);
         if (controller.signal.aborted) throw new ApiError('aborted');
         adopt(result);
+        uncertainUsers.get(data)?.delete(identity.userId);
+        publish({ uncertain: false, recovery: null, observation: null });
         return result;
       } catch (error) {
         if (ambiguous(error)) {
@@ -149,6 +196,7 @@ function createCommands(data: MobileDataLayer, identity: SessionIdentity) {
       }
     },
   };
+  return commands;
 }
 const stores = new WeakMap<
   MobileDataLayer,
@@ -161,7 +209,7 @@ export function profileCommands(
   const previous = stores.get(data);
   if (previous && sameIdentity(previous.identity, identity))
     return previous.commands;
-  previous?.commands.abort();
+  previous?.commands.dispose();
   const commands = createCommands(data, identity);
   stores.set(data, { identity, commands });
   return commands;

@@ -32,8 +32,8 @@ export function date(value: unknown): value is string {
 export function validDisplayName(value: unknown): value is string {
   return (
     typeof value === 'string' &&
-    value.trim().length >= 2 &&
-    value.trim().length <= 80
+    Array.from(value.trim()).length >= 2 &&
+    Array.from(value.trim()).length <= 80
   );
 }
 export function displayNamePatch(value: unknown) {
@@ -54,6 +54,7 @@ export function decodeProfile(input: unknown): Profile {
   ]);
   if (
     !isUuid(v.id) ||
+    v.id.length !== 36 ||
     typeof v.email !== 'string' ||
     !v.email ||
     v.email.length > 254 ||
@@ -82,7 +83,7 @@ export function privateAvatarPath(
   value: string | null,
   ownId: string,
 ): string | null {
-  if (!value) return null;
+  if (!value || /[\p{Cc}%?#\\]/u.test(value)) return null;
   const match = /^\/users\/([^/]+)\/avatar\/([^/]+)$/.exec(value);
   return match && isUuid(match[1]) && isUuid(match[2]) && match[1] === ownId
     ? value

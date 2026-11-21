@@ -37,6 +37,9 @@ test('only a trimmed 2–80 character display name can be patched', () => {
   assert.deepEqual(displayNamePatch('a'.repeat(80)), {
     displayName: 'a'.repeat(80),
   });
+  assert.deepEqual(displayNamePatch('😀'.repeat(80)), {
+    displayName: '😀'.repeat(80),
+  });
   for (const value of [
     '',
     '  ',
@@ -57,6 +60,7 @@ test('private avatar paths require an exact relative own-user path, never legacy
     'https://example.com/a.png',
     '//example.com',
     '/users/%2e/avatar/x',
+    path + '\n',
   ])
     assert.equal(privateAvatarPath(input, USER_A), null);
 });

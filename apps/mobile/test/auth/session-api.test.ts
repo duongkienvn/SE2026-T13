@@ -51,6 +51,7 @@ test('verify calls GET /users/me with the bearer and keeps identity fields only'
       email: 'a@example.test',
       displayName: 'Ada',
       avatarUrl: null,
+      avatarRevision: 0,
     },
   });
   assert.equal(requests[0]!.url, 'https://api.kanvexa.test/api/users/me');

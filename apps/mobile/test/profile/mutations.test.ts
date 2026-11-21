@@ -5,10 +5,42 @@ import { profileKey } from '../../src/features/profile/api.ts';
 import {
   receiveProfile,
   beginProfile,
+  type Profile,
 } from '../../src/features/profile/model.ts';
 import { integration, ok } from '../realtime/integration-support.ts';
 import { flush, USER_A, USER_B, loginResponse } from '../auth/support.ts';
 import { ApiError } from '../../src/infrastructure/api/errors.ts';
+
+test('uncertain avatar completion retries only its own receipt and unlocks on full ACK', async () => {
+  const env = await integration();
+  try {
+    const commands = profileCommands(env.data, env.identity);
+    await assert.rejects(() =>
+      commands.run('photo', async () => {
+        commands.rememberAvatar({
+          kind: 'complete',
+          uploadId: USER_B,
+          baseRevision: 0,
+        });
+        throw new ApiError('timeout', { requestStarted: true });
+      }),
+    );
+    env.respond(async (url) => {
+      assert.ok(url.endsWith(`/avatar/uploads/${USER_B}/complete`));
+      return ok(
+        profile({
+          avatarRevision: 1,
+          avatarUrl: `/users/${USER_A}/avatar/${USER_B}`,
+        }),
+      );
+    });
+    await commands.retryAvatar();
+    assert.equal(commands.getSnapshot().uncertain, false);
+    assert.equal(commands.getSnapshot().recovery, null);
+  } finally {
+    env.dispose();
+  }
+});
 
 const profile = (patch = {}) => ({
   id: USER_A,
@@ -45,7 +77,8 @@ test('profile ACK updates current session UI without replacing credentials; dupl
     if (snapshot.status === 'authenticated')
       assert.equal(snapshot.user.displayName, 'Server name');
     assert.equal(
-      env.data.queryClient.getQueryData(profileKey(env.identity))?.displayName,
+      env.data.queryClient.getQueryData<Profile>(profileKey(env.identity))
+        ?.displayName,
       'Server name',
     );
   } finally {
@@ -110,4 +143,25 @@ test('remote name refresh retains dirty text and requires review', () => {
   assert.equal(next.text, 'My draft');
   assert.equal(next.saved.displayName, 'Web edit');
   assert.equal(next.conflict, true);
+});
+
+test('session end synchronously clears profile observations and avatar recovery', async () => {
+  const env = await integration();
+  try {
+    const commands = profileCommands(env.data, env.identity);
+    await assert.rejects(() =>
+      commands.run('name', async () => {
+        throw new ApiError('timeout');
+      }),
+    );
+    env.respond(async () => ok(profile()));
+    await commands.refresh(new AbortController().signal);
+    assert.ok(commands.getSnapshot().observation);
+    await env.manager.logout();
+    assert.equal(commands.getSnapshot().observation, null);
+    assert.equal(commands.getSnapshot().error, null);
+    assert.equal(commands.getSnapshot().recovery, null);
+  } finally {
+    env.dispose();
+  }
 });

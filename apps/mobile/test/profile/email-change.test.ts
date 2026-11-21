@@ -8,6 +8,12 @@ import {
   validateEmailChange,
   freshGoogleProof,
 } from '../../src/features/profile/email-change.ts';
+import { emailChangeError } from '../../src/features/profile/email-change.ts';
+import {
+  emailCooldown,
+  holdEmailRequest,
+} from '../../src/features/profile/email-cooldown.ts';
+import { ApiError } from '../../src/infrastructure/api/errors.ts';
 import { integration, ok, json } from '../realtime/integration-support.ts';
 import { USER_B, loginResponse, flush } from '../auth/support.ts';
 const signal = () => new AbortController().signal;
@@ -180,4 +186,80 @@ test('fresh Google action resets provider, obtains new proof and never performs 
   const token = await freshGoogleProof(provider, () => {});
   assert.match(token, /^a\./);
   assert.deepEqual(calls, ['reset', 'fresh', 'reset']);
+});
+
+test('cooldown persists route reentry for the same account and is isolated from B', async () => {
+  const env = await integration();
+  try {
+    const before = Date.now(),
+      until = holdEmailRequest(env.data, env.identity);
+    assert.ok(until >= before + 60_000);
+    assert.equal(emailCooldown(env.data, env.identity), until);
+    assert.equal(
+      emailCooldown(env.data, { userId: USER_B, generation: 99 }),
+      0,
+    );
+  } finally {
+    env.dispose();
+  }
+});
+for (const status of [400, 403, 429, 503]) {
+  test(`email ${status} is a distinct safe rejection and retains the Kanvexa session`, async () => {
+    const env = await integration();
+    try {
+      env.respond(async () =>
+        json(
+          {
+            success: false,
+            statusCode: status,
+            code: 'PROOF_FAILED',
+            message: 'sensitive internal text',
+          },
+          status,
+        ),
+      );
+      await assert.rejects(
+        () =>
+          createEmailChangeApi(env.data.api, env.identity).request(
+            { newEmail: 'new@example.com', currentPassword: 'proof' },
+            'old@example.com',
+            signal(),
+          ),
+        (error: unknown) =>
+          error instanceof ApiError &&
+          error.status === status &&
+          !emailChangeError(error, 'password').includes('sensitive'),
+      );
+      assert.equal(env.manager.getSnapshot().status, 'authenticated');
+    } finally {
+      env.dispose();
+    }
+  });
+}
+test('email request reaches 45 second timeout exactly once and never retries ambiguous acceptance', async () => {
+  const env = await integration();
+  try {
+    env.respond(async () => new Promise<Response>(() => {}));
+    const request = createEmailChangeApi(env.data.api, env.identity).request(
+      { newEmail: 'new@example.com', currentPassword: 'proof' },
+      'old@example.com',
+      signal(),
+    );
+    const checked = assert.rejects(
+      request,
+      (error: unknown) => error instanceof ApiError && error.kind === 'timeout',
+    );
+    await flush();
+    env.time.advance(44_999);
+    await flush();
+    env.time.advance(1);
+    await checked;
+    assert.equal(
+      env.requests.filter(({ url }) => url.endsWith('/email-change/request'))
+        .length,
+      1,
+    );
+  } finally {
+    env.dispose();
+  }
 });

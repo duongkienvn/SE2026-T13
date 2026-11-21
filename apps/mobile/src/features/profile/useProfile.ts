@@ -232,7 +232,12 @@ export function useProfile(identity: SessionIdentity) {
           check();
           if (controller.signal.aborted) throw new ApiError('aborted');
         }, controller.signal);
-        check();
+        try {
+          check();
+        } catch (error) {
+          file?.dispose();
+          throw error;
+        }
         if (file) {
           clearPhoto();
           selected.current = file;
@@ -246,6 +251,18 @@ export function useProfile(identity: SessionIdentity) {
       }
     },
     clearPhoto,
+    async retryAvatar() {
+      if (!eligible || pending || cooldown || !mutation.recovery) return;
+      setNotice('');
+      setLocalError(null);
+      try {
+        await commands.retryAvatar();
+        check();
+        setNotice('Photo change confirmed.');
+      } catch (error) {
+        await fail(error);
+      }
+    },
     async upload() {
       if (!ready || !selected.current || !form) return;
       const file = selected.current;
@@ -285,6 +302,11 @@ export function useProfile(identity: SessionIdentity) {
             check();
             setPhase('Verifying photo…');
             completionStarted = true;
+            commands.rememberAvatar({
+              kind: 'complete',
+              uploadId: intent.uploadId,
+              baseRevision: current.avatarRevision,
+            });
             const result = await avatar.complete(intent.uploadId, signal);
             if (
               result.avatarRevision <= current.avatarRevision ||
@@ -324,6 +346,10 @@ export function useProfile(identity: SessionIdentity) {
               code: 'AVATAR_REVISION_CONFLICT',
               requestStarted: false,
             });
+          commands.rememberAvatar({
+            kind: 'remove',
+            expectedRevision: current.avatarRevision,
+          });
           const result = await createAvatarApi(data.api, identity).remove(
             current.avatarRevision,
             signal,

@@ -1,7 +1,6 @@
 import { useIsFocused, useRouter } from 'expo-router';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import {
-  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -29,6 +28,7 @@ import {
   tasksPath,
 } from './presentation';
 import { homeOptions } from './query';
+import { PrivateAvatar } from '../profile/PrivateAvatar';
 import {
   BoardCollection,
   HomeHeading,
@@ -241,31 +241,15 @@ function homeErrorMessage(error: ApiError | null, cached: boolean) {
 }
 
 function HomeAvatar({ user }: { user: SessionUser }) {
-  const c = useTheme();
-  const [failed, setFailed] = useState(false);
-  const initials = user.displayName
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((word) => Array.from(word)[0] ?? '')
-    .join('')
-    .toUpperCase();
-  const photo = user.avatarUrl;
-  // The verified profile can supply a signed or external HTTPS avatar.
-  // Never attach credentials or load local/file/cleartext sources.
-  return photo && /^https:\/\/[^/\s]+/i.test(photo) && !failed ? (
-    <Image
-      source={{ uri: photo }}
-      style={styles.avatar}
-      onError={() => setFailed(true)}
+  const session = useSessionSnapshot();
+  if (session.status !== 'authenticated' || session.user.id !== user.id)
+    return null;
+  return (
+    <PrivateAvatar
+      profile={{ ...user, avatarRevision: user.avatarRevision ?? 0 }}
+      identity={{ userId: user.id, generation: session.generation }}
+      size={36}
     />
-  ) : (
-    <Text
-      allowFontScaling={false}
-      style={[typography.caption, { color: c.text }]}
-    >
-      {initials || 'K'}
-    </Text>
   );
 }
 
@@ -295,5 +279,4 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'flex-start',
   },
-  avatar: { width: 36, height: 36, borderRadius: radius.pill },
 });

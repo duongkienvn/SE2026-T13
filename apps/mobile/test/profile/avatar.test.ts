@@ -5,18 +5,22 @@ import {
   inspectAvatar,
   decodeAvatarIntent,
   transferAvatar,
+  type AvatarIntent,
+  type Photo,
 } from '../../src/features/profile/avatar.ts';
 import { createAvatarApi } from '../../src/features/profile/avatar-api.ts';
 import { integration, json, ok } from '../realtime/integration-support.ts';
 import { USER_A, USER_B } from '../auth/support.ts';
-const file = {
+import { profileError } from '../../src/features/profile/status.ts';
+import { ApiError } from '../../src/infrastructure/api/errors.ts';
+const file: Photo = {
   uri: 'file:///private/photo.png',
   filename: 'photo.png',
   contentType: 'image/png',
   fileSize: 33,
   dispose() {},
 };
-const intent = (kind: 's3' | 'memory' = 'memory') => ({
+const intent = (kind: 's3' | 'memory' = 'memory'): AvatarIntent => ({
   uploadId: USER_B,
   expiresAt: new Date(Date.now() + 60_000).toISOString(),
   upload: {
@@ -191,6 +195,71 @@ test('avatar intent/remove include expectedRevision; completion requires authori
     assert.equal((await api.remove(7, signal)).avatarRevision, 8);
     env.respond(async () => ok({ id: USER_B }));
     await assert.rejects(() => api.complete(USER_B, signal));
+  } finally {
+    env.dispose();
+  }
+});
+
+for (const status of [409, 413, 415, 422, 429, 503]) {
+  test(`avatar completion ${status} never becomes a successful profile or exposes server text`, async () => {
+    const env = await integration();
+    try {
+      env.respond(async () =>
+        json(
+          {
+            success: false,
+            statusCode: status,
+            code: 'AVATAR_REJECTED',
+            message: 'private signed form contents',
+          },
+          status,
+        ),
+      );
+      await assert.rejects(
+        () =>
+          createAvatarApi(env.data.api, env.identity).complete(
+            USER_B,
+            new AbortController().signal,
+          ),
+        (error: unknown) =>
+          error instanceof ApiError &&
+          error.status === status &&
+          !profileError(error).includes('private signed'),
+      );
+    } finally {
+      env.dispose();
+    }
+  });
+}
+test('S3 redirect/error outcome is rejected without parsing XML or claiming completion', async () => {
+  const env = await integration();
+  try {
+    let complete = 0;
+    env.respond(async () => {
+      complete++;
+      return ok({});
+    });
+    await assert.rejects(() =>
+      transferAvatar(
+        createAvatarApi(env.data.api, env.identity),
+        intent('s3'),
+        file,
+        {
+          now: Date.now,
+          multipart: () => ({
+            kind: 'native-upload',
+            createBody: () => new FormData(),
+          }),
+          externalFetch: (async () =>
+            new Response('<XML>private</XML>', {
+              status: 307,
+            })) as typeof fetch,
+        },
+        new AbortController().signal,
+        () => {},
+      ),
+    );
+    assert.equal(complete, 0);
   } finally {
     env.dispose();
   }

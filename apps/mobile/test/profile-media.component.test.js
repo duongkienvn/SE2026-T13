@@ -1,4 +1,4 @@
-/* global jest, test, expect, beforeEach */
+/* global jest, test, expect, beforeEach, AbortController */
 import { launchImageLibraryAsync } from 'expo-image-picker';
 import { __files, __state } from 'expo-file-system';
 import {
