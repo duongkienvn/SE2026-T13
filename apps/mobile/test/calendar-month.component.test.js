@@ -611,3 +611,40 @@ test('scroll offset survives a Board recheck that remounts the native list', asy
     now.mockRestore();
   }
 });
+
+test('saved timezone update refetches server dueStatus membership, retaining explicit selected day', async () => {
+  const now = clock();
+  const env = await setup();
+  try {
+    await openCard();
+    await fireEvent.press(screen.getByRole('button', { name: 'Filters' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Due today' }));
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Apply filters (1)' }),
+    );
+    await openCard();
+    await pick('2026-11-17');
+    const before = env.requests.filter(({ url }) =>
+      url.pathname.endsWith('/cards'),
+    ).length;
+    env.preferences.timeZone = 'America/Los_Angeles';
+    await act(() =>
+      env.data.queryClient.invalidateQueries({
+        queryKey: queryKeys.datePreferences(env.data.getIdentity()),
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        env.requests.filter(({ url }) => url.pathname.endsWith('/cards'))
+          .length,
+      ).toBeGreaterThan(before),
+    );
+    expect(
+      screen.getByTestId('calendar-day-2026-11-17').props.accessibilityState
+        .selected,
+    ).toBe(true);
+  } finally {
+    await env.dispose();
+    now.mockRestore();
+  }
+});

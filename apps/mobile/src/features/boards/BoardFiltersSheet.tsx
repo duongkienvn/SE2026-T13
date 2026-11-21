@@ -285,9 +285,12 @@ export function BoardFiltersSheet({
             />
           ))}
       </View>
-      {!calendar && (
+      {(!calendar || draft.dueFrom || draft.dueTo) && (
         <>
           <Text style={[typography.supporting, { color: c.textSecondary }]}>
+            {calendar
+              ? 'Retained Board range (explicit instants). Clear either field or Reset to remove it. '
+              : ''}
             {timeZone ? `Your account time zone is ${timeZone}. ` : ''}
             Enter a date and time with a UTC offset, for example
             2026-11-15T09:00+07:00.
@@ -308,6 +311,10 @@ export function BoardFiltersSheet({
             autoCorrect={false}
             onChangeText={(dueTo) => update({ dueTo })}
           />
+        </>
+      )}
+      {!calendar && (
+        <>
           <Text style={[typography.strong, { color: c.text }]}>Sort by</Text>
           <View style={row}>
             <FilterChip

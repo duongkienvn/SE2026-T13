@@ -175,6 +175,15 @@ function CalendarEntry({
     if (filters.dueStatus && focused && verified)
       void cards.refetch({ cancelRefetch: false });
   }, [filters.dueStatus, focused, verified, cards.refetch]);
+  const previousZone = useRef(prefs.timeZone);
+  useEffect(() => {
+    const changed = previousZone.current !== prefs.timeZone;
+    previousZone.current = prefs.timeZone;
+    // The server evaluates dueStatus in account timeZone, so regrouping alone
+    // is insufficient when the saved zone changes under an active due filter.
+    if (changed && filters.dueStatus && focused && verified)
+      void cards.refetch();
+  }, [prefs.timeZone, filters.dueStatus, focused, verified, cards.refetch]);
   const now = useCalendarClock(focused, boundary);
   const today = calendarToday(prefs.timeZone, now);
   const day = selected ?? today;
