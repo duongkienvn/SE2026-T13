@@ -674,3 +674,45 @@ test('failed preferences disclose UTC fallback and allow explicit retry without 
     now.mockRestore();
   }
 });
+
+test.each([false, true])(
+  'Card return pins originating day across account-zone midnight (explicit=%s)',
+  async (explicit) => {
+    const now = clock();
+    now.mockReturnValue(Date.parse('2026-11-30T16:59:00Z'));
+    const env = await setup({ cards: [dated(1, '2026-11-30T09:00:00.000Z')] });
+    try {
+      await openCard();
+      if (explicit) await pick('2026-11-30');
+      await fireEvent.press(await openCard());
+      expect(mockRouter.push).toHaveBeenCalledWith(
+        `/boards/${boardId}/cards/${dated(1).id}`,
+      );
+      await env.focus(false);
+      now.mockReturnValue(Date.parse('2026-11-30T17:01:00Z'));
+      await env.focus(true);
+      await act(() => AppState.addEventListener.mock.calls.at(-1)[1]('active'));
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('calendar-day-2026-11-30').props.accessibilityState
+            .selected,
+        ).toBe(true),
+      );
+      await openCard();
+      expect(screen.getByText('November 2026')).toBeTruthy();
+      expect(
+        screen.getByTestId('calendar-day-2026-11-30').props.accessibilityState
+          .selected,
+      ).toBe(true);
+      await fireEvent.press(screen.getByRole('button', { name: 'Today' }));
+      expect(screen.getByText('December 2026')).toBeTruthy();
+      expect(
+        screen.getByTestId('calendar-day-2026-12-01').props.accessibilityState
+          .selected,
+      ).toBe(true);
+    } finally {
+      await env.dispose();
+      now.mockRestore();
+    }
+  },
+);

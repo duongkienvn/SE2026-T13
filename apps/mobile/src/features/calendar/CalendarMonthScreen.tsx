@@ -307,8 +307,10 @@ function CalendarEntry({
       cardId &&
       card.boardId === boardId &&
       data.resources.readable(boardKey)
-    )
+    ) {
+      setSelected(day);
       router.push(destinationPath({ kind: 'card', boardId, cardId }));
+    }
   };
   return (
     <ThemeContext.Provider value={prefs.theme ?? 'system'}>
