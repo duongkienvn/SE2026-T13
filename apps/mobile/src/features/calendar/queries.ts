@@ -19,6 +19,8 @@ export function calendarFilters(filters: KanbanFilters): KanbanFilters {
   return {
     ...filters,
     status: 'active',
+    dueStatus:
+      filters.dueStatus === 'NO_DUE_DATE' ? undefined : filters.dueStatus,
     sortBy: undefined,
     sortDirection: undefined,
   };

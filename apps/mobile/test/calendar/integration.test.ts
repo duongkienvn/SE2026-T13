@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { QueryObserver, partialMatchKey } from '@tanstack/react-query';
-import { calendarCardOptions } from '../../src/features/calendar/queries.ts';
+import {
+  calendarCardOptions,
+  calendarFilters,
+} from '../../src/features/calendar/queries.ts';
+import { normalizeKanbanFilters } from '../../src/features/boards/kanban-api.ts';
 import { cardsByDueDay } from '../../src/features/calendar/due-groups.ts';
 import { queryKeys } from '../../src/infrastructure/query/keys.ts';
 import { deferred, flush, loginResponse, USER_B } from '../auth/support.ts';
@@ -63,6 +67,31 @@ test('server filters retain CSV OR sets, status=active, normalized keys and comp
       assert.equal(params.get('limit'), '100');
       assert.equal(params.get('dueStatus'), 'UPCOMING');
     }
+  } finally {
+    env.dispose();
+  }
+});
+
+test('Calendar excludes inherited no-due predicate from actual requests without changing Board filters', async () => {
+  const env = await fixture();
+  try {
+    const inherited = { dueStatus: 'NO_DUE_DATE' as const, q: 'release' };
+    env.respond((url) =>
+      url.includes('/cards?')
+        ? Promise.resolve(json(page(rows(1), 1, 100)))
+        : null,
+    );
+    assert.equal(calendarFilters(inherited).dueStatus, undefined);
+    assert.equal(normalizeKanbanFilters(inherited).dueStatus, 'NO_DUE_DATE');
+    await env.data.queryClient.fetchQuery(
+      calendarCardOptions(env.data.api, env.identity, BOARD, inherited),
+    );
+    const params = new URL(
+      env.requests.find(({ url }) => url.includes('/cards?'))!.url,
+    ).searchParams;
+    assert.equal(params.has('dueStatus'), false);
+    assert.equal(params.get('q'), 'release');
+    assert.equal(inherited.dueStatus, 'NO_DUE_DATE');
   } finally {
     env.dispose();
   }

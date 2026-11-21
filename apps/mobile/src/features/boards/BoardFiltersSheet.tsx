@@ -18,6 +18,7 @@ import {
   type KanbanFilters,
 } from './kanban-api';
 import type { useKanbanCatalogs } from './kanban-queries';
+import { calendarFilters } from '../calendar/queries';
 
 export const dueOptions = [
   ['OVERDUE', 'Overdue'],
@@ -163,7 +164,9 @@ export function BoardFiltersSheet({
   onCancel: () => void;
   onApply: (filters: KanbanFilters) => void;
 }) {
-  const [draft, setDraft] = useState(initial);
+  const [draft, setDraft] = useState(() =>
+    calendar ? calendarFilters(initial) : initial,
+  );
   const [error, setError] = useState('');
   const [labelsOpen, setLabelsOpen] = useState(startWithLabels);
   const [membersOpen, setMembersOpen] = useState(false);
