@@ -1,6 +1,6 @@
 /* global jest, test, expect */
 import { URL } from 'node:url';
-import { AppState, FlatList, StyleSheet } from 'react-native';
+import { AppState, FlatList, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { phoneMetrics } from './render-native';
 import {
@@ -50,6 +50,7 @@ const mockRouter = {
   canGoBack: () => true,
 };
 let mockFocus = true;
+let mockDimensions = { width: 320, height: 700, scale: 3, fontScale: 1.6 };
 jest.mock('expo-router', () => ({
   Stack: { Screen: () => null },
   useRouter: () => mockRouter,
@@ -69,7 +70,7 @@ jest.mock('react-native', () => {
   descriptors.useWindowDimensions = {
     configurable: true,
     enumerable: true,
-    value: () => ({ width: 320, height: 700, scale: 3, fontScale: 1.6 }),
+    value: () => mockDimensions,
   };
   descriptors.useColorScheme = {
     configurable: true,
@@ -188,13 +189,14 @@ async function setup({
     createSocket: null,
     timers: time,
   });
+  let routeMounted = true;
   const tree = () => (
     <SafeAreaProvider initialMetrics={phoneMetrics}>
       <SessionProvider manager={manager}>
         <DataProvider layer={data}>
           <RealtimeProvider client={realtime}>
             <BoardViewFiltersProvider>
-              <CalendarRoute />
+              {routeMounted && <CalendarRoute />}
             </BoardViewFiltersProvider>
           </RealtimeProvider>
         </DataProvider>
@@ -209,6 +211,12 @@ async function setup({
     requests,
     cards,
     preferences,
+    remountRoute: async () => {
+      routeMounted = false;
+      await mounted.rerender(tree());
+      routeMounted = true;
+      await mounted.rerender(tree());
+    },
     focus: async (value) => {
       mockFocus = value;
       await mounted.rerender(tree());
@@ -382,6 +390,7 @@ test('Board revoke purges titles/counts; delayed Card page cannot resurrect prot
   });
   try {
     await openCard();
+    await switchView('Week');
     delayed = true;
     await act(() => {
       void env.data.queryClient.invalidateQueries({
@@ -413,6 +422,7 @@ test('account switch and logout never retain old-account Card data', async () =>
   });
   try {
     await openCard();
+    await switchView('Week');
     await act(() => env.manager.establishSession(loginResponse(USER_B)));
     expect(screen.queryByText('Card 1')).toBeNull();
     await screen.findByText('No Cards due this day');
@@ -537,6 +547,7 @@ test('offline hides cached titles/counts, foreground reconnect reloads authorize
   const env = await setup();
   try {
     await openCard();
+    await switchView('Week');
     await act(() => onlineManager.setOnline(false));
     expect(screen.queryByText('Card 1')).toBeNull();
     expect(screen.queryByText('1 Card')).toBeNull();
@@ -618,6 +629,7 @@ test('saved timezone update refetches server dueStatus membership, retaining exp
   const env = await setup();
   try {
     await openCard();
+    await switchView('Week');
     await fireEvent.press(screen.getByRole('button', { name: 'Filters' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Due today' }));
     await fireEvent.press(
@@ -781,6 +793,385 @@ test('zone change cancels initial DUE_TODAY walk before accepting new-zone membe
     expect(filteredReads).toBe(2);
   } finally {
     gate.resolve(response(page([], 1, 100)));
+    await env.dispose();
+    now.mockRestore();
+  }
+});
+
+test.each([320, 390, 768])(
+  'Week strip %sdp: seven dates, exact bounded counts, focus and selected reveal at 160%% font',
+  async (width) => {
+    mockDimensions = { width, height: 700, scale: 3, fontScale: 1.6 };
+    const scrollTo = jest
+      .spyOn(ScrollView.prototype, 'scrollTo')
+      .mockImplementation(() => {});
+    const props = {
+      view: 'week',
+      onViewChange: jest.fn(),
+      selected: '2027-01-03',
+      today: '2026-12-30',
+      weekStartsOn: 'monday',
+      counts: new Map([['2027-01-03', 351]]),
+      onSelect: jest.fn(),
+      onPrevious: jest.fn(),
+      onNext: jest.fn(),
+      onToday: jest.fn(),
+    };
+    try {
+      const mounted = await render(
+        <ThemeContext.Provider value="system">
+          <MonthGrid {...props} />
+        </ThemeContext.Provider>,
+      );
+      expect(screen.getAllByTestId(/^calendar-day-/)).toHaveLength(7);
+      expect(
+        screen.getByText('28 Dec 2026 – 3 Jan 2027').props.numberOfLines,
+      ).toBeUndefined();
+      const selected = screen.getByTestId('calendar-day-2027-01-03');
+      expect(selected.props.accessibilityLabel).toContain(
+        '351 due Cards, selected',
+      );
+      expect(
+        screen.getByText('99+', { includeHiddenElements: true }),
+      ).toBeTruthy();
+      expect(
+        StyleSheet.flatten(selected.props.style).minHeight,
+      ).toBeGreaterThanOrEqual(48);
+      await fireEvent(selected, 'focus');
+      expect(
+        StyleSheet.flatten(
+          screen.getByTestId('calendar-day-2027-01-03').props.style,
+        ).borderColor,
+      ).toBe(palettes.dark.focus);
+      expect(scrollTo).toHaveBeenCalledWith(
+        expect.objectContaining({ animated: false }),
+      );
+      await mounted.rerender(
+        <ThemeContext.Provider value="light">
+          <MonthGrid {...props} counts={undefined} />
+        </ThemeContext.Provider>,
+      );
+      expect(
+        screen.getByTestId('calendar-day-2027-01-03').props.accessibilityLabel,
+      ).toContain('counts unavailable');
+      expect(
+        screen.queryByText('99+', { includeHiddenElements: true }),
+      ).toBeNull();
+      expect(
+        StyleSheet.flatten(
+          screen.getByTestId('calendar-day-2027-01-03').props.style,
+        ).backgroundColor,
+      ).toBe(palettes.light.primary);
+    } finally {
+      scrollTo.mockRestore();
+      mockDimensions = { width: 320, height: 700, scale: 3, fontScale: 1.6 };
+    }
+  },
+);
+
+const switchView = async (name) =>
+  fireEvent.press(screen.getByRole('radio', { name }));
+const cardReads = (env) =>
+  env.requests.filter(({ url }) => url.pathname.endsWith('/cards'));
+
+test.each([0, 1, 20, 21, 100, 101, 251, 351])(
+  'Month/Week exact ID/order/count parity for %s Cards with no view-switch GETs',
+  async (size) => {
+    const now = clock();
+    const rendered = jest.spyOn(FlatList.prototype, 'render');
+    const rows = Array.from({ length: size }, (_, n) =>
+      dated(
+        n + 1,
+        n % 2 ? '2026-11-17T10:00:00.000Z' : '2026-11-17T09:00:00.000Z',
+      ),
+    ).reverse();
+    const expected = [...rows]
+      .sort(
+        (a, b) =>
+          Date.parse(a.dueDate) - Date.parse(b.dueDate) ||
+          a.id.localeCompare(b.id),
+      )
+      .map(({ id }) => id);
+    const env = await setup({ cards: rows });
+    const listIds = () =>
+      rendered.mock.contexts
+        .filter((item) => item.props.testID === 'calendar-agenda')
+        .at(-1)
+        .props.data.map(({ id }) => id);
+    try {
+      await screen.findByText(`${size} ${size === 1 ? 'Card' : 'Cards'}`);
+      expect(listIds()).toEqual(expected);
+      const before = env.requests.length;
+      const pages = cardReads(env).map(({ url }) =>
+        url.searchParams.get('page'),
+      );
+      expect(pages).toEqual(
+        size <= 100
+          ? ['1']
+          : size <= 200
+            ? ['1', '2', '1']
+            : size <= 300
+              ? ['1', '2', '3', '1']
+              : ['1', '2', '3', '4', '1'],
+      );
+      for (const name of ['Week', 'Month', 'Week', 'Month']) {
+        await switchView(name);
+        expect(listIds()).toEqual(expected);
+        expect(
+          screen.getByTestId('calendar-day-2026-11-17').props
+            .accessibilityLabel,
+        ).toContain(`${size} due`);
+        expect(
+          screen.getByTestId('calendar-day-2026-11-17').props.accessibilityState
+            .selected,
+        ).toBe(true);
+      }
+      expect(env.requests.length).toBe(before);
+    } finally {
+      await env.dispose();
+      rendered.mockRestore();
+      now.mockRestore();
+    }
+  },
+);
+
+test('view switching during sequential pagination keeps one walk, unavailable counts and no duplicate requests', async () => {
+  const now = clock();
+  const gate = deferred();
+  const rows = Array.from({ length: 101 }, (_, n) => dated(n + 1));
+  let delayedSignal;
+  const env = await setup({
+    cards: rows,
+    override(url, _, init) {
+      if (
+        url.pathname.endsWith('/cards') &&
+        url.searchParams.get('page') === '2'
+      ) {
+        delayedSignal = init.signal;
+        return gate.promise;
+      }
+      return null;
+    },
+  });
+  try {
+    await waitFor(() => expect(cardReads(env)).toHaveLength(2));
+    for (const name of ['Week', 'Month', 'Week']) {
+      await switchView(name);
+      expect(
+        screen.getByTestId('calendar-day-2026-11-17').props.accessibilityLabel,
+      ).toContain('counts unavailable');
+    }
+    expect(cardReads(env)).toHaveLength(2);
+    expect(delayedSignal.aborted).toBe(false);
+    await act(() => gate.resolve(response(page(rows, 2, 100))));
+    await screen.findByText('101 Cards');
+    expect(
+      cardReads(env).map(({ url }) => url.searchParams.get('page')),
+    ).toEqual(['1', '2', '1']);
+    expect(screen.getAllByTestId(/^calendar-day-/)).toHaveLength(7);
+  } finally {
+    gate.resolve(response(page(rows, 2, 100)));
+    await env.dispose();
+    now.mockRestore();
+  }
+});
+
+test('Week +/-7, cross-month switch, filter Apply/Reset and Card return after full route unmount retain state/scroll', async () => {
+  const now = clock();
+  const rendered = jest.spyOn(FlatList.prototype, 'render');
+  const scrollTo = jest
+    .spyOn(FlatList.prototype, 'scrollToOffset')
+    .mockImplementation(() => {});
+  const env = await setup({ cards: [dated(1, '2026-12-02T09:00:00.000Z')] });
+  const currentList = () =>
+    rendered.mock.contexts
+      .filter((item) => item.props.testID === 'calendar-agenda')
+      .at(-1);
+  try {
+    await screen.findByText('No Cards due this day');
+    await pick('2026-11-18');
+    await switchView('Week');
+    await fireEvent.press(screen.getByRole('button', { name: 'Next week' }));
+    expect(
+      screen.getByTestId('calendar-day-2026-11-25').props.accessibilityState
+        .selected,
+    ).toBe(true);
+    await fireEvent.press(screen.getByRole('button', { name: 'Next week' }));
+    await openCard();
+    expect(
+      screen.getByTestId('calendar-day-2026-12-02').props.accessibilityState
+        .selected,
+    ).toBe(true);
+    await switchView('Month');
+    expect(screen.getByText('December 2026')).toBeTruthy();
+    await switchView('Week');
+    await fireEvent.press(screen.getByRole('button', { name: 'Filters' }));
+    await fireEvent.changeText(screen.getByLabelText('Search cards'), 'Card 1');
+    // Switching the underlying shared view cannot remount/discard a draft sheet.
+    await switchView('Month');
+    expect(screen.getByLabelText('Search cards').props.value).toBe('Card 1');
+    await switchView('Week');
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Apply filters (1)' }),
+    );
+    await openCard();
+    await act(() => {
+      const list = currentList();
+      list.props.onLayout({ nativeEvent: { layout: { height: 700 } } });
+      list.props.onContentSizeChange(320, 1800);
+      list.props.onScrollBeginDrag();
+      list.props.onScroll({ nativeEvent: { contentOffset: { y: 400 } } });
+    });
+    await fireEvent.press(await openCard());
+    expect(mockRouter.push).toHaveBeenCalledWith(
+      `/boards/${boardId}/cards/${dated(1).id}`,
+    );
+    await env.remountRoute();
+    await openCard();
+    expect(
+      screen.getByRole('radio', { name: 'Week' }).props.accessibilityState
+        .checked,
+    ).toBe(true);
+    expect(screen.getByRole('button', { name: 'Filters (1)' })).toBeTruthy();
+    expect(
+      screen.getByTestId('calendar-day-2026-12-02').props.accessibilityState
+        .selected,
+    ).toBe(true);
+    await act(() => {
+      const list = currentList();
+      list.props.onLayout({ nativeEvent: { layout: { height: 700 } } });
+      list.props.onContentSizeChange(320, 1800);
+    });
+    await waitFor(() =>
+      expect(scrollTo).toHaveBeenCalledWith({ offset: 400, animated: false }),
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Filters (1)' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Reset' }));
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Apply filters (0)' }),
+    );
+    await openCard();
+    expect(screen.getByRole('button', { name: 'Filters' })).toBeTruthy();
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Previous week' }),
+    );
+    expect(
+      screen.getByTestId('calendar-day-2026-11-25').props.accessibilityState
+        .selected,
+    ).toBe(true);
+    await fireEvent.press(screen.getByRole('button', { name: 'Today' }));
+    expect(
+      screen.getByTestId('calendar-day-2026-11-17').props.accessibilityState
+        .selected,
+    ).toBe(true);
+  } finally {
+    await env.dispose();
+    rendered.mockRestore();
+    scrollTo.mockRestore();
+    now.mockRestore();
+  }
+});
+
+test.each([429, 503])(
+  'Week partial HTTP %s stays incomplete, honors retry readiness and recovers',
+  async (status) => {
+    const now = clock();
+    let failed = true;
+    const rows = Array.from({ length: 101 }, (_, n) => dated(n + 1));
+    const env = await setup({
+      cards: rows,
+      override(url) {
+        if (
+          failed &&
+          url.pathname.endsWith('/cards') &&
+          url.searchParams.get('page') === '2'
+        )
+          return response({}, status, status === 429 ? '1' : undefined);
+        return null;
+      },
+    });
+    try {
+      await screen.findByText('Calendar incomplete');
+      await switchView('Week');
+      expect(screen.queryByText('101 Cards')).toBeNull();
+      expect(
+        screen.getByTestId('calendar-day-2026-11-17').props.accessibilityLabel,
+      ).toContain('counts unavailable');
+      if (status === 429) {
+        expect(
+          screen.getByRole('button', { name: 'Retry calendar' }).props
+            .accessibilityState.disabled,
+        ).toBe(true);
+        now.mockReturnValue(Date.parse('2026-11-17T00:00:02Z'));
+        await waitFor(() =>
+          expect(
+            screen.getByRole('button', { name: 'Retry calendar' }).props
+              .accessibilityState.disabled,
+          ).toBe(false),
+        );
+      }
+      failed = false;
+      await fireEvent.press(
+        screen.getByRole('button', { name: 'Retry calendar' }),
+      );
+      await screen.findByText('101 Cards');
+      expect(
+        screen.getByRole('radio', { name: 'Week' }).props.accessibilityState
+          .checked,
+      ).toBe(true);
+    } finally {
+      await env.dispose();
+      now.mockRestore();
+    }
+  },
+);
+
+test('Week adopts remote zone/week-start/date-format while keeping selected civil day; Today samples current instant', async () => {
+  const now = clock();
+  const env = await setup({
+    preferences: {
+      timeZone: 'UTC',
+      weekStartsOn: 'monday',
+      dateFormat: 'YYYY-MM-DD',
+      theme: 'light',
+    },
+    cards: [dated(1, '2026-11-17T00:30:00.000Z')],
+  });
+  try {
+    await openCard();
+    await switchView('Week');
+    env.preferences.timeZone = 'America/Los_Angeles';
+    env.preferences.weekStartsOn = 'sunday';
+    env.preferences.dateFormat = 'MM/DD/YYYY';
+    await act(() =>
+      env.data.queryClient.invalidateQueries({
+        queryKey: queryKeys.datePreferences(env.data.getIdentity()),
+      }),
+    );
+    await screen.findByText('No Cards due this day');
+    expect(
+      screen.getByTestId('calendar-day-2026-11-17').props.accessibilityState
+        .selected,
+    ).toBe(true);
+    expect(screen.getAllByTestId(/^calendar-day-/)[0].props.testID).toBe(
+      'calendar-day-2026-11-15',
+    );
+    await pick('2026-11-16');
+    await openCard();
+    expect(screen.getByText('11/16/2026 \u00b7 16:30')).toBeTruthy();
+    await switchView('Month');
+    await openCard();
+    expect(screen.getByText('11/16/2026 \u00b7 16:30')).toBeTruthy();
+    await switchView('Week');
+    now.mockReturnValue(Date.parse('2026-11-18T08:01:00Z'));
+    // Even without waiting for a scheduled clock tick, Today uses the new instant.
+    await fireEvent.press(screen.getByRole('button', { name: 'Today' }));
+    expect(
+      screen.getByTestId('calendar-day-2026-11-18').props.accessibilityState
+        .selected,
+    ).toBe(true);
+    expect(env.cards[0].dueDate).toBe('2026-11-17T00:30:00.000Z');
+  } finally {
     await env.dispose();
     now.mockRestore();
   }
