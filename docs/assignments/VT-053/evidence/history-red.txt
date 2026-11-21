@@ -1,0 +1,82 @@
+HEAD=654cbb2d9e2c48b2e057b7793075d9a810f77788
+Node=v22.17.0
+COMMAND=node --experimental-strip-types --test C:\Users\Dell\AppData\Local\Temp\kanvexa-vt053-YAJA15\apps\backend\test\search\board-scope.contract.mjs
+TAP version 13
+# (node:35328) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: VT053-C01: omitted boardId preserves the legacy unscoped search
+ok 1 - VT053-C01: omitted boardId preserves the legacy unscoped search
+  ---
+  duration_ms: 0.7092
+  type: 'test'
+  ...
+# Subtest: VT053-C02: boardId is a bound SQL parameter, never interpolated
+not ok 2 - VT053-C02: boardId is a bound SQL parameter, never interpolated
+  ---
+  duration_ms: 1.5173
+  type: 'test'
+  location: 'C:\\Users\\Dell\\AppData\\Local\\Temp\\kanvexa-vt053-YAJA15\\apps\\backend\\test\\search\\board-scope.contract.mjs:12:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+
+    + null
+    - {
+    -   clause: 'card.boardId = :boardScopeId',
+    -   params: {
+    -     boardScopeId: '11111111-1111-4111-8111-111111111111'
+    -   }
+    - }
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    clause: 'card.boardId = :boardScopeId'
+    params:
+      boardScopeId: '11111111-1111-4111-8111-111111111111'
+  actual: ~
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///C:/Users/Dell/AppData/Local/Temp/kanvexa-vt053-YAJA15/apps/backend/test/search/board-scope.contract.mjs:14:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: VT053-C03: different boards retain independent values and fixed SQL
+not ok 3 - VT053-C03: different boards retain independent values and fixed SQL
+  ---
+  duration_ms: 0.1392
+  type: 'test'
+  location: 'C:\\Users\\Dell\\AppData\\Local\\Temp\\kanvexa-vt053-YAJA15\\apps\\backend\\test\\search\\board-scope.contract.mjs:21:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'clause')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file:///C:/Users/Dell/AppData/Local/Temp/kanvexa-vt053-YAJA15/apps/backend/test/search/board-scope.contract.mjs:24:18)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 1
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 133.8559
+
+EXIT_CODE=1
+SOURCE_COMMIT=b5b3814ff82b9330e2b2a8f9bb918da72075d10e
+TEST_COMMIT=b5b3814ff82b9330e2b2a8f9bb918da72075d10e
+SOURCE_SHA256=2e8d043b0c265e5938027d6ac86bad35fa1b3fbeedc454b209cd14c6f57e6873
+TEST_SHA256=4843eff12eeb73ee7d749fb4fed91c8512a09cac8adcbc4affb9859332571940

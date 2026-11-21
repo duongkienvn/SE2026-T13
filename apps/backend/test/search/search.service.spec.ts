@@ -35,6 +35,33 @@ describe('search response snapshot and dispatch', () => {
       .mocked(searchCards)
       .mockResolvedValue({ items: [], total: 3, hasMore: false });
   });
+  it('propagates transaction startup failures instead of returning empty success', async () => {
+    const outage = new Error('VT053_DB_FAILURE');
+    manager.transaction.mockRejectedValueOnce(outage);
+    await expect(
+      service.search(
+        'actor',
+        Object.assign(new SearchQueryDto(), { q: 'needle', type: 'cards' }),
+      ),
+    ).rejects.toBe(outage);
+    expect(searchCards).not.toHaveBeenCalled();
+  });
+
+  it('propagates a Card query failure inside the transaction', async () => {
+    const outage = new Error('VT053_CARD_QUERY_FAILURE');
+    jest.mocked(searchCards).mockRejectedValueOnce(outage);
+    await expect(
+      service.search(
+        'actor',
+        Object.assign(new SearchQueryDto(), {
+          q: 'needle',
+          type: 'cards',
+          boardId: '11111111-1111-4111-8111-111111111111',
+        }),
+      ),
+    ).rejects.toBe(outage);
+    expect(searchCards).toHaveBeenCalledTimes(1);
+  });
   it.each(['all', 'workspaces', 'boards', 'cards'] as const)(
     'never queries business data for empty input, type=%s',
     async (type) => {

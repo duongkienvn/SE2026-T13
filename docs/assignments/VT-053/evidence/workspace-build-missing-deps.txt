@@ -1,0 +1,20 @@
+
+> realtime-collaborative-kanban@ build D:\NAM_BON\KI_I\Software_Engineering\Projects\SE2026-T13
+> pnpm -r build
+
+Scope: 4 of 5 workspace projects
+packages/shared build$ node scripts/build.mjs
+packages/shared build: Done
+apps/backend build$ nest build
+apps/mobile build$ pnpm typecheck
+apps/frontend build$ tsc -b && vite build
+apps/mobile build: > @kanban/mobile@0.0.0 typecheck D:\NAM_BON\KI_I\Software_Engineering\Projects\SE2026-T13\apps\mobile
+apps/mobile build: > tsc --noEmit
+apps/mobile build: src/infrastructure/auth/secure-store-adapter.ts(1,30): error TS2307: Cannot find module 'expo-secure-store' or its corresponding type declarations.
+apps/mobile build:  ELIFECYCLE  Command failed with exit code 2.
+apps/mobile build: Failed
+D:\NAM_BON\KI_I\Software_Engineering\Projects\SE2026-T13\apps\mobile:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @kanban/mobile@0.0.0 build: `pnpm typecheck`
+Exit status 2
+ ELIFECYCLE  Command failed with exit code 2.
+EXIT_CODE=2

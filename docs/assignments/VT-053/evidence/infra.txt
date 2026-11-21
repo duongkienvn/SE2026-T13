@@ -1,0 +1,175 @@
+
+> realtime-collaborative-kanban@ test:infra D:\NAM_BON\KI_I\Software_Engineering\Projects\SE2026-T13
+> node --test scripts/deployment/config.test.mjs scripts/deployment/cicd.test.mjs
+
+TAP version 13
+# SSM command: 00000000-0000-0000-0000-000000000068; instance: i-0123456789abcdef0; release: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+# SSM 00000000-0000-0000-0000-000000000068: Pending
+# SSM 00000000-0000-0000-0000-000000000068: InProgress
+# SSM 00000000-0000-0000-0000-000000000068: Success
+# SSM 00000000-0000-0000-0000-000000000068: Failed
+# SSM 00000000-0000-0000-0000-000000000068: TimedOut
+# SSM 00000000-0000-0000-0000-000000000068: Cancelled
+# SSM 00000000-0000-0000-0000-000000000068: Cancelling
+# SSM 00000000-0000-0000-0000-000000000068: Success
+# SSM 00000000-0000-0000-0000-000000000068: InProgress
+# Subtest: CI runs only PR checks or reusable quality with read-only permissions
+ok 1 - CI runs only PR checks or reusable quality with read-only permissions
+  ---
+  duration_ms: 2.0777
+  type: 'test'
+  ...
+# Subtest: CD push ignore patterns are restricted to mobile-owned paths
+ok 2 - CD push ignore patterns are restricted to mobile-owned paths
+  ---
+  duration_ms: 0.2121
+  type: 'test'
+  ...
+# Subtest: mobile-only source, dependencies, assets and documentation skip automatic CD
+ok 3 - mobile-only source, dependencies, assets and documentation skip automatic CD
+  ---
+  duration_ms: 1.5286
+  type: 'test'
+  ...
+# Subtest: Web-impacting and mixed changes always remain eligible for automatic CD
+ok 4 - Web-impacting and mixed changes always remain eligible for automatic CD
+  ---
+  duration_ms: 1.3293
+  type: 'test'
+  ...
+# Subtest: CD calls CI on main and gates publishing and deployment on success
+ok 5 - CD calls CI on main and gates publishing and deployment on success
+  ---
+  duration_ms: 0.8472
+  type: 'test'
+  ...
+# Subtest: caller and reusable concurrency never collide or interrupt production
+ok 6 - caller and reusable concurrency never collide or interrupt production
+  ---
+  duration_ms: 0.4844
+  type: 'test'
+  ...
+# Subtest: production delivery retains SHA images, pinned actions and OIDC without new secrets
+ok 7 - production delivery retains SHA images, pinned actions and OIDC without new secrets
+  ---
+  duration_ms: 0.6272
+  type: 'test'
+  ...
+# Subtest: SSM bootstrap validates main ancestry and cleanliness before checkout
+ok 8 - SSM bootstrap validates main ancestry and cleanliness before checkout
+  ---
+  duration_ms: 0.4242
+  type: 'test'
+  ...
+# Subtest: SSM bootstrap passes actual Bash syntax validation
+ok 9 - SSM bootstrap passes actual Bash syntax validation
+  ---
+  duration_ms: 116.9993
+  type: 'test'
+  ...
+# Subtest: SSM request targets only one instance with bounded delivery and execution
+ok 10 - SSM request targets only one instance with bounded delivery and execution
+  ---
+  duration_ms: 1.5557
+  type: 'test'
+  ...
+# Subtest: uncertain SSM submission is never blindly retried
+ok 11 - uncertain SSM submission is never blindly retried
+  ---
+  duration_ms: 0.5091
+  type: 'test'
+  ...
+# Subtest: observer tolerates eventual consistency and actually waits for success
+ok 12 - observer tolerates eventual consistency and actually waits for success
+  ---
+  duration_ms: 0.5498
+  type: 'test'
+  ...
+# Subtest: all SSM failures, nonzero success and observation timeout fail closed
+ok 13 - all SSM failures, nonzero success and observation timeout fail closed
+  ---
+  duration_ms: 1.005
+  type: 'test'
+  ...
+# Subtest: isolated Python env and deployment failure tests
+ok 14 - isolated Python env and deployment failure tests
+  ---
+  duration_ms: 888.477
+  type: 'test'
+  ...
+# Subtest: backend preflight uses target release interpolation and effective runtime overrides without persistent volumes
+ok 15 - backend preflight uses target release interpolation and effective runtime overrides without persistent volumes
+  ---
+  duration_ms: 453.4079
+  type: 'test'
+  ...
+# Subtest: task email UI is default-off public build configuration, independent of backend runtime flags
+ok 16 - task email UI is default-off public build configuration, independent of backend runtime flags
+  ---
+  duration_ms: 1818.9602
+  type: 'test'
+  ...
+# Subtest: invitation destination is gated by default and forwarded only to backend
+ok 17 - invitation destination is gated by default and forwarded only to backend
+  ---
+  duration_ms: 776.1733
+  type: 'test'
+  ...
+# Subtest: production forwards private attachment configuration only to backend with safe defaults
+ok 18 - production forwards private attachment configuration only to backend with safe defaults
+  ---
+  duration_ms: 1492.3033
+  type: 'test'
+  ...
+# Subtest: task notifications use safe defaults and forward overrides only to backend
+ok 19 - task notifications use safe defaults and forward overrides only to backend
+  ---
+  duration_ms: 1433.582
+  type: 'test'
+  ...
+# Subtest: production publishes only Caddy and isolates the database network
+ok 20 - production publishes only Caddy and isolates the database network
+  ---
+  duration_ms: 759.4006
+  type: 'test'
+  ...
+# Subtest: runtime, migrations, readiness and resource limits are explicit
+ok 21 - runtime, migrations, readiness and resource limits are explicit
+  ---
+  duration_ms: 419.8678
+  type: 'test'
+  ...
+# Subtest: missing release tags or secrets fail before containers can start
+ok 22 - missing release tags or secrets fail before containers can start
+  ---
+  duration_ms: 3841.8091
+  type: 'test'
+  ...
+# Subtest: OAuth configuration is public build data and optional backend runtime data
+ok 23 - OAuth configuration is public build data and optional backend runtime data
+  ---
+  duration_ms: 425.37
+  type: 'test'
+  ...
+# Subtest: local HTTP override replaces every public binding without changing production HTTPS
+ok 24 - local HTTP override replaces every public binding without changing production HTTPS
+  ---
+  duration_ms: 423.1105
+  type: 'test'
+  ...
+# Subtest: private avatars keep credentials out of frontend and policies scoped to private object prefixes
+ok 25 - private avatars keep credentials out of frontend and policies scoped to private object prefixes
+  ---
+  duration_ms: 399.2603
+  type: 'test'
+  ...
+1..25
+# tests 25
+# suites 0
+# pass 25
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 12410.4712
+EXIT_CODE=0

@@ -27,7 +27,7 @@ export class SearchController {
     type: SearchResponseDto,
     summary: 'Search authorized Workspaces, active Boards and Cards',
     description:
-      'Literal case-insensitive substring; exact title, prefix, substring, then description-only Card matches. Each rank orders updatedAt DESC, UUID ASC. type=all returns independent first-page groups (default 5, max 10) and forbids page. Specific types default to page 1, limit 20 (max 50). Workspace names require separate Workspace membership. Empty q returns empty groups without business-data queries.',
+      'Literal case-insensitive substring; exact title, prefix, substring, then description-only Card matches. Each rank orders updatedAt DESC, UUID ASC. type=all returns independent first-page groups (default 5, max 10) and forbids page. Specific types default to page 1, limit 20 (max 50). Workspace names require separate Workspace membership. Optional boardId (UUIDv4) restricts type=cards only, without changing old client responses. Empty q returns empty groups without business-data queries.',
   })
   @ApiCommonErrors([400, 401, 429, 500])
   search(

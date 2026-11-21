@@ -1,0 +1,7 @@
+
+> realtime-collaborative-kanban@ format:check D:\NAM_BON\KI_I\Software_Engineering\Projects\SE2026-T13
+> prettier --check . "--end-of-line" "auto"
+
+Checking formatting...
+All matched files use Prettier code style!
+EXIT_CODE=0
