@@ -181,9 +181,24 @@ function CalendarEntry({
     previousZone.current = prefs.timeZone;
     // The server evaluates dueStatus in account timeZone, so regrouping alone
     // is insufficient when the saved zone changes under an active due filter.
-    if (changed && filters.dueStatus && focused && verified)
+    if (changed && filters.dueStatus && focused && verified) {
+      // refetch alone reuses an initial fetch with no data. Cancel synchronously
+      // first so its old-zone response cannot win or suppress the new walk.
+      void data.queryClient.cancelQueries({
+        queryKey: cardsOptions.queryKey,
+        exact: true,
+      });
       void cards.refetch();
-  }, [prefs.timeZone, filters.dueStatus, focused, verified, cards.refetch]);
+    }
+  }, [
+    prefs.timeZone,
+    filters.dueStatus,
+    focused,
+    verified,
+    cards.refetch,
+    cardsKeyHash,
+    data.queryClient,
+  ]);
   const now = useCalendarClock(focused, boundary);
   const today = calendarToday(prefs.timeZone, now);
   const day = selected ?? today;

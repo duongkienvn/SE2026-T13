@@ -716,3 +716,71 @@ test.each([false, true])(
     }
   },
 );
+
+test('zone change cancels initial DUE_TODAY walk before accepting new-zone membership', async () => {
+  const now = clock();
+  const gate = deferred();
+  let firstSignal;
+  let filteredReads = 0;
+  const fresh = {
+    ...dated(2, '2026-11-17T12:00:00.000Z'),
+    title: 'New-zone deadline',
+  };
+  const env = await setup({
+    preferences: {
+      timeZone: 'UTC',
+      dateFormat: 'YYYY-MM-DD',
+      weekStartsOn: 'monday',
+      theme: 'light',
+    },
+    override(url, _, init) {
+      if (
+        !url.pathname.endsWith('/cards') ||
+        url.searchParams.get('dueStatus') !== 'DUE_TODAY'
+      )
+        return null;
+      filteredReads++;
+      if (filteredReads === 1) {
+        firstSignal = init.signal;
+        return gate.promise;
+      }
+      return response(page([fresh], 1, 100));
+    },
+  });
+  try {
+    await openCard();
+    await pick('2026-11-17');
+    await fireEvent.press(screen.getByRole('button', { name: 'Filters' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Due today' }));
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Apply filters (1)' }),
+    );
+    await waitFor(() => expect(filteredReads).toBe(1));
+    expect(screen.queryByText('1 Card')).toBeNull();
+    env.preferences.timeZone = 'America/Los_Angeles';
+    await act(() =>
+      env.data.queryClient.invalidateQueries({
+        queryKey: queryKeys.datePreferences(env.data.getIdentity()),
+      }),
+    );
+    // The previous-zone response is deliberately still unresolved here.
+    await waitFor(() => expect(filteredReads).toBe(2));
+    expect(firstSignal.aborted).toBe(true);
+    await screen.findByRole('button', { name: 'Open card: New-zone deadline' });
+    expect(screen.getByText('2026-11-17 · 04:00')).toBeTruthy();
+    await act(() =>
+      gate.resolve(
+        response(page([dated(1, '2026-11-17T00:30:00.000Z')], 1, 100)),
+      ),
+    );
+    expect(screen.queryByText('Card 1')).toBeNull();
+    expect(
+      screen.getByTestId('calendar-day-2026-11-17').props.accessibilityLabel,
+    ).toContain('1 due Card');
+    expect(filteredReads).toBe(2);
+  } finally {
+    gate.resolve(response(page([], 1, 100)));
+    await env.dispose();
+    now.mockRestore();
+  }
+});
