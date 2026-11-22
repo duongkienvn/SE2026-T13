@@ -641,7 +641,8 @@ test('saved timezone and date format determine grouping and time independently o
   );
   try {
     await screen.findByText('Dates in America/New_York');
-    expect(screen.getByText('18/11/2026 · 20:00')).toBeTruthy();
+    // Preferences can resolve before the notification page; wait for the row.
+    expect(await screen.findByText('18/11/2026 · 20:00')).toBeTruthy();
     expect(
       screen.getByRole('button', { name: /Open notification:/ }).props
         .accessibilityLabel,
