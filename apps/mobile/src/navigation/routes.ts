@@ -24,7 +24,7 @@ export type ResourcePath =
   | `/boards/${ResourceId}/cards/${ResourceId}`
   | `/boards/${ResourceId}/${'calendar' | 'table' | 'settings' | 'members' | 'activity'}`;
 export type DestinationPath =
-  | `/${'home' | 'tasks' | 'boards' | 'inbox' | 'search' | 'settings' | 'profile' | 'change-email' | 'invitation' | 'notification-preferences' | 'push-schedule'}`
+  | `/${'home' | 'tasks' | 'boards' | 'inbox' | 'search' | 'settings' | 'appearance' | 'profile' | 'change-email' | 'invitation' | 'notification-preferences' | 'push-schedule'}`
   | typeof invitationRecipientPath
   | ResourcePath;
 
@@ -49,6 +49,7 @@ export type Destination =
       screen:
         | 'search'
         | 'settings'
+        | 'appearance'
         | 'profile'
         | 'change-email'
         | 'invitation'
@@ -80,6 +81,7 @@ export function parsePath(path: string): Destination | null {
     if (
       name === 'search' ||
       name === 'settings' ||
+      name === 'appearance' ||
       name === 'profile' ||
       name === 'change-email' ||
       name === 'invitation' ||
