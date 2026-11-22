@@ -1,4 +1,11 @@
-import { type ReactNode, useSyncExternalStore, useEffect, useRef } from 'react';
+import {
+  type ReactNode,
+  useSyncExternalStore,
+  useEffect,
+  useRef,
+  useState,
+  useLayoutEffect,
+} from 'react';
 import { focusManager, useQuery } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
@@ -20,25 +27,40 @@ import {
 import { preferencesOptions } from './api';
 import { preferencesCommands } from './commands';
 
+type ThemeProjection = { scope: string; mode: ThemeMode };
 export function AccountThemeProvider({ children }: { children: ReactNode }) {
   const session = useSessionSnapshot();
-  if (session.status !== 'authenticated')
-    return <Palette mode="system">{children}</Palette>;
+  const scope =
+    session.status === 'authenticated'
+      ? `${session.user.id}:${session.generation}`
+      : null;
+  const [projection, publish] = useState<ThemeProjection | null>(null);
+  // Fence the projection during render, before a new account's effects can run.
+  // Only the preference observer remounts; navigation keeps its return memory.
+  const mode =
+    scope !== null && projection?.scope === scope ? projection.mode : 'system';
   return (
-    <AccountPalette
-      key={`${session.user.id}:${session.generation}`}
-      identity={{ userId: session.user.id, generation: session.generation }}
-    >
+    <Palette mode={mode}>
+      {session.status === 'authenticated' && (
+        <AccountPalette
+          key={scope}
+          scope={scope!}
+          identity={{ userId: session.user.id, generation: session.generation }}
+          publish={publish}
+        />
+      )}
       {children}
-    </AccountPalette>
+    </Palette>
   );
 }
 function AccountPalette({
   identity,
-  children,
+  scope,
+  publish,
 }: {
   identity: SessionIdentity;
-  children: ReactNode;
+  scope: string;
+  publish(projection: ThemeProjection): void;
 }) {
   const data = useMobileData(),
     online = useWorkspaceOnline();
@@ -84,11 +106,9 @@ function AccountPalette({
       });
     previousZone.current = zone;
   }, [zone, data, identity.userId, identity.generation]);
-  return (
-    <Palette mode={state.preview ?? query.data?.theme ?? 'system'}>
-      {children}
-    </Palette>
-  );
+  const mode = state.preview ?? query.data?.theme ?? 'system';
+  useLayoutEffect(() => publish({ scope, mode }), [publish, scope, mode]);
+  return null;
 }
 function Palette({ mode, children }: { mode: ThemeMode; children: ReactNode }) {
   return (

@@ -179,3 +179,37 @@ test('server zone rejection focuses the zone editor and preserves the selected d
     screen.getByLabelText('Search time zones').props.accessibilityHint,
   ).toBe('Choose a time zone supported by the server.');
 });
+
+test.each([
+  ['DD/MM/YYYY', '16/11/2026'],
+  ['MM/DD/YYYY', '11/16/2026'],
+  ['YYYY-MM-DD', '2026-11-16'],
+])(
+  'week-start preview uses %s without shifting its civil date in a negative-offset zone',
+  async (dateFormat, expected) => {
+    const clock = jest
+      .spyOn(Date, 'now')
+      .mockReturnValue(Date.parse('2026-11-18T12:00:00Z'));
+    try {
+      const env = await setup();
+      await act(() =>
+        env.data.queryClient.setQueryData(
+          queryKeys.datePreferences(env.identity),
+          {
+            theme: 'system',
+            timeZone: 'America/New_York',
+            dateFormat: 'YYYY-MM-DD',
+            weekStartsOn: 'monday',
+          },
+        ),
+      );
+      await screen.findByText('America/New_York');
+      await fireEvent.press(screen.getByRole('radio', { name: dateFormat }));
+      expect(
+        screen.getByText(`Start of current week: ${expected}`),
+      ).toBeTruthy();
+    } finally {
+      clock.mockRestore();
+    }
+  },
+);

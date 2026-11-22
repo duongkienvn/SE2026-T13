@@ -111,6 +111,11 @@ test('timeout after transfer starts blocks new writes even if server values matc
   await cmd.refresh();
   assert.equal(cmd.getSnapshot().uncertain, true);
   await assert.rejects(cmd.save({ weekStartsOn: 'sunday' }));
+  await env.manager.establishSession(loginResponse(env.identity.userId));
+  assert.equal(
+    preferencesCommands(env.data, env.identity).getSnapshot().uncertain,
+    true,
+  );
   env.dispose();
 });
 
@@ -185,4 +190,22 @@ test('explicit successful revalidation clears a definite unavailable error witho
   assert.equal(cmd.getSnapshot().saved, false);
   assert.equal(cmd.getSnapshot().uncertain, false);
   env.dispose();
+});
+
+test('definite PATCH 401 clears its provisional marker before the same account signs in again', async () => {
+  const env = await integration(),
+    userId = env.identity.userId;
+  try {
+    env.respond(() => Promise.resolve(json({}, 401)));
+    await preferencesCommands(env.data, env.identity).chooseTheme('dark');
+    assert.equal(env.data.getIdentity(), null);
+    await env.manager.establishSession(loginResponse(userId));
+    const next = preferencesCommands(env.data, env.identity);
+    assert.equal(next.getSnapshot().uncertain, false);
+    env.respond(() => Promise.resolve(ok({ ...saved, theme: 'dark' })));
+    await next.chooseTheme('dark');
+    assert.equal(next.getSnapshot().saved, true);
+  } finally {
+    env.dispose();
+  }
 });

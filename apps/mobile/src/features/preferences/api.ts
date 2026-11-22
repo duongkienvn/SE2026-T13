@@ -56,9 +56,12 @@ export function preferencesApi(
           Number.isFinite(error.retryAfterMs)
             ? Math.max(0, error.retryAfterMs)
             : 60000;
+        const current = budgets.get(api);
         const until = Math.max(
           Date.now() + delay,
-          budget && sameIdentity(budget.identity, identity) ? budget.until : 0,
+          current && sameIdentity(current.identity, identity)
+            ? current.until
+            : 0,
         );
         budgets.set(api, { identity, until });
         throw new ApiError(error.kind, {

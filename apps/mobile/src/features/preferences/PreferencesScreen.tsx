@@ -18,6 +18,8 @@ import { listTimeZones, deviceTimeZone, regionalPreview } from './format';
 import { Choice, Note, PreferencesPage } from './components';
 import { preferencesError } from './usePreferences';
 import { useRegionalPreferences } from './useRegionalPreferences';
+import { civilDate } from '../calendar/month-grid';
+import { formatWallTime } from '../cards/metadata/dates';
 export function PreferencesScreen() {
   const session = useSessionSnapshot();
   if (session.status !== 'authenticated') return null;
@@ -212,7 +214,13 @@ function Regional({ identity }: { identity: SessionIdentity }) {
                   />
                 ))}
               </View>
-              <Note>Start of current week: {preview.weekStart}</Note>
+              <Note>
+                Start of current week:{' '}
+                {
+                  formatWallTime(civilDate(preview.weekStart), draft.dateFormat)
+                    .date
+                }
+              </Note>
             </Surface>
             <Surface>
               {heading('Preview')}

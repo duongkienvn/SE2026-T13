@@ -51,7 +51,8 @@ function createCommands(data: MobileDataLayer, identity: SessionIdentity) {
   };
   let desired: Preferences['theme'] | null = null,
     controller: AbortController | null = null,
-    disposed = false;
+    disposed = false,
+    provisionalUncertainty = false;
   const current = () => !disposed && sameIdentity(identity, data.getIdentity());
   function publish(patch: Partial<State>) {
     state = { ...state, ...patch };
@@ -112,6 +113,13 @@ function createCommands(data: MobileDataLayer, identity: SessionIdentity) {
       return result;
     } catch (error) {
       if (attempted && ambiguous(error)) retain();
+      else if (provisionalUncertainty) {
+        // Teardown runs before a definite 401 reaches this catch. This command
+        // acquired the marker while pending; a known rejection cannot commit.
+        uncertainUsers.get(data)?.delete(identity.userId);
+        provisionalUncertainty = false;
+        publish({ uncertain: false });
+      }
       if (current())
         publish({
           error,
@@ -159,7 +167,10 @@ function createCommands(data: MobileDataLayer, identity: SessionIdentity) {
     }
   }
   const unsubscribe = data.onPrivateReset(() => {
-    if (controller) retain();
+    if (controller) {
+      provisionalUncertainty = true;
+      retain();
+    }
     disposed = true;
     desired = null;
     controller?.abort();

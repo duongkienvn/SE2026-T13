@@ -6,6 +6,7 @@ import { preferencesApi } from '../../src/features/preferences/api.ts';
 import { preferencesCommands } from '../../src/features/preferences/commands.ts';
 import { queryKeys } from '../../src/infrastructure/query/keys.ts';
 import { saved } from './fixtures.ts';
+import { flush } from '../auth/support.ts';
 test('all preference adapters share Retry-After and cannot bypass a read cooldown with PATCH', async () => {
   const env = await integration();
   let limited = true;
@@ -97,4 +98,48 @@ test('regional pending write coalesces theme intent without full object overwrit
     'dark',
   );
   env.dispose();
+});
+
+test('overlapping 429 responses preserve the longest cooldown for the same identity', async (t) => {
+  let now = 1800000000000;
+  t.mock.method(Date, 'now', () => now);
+  const env = await integration();
+  const releases: ((r: Response) => void)[] = [];
+  env.respond(() => new Promise((resolve) => releases.push(resolve)));
+  const api = preferencesApi(env.data.api, env.identity),
+    signal = () => new AbortController().signal;
+  const first = api.get(signal()).catch((error) => error),
+    second = api.get(signal()).catch((error) => error);
+  await flush();
+  const limited = (seconds: number) =>
+    new Response('{}', {
+      status: 429,
+      headers: {
+        'content-type': 'application/json',
+        'retry-after': String(seconds),
+      },
+    });
+  try {
+    releases[0]!(limited(60));
+    const long = await first;
+    assert.ok(long instanceof ApiError);
+    now += 1000;
+    releases[1]!(limited(1));
+    const short = await second;
+    assert.ok(short instanceof ApiError);
+    assert.equal(short.retryAfterMs, 59000);
+    now += 1000;
+    const count = env.requests.length;
+    await assert.rejects(
+      api.get(signal()),
+      (error) =>
+        error instanceof ApiError &&
+        error.status === 429 &&
+        error.retryAfterMs === 58000 &&
+        error.requestStarted === false,
+    );
+    assert.equal(env.requests.length, count);
+  } finally {
+    env.dispose();
+  }
 });
