@@ -142,3 +142,102 @@ test('system tracks native scheme and status bar; fixed theme ignores OS; new id
   expect(await screen.findByText(palettes.light.background)).toBeTruthy();
   expect(screen.queryByText(palettes.dark.background)).toBeNull();
 });
+
+test('rapid app resume revalidates a Web change even inside the preferences freshness window', async () => {
+  const env = await integration();
+  let prefs = {
+    theme: 'light',
+    timeZone: 'UTC',
+    dateFormat: 'YYYY-MM-DD',
+    weekStartsOn: 'monday',
+  };
+  env.respond(async () => ok(prefs));
+  const view = await render(
+    <SessionProvider manager={env.manager}>
+      <DataProvider layer={env.data}>
+        <AccountThemeProvider>
+          <Probe />
+        </AccountThemeProvider>
+      </DataProvider>
+    </SessionProvider>,
+  );
+  cleanup = async () => {
+    await view.unmount();
+    env.dispose();
+  };
+  await act(() => focusManager.setFocused(true));
+  await screen.findByText(palettes.light.background);
+  // Wait for the initial resource (the neutral OS palette is also light).
+  await waitFor(() =>
+    expect(
+      env.data.queryClient.getQueryData(queryKeys.datePreferences(env.identity))
+        ?.theme,
+    ).toBe('light'),
+  );
+  await act(() => focusManager.setFocused(false));
+  prefs = { ...prefs, theme: 'dark', timeZone: 'America/New_York' };
+  await act(() => focusManager.setFocused(true));
+  expect(await screen.findByText(palettes.dark.background)).toBeTruthy();
+});
+
+test('resume through a pending PATCH defers one shared read until its ACK', async () => {
+  const env = await integration();
+  let prefs = {
+      theme: 'light',
+      timeZone: 'UTC',
+      dateFormat: 'YYYY-MM-DD',
+      weekStartsOn: 'monday',
+    },
+    release;
+  env.respond((_u, init) =>
+    init.method === 'PATCH'
+      ? new Promise((r) => (release = r))
+      : Promise.resolve(ok(prefs)),
+  );
+  const view = await render(
+    <SessionProvider manager={env.manager}>
+      <DataProvider layer={env.data}>
+        <AccountThemeProvider>
+          <Probe />
+        </AccountThemeProvider>
+      </DataProvider>
+    </SessionProvider>,
+  );
+  cleanup = async () => {
+    await view.unmount();
+    env.dispose();
+  };
+  await act(() => focusManager.setFocused(true));
+  await waitFor(() =>
+    expect(
+      env.data.queryClient.getQueryData(queryKeys.datePreferences(env.identity))
+        ?.theme,
+    ).toBe('light'),
+  );
+  const initialReads = env.requests.filter(
+    (r) => r.init.method === 'GET',
+  ).length;
+  let pending;
+  await act(() => {
+    pending = preferencesCommands(env.data, env.identity).chooseTheme('dark');
+  });
+  await act(() => focusManager.setFocused(false));
+  await act(() => focusManager.setFocused(true));
+  expect(env.requests.filter((r) => r.init.method === 'GET').length).toBe(
+    initialReads,
+  );
+  prefs = { ...prefs, theme: 'dark', timeZone: 'America/New_York' };
+  await act(async () => {
+    release(ok({ ...prefs, timeZone: 'UTC' }));
+    await pending;
+  });
+  await waitFor(() =>
+    expect(
+      env.data.queryClient.getQueryData(queryKeys.datePreferences(env.identity))
+        ?.timeZone,
+    ).toBe('America/New_York'),
+  );
+  expect(env.requests.filter((r) => r.init.method === 'GET').length).toBe(
+    initialReads + 1,
+  );
+});

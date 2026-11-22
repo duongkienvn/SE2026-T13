@@ -12,7 +12,11 @@ import {
   palettes,
   type ThemeMode,
 } from '../../ui/theme';
-import { useWorkspaceOnline } from '../workspaces/status';
+import {
+  useWorkspaceOnline,
+  useWorkspaceRetryReady,
+  canRetryWorkspace,
+} from '../workspaces/status';
 import { preferencesOptions } from './api';
 import { preferencesCommands } from './commands';
 
@@ -44,10 +48,33 @@ function AccountPalette({
   );
   const commands = preferencesCommands(data, identity);
   const state = useSyncExternalStore(commands.subscribe, commands.getSnapshot);
+  const eligible = online && foreground;
+  const writeReady = useWorkspaceRetryReady(state.error, state.errorUpdatedAt);
   const query = useQuery({
     ...preferencesOptions(data.api, identity),
-    enabled: online && foreground && !state.pending,
+    enabled: ({ state: read }) =>
+      eligible &&
+      !commands.getSnapshot().pending &&
+      writeReady &&
+      canRetryWorkspace(read.error, read.errorUpdatedAt),
   });
+  const readReady = useWorkspaceRetryReady(query.error, query.errorUpdatedAt);
+  const previouslyEligible = useRef(eligible),
+    wakeRequested = useRef(false);
+  useEffect(() => {
+    if (!eligible) {
+      previouslyEligible.current = false;
+      return;
+    }
+    if (!previouslyEligible.current) wakeRequested.current = true;
+    previouslyEligible.current = true;
+    if (!wakeRequested.current || state.pending || !readReady || !writeReady)
+      return;
+    wakeRequested.current = false;
+    // Enabling a still-fresh observer alone skips the required resume read.
+    // Share any read already started by another consumer rather than cancelling it.
+    void query.refetch({ cancelRefetch: false });
+  }, [eligible, state.pending, readReady, writeReady, query.refetch]);
   const zone = query.data?.timeZone;
   const previousZone = useRef(zone);
   useEffect(() => {
