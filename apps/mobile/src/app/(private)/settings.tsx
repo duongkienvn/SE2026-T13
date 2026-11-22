@@ -39,6 +39,11 @@ export default function Settings() {
           variant="secondary"
           onPress={() => router.push('/preferences')}
         />
+        <Button
+          label="Data & Privacy"
+          variant="secondary"
+          onPress={() => router.push('/data-privacy')}
+        />
       </ScrollView>
     </SafeAreaView>
   );
