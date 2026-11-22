@@ -139,8 +139,17 @@ function createCommands(data: MobileDataLayer, identity: SessionIdentity) {
       }
       try {
         await write({ theme });
-      } catch {
-        if (state.uncertain || state.retryAt > Date.now()) {
+      } catch (error) {
+        // Pre-transfer guards can fail after a previous command succeeded (for
+        // example reconnect loss). That earlier ACK does not confirm this choice.
+        if (current())
+          publish({ saved: false, error, errorUpdatedAt: Date.now() });
+        if (
+          state.uncertain ||
+          state.retryAt > Date.now() ||
+          !onlineManager.isOnline() ||
+          (error instanceof ApiError && [401, 403, 404].includes(error.status))
+        ) {
           desired = null;
           publish({ preview: null });
           break;
@@ -204,6 +213,7 @@ function createCommands(data: MobileDataLayer, identity: SessionIdentity) {
         queryFn: ({ signal }) => api.get(signal),
       });
       // An observation cannot establish settlement; uncertainty deliberately stays locked.
+      if (current()) publish({ error: null, saved: false });
       return result;
     },
   };

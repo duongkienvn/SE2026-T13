@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { onlineManager } from '@tanstack/react-query';
 import { integration, ok, json } from '../realtime/integration-support.ts';
 import { flush, loginResponse, USER_B } from '../auth/support.ts';
 import { preferencesCommands } from '../../src/features/preferences/commands.ts';
@@ -144,5 +145,44 @@ test('a stale GET started during a PATCH cannot replace its authoritative respon
     )?.dateFormat,
     'DD/MM/YYYY',
   );
+  env.dispose();
+});
+
+test('connectivity loss before a queued theme starts clears it without false Saved or offline queue', async () => {
+  const env = await integration();
+  let release!: (r: Response) => void;
+  env.respond(() => new Promise((r) => (release = r)));
+  try {
+    const cmd = preferencesCommands(env.data, env.identity),
+      saving = cmd.save({ weekStartsOn: 'sunday' });
+    await flush();
+    void cmd.chooseTheme('dark');
+    onlineManager.setOnline(false);
+    release(ok({ ...saved, weekStartsOn: 'sunday' }));
+    await saving;
+    assert.equal(cmd.getSnapshot().preview, null);
+    assert.equal(cmd.getSnapshot().saved, false);
+    assert.ok(cmd.getSnapshot().error);
+    assert.equal(env.requests.length, 1);
+    onlineManager.setOnline(true);
+    await flush();
+    assert.equal(env.requests.length, 1);
+  } finally {
+    onlineManager.setOnline(true);
+    env.dispose();
+  }
+});
+
+test('explicit successful revalidation clears a definite unavailable error without claiming Saved', async () => {
+  const env = await integration();
+  const cmd = preferencesCommands(env.data, env.identity);
+  env.respond(() => Promise.resolve(json({}, 403)));
+  await cmd.chooseTheme('dark');
+  assert.ok(cmd.getSnapshot().error);
+  env.respond(() => Promise.resolve(ok(saved)));
+  await cmd.refresh();
+  assert.equal(cmd.getSnapshot().error, null);
+  assert.equal(cmd.getSnapshot().saved, false);
+  assert.equal(cmd.getSnapshot().uncertain, false);
   env.dispose();
 });

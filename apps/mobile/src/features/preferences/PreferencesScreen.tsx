@@ -111,6 +111,12 @@ function Regional({ identity }: { identity: SessionIdentity }) {
                   <TextField
                     ref={searchRef}
                     label="Search time zones"
+                    error={
+                      p.state.error instanceof ApiError &&
+                      p.state.error.status === 400
+                        ? 'Choose a time zone supported by the server.'
+                        : undefined
+                    }
                     value={search}
                     editable={editable}
                     autoCapitalize="none"

@@ -288,7 +288,8 @@ function Inbox({ identity }: { identity: SessionIdentity }) {
             accessibilityLiveRegion="polite"
             style={[typography.supporting, { color: c.textSecondary }]}
           >
-            Couldn�t refresh date preferences. Dates use {inbox.dates.timeZone}.
+            Could not refresh date preferences. Dates use {inbox.dates.timeZone}
+            .
           </Text>
         )}
         {!!message && (

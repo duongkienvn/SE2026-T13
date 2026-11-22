@@ -11,7 +11,7 @@ import { PreferencesScreen } from '../src/features/preferences/PreferencesScreen
 import { SessionProvider } from '../src/infrastructure/auth/SessionProvider';
 import { DataProvider } from '../src/infrastructure/query/DataProvider';
 import { queryKeys } from '../src/infrastructure/query/keys';
-import { integration, ok } from './realtime/integration-support';
+import { integration, ok, json } from './realtime/integration-support';
 const mockPrevent = jest.fn(),
   mockBack = jest.fn();
 jest.mock('expo-router', () => ({
@@ -152,4 +152,30 @@ test('time zone selection is searchable, explicit and saved zone stays exact', a
   expect(
     JSON.parse(env.requests.find((r) => r.init.method === 'PATCH').init.body),
   ).toEqual({ timeZone: 'Asia/Ho_Chi_Minh' });
+});
+
+test('server zone rejection focuses the zone editor and preserves the selected draft', async () => {
+  const env = await setup();
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Choose time zone' }),
+  );
+  await fireEvent.changeText(
+    screen.getByLabelText('Search time zones'),
+    'America/New_York',
+  );
+  await fireEvent.press(
+    screen.getByRole('radio', { name: 'America/New_York' }),
+  );
+  env.respond(() => Promise.resolve(json({}, 400)));
+  await fireEvent.press(screen.getByRole('button', { name: 'Save changes' }));
+  expect(
+    await screen.findByText('Choose a time zone supported by the server.'),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole('radio', { name: 'America/New_York' }),
+  ).toBeSelected();
+  expect(screen.queryByText('Preferences saved.')).toBeNull();
+  expect(
+    screen.getByLabelText('Search time zones').props.accessibilityHint,
+  ).toBe('Choose a time zone supported by the server.');
 });
