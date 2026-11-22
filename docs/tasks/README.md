@@ -99,6 +99,8 @@ chưa triển khai. Mục lục dưới đây liệt kê toàn bộ task documen
 
 ## Frontend tasks
 
+- [MOB-39 Native Security, password recovery entry and Connected Google](frontend/mob-39-security-connected-google.md)
+
 - [MOB-36 Native Calendar Week and Month/Week consistency](frontend/mob-36-calendar-week.md)
 
 - [MOB-35 Native Board Calendar Month](frontend/mob-35-native-calendar-month.md)
