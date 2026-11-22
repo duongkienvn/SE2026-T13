@@ -128,6 +128,13 @@ export function SignInScreen() {
       {session.status === 'expired' && (
         <AuthText>Your session expired. Sign in again.</AuthText>
       )}
+      {session.status === 'unauthenticated' &&
+        session.reason === 'security-change' && (
+          <AuthText>
+            Your password changed and you were signed out on all devices. Sign
+            in with your new password.
+          </AuthText>
+        )}
       {state.notice && <AuthText>{state.notice}</AuthText>}
       <TextField
         label="Email address"
