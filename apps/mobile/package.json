@@ -21,6 +21,7 @@
     "bundle:development": "expo export --platform android --dev --output-dir dist/development --source-maps && node scripts/verify-native-bundle.mjs dist/development",
     "test": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/*.test.mjs test/**/*.test.ts && jest --runInBand",
     "test:realtime:local": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON test/realtime/live-smoke.mjs",
+    "test:preferences:local": "pnpm --filter @kanban/shared build && pnpm --filter @kanban/backend build && node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON test/preferences/live-smoke.mjs",
     "test:profile:local": "pnpm --filter @kanban/shared build && pnpm --filter @kanban/backend build && node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON test/profile/live-smoke.mjs"
   },
   "dependencies": {

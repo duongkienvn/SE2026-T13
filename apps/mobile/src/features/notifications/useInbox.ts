@@ -78,9 +78,7 @@ export function useInbox(identity: SessionIdentity) {
     ...datePreferencesOptions(data.api, identity),
     enabled: eligible,
   });
-  const dates = preferences.isError
-    ? utcPreferences
-    : (preferences.data ?? utcPreferences);
+  const dates = preferences.data ?? utcPreferences;
   const changed = pagesChanged(list.data?.pages ?? []);
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -149,6 +147,7 @@ export function useInbox(identity: SessionIdentity) {
     countReady: countBudgetReady && countErrorReady,
     writesReady,
     dates,
+    preferences,
     now,
     changed,
   };

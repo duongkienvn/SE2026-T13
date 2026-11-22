@@ -128,7 +128,12 @@ async function setup({
     if (custom) return custom;
     const number = Number(url.searchParams.get('page'));
     if (url.pathname === '/api/users/me/preferences')
-      return result({ timeZone: 'Asia/Bangkok' });
+      return result({
+        theme: 'system',
+        weekStartsOn: 'monday',
+        dateFormat: 'YYYY-MM-DD',
+        timeZone: 'Asia/Bangkok',
+      });
     if (url.pathname === `/api/workspaces/${board.workspaceId}`)
       return result(workspace());
     if (url.pathname === `/api/boards/${boardId}`) return result(board);

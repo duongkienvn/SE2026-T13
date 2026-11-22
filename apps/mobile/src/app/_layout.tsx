@@ -1,6 +1,6 @@
 import { nativeRealtime } from '../infrastructure/realtime/native-realtime';
 import { RealtimeProvider } from '../infrastructure/realtime/RealtimeProvider';
-import { StatusBar } from 'expo-status-bar';
+import { AccountThemeProvider } from '../features/preferences/AccountThemeProvider';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { verifySharedCompatibility } from '../bootstrap/shared-compatibility';
 import { nativeData, nativeSession } from '../infrastructure/query/native-data';
@@ -56,7 +56,6 @@ export function NavigationRoot({
   return (
     <SafeAreaProvider>
       <SessionProvider adapter={adapter}>
-        <StatusBar style="auto" />
         <RootStack />
         <PushBridge />
       </SessionProvider>
@@ -77,7 +76,9 @@ export default function RootLayout() {
           <RealtimeProvider client={nativeRealtime}>
             <WorkspaceSelectionProvider>
               <PushContext.Provider value={nativePush}>
-                <NavigationRoot adapter={navigationAdapter} />
+                <AccountThemeProvider>
+                  <NavigationRoot adapter={navigationAdapter} />
+                </AccountThemeProvider>
               </PushContext.Provider>
             </WorkspaceSelectionProvider>
           </RealtimeProvider>

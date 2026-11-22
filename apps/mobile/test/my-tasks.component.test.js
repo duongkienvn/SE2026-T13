@@ -146,7 +146,12 @@ async function setup(rows = [row(1)], override) {
         if (result) return result;
         if (url.pathname === '/api/users/me/tasks') return taskPage(rows, url);
         if (url.pathname.endsWith('/preferences'))
-          return ok({ timeZone: 'America/New_York', dateFormat: 'YYYY-MM-DD' });
+          return ok({
+            theme: 'system',
+            weekStartsOn: 'monday',
+            timeZone: 'America/New_York',
+            dateFormat: 'YYYY-MM-DD',
+          });
         if (url.pathname === `/api/boards/${boardId}`)
           return ok({
             id: boardId,

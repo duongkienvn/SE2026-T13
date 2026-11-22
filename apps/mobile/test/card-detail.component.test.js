@@ -182,7 +182,12 @@ async function setup({
         if (url.pathname === `/api${cardPath}/labels`)
           return success({ cardId: card.id, labels: [] });
         if (url.pathname.endsWith('/preferences'))
-          return success({ timeZone: 'UTC', dateFormat: 'YYYY-MM-DD' });
+          return success({
+            theme: 'system',
+            weekStartsOn: 'monday',
+            timeZone: 'UTC',
+            dateFormat: 'YYYY-MM-DD',
+          });
         if (
           url.pathname.endsWith('/labels') ||
           url.pathname.endsWith('/members')
@@ -846,7 +851,13 @@ test('real dates use the account zone and a Workspace-only reader never fetches 
   const env = await setup({
     readOnly: true,
     override: (r) => {
-      if (r.path.endsWith('/preferences')) return success({ timeZone: 'UTC' });
+      if (r.path.endsWith('/preferences'))
+        return success({
+          theme: 'system',
+          weekStartsOn: 'monday',
+          dateFormat: 'YYYY-MM-DD',
+          timeZone: 'UTC',
+        });
       if (r.path.endsWith('/members'))
         return response(
           page(
@@ -1259,7 +1270,12 @@ test('native date controls preserve a dirty description, PATCH one instant or nu
   const env = await setup({
     override: (r) =>
       r.path.endsWith('/preferences')
-        ? success({ timeZone: 'Asia/Kathmandu', dateFormat: 'DD/MM/YYYY' })
+        ? success({
+            theme: 'system',
+            weekStartsOn: 'monday',
+            timeZone: 'Asia/Kathmandu',
+            dateFormat: 'DD/MM/YYYY',
+          })
         : null,
   });
   const platform = jest.replaceProperty(Platform, 'OS', 'android');
@@ -1377,7 +1393,14 @@ test('date Save detects a changed account time zone and retains the unsubmitted 
   let zone = 'America/New_York';
   const env = await setup({
     override: (r) =>
-      r.path.endsWith('/preferences') ? success({ timeZone: zone }) : null,
+      r.path.endsWith('/preferences')
+        ? success({
+            theme: 'system',
+            weekStartsOn: 'monday',
+            dateFormat: 'YYYY-MM-DD',
+            timeZone: zone,
+          })
+        : null,
   });
   const platform = jest.replaceProperty(Platform, 'OS', 'android');
   try {

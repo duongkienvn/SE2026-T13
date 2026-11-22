@@ -165,7 +165,12 @@ async function setup({
     const custom = await override?.(call, state);
     if (custom) return custom;
     if (call.path === '/api/users/me/preferences')
-      return ok({ timeZone: 'Asia/Bangkok', dateFormat: 'DD/MM/YYYY' });
+      return ok({
+        theme: 'light',
+        timeZone: 'Asia/Bangkok',
+        dateFormat: 'DD/MM/YYYY',
+        weekStartsOn: 'monday',
+      });
     if (call.path === `/api/workspaces/${workspaceId}`)
       return state.accessStatus === 200
         ? ok(state.workspace)
@@ -373,6 +378,23 @@ test('long names at 320dp/160% fonts use themed growing rows and accessible exac
       );
       const row = screen.getByLabelText(/2026-11-18T10:00:00.000Z/);
       expect(row).toBeTruthy();
+      await waitFor(() =>
+        expect(
+          env.data.queryClient.getQueryData(
+            queryKeys.datePreferences(env.data.getIdentity()),
+          ),
+        ).toMatchObject({
+          theme: 'light',
+          timeZone: 'Asia/Bangkok',
+          dateFormat: 'DD/MM/YYYY',
+          weekStartsOn: 'monday',
+        }),
+      );
+      expect(
+        screen.queryByText(
+          'Until date preferences are available, timestamps use UTC.',
+        ),
+      ).toBeNull();
       const text = screen.getByText(
         /Long verified actor .*updated the workspace/,
       );

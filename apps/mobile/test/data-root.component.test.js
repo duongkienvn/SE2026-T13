@@ -14,6 +14,9 @@ jest.mock('../src/features/cards/attachments/native', () => ({
   clearPrivateAttachmentFiles: jest.fn(),
 }));
 
+const mockNavigationMount = jest.fn(),
+  mockNavigationUnmount = jest.fn();
+
 jest.mock('expo-status-bar', () => ({ StatusBar: () => null }));
 jest.mock('expo-router', () => ({
   useFocusEffect: jest.fn(),
@@ -60,6 +63,10 @@ jest.mock('../src/infrastructure/query/native-data', () => {
 jest.mock('../src/navigation/root-stack', () => ({
   RootStack: () => {
     const React = jest.requireActual('react');
+    React.useEffect(() => {
+      mockNavigationMount();
+      return mockNavigationUnmount;
+    }, []);
     const { Text } = jest.requireActual('react-native');
     const { useSession } = jest.requireActual(
       '../src/navigation/session-context',
@@ -90,8 +97,11 @@ test('actual root preserves secure session and navigation providers while exposi
     ).toBeTruthy(),
   );
   expect(nativeData.getIdentity()).toBeNull();
+  expect(mockNavigationMount).toHaveBeenCalledTimes(1);
   await act(() => nativeSession.establishSession(loginResponse(USER_A)));
   expect(screen.getByText('authenticated/authenticated/true')).toBeTruthy();
+  expect(mockNavigationMount).toHaveBeenCalledTimes(1);
+  expect(mockNavigationUnmount).not.toHaveBeenCalled();
   const key = queryKeys.me(nativeData.getIdentity());
   nativeData.queryClient.setQueryData(key, { private: 'test fixture' });
   const cleanupCalls = clearPrivateAttachmentFiles.mock.calls.length;
@@ -101,6 +111,8 @@ test('actual root preserves secure session and navigation providers while exposi
   );
   expect(screen.getByText('unauthenticated/unauthenticated/true')).toBeTruthy();
   expect(nativeData.queryClient.getQueryData(key)).toBeUndefined();
+  expect(mockNavigationMount).toHaveBeenCalledTimes(1);
+  expect(mockNavigationUnmount).not.toHaveBeenCalled();
   await rendered.unmount();
   nativeData.dispose();
   nativeSession.dispose();

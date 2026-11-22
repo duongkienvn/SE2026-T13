@@ -123,7 +123,7 @@ export function CardMetadata({ context }: CardDetailSectionProps) {
 
   const labels = useCardLabels(identity, boardId, cardId, active);
   const preferences = useQuery({
-    ...datePreferencesOptions(data.api, identity, boardId),
+    ...datePreferencesOptions(data.api, identity),
     enabled: active && (inScope || !!(card.startDate || card.dueDate)),
   });
   const rosterAllowed = board.currentUserRole !== null;

@@ -119,7 +119,12 @@ async function setup(rows = [notification()], override, mode = 'dark') {
           return wire(row);
         }
         if (url.pathname === '/api/users/me/preferences')
-          return wire({ timeZone: 'UTC', dateFormat: 'YYYY-MM-DD' });
+          return wire({
+            theme: 'system',
+            weekStartsOn: 'monday',
+            timeZone: 'UTC',
+            dateFormat: 'YYYY-MM-DD',
+          });
         if (url.pathname === '/api/boards/' + boardId)
           return wire({
             id: boardId,
@@ -625,7 +630,12 @@ test('saved timezone and date format determine grouping and time independently o
     [notification(1, { createdAt: '2026-11-19T01:00:00Z' })],
     (url) =>
       url.pathname === '/api/users/me/preferences'
-        ? wire({ timeZone: 'America/New_York', dateFormat: 'DD/MM/YYYY' })
+        ? wire({
+            theme: 'system',
+            weekStartsOn: 'monday',
+            timeZone: 'America/New_York',
+            dateFormat: 'DD/MM/YYYY',
+          })
         : null,
     'light',
   );

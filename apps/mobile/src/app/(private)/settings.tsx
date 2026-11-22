@@ -29,6 +29,16 @@ export default function Settings() {
           variant="secondary"
           onPress={() => router.push('/notification-preferences')}
         />
+        <Button
+          label="Appearance"
+          variant="secondary"
+          onPress={() => router.push('/appearance')}
+        />
+        <Button
+          label="Preferences"
+          variant="secondary"
+          onPress={() => router.push('/preferences')}
+        />
       </ScrollView>
     </SafeAreaView>
   );

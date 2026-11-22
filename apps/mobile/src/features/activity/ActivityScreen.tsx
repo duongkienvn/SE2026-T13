@@ -65,7 +65,7 @@ function useHistoryScope(
     [scope, identity.userId, identity.generation, id],
   );
   const preferences = useQuery({
-    ...datePreferencesOptions(data.api, identity, id),
+    ...datePreferencesOptions(data.api, identity),
     enabled: active && online,
   });
   useEffect(() => {
