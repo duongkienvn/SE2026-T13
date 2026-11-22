@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { createKanbanApi } from '../../src/features/boards/kanban-api.ts';
 import { integration, ok } from '../realtime/integration-support.ts';
 
-test('account date preferences have no Board grant dependency and include week start/theme defaults', async () => {
+test('account date preferences have no Board grant dependency and require complete authoritative week start and theme', async () => {
   const env = await integration();
   try {
     let value: unknown = {
@@ -22,12 +22,14 @@ test('account date preferences have no Board grant dependency and include week s
     const result = await read();
     assert.deepEqual(result, value);
     value = {};
-    assert.deepEqual(await read(), {
+    await assert.rejects(read());
+    value = {
       timeZone: 'UTC',
       dateFormat: 'YYYY-MM-DD',
       weekStartsOn: 'monday',
       theme: 'system',
-    });
+    };
+    assert.deepEqual(await read(), value);
     value = { timeZone: 'Not/AZone' };
     await assert.rejects(
       createKanbanApi(env.data.api, env.identity, '').datePreferences(

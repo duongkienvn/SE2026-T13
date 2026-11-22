@@ -1,9 +1,10 @@
-import { type ReactNode, useSyncExternalStore } from 'react';
+import { type ReactNode, useSyncExternalStore, useEffect, useRef } from 'react';
 import { focusManager, useQuery } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
 import { useSessionSnapshot } from '../../infrastructure/auth/SessionProvider';
 import type { SessionIdentity } from '../../infrastructure/api/session-client';
+import { queryKeys } from '../../infrastructure/query/keys';
 import { useMobileData } from '../../infrastructure/query/DataProvider';
 import {
   ThemeContext,
@@ -47,6 +48,15 @@ function AccountPalette({
     ...preferencesOptions(data.api, identity),
     enabled: online && foreground && !state.pending,
   });
+  const zone = query.data?.timeZone;
+  const previousZone = useRef(zone);
+  useEffect(() => {
+    if (zone && previousZone.current && zone !== previousZone.current)
+      void data.queryClient.invalidateQueries({
+        queryKey: [...queryKeys.scope(identity), 'me', 'push-schedule'],
+      });
+    previousZone.current = zone;
+  }, [zone, data, identity.userId, identity.generation]);
   return (
     <Palette mode={state.preview ?? query.data?.theme ?? 'system'}>
       {children}

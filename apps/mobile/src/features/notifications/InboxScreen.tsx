@@ -283,6 +283,14 @@ function Inbox({ identity }: { identity: SessionIdentity }) {
         <Text style={[typography.supporting, { color: c.textSecondary }]}>
           Dates in {inbox.dates.timeZone}
         </Text>
+        {inbox.preferences.isError && (
+          <Text
+            accessibilityLiveRegion="polite"
+            style={[typography.supporting, { color: c.textSecondary }]}
+          >
+            Couldn�t refresh date preferences. Dates use {inbox.dates.timeZone}.
+          </Text>
+        )}
         {!!message && (
           <View style={{ gap: spacing.sm }}>
             <Text

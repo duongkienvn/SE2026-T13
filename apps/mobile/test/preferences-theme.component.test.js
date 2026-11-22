@@ -8,6 +8,7 @@ import { DataProvider } from '../src/infrastructure/query/DataProvider';
 import { useTheme, palettes } from '../src/ui';
 import { integration, ok } from './realtime/integration-support';
 import { USER_B, loginResponse } from './auth/support';
+import { queryKeys } from '../src/infrastructure/query/keys';
 import { preferencesCommands } from '../src/features/preferences/commands';
 jest.mock('expo-network', () => ({
   getNetworkStateAsync: async () => ({ isConnected: true }),
@@ -57,6 +58,19 @@ test('root account theme uses confirmed and preview palettes, resets before B lo
     release(ok({ ...server, theme: 'light' }));
     await pending;
   });
+  const scheduleKey = [...queryKeys.scope(env.identity), 'me', 'push-schedule'];
+  env.data.queryClient.setQueryData(scheduleKey, { timeZone: 'UTC' });
+  await act(() =>
+    env.data.queryClient.setQueryData(queryKeys.datePreferences(env.identity), {
+      ...server,
+      timeZone: 'Asia/Ho_Chi_Minh',
+    }),
+  );
+  await waitFor(() =>
+    expect(env.data.queryClient.getQueryState(scheduleKey).isInvalidated).toBe(
+      true,
+    ),
+  );
   server = { ...server, theme: 'light' };
   env.respond(() => new Promise(() => {}));
   await act(() => env.manager.establishSession(loginResponse(USER_B)));
