@@ -18,7 +18,7 @@ import { type KanbanCard } from '../../src/features/boards/kanban-api.ts';
 import { integration, ok } from '../realtime/integration-support.ts';
 import { preferencesCommands } from '../../src/features/preferences/commands.ts';
 import { queryKeys } from '../../src/infrastructure/query/keys.ts';
-import { saved } from './model.test.ts';
+import { saved } from './fixtures.ts';
 test('same-account Web and native timestamp projections agree without changing UTC source', () => {
   for (const timeZone of [
     'UTC',

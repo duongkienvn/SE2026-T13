@@ -32,13 +32,15 @@ export function usePreferences(identity: SessionIdentity) {
       canRetryWorkspace(read.error, read.errorUpdatedAt),
   });
   const readReady = useWorkspaceRetryReady(query.error, query.errorUpdatedAt);
-  const denied =
-    query.error instanceof ApiError &&
-    [401, 403, 404].includes(query.error.status);
+  const denied = [query.error, state.error].some(
+    (error) =>
+      error instanceof ApiError && [401, 403, 404].includes(error.status),
+  );
   const canRefresh =
     eligible && !state.pending && !query.isFetching && writeReady && readReady;
   const writable =
     eligible &&
+    !denied &&
     !!query.data &&
     !query.isError &&
     !query.isFetching &&

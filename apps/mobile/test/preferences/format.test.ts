@@ -5,7 +5,7 @@ import {
   deviceTimeZone,
   regionalPreview,
 } from '../../src/features/preferences/format.ts';
-import { saved } from './model.test.ts';
+import { saved } from './fixtures.ts';
 test('zones fallback without supportedValuesOf keeps exact saved aliases and valid query', () => {
   const original = Intl.supportedValuesOf;
   Object.defineProperty(Intl, 'supportedValuesOf', {

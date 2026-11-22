@@ -28,6 +28,7 @@ function ambiguous(error: unknown) {
       (error.status >= 500 ||
         [
           'network',
+          'offline',
           'timeout',
           'aborted',
           'session-changed',
@@ -178,9 +179,15 @@ function createCommands(data: MobileDataLayer, identity: SessionIdentity) {
       if (!state.pending) await drain();
     },
     async save(patch: Patch) {
-      const result = await write(patch);
-      await drain();
-      return result;
+      try {
+        return await write(patch);
+      } finally {
+        if (!state.uncertain) await drain();
+        else {
+          desired = null;
+          publish({ preview: null });
+        }
+      }
     },
     async refresh() {
       data.assertCurrent(identity);

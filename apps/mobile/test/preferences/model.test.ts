@@ -8,12 +8,7 @@ import {
   beginDraft,
 } from '../../src/features/preferences/model.ts';
 
-export const saved = {
-  theme: 'system',
-  timeZone: 'UTC',
-  dateFormat: 'YYYY-MM-DD',
-  weekStartsOn: 'monday',
-} as const;
+import { saved } from './fixtures.ts';
 test('preferences require all four server fields, named zones and exact enums', () => {
   assert.deepEqual(decodePreferences(saved), saved);
   for (const value of [

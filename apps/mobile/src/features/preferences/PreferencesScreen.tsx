@@ -32,8 +32,9 @@ function Regional({ identity }: { identity: SessionIdentity }) {
   const p = useRegionalPreferences(identity),
     c = useTheme(),
     navigation = useDraftNavigation(p, '/preferences');
+  const [selectingZone, setSelectingZone] = useState(false);
   const [search, setSearch] = useState(''),
-    [limit, setLimit] = useState(30),
+    [limit, setLimit] = useState(10),
     [now, setNow] = useState(Date.now);
   const searchRef = useRef<ComponentRef<typeof TextInput>>(null);
   const draft = p.form?.draft,
@@ -59,8 +60,11 @@ function Regional({ identity }: { identity: SessionIdentity }) {
   }, [p.eligible]);
   useEffect(() => {
     if (p.state.error instanceof ApiError && p.state.error.status === 400)
-      searchRef.current?.focus();
+      setSelectingZone(true);
   }, [p.state.error]);
+  useEffect(() => {
+    if (selectingZone) searchRef.current?.focus();
+  }, [selectingZone]);
   const heading = (text: string) => (
     <Text
       accessibilityRole="header"
@@ -94,46 +98,61 @@ function Regional({ identity }: { identity: SessionIdentity }) {
               <Text style={[typography.strong, { color: c.text }]}>
                 {draft.timeZone}
               </Text>
-              <TextField
-                ref={searchRef}
-                label="Search time zones"
-                value={search}
-                editable={editable}
-                autoCapitalize="none"
-                autoCorrect={false}
-                onChangeText={(text) => {
-                  setSearch(text);
-                  setLimit(30);
-                }}
-                hint="Search supported zones or enter a named IANA zone, such as America/New_York."
+              <Button
+                label={
+                  selectingZone ? 'Close time zone list' : 'Choose time zone'
+                }
+                variant="secondary"
+                disabled={!editable}
+                onPress={() => setSelectingZone((v) => !v)}
               />
-              <View
-                accessibilityRole="radiogroup"
-                accessibilityLabel="Time zone"
-                style={{ gap: spacing.sm }}
-              >
-                {matches.slice(0, limit).map((zone) => (
-                  <Choice
-                    key={zone}
-                    label={zone}
-                    detail={zone.replaceAll('_', ' ')}
-                    selected={zone === draft.timeZone}
-                    disabled={!editable}
-                    onPress={() => p.edit({ timeZone: zone })}
+              {selectingZone && (
+                <>
+                  <TextField
+                    ref={searchRef}
+                    label="Search time zones"
+                    value={search}
+                    editable={editable}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    onChangeText={(text) => {
+                      setSearch(text);
+                      setLimit(10);
+                    }}
+                    hint="Search supported zones or enter a named IANA zone, such as America/New_York."
                   />
-                ))}
-              </View>
-              {!matches.length && (
-                <Note>
-                  No supported zone found. Enter a valid named IANA zone.
-                </Note>
-              )}
-              {matches.length > limit && (
-                <Button
-                  label="Show more time zones"
-                  variant="secondary"
-                  onPress={() => setLimit((v) => v + 30)}
-                />
+                  <View
+                    accessibilityRole="radiogroup"
+                    accessibilityLabel="Time zone"
+                    style={{ gap: spacing.sm }}
+                  >
+                    {matches.slice(0, limit).map((zone) => (
+                      <Choice
+                        key={zone}
+                        label={zone}
+                        detail={zone.replaceAll('_', ' ')}
+                        selected={zone === draft.timeZone}
+                        disabled={!editable}
+                        onPress={() => {
+                          p.edit({ timeZone: zone });
+                          setSelectingZone(false);
+                        }}
+                      />
+                    ))}
+                  </View>
+                  {!matches.length && (
+                    <Note>
+                      No supported zone found. Enter a valid named IANA zone.
+                    </Note>
+                  )}
+                  {matches.length > limit && (
+                    <Button
+                      label="Show more time zones"
+                      variant="secondary"
+                      onPress={() => setLimit((v) => v + 10)}
+                    />
+                  )}
+                </>
               )}
               {device && device !== draft.timeZone && (
                 <Button

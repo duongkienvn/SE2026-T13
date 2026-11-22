@@ -4,7 +4,7 @@ import { integration, ok, json } from '../realtime/integration-support.ts';
 import { flush, loginResponse, USER_B } from '../auth/support.ts';
 import { preferencesCommands } from '../../src/features/preferences/commands.ts';
 import { queryKeys } from '../../src/infrastructure/query/keys.ts';
-import { saved } from './model.test.ts';
+import { saved } from './fixtures.ts';
 
 test('rapid theme previews serialize sparse writes and latest intent wins', async () => {
   const env = await integration();
@@ -89,6 +89,60 @@ test('late old-account response cannot populate new account cache or preview', a
   assert.equal(
     env.data.queryClient.getQueryData(queryKeys.datePreferences(env.identity)),
     undefined,
+  );
+  env.dispose();
+});
+
+test('timeout after transfer starts blocks new writes even if server values match later', async () => {
+  const env = await integration();
+  let release!: (r: Response) => void;
+  env.respond(() => new Promise((r) => (release = r)));
+  const cmd = preferencesCommands(env.data, env.identity),
+    pending = cmd.chooseTheme('dark');
+  await flush();
+  env.time.advance(15001);
+  await pending;
+  assert.equal(cmd.getSnapshot().uncertain, true);
+  assert.equal(cmd.getSnapshot().saved, false);
+  release(ok({ ...saved, theme: 'dark' }));
+  await flush();
+  env.respond(() => Promise.resolve(ok({ ...saved, theme: 'dark' })));
+  await cmd.refresh();
+  assert.equal(cmd.getSnapshot().uncertain, true);
+  await assert.rejects(cmd.save({ weekStartsOn: 'sunday' }));
+  env.dispose();
+});
+
+test('a stale GET started during a PATCH cannot replace its authoritative response', async () => {
+  const env = await integration();
+  let patchDone!: (r: Response) => void, readDone!: (r: Response) => void;
+  env.respond(
+    (_u, init) =>
+      new Promise((r) => {
+        if (init.method === 'PATCH') patchDone = r;
+        else readDone = r;
+      }),
+  );
+  const cmd = preferencesCommands(env.data, env.identity),
+    saving = cmd.save({ dateFormat: 'DD/MM/YYYY' });
+  await flush();
+  const { preferencesOptions } =
+    await import('../../src/features/preferences/api.ts');
+  const reading = env.data.queryClient.fetchQuery(
+    preferencesOptions(env.data.api, env.identity),
+  );
+  const failed = reading.catch(() => undefined);
+  await flush();
+  patchDone(ok({ ...saved, dateFormat: 'DD/MM/YYYY' }));
+  await saving;
+  readDone(ok(saved));
+  await failed;
+  await flush();
+  assert.equal(
+    env.data.queryClient.getQueryData<typeof saved>(
+      queryKeys.datePreferences(env.identity),
+    )?.dateFormat,
+    'DD/MM/YYYY',
   );
   env.dispose();
 });

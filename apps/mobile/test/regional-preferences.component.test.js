@@ -109,3 +109,47 @@ test('dirty hardware Back offers Keep editing and Discard and conflict requires 
   await fireEvent.press(screen.getByRole('button', { name: 'Discard' }));
   expect(repeat).toHaveBeenCalledTimes(1);
 });
+
+test('dirty touched fields survive Web changes and need explicit conflict review', async () => {
+  const env = await setup();
+  await fireEvent.press(screen.getByRole('radio', { name: 'DD/MM/YYYY' }));
+  await act(() =>
+    env.data.queryClient.setQueryData(queryKeys.datePreferences(env.identity), {
+      theme: 'dark',
+      timeZone: 'UTC',
+      dateFormat: 'MM/DD/YYYY',
+      weekStartsOn: 'monday',
+    }),
+  );
+  expect(await screen.findByText(/Preferences changed elsewhere/)).toBeTruthy();
+  expect(screen.getByRole('radio', { name: 'DD/MM/YYYY' })).toBeSelected();
+  expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Keep my edits after review' }),
+  );
+  await fireEvent.press(screen.getByRole('button', { name: 'Save changes' }));
+  expect(await screen.findByText('Preferences saved.')).toBeTruthy();
+  expect(
+    JSON.parse(env.requests.find((r) => r.init.method === 'PATCH').init.body),
+  ).toEqual({ dateFormat: 'DD/MM/YYYY' });
+});
+
+test('time zone selection is searchable, explicit and saved zone stays exact', async () => {
+  const env = await setup();
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Choose time zone' }),
+  );
+  await fireEvent.changeText(
+    screen.getByLabelText('Search time zones'),
+    'Asia/Ho_Chi_Minh',
+  );
+  await fireEvent.press(
+    screen.getByRole('radio', { name: 'Asia/Ho_Chi_Minh' }),
+  );
+  expect(screen.queryByLabelText('Search time zones')).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: 'Save changes' }));
+  expect(await screen.findByText('Preferences saved.')).toBeTruthy();
+  expect(
+    JSON.parse(env.requests.find((r) => r.init.method === 'PATCH').init.body),
+  ).toEqual({ timeZone: 'Asia/Ho_Chi_Minh' });
+});

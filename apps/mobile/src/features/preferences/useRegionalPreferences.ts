@@ -76,18 +76,23 @@ export function useRegionalPreferences(identity: SessionIdentity) {
       const fresh = p.data.queryClient.getQueryData<Preferences>(
         queryKeys.datePreferences(identity),
       );
+      let reconciled = editing;
       if (fresh) {
-        const reconciled = receiveDraft(editing, fresh);
+        reconciled = receiveDraft(editing, fresh);
         if (reconciled.conflict) {
           setForm(reconciled);
           return;
         }
       }
+      const patch = regionalPatch(reconciled.saved, reconciled.draft);
+      if (!Object.keys(patch).length) {
+        setForm(beginDraft(reconciled.saved));
+        setNotice('Your choices already match the latest server values.');
+        return;
+      }
       setNotice('');
       try {
-        const result = await p.commands.save(
-          regionalPatch(editing.saved, editing.draft),
-        );
+        const result = await p.commands.save(patch);
         if (mounted.current && sameIdentity(identity, p.data.getIdentity())) {
           setForm(beginDraft(result));
           setNotice('Preferences saved.');

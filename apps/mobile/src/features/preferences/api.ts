@@ -1,3 +1,5 @@
+import { ApiError } from '../../infrastructure/api/errors.ts';
+import { sameIdentity } from '../../infrastructure/api/session-client.ts';
 import { queryOptions } from '@tanstack/react-query';
 import type {
   SessionHttpClient,
@@ -12,6 +14,10 @@ import {
   type Patch,
 } from './model.ts';
 
+const budgets = new WeakMap<
+  SessionHttpClient,
+  { identity: SessionIdentity; until: number }
+>();
 export function preferencesApi(
   api: SessionHttpClient,
   identity: SessionIdentity,
@@ -23,15 +29,50 @@ export function preferencesApi(
     expectedStatus: 200,
     retries: 0 as const,
   });
+  async function request(patch: Patch | null, signal: AbortSignal) {
+    const budget = budgets.get(api);
+    if (
+      budget &&
+      sameIdentity(budget.identity, identity) &&
+      budget.until > Date.now()
+    )
+      throw new ApiError('http', {
+        status: 429,
+        retryAfterMs: budget.until - Date.now(),
+        requestStarted: false,
+      });
+    try {
+      return await api.json(
+        '/users/me/preferences',
+        decodePreferences,
+        patch
+          ? { ...options(signal), method: 'PATCH', body: validatePatch(patch) }
+          : options(signal),
+      );
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 429) {
+        const delay =
+          error.retryAfterMs !== undefined &&
+          Number.isFinite(error.retryAfterMs)
+            ? Math.max(0, error.retryAfterMs)
+            : 60000;
+        const until = Math.max(
+          Date.now() + delay,
+          budget && sameIdentity(budget.identity, identity) ? budget.until : 0,
+        );
+        budgets.set(api, { identity, until });
+        throw new ApiError(error.kind, {
+          ...error,
+          retryAfterMs: until - Date.now(),
+        });
+      }
+      throw error;
+    }
+  }
   return {
-    get: (signal: AbortSignal) =>
-      api.json('/users/me/preferences', decodePreferences, options(signal)),
+    get: (signal: AbortSignal) => request(null, signal),
     patch: (patch: Patch, signal: AbortSignal) =>
-      api.json('/users/me/preferences', decodePreferences, {
-        ...options(signal),
-        method: 'PATCH',
-        body: validatePatch(patch),
-      }),
+      request(validatePatch(patch), signal),
   };
 }
 export function preferencesOptions(
