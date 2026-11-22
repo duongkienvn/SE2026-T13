@@ -1,28 +1,13 @@
-import { queryOptions, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import type { SessionIdentity } from '../../../infrastructure/api/session-client.ts';
 import { useMobileData } from '../../../infrastructure/query/DataProvider';
 import { queryKeys } from '../../../infrastructure/query/keys.ts';
-import {
-  createKanbanApi,
-  type KanbanAssignee,
-} from '../../boards/kanban-api.ts';
+import type { KanbanAssignee } from '../../boards/kanban-api.ts';
 import { useKanbanCatalogs } from '../../boards/kanban-queries.ts';
 import { useCard } from '../queries';
 import { createMetadataApi } from './api.ts';
 
-export function datePreferencesOptions(
-  api: Parameters<typeof createKanbanApi>[0],
-  identity: SessionIdentity,
-  boardId = '',
-) {
-  return queryOptions({
-    queryKey: queryKeys.datePreferences(identity),
-    queryFn: ({ signal }) =>
-      createKanbanApi(api, identity, boardId).datePreferences(signal),
-    staleTime: 0,
-    retry: false,
-  });
-}
+export { preferencesOptions as datePreferencesOptions } from '../../preferences/api.ts';
 
 export function useCardLabels(
   identity: SessionIdentity,

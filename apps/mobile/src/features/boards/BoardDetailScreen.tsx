@@ -295,7 +295,7 @@ function BoardContent({
     queryFn: ({ signal }) => api.workspace(board.workspaceId, signal),
   });
   const zone = useQuery({
-    ...datePreferencesOptions(data.api, identity, boardId),
+    ...datePreferencesOptions(data.api, identity),
     enabled: focused,
   });
   const star = useQuery({

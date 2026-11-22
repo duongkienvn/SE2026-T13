@@ -81,7 +81,7 @@ function TaskList({ identity }: { identity: SessionIdentity }) {
   const pageRequest = useRef(false);
   const eligible = focused && foreground && online;
   const preferences = useQuery({
-    ...datePreferencesOptions(data.api, identity, ''),
+    ...datePreferencesOptions(data.api, identity),
     enabled: eligible,
   });
   const dates = preferences.data ?? utcPreferences;

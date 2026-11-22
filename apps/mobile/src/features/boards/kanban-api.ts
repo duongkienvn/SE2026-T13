@@ -19,10 +19,7 @@ import { requirePage } from '../../infrastructure/query/pagination.ts';
 import { decodeBoardAccess } from '../../infrastructure/realtime/rooms.ts';
 import { decodeWorkspace } from '../workspaces/decoder.ts';
 import { decodeBoard } from './api.ts';
-import {
-  utcPreferences,
-  type DatePreferences,
-} from '../cards/metadata/dates.ts';
+import { preferencesApi } from '../preferences/api.ts';
 
 export type KanbanFilters = Omit<BoardCardFilters, 'page' | 'limit'>;
 export const kanbanPageSize = 100;
@@ -395,33 +392,6 @@ export function createKanbanApi(
         ),
       ),
     datePreferences: (signal: AbortSignal) =>
-      api.json(
-        '/users/me/preferences',
-        (value): DatePreferences => {
-          const {
-            timeZone = utcPreferences.timeZone,
-            dateFormat = utcPreferences.dateFormat,
-            weekStartsOn = 'monday',
-            theme = 'system',
-          } = row(value);
-          if (
-            (weekStartsOn !== 'monday' && weekStartsOn !== 'sunday') ||
-            (theme !== 'light' && theme !== 'dark' && theme !== 'system') ||
-            typeof timeZone !== 'string' ||
-            !/^[A-Za-z][A-Za-z0-9_+\-/]*$/.test(timeZone) ||
-            (dateFormat !== 'YYYY-MM-DD' &&
-              dateFormat !== 'DD/MM/YYYY' &&
-              dateFormat !== 'MM/DD/YYYY')
-          )
-            throw invalidResponse(200);
-          try {
-            new Intl.DateTimeFormat('en', { timeZone });
-          } catch {
-            throw invalidResponse(200);
-          }
-          return { timeZone, dateFormat, weekStartsOn, theme };
-        },
-        options(signal, queryKeys.datePreferences(identity)),
-      ),
+      preferencesApi(api, identity).get(signal),
   };
 }
