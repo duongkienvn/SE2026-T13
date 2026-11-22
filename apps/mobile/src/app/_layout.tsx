@@ -16,6 +16,7 @@ import { nativeGoogleProvider } from '../features/auth/google-native';
 import { WorkspaceSelectionProvider } from '../features/workspaces/WorkspaceSelection';
 import { nativeTransport } from '../infrastructure/query/native-data';
 import { clearPrivateAttachmentFiles } from '../features/cards/attachments/native';
+import { clearPrivateExportFiles } from '../features/exports/native';
 import { clearPrivateAvatarFiles } from '../features/profile/native-media';
 import { nativeInvitationFlow } from '../features/workspaces/invitations/flow';
 import { nativePush } from '../features/push/native-runtime';
@@ -33,11 +34,13 @@ const sessionManager = nativeSession;
 // App-lifetime cleanup also covers cold start and sessions with no Card mounted.
 clearPrivateAttachmentFiles();
 clearPrivateAvatarFiles();
+clearPrivateExportFiles();
 sessionManager.addLifecycleListener({
   onSessionEnd() {
     nativeInvitationFlow.clear();
     clearPrivateAttachmentFiles();
     clearPrivateAvatarFiles();
+    clearPrivateExportFiles();
   },
   onSessionStart: nativeInvitationFlow.bind,
 });

@@ -43,6 +43,8 @@ export interface RequestOptions {
   /** Private file consumers can bound allocation and require declared byte integrity. */
   readonly maximumBytes?: number;
   readonly requireContentLength?: boolean;
+  /** Bounded binary reads only: actual bytes received so far and the declared total. */
+  readonly onProgress?: (received: number, total: number | undefined) => void;
 }
 
 export interface BinaryResult {
@@ -437,30 +439,42 @@ export function createHttpClient(config: HttpClientOptions): HttpClient {
               ? Number(declared)
               : undefined;
           const maximum = options.maximumBytes;
+          const tooLarge = () =>
+            new ApiError('invalid-response', {
+              status: response.status,
+              code: 'RESPONSE_TOO_LARGE',
+            });
           if (
             (options.requireContentLength &&
               (!Number.isSafeInteger(length) || !length)) ||
             (maximum !== undefined &&
-              (!Number.isSafeInteger(maximum) ||
-                maximum < 1 ||
-                (length !== undefined && length > maximum)))
+              (!Number.isSafeInteger(maximum) || maximum < 1))
           ) {
             await response.body?.cancel().catch(() => undefined);
             throw invalidResponse(response.status);
+          }
+          if (
+            maximum !== undefined &&
+            length !== undefined &&
+            length > maximum
+          ) {
+            await response.body?.cancel().catch(() => undefined);
+            throw tooLarge();
           }
           let bytes: ArrayBuffer;
           if (maximum !== undefined) {
             // Expo fetch exposes a native readable body. Fail closed without a
             // bounded reader rather than allocate an arbitrarily large response.
-            if (!response.body || length === undefined)
-              throw invalidResponse(response.status);
+            // Without a declared length, chunks are kept until the cap is hit.
+            if (!response.body) throw invalidResponse(response.status);
             const reader = response.body.getReader();
             const cancelReader = () => {
               void reader.cancel().catch(() => undefined);
             };
             signal.addEventListener('abort', cancelReader, { once: true });
             if (signal.aborted) cancelReader();
-            const output = new Uint8Array(length);
+            const output = length === undefined ? null : new Uint8Array(length);
+            const chunks: Uint8Array[] = [];
             let received = 0;
             try {
               for (;;) {
@@ -468,12 +482,26 @@ export function createHttpClient(config: HttpClientOptions): HttpClient {
                 if (done) break;
                 if (signal.aborted) throw new ApiError('aborted');
                 received += value.byteLength;
-                if (received > maximum || received > length)
+                if (received > maximum) throw tooLarge();
+                if (length !== undefined && received > length)
                   throw invalidResponse(response.status);
-                output.set(value, received - value.byteLength);
+                if (output) output.set(value, received - value.byteLength);
+                else chunks.push(value.slice());
+                options.onProgress?.(received, length);
               }
-              if (received !== length) throw invalidResponse(response.status);
-              bytes = output.buffer;
+              if (length !== undefined && received !== length)
+                throw invalidResponse(response.status);
+              if (output) bytes = output.buffer;
+              else {
+                const joined = new Uint8Array(received);
+                let offset = 0;
+                for (const chunk of chunks) {
+                  joined.set(chunk, offset);
+                  offset += chunk.byteLength;
+                }
+                chunks.length = 0;
+                bytes = joined.buffer;
+              }
             } finally {
               signal.removeEventListener('abort', cancelReader);
               await reader.cancel().catch(() => undefined);

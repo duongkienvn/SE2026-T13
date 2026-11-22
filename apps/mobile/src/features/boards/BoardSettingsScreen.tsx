@@ -14,6 +14,7 @@ import type { SessionIdentity } from '../../infrastructure/api/session-client';
 import { useSessionSnapshot } from '../../infrastructure/auth/SessionProvider';
 import { useMobileData } from '../../infrastructure/query/DataProvider';
 import { queryKeys } from '../../infrastructure/query/keys';
+import { BoardExportSection } from '../exports/BoardExportSection';
 import {
   useBoardRealtime,
   useRealtime,
@@ -594,6 +595,12 @@ function SettingsContent({
         variant="secondary"
         disabled={!ready || pending}
         onPress={() => router.push(`/boards/${boardId}/activity`)}
+      />
+      <BoardExportSection
+        identity={identity}
+        boardId={boardId}
+        board={board}
+        disabled={!ready || pending}
       />
       {(ownsActive || canRestore || sampleReview || sampleBlocked) && (
         <Surface>

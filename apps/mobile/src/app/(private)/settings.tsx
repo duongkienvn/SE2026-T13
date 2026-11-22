@@ -40,6 +40,11 @@ export default function Settings() {
           onPress={() => router.push('/preferences')}
         />
         <Button
+          label="Data & Privacy"
+          variant="secondary"
+          onPress={() => router.push('/data-privacy')}
+        />
+        <Button
           label="Security"
           variant="secondary"
           onPress={() => router.push('/security')}

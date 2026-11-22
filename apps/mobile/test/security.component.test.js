@@ -13,6 +13,8 @@ import { SessionProvider } from '../src/infrastructure/auth/SessionProvider';
 import { DataProvider } from '../src/infrastructure/query/DataProvider';
 import { integration, json, ok } from './realtime/integration-support';
 import { flush } from './auth/support';
+import Settings from '../src/app/(private)/settings';
+import { parsePath, destinationPath } from '../src/navigation/routes';
 
 let mockGoogle = null;
 const mockFlow = { setEmail: jest.fn() };
@@ -38,6 +40,30 @@ jest.mock('expo-network', () => ({
 }));
 
 const noContent = () => new Response(null, { status: 204 });
+
+test('merged Settings keeps security, exports and existing account destinations reachable', async () => {
+  const view = await render(<Settings />);
+  try {
+    for (const [label, path] of [
+      ['Profile', '/profile'],
+      ['Change email', '/change-email'],
+      ['Notification preferences', '/notification-preferences'],
+      ['Appearance', '/appearance'],
+      ['Preferences', '/preferences'],
+      ['Security', '/security'],
+      ['Connected accounts', '/connected-accounts'],
+      ['Data & Privacy', '/data-privacy'],
+    ]) {
+      await fireEvent.press(screen.getByRole('button', { name: label }));
+      expect(mockRouter.push).toHaveBeenLastCalledWith(path);
+      const destination = parsePath(path);
+      expect(destination).not.toBeNull();
+      expect(destinationPath(destination)).toBe(path);
+    }
+  } finally {
+    await view.unmount();
+  }
+});
 const failure = (status, code) =>
   json(
     { success: false, statusCode: status, code, message: 'SECRET server text' },
