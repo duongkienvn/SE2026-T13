@@ -100,6 +100,7 @@ chưa triển khai. Mục lục dưới đây liệt kê toàn bộ task documen
 ## Frontend tasks
 
 - [MOB-40 Native account and OWNER-only Board export](frontend/mob-40-private-data-export.md)
+- [MOB-39 Native Security, password recovery entry and Connected Google](frontend/mob-39-security-connected-google.md)
 
 - [MOB-36 Native Calendar Week and Month/Week consistency](frontend/mob-36-calendar-week.md)
 
