@@ -93,7 +93,7 @@ export function createSessionHttpClient(
   async function run<T>(
     options: SessionRequestOptions = {},
     operation: (options: RequestOptions) => Promise<T>,
-    emailProofRequest = false,
+    proofRequest = false,
   ): Promise<T> {
     if (disposed) throw new ApiError('session-changed');
     const identity = currentIdentity(manager);
@@ -155,7 +155,7 @@ export function createSessionHttpClient(
       if (
         error instanceof ApiError &&
         error.status === 401 &&
-        !(emailProofRequest && error.code === 'INVALID_GOOGLE_CREDENTIAL')
+        !(proofRequest && error.code === 'INVALID_GOOGLE_CREDENTIAL')
       )
         manager.handleUnauthorized(identity.generation);
       else if (!(
@@ -181,7 +181,13 @@ export function createSessionHttpClient(
       run(options, (next) => http.envelope(path, decode, next)),
     rawJson: (path, decode, options) =>
       run(options, (next) => http.rawJson(path, decode, next)),
-    empty: (path, options) => run(options, (next) => http.empty(path, next)),
+    empty: (path, options) =>
+      run(
+        options,
+        (next) => http.empty(path, next),
+        // Google proof rejection on link is not a Kanvexa session failure.
+        path === '/auth/google/link' && options?.method === 'POST',
+      ),
     text: (path, types, options) =>
       run(options, (next) => http.text(path, types, next)),
     binary: (path, types, options) =>
