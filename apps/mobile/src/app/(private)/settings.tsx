@@ -39,6 +39,16 @@ export default function Settings() {
           variant="secondary"
           onPress={() => router.push('/preferences')}
         />
+        <Button
+          label="Security"
+          variant="secondary"
+          onPress={() => router.push('/security')}
+        />
+        <Button
+          label="Connected accounts"
+          variant="secondary"
+          onPress={() => router.push('/connected-accounts')}
+        />
       </ScrollView>
     </SafeAreaView>
   );

@@ -90,6 +90,11 @@ export default function PrivateLayout() {
         <Stack.Screen name="appearance" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />
         <Stack.Screen name="change-email" options={{ headerShown: false }} />
+        <Stack.Screen name="security" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="connected-accounts"
+          options={{ headerShown: false }}
+        />
         <Stack.Screen name="invitation" options={{ presentation: 'modal' }} />
       </Stack>
     </BoardViewFiltersProvider>
