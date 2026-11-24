@@ -5,12 +5,12 @@ description: Review a Kanvexa feature branch, diff, or pull request for correctn
 
 # Kanvexa Review
 
-Follow [AGENTS.md](../../../AGENTS.md). Paths below are relative to the repository root. Review does not authorize implementation or posting remote comments.
+Follow [AGENTS.md](../../../AGENTS.md), including its [navigation and token budget policy](../../../AGENTS.md#repository-navigation-and-token-budget). Paths below are relative to the repository root. Review does not authorize implementation or posting remote comments.
 
 ## Establish the review boundary
 
 1. Inspect branch/status and the requested diff or PR. Confirm the base and intended scope; do not assume all dirty files belong to the review. If only a local diff is available, state that limitation without fetching or altering remotes unless requested.
-2. Read acceptance criteria and changed code plus callers, contracts, tests, and relevant task records. For Post-MVP behavior, consult the relevant [roadmap](../../../docs/roadmap/post-mvp.md)/[blueprint](../../../docs/design/product-ux-blueprint.md) sections. Use architecture/design documents selectively and verify historical claims against source.
+2. Read acceptance criteria and changed code; expand to callers, contracts, tests, and task records only as needed to verify affected behavior and concrete risks. For Post-MVP behavior, consult the relevant [roadmap](../../../docs/roadmap/post-mvp.md)/[blueprint](../../../docs/design/product-ux-blueprint.md) sections. Use architecture/design documents selectively and verify historical claims against source.
 3. Prioritize reachable defects introduced or exposed by the change. Trace a concrete trigger and impact before calling something a bug; distinguish existing issues, questions, and unverified concerns.
 
 ## Trace affected boundaries

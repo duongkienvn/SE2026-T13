@@ -19,6 +19,26 @@ This file is the primary repository-wide guidance for coding agents.
 | Deployment/CI        | [Production runbook](docs/deployment/production.md), [CI/CD guide](docs/deployment/cicd.md), relevant workflows/scripts; [verification record](docs/deployment/verification.md) is historical evidence, not a current pass                                                                                                                               |
 | Documentation only   | Affected documents and their referenced sources; inspect code/scripts when checking implementation claims                                                                                                                                                                                                                                                |
 
+## Repository navigation and token budget
+
+Use this section as the canonical navigation policy for Codex, DSH, workflows, and skills. It governs automatic tool selection, including over a third-party skill's graph-first defaults; an explicit user request for a tool takes precedence. Load only issue-relevant documents, sections, and skills; the table above is a selective reference, not a reading checklist. Do not survey the whole repository to get oriented.
+
+Choose the smallest lookup that answers the current question:
+
+1. **Known exact file or code region:** read only the relevant section directly; no graph query is required.
+2. **Source discovery:** prefer CodeGraph MCP `codegraph_explore` for symbols, callers/callees, dependencies, impact, and related tests. Use concrete symbol names; for a flow, name the participating symbols to get related source and call paths in one call rather than asking a broad question.
+3. **MCP unavailable:** use CodeGraph CLI when suitable, e.g. `codegraph explore "<symbol names>"`. Report an actual tool failure accurately; do not keep retrying an unavailable route.
+4. **Structural or supplementary questions:** use Graphify for overall structure, cross-module relationships, or a specific gap CodeGraph has not answered. The code-only graph does not establish documentation or product decisions. Default to depth 1 and an 800–1000 token budget, e.g. `graphify query "fenceWorkspaceActivity" --depth 1 --budget 800`.
+5. **Graphs unavailable or insufficient:** use bounded `rg`/search and targeted source reads. Do not install tools or rebuild indexes merely to answer an issue.
+
+Neither graph is mandatory for every issue. Do not query both for the same question when the first result is sufficient. Graphs/indexes are navigation aids; current source is the final authority before changing logic. Current verbatim source returned by CodeGraph counts as a source read; verify the affected region directly if stale, incomplete, or changed since the query.
+
+- Reuse context already read or queried while it remains valid; do not reopen unchanged files or repeat answered queries.
+- Do not load entire graph JSON, CodeGraph databases, or graph reports by default. Increase traversal depth/budget only for a concrete unanswered question after the previous result proves insufficient; truncation alone is not a reason to jump to tens of thousands of tokens.
+- Do not create subagents just to survey the codebase, read documents, or perform simple work.
+- Reuse verification results for the same unchanged snapshot; rerun affected checks after relevant changes or failures, not the whole test/build suite repeatedly without cause. All verification requirements below remain in force.
+- Do not expand scope into extra tasks, refactors, or documentation. Index rebuilds, semantic extraction, hooks, and watch mode are not implicit issue work; leave them off unless requested. Keep local graph databases, indexes, and caches out of Git.
+
 ## Architecture and placement
 
 Keep the pnpm workspace and NestJS modular monolith:
