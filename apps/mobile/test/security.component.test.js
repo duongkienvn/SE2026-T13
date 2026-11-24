@@ -42,7 +42,7 @@ jest.mock('expo-network', () => ({
 const noContent = () => new Response(null, { status: 204 });
 
 test('merged Settings keeps security, exports and existing account destinations reachable', async () => {
-  const view = await render(<Settings />);
+  await setup(Settings, { hasPassword: true, googleLinked: false });
   try {
     for (const [label, path] of [
       ['Profile', '/profile'],
@@ -61,7 +61,8 @@ test('merged Settings keeps security, exports and existing account destinations 
       expect(destinationPath(destination)).toBe(path);
     }
   } finally {
-    await view.unmount();
+    await cleanup?.();
+    cleanup = null;
   }
 });
 const failure = (status, code) =>

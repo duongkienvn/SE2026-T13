@@ -711,7 +711,11 @@ test('write rate-limit cooldown disables Save without losing the draft', async (
 
 test('Settings exposes the scoped preferences entry', async () => {
   mockPush.mockClear();
-  await render(<Settings />);
-  await press('Notification preferences');
-  expect(mockPush).toHaveBeenCalledWith('/notification-preferences');
+  const env = await setup(undefined, 'light', Settings);
+  try {
+    await press('Notification preferences');
+    expect(mockPush).toHaveBeenCalledWith('/notification-preferences');
+  } finally {
+    await env.dispose();
+  }
 });
