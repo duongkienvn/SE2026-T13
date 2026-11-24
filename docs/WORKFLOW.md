@@ -18,8 +18,8 @@ Chỉ thực hiện kiểm tra đọc trước khi có phạm vi đủ rõ:
 
 1. Xác nhận thư mục làm việc bằng `Get-Location` và `git rev-parse --show-toplevel`.
 2. Kiểm tra branch, worktree và `git status --short`.
-3. Đọc `AGENTS.md`, `README.md`, `docs/project-overview.md` và các tài liệu architecture liên quan.
-4. Xem các skill trong `.agents/skills/`; chỉ dùng skill phù hợp với loại công việc.
+3. Đọc `AGENTS.md`; chọn công cụ và giới hạn context theo [Repository navigation and token budget](../AGENTS.md#repository-navigation-and-token-budget). Chỉ đọc phần tài liệu liên quan trực tiếp đến issue; không mặc định đọc toàn bộ README, project overview hoặc architecture.
+4. Chỉ nạp skill phù hợp từ danh sách trong `AGENTS.md`; không khảo sát toàn bộ `.agents/skills/`.
 5. Ghi rõ mục tiêu, phạm vi, file dự kiến thay đổi, phần ngoài phạm vi và các lệnh kiểm tra dự kiến.
 
 Nếu còn quyết định quan trọng chưa rõ, phải hỏi người dùng trước khi triển khai. Với các quyết định có nhiều nhánh ảnh hưởng đến sản phẩm hoặc workflow, dùng `grill-me` để hỏi từng câu một; không tự chốt thay người dùng.

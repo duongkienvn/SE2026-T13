@@ -5,13 +5,13 @@ description: Implement a scoped Kanvexa feature, issue, or behavior fix involvin
 
 # Kanvexa Feature
 
-Follow [AGENTS.md](../../../AGENTS.md). Paths in code spans below are relative to the repository root; run commands there.
+Follow [AGENTS.md](../../../AGENTS.md), including its [navigation and token budget policy](../../../AGENTS.md#repository-navigation-and-token-budget). Paths in code spans below are relative to the repository root; run commands there.
 
 ## Establish the change
 
 1. Inspect the working tree and related code/tests before editing. Extract the issue's actor, acceptance criteria, non-goals, and affected layers. If issue context is unavailable, use the supplied requirements and identify missing decisions; do not invent acceptance criteria.
 2. For Post-MVP work, map the requested subset to requirement IDs and prerequisites in the [roadmap](../../../docs/roadmap/post-mvp.md) and relevant [blueprint](../../../docs/design/product-ux-blueprint.md) sections. A feature group is not a single issue or proof of implementation. Resolve scope/access/migration decisions before dependent code changes.
-3. Trace existing controller → service → entity/repository → response/event → client/cache behavior. Consult the relevant [backend guide](../../../docs/architecture/backend-developer-guide.md), [database design](../../../docs/architecture/database-design.md), or [frontend architecture](../../../docs/architecture/frontend-architecture.md) and feature task records. Report stale documentation separately from verified source behavior.
+3. Trace only the issue-affected portion of controller → service → entity/repository → response/event → client/cache behavior, expanding to adjacent boundaries when needed to verify a contract or risk. Consult the relevant [backend guide](../../../docs/architecture/backend-developer-guide.md), [database design](../../../docs/architecture/database-design.md), or [frontend architecture](../../../docs/architecture/frontend-architecture.md) and feature task records. Report stale documentation separately from verified source behavior.
 
 ## Implement the smallest complete slice
 
