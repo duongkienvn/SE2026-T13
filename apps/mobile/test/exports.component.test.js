@@ -12,6 +12,8 @@ import { SessionProvider } from '../src/infrastructure/auth/SessionProvider';
 import { DataProvider } from '../src/infrastructure/query/DataProvider';
 import { integration, json } from './realtime/integration-support';
 import { flush } from './auth/support';
+import { parsePath, destinationPath } from '../src/navigation/routes';
+const mockPush = jest.fn();
 
 jest.mock('expo-router', () => ({
   useFocusEffect: (fn) => jest.requireActual('react').useEffect(fn, [fn]),
@@ -19,6 +21,7 @@ jest.mock('expo-router', () => ({
     back: jest.fn(),
     canGoBack: () => true,
     replace: jest.fn(),
+    push: mockPush,
   }),
   useIsFocused: () => true,
 }));
@@ -154,6 +157,27 @@ afterEach(async () => {
   onlineManager.setOnline(true);
 });
 const press = (name) => fireEvent.press(screen.getByRole('button', { name }));
+
+test('Data & Privacy separates privacy, verified email and deletion from the existing export engine', async () => {
+  const env = await setup(
+    () => <DataPrivacyScreen />,
+    () => exportFile(),
+  );
+  expect(screen.getByRole('header', { name: 'Your privacy' })).toBeTruthy();
+  expect(screen.getByText(/Shared collaborative content remains/)).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: 'Export my data (JSON)' }),
+  ).toBeEnabled();
+  for (const [label, path] of [
+    ['Change email', '/change-email'],
+    ['Delete account', '/delete-account'],
+  ]) {
+    await press(label);
+    expect(mockPush).toHaveBeenLastCalledWith(path);
+    expect(destinationPath(parsePath(path))).toBe(path);
+  }
+  expect(env.requests).toHaveLength(0);
+});
 
 test('account export saves exact bytes privately, shares on request, never claims saved', async () => {
   const env = await setup(
