@@ -186,7 +186,8 @@ export function createSessionHttpClient(
         options,
         (next) => http.empty(path, next),
         // Google proof rejection on link is not a Kanvexa session failure.
-        path === '/auth/google/link' && options?.method === 'POST',
+        (path === '/auth/google/link' && options?.method === 'POST') ||
+          (path === '/users/me' && options?.method === 'DELETE'),
       ),
     text: (path, types, options) =>
       run(options, (next) => http.text(path, types, next)),
