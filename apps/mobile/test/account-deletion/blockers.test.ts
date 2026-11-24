@@ -5,6 +5,55 @@ import { blockerDestination } from '../../src/features/account-deletion/blockers
 import { boardDetail } from '../workspaces/kanban-fixtures.ts';
 import { workspace } from '../workspaces/fixtures.ts';
 import { loginResponse, USER_B, flush } from '../auth/support.ts';
+test('archived OWNER resolves through restore settings; revocation never grants a link', async () => {
+  const env = await integration();
+  let restore = true;
+  env.respond(() =>
+    Promise.resolve(
+      ok({
+        ...boardDetail,
+        isArchived: true,
+        archivedAt: '2026-11-13T09:00:00.000Z',
+        currentUserRole: 'OWNER',
+        capabilities: {
+          ...boardDetail.capabilities,
+          canManageBoard: false,
+          canManageMembers: false,
+          canRestoreBoard: restore,
+        },
+      }),
+    ),
+  );
+  try {
+    for (const type of [
+      'PERSONAL_WORKSPACE_HAS_BOARDS',
+      'BOARD_REQUIRES_ANOTHER_OWNER',
+    ] as const)
+      assert.equal(
+        await blockerDestination(
+          env.data,
+          env.identity,
+          type,
+          boardDetail.id,
+          new AbortController().signal,
+        ),
+        `/boards/${boardDetail.id}/settings`,
+      );
+    restore = false;
+    assert.equal(
+      await blockerDestination(
+        env.data,
+        env.identity,
+        'BOARD_REQUIRES_ANOTHER_OWNER',
+        boardDetail.id,
+        new AbortController().signal,
+      ),
+      null,
+    );
+  } finally {
+    env.dispose();
+  }
+});
 test('all three blocker destinations require fresh explicit management permission, including archived boards', async () => {
   const env = await integration();
   let owner = false,

@@ -235,21 +235,29 @@ test('double tap sends one request; leaving the screen deletes the private file'
   expect(exportFiles()).toHaveLength(0);
 });
 
-test('session end removes the ready file and the screen', async () => {
-  const env = await setup(
-    () => <DataPrivacyScreen />,
-    () => exportFile(),
-  );
-  await press('Export my data (JSON)');
-  await screen.findByText(/File ready/);
-  expect(exportFiles()).toHaveLength(1);
-  await act(async () => {
-    await env.manager.logout();
-    await flush();
-  });
-  expect(exportFiles()).toHaveLength(0);
-  expect(screen.queryByText(/File ready/)).toBeNull();
-});
+test.each(['logout', 'account-deleted', 'deletion-uncertain'])(
+  'session end %s removes the ready file and the screen',
+  async (reason) => {
+    const env = await setup(
+      () => <DataPrivacyScreen />,
+      () => exportFile(),
+    );
+    await press('Export my data (JSON)');
+    await screen.findByText(/File ready/);
+    expect(exportFiles()).toHaveLength(1);
+    await act(async () => {
+      if (reason === 'logout') await env.manager.logout();
+      else
+        await env.manager.endAccountDeletion(
+          env.identity.generation,
+          reason === 'account-deleted',
+        );
+      await flush();
+    });
+    expect(exportFiles()).toHaveLength(0);
+    expect(screen.queryByText(/File ready/)).toBeNull();
+  },
+);
 
 test('413, wrong MIME and 429 leave zero files and show specific copy', async () => {
   let next = failure(413, 'EXPORT_TOO_LARGE');

@@ -1,6 +1,12 @@
-import { useCallback, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentRef,
+} from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View, type TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { AccountDeletionBlockerType } from '@kanban/shared';
 import type { SessionIdentity } from '../../infrastructure/api/session-client';
@@ -39,6 +45,15 @@ function DeletionContent({ identity }: { identity: SessionIdentity }) {
     data = useMobileData(),
     c = useTheme();
   const navigation = useDraftNavigation(form, '/delete-account');
+  const passwordInput = useRef<ComponentRef<typeof TextInput>>(null),
+    confirmationInput = useRef<ComponentRef<typeof TextInput>>(null);
+  useEffect(() => {
+    if (form.pending || !form.eligible || !form.error) return;
+    if (form.error.includes('password is incorrect'))
+      passwordInput.current?.focus();
+    else if (form.error.startsWith('Enter DELETE'))
+      confirmationInput.current?.focus();
+  }, [form.error, form.pending, form.eligible]);
   const active = useRef<AbortController | null>(null),
     [checking, setChecking] = useState(false),
     [linkError, setLinkError] = useState('');
@@ -73,7 +88,7 @@ function DeletionContent({ identity }: { identity: SessionIdentity }) {
         router.push(path);
       } else
         setLinkError(
-          'Your permission to manage this resource has changed. Refresh and review the requirements.',
+          'Your permission to manage this resource has changed. Ask an authorized Board owner or Team workspace admin to help, then refresh. Workspace ADMIN does not grant Board ownership.',
         );
     } catch {
       if (!controller.signal.aborted)
@@ -189,6 +204,7 @@ function DeletionContent({ identity }: { identity: SessionIdentity }) {
           ))}
           {form.method === 'password' && (
             <PasswordField
+              ref={passwordInput}
               label="Current password"
               value={form.password}
               onChangeText={form.passwordInput}
@@ -200,6 +216,7 @@ function DeletionContent({ identity }: { identity: SessionIdentity }) {
             />
           )}
           <TextField
+            ref={confirmationInput}
             label="Type DELETE to confirm"
             value={form.confirmation}
             onChangeText={form.confirmationInput}
@@ -259,7 +276,7 @@ function DeletionContent({ identity }: { identity: SessionIdentity }) {
         visible={form.review}
         title="Permanently delete your account?"
         message="This cannot be undone. Shared work remains with Deleted user attribution, and a new account does not restore memberships. Your identity will be verified before deletion."
-        confirmLabel="Delete permanently"
+        confirmLabel="Delete my account"
         cancelLabel="Keep my account"
         destructive
         confirmDisabled={!form.valid}

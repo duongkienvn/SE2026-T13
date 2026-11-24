@@ -21,8 +21,8 @@ export const blockerCopy: Record<
   },
   BOARD_REQUIRES_ANOTHER_OWNER: {
     title: 'Boards needing another owner',
-    action: 'Open board members',
-    help: 'Assign another explicit Board OWNER, including for archived boards. Workspace ADMIN status does not grant Board ownership.',
+    action: 'Review board ownership',
+    help: 'Assign another explicit Board OWNER. For archived boards, restore the board from Board Settings first. Workspace ADMIN status does not grant Board ownership.',
   },
   TEAM_WORKSPACE_REQUIRES_ANOTHER_ADMIN: {
     title: 'Team workspaces needing another admin',
@@ -60,15 +60,17 @@ export async function blockerDestination(
       });
   } else {
     const board = await createBoardApi(data.api, identity).detail(id, signal);
+    const restore = board.isArchived && board.capabilities.canRestoreBoard;
     if (
       board.currentUserRole === 'OWNER' &&
-      (type === 'PERSONAL_WORKSPACE_HAS_BOARDS'
-        ? board.capabilities.canManageBoard
-        : board.capabilities.canManageMembers)
+      (restore ||
+        (type === 'PERSONAL_WORKSPACE_HAS_BOARDS'
+          ? board.capabilities.canManageBoard
+          : board.capabilities.canManageMembers))
     )
       path = destinationPath({
         kind:
-          type === 'PERSONAL_WORKSPACE_HAS_BOARDS'
+          restore || type === 'PERSONAL_WORKSPACE_HAS_BOARDS'
             ? 'boardSettings'
             : 'boardMembers',
         boardId: id,

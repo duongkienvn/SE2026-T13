@@ -56,17 +56,17 @@ const sections: readonly {
         path: '/change-email',
         icon: '@',
       },
-    ],
-  },
-  {
-    title: 'Preferences',
-    items: [
       {
         label: 'Notification preferences',
         subtitle: 'In-app, push and quiet hours',
         path: '/notification-preferences',
         icon: '◉',
       },
+    ],
+  },
+  {
+    title: 'Preferences',
+    items: [
       {
         label: 'Appearance',
         subtitle: 'Light, dark or match system',
@@ -191,42 +191,29 @@ function SettingsContent({ identity }: { identity: SessionIdentity }) {
         )}
         {query.data && (
           <Surface>
-            <View
-              style={{
-                alignItems: 'center',
-                gap: spacing.sm,
-                paddingVertical: spacing.md,
-              }}
-            >
-              <PrivateAvatar
-                profile={query.data}
-                identity={identity}
-                size={88}
-                refreshKey={query.dataUpdatedAt}
-              />
-              <Text
-                style={[
-                  typography.title,
-                  { color: c.text, textAlign: 'center' },
-                ]}
-              >
-                {query.data.displayName}
-              </Text>
-              <Text
-                style={[
-                  typography.body,
-                  { color: c.textSecondary, textAlign: 'center' },
-                ]}
-              >
-                {query.data.email}
-              </Text>
-              <Button
-                label="Edit profile"
-                variant="secondary"
-                onPress={() => router.push('/profile')}
-                disabled={signingOut}
-              />
-            </View>
+            <ListRow
+              title={query.data.displayName}
+              subtitle={query.data.email}
+              accessibilityLabel="Edit profile"
+              disabled={signingOut}
+              onPress={() => router.push('/profile')}
+              leading={
+                <PrivateAvatar
+                  profile={query.data}
+                  identity={identity}
+                  size={64}
+                  refreshKey={query.dataUpdatedAt}
+                />
+              }
+              trailing={
+                <Text
+                  accessible={false}
+                  style={{ color: c.textMuted, fontSize: 24 }}
+                >
+                  ›
+                </Text>
+              }
+            />
           </Surface>
         )}
         {sections.map((section) => (

@@ -102,7 +102,7 @@ test('exact confirmation, deliberate final confirmation, and only 204 removes pr
     'private-proof',
   );
   await press('Review deletion');
-  await press('Delete permanently');
+  await press('Delete my account');
   await waitFor(() =>
     expect(env.manager.getSnapshot().status).toBe('unauthenticated'),
   );
@@ -163,7 +163,7 @@ test('all three blockers show totals and excerpts; refresh never retries deletio
   );
   await fill();
   await press('Review deletion');
-  await press('Delete permanently');
+  await press('Delete my account');
   await screen.findByText('Boards needing another owner');
   expect(screen.getAllByText('Showing 1 of 25 resources.')).toHaveLength(3);
   expect(screen.queryByText('SECRET')).toBeNull();
