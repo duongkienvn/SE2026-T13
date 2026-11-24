@@ -80,7 +80,12 @@ jest.mock('expo-file-system', () => {
     create() {
       files.set(this.uri, { bytes: new Uint8Array() });
     }
-    write(bytes) {
+    write() {
+      throw new Error(
+        'Async File.write must not hand out an incomplete private file',
+      );
+    }
+    writeSync(bytes) {
       if (state.failWrite) throw new Error('device full /private/path');
       files.set(this.uri, { bytes: bytes.slice() });
     }
@@ -234,6 +239,26 @@ test('double tap sends one request; leaving the screen deletes the private file'
   await env.view.unmount();
   expect(exportFiles()).toHaveLength(0);
 });
+
+test.each([
+  ['Change email', '/change-email'],
+  ['Delete account', '/delete-account'],
+])(
+  'opening %s removes the ready private export before pushing a new screen',
+  async (label, path) => {
+    await setup(
+      () => <DataPrivacyScreen />,
+      () => exportFile(),
+    );
+    await press('Export my data (JSON)');
+    await screen.findByText(/File ready/);
+    expect(exportFiles()).toHaveLength(1);
+    await press(label);
+    expect(exportFiles()).toHaveLength(0);
+    expect(mockPush).toHaveBeenLastCalledWith(path);
+    expect(shareAsync).not.toHaveBeenCalled();
+  },
+);
 
 test.each(['logout', 'account-deleted', 'deletion-uncertain'])(
   'session end %s removes the ready file and the screen',

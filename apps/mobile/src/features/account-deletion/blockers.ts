@@ -7,8 +7,10 @@ import {
   parseResourceId,
   type DestinationPath,
 } from '../../navigation/routes.ts';
-import { createBoardApi } from '../boards/api.ts';
-import { createWorkspaceApi } from '../workspaces/api.ts';
+import { decodeBoard } from '../boards/api.ts';
+import { decodeWorkspace } from '../workspaces/decoder.ts';
+import { evictWorkspace } from '../workspaces/queries.ts';
+import { queryKeys } from '../../infrastructure/query/keys.ts';
 
 export const blockerCopy: Record<
   AccountDeletionBlockerType,
@@ -42,41 +44,82 @@ export async function blockerDestination(
   data.assertCurrent(identity);
   const id = parseResourceId(resource);
   if (!id) return null;
+  const workspaceTarget = type === 'TEAM_WORKSPACE_REQUIRES_ANOTHER_ADMIN';
+  // As in Inbox navigation, an explicit REST probe may recover a revoked grant.
+  // Its captured revision still rejects access loss during the request.
+  const probe = workspaceTarget
+    ? data.resources.captureWorkspaceProbe(id)
+    : data.resources.captureBoardProbe(id);
+  const check = () => {
+    data.assertCurrent(identity);
+    probe();
+    if (signal.aborted)
+      throw new ApiError('aborted', { requestStarted: false });
+  };
+  const options = {
+    identity,
+    signal,
+    expectedStatus: 200,
+    retries: 0 as const,
+  };
   let path: DestinationPath | null = null;
-  if (type === 'TEAM_WORKSPACE_REQUIRES_ANOTHER_ADMIN') {
-    const workspace = await createWorkspaceApi(data.api, identity).detail(
-      id,
-      signal,
-    );
-    if (
-      workspace.type === 'TEAM' &&
-      workspace.role === 'ADMIN' &&
-      workspace.canManage
-    )
-      path = destinationPath({
-        kind: 'workspaceSection',
-        workspaceId: id,
-        section: 'members',
-      });
-  } else {
-    const board = await createBoardApi(data.api, identity).detail(id, signal);
-    const restore = board.isArchived && board.capabilities.canRestoreBoard;
-    if (
-      board.currentUserRole === 'OWNER' &&
-      (restore ||
-        (type === 'PERSONAL_WORKSPACE_HAS_BOARDS'
-          ? board.capabilities.canManageBoard
-          : board.capabilities.canManageMembers))
-    )
-      path = destinationPath({
-        kind:
-          restore || type === 'PERSONAL_WORKSPACE_HAS_BOARDS'
-            ? 'boardSettings'
-            : 'boardMembers',
-        boardId: id,
-      });
+  try {
+    if (type === 'TEAM_WORKSPACE_REQUIRES_ANOTHER_ADMIN') {
+      const workspace = await data.api.json(
+        `/workspaces/${id}`,
+        decodeWorkspace,
+        options,
+      );
+      check();
+      if (workspace.id !== id)
+        throw new ApiError('invalid-response', { status: 200 });
+      data.resources.confirmWorkspace(id);
+      if (
+        workspace.type === 'TEAM' &&
+        workspace.role === 'ADMIN' &&
+        workspace.canManage
+      )
+        path = destinationPath({
+          kind: 'workspaceSection',
+          workspaceId: id,
+          section: 'members',
+        });
+    } else {
+      const board = await data.api.json(`/boards/${id}`, decodeBoard, options);
+      check();
+      if (board.id !== id || !board.capabilities.canReadBoard)
+        throw new ApiError('invalid-response', { status: 200 });
+      data.resources.confirmBoard(
+        id,
+        board.capabilities.canWriteBoard,
+        board.workspaceId,
+      );
+      const restore = board.isArchived && board.capabilities.canRestoreBoard;
+      if (
+        board.currentUserRole === 'OWNER' &&
+        (restore ||
+          (type === 'PERSONAL_WORKSPACE_HAS_BOARDS'
+            ? board.capabilities.canManageBoard
+            : board.capabilities.canManageMembers))
+      )
+        path = destinationPath({
+          kind:
+            restore || type === 'PERSONAL_WORKSPACE_HAS_BOARDS'
+              ? 'boardSettings'
+              : 'boardMembers',
+          boardId: id,
+        });
+    }
+    return path;
+  } catch (error) {
+    check();
+    if (error instanceof ApiError && [403, 404].includes(error.status)) {
+      if (workspaceTarget) evictWorkspace(data, identity, id);
+      else {
+        data.resources.fenceBoard(id, true);
+        data.evict(identity, [queryKeys.board(identity, id)]);
+      }
+    }
+    throw error;
   }
-  data.assertCurrent(identity);
-  if (signal.aborted) throw new ApiError('aborted', { requestStarted: false });
-  return path;
 }

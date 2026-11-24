@@ -5,6 +5,64 @@ import { blockerDestination } from '../../src/features/account-deletion/blockers
 import { boardDetail } from '../workspaces/kanban-fixtures.ts';
 import { workspace } from '../workspaces/fixtures.ts';
 import { loginResponse, USER_B, flush } from '../auth/support.ts';
+test('a fresh probe recovers restored resource access and rejects an in-flight revocation', async () => {
+  const env = await integration(),
+    id = boardDetail.id,
+    w = workspace();
+  const owner = {
+    ...boardDetail,
+    currentUserRole: 'OWNER',
+    capabilities: { ...boardDetail.capabilities, canManageMembers: true },
+  };
+  env.data.resources.fenceBoard(id, true);
+  env.data.resources.denyWorkspace(w.id);
+  env.respond((url) =>
+    Promise.resolve(
+      ok(
+        url.includes('/boards/')
+          ? owner
+          : { ...w, role: 'ADMIN', canManage: true },
+      ),
+    ),
+  );
+  try {
+    assert.equal(
+      await blockerDestination(
+        env.data,
+        env.identity,
+        'BOARD_REQUIRES_ANOTHER_OWNER',
+        id,
+        new AbortController().signal,
+      ),
+      `/boards/${id}/members`,
+    );
+    assert.equal(
+      await blockerDestination(
+        env.data,
+        env.identity,
+        'TEAM_WORKSPACE_REQUIRES_ANOTHER_ADMIN',
+        w.id,
+        new AbortController().signal,
+      ),
+      `/workspaces/${w.id}/members`,
+    );
+    let release!: (response: Response) => void;
+    env.respond(() => new Promise((r) => (release = r)));
+    const pending = blockerDestination(
+      env.data,
+      env.identity,
+      'BOARD_REQUIRES_ANOTHER_OWNER',
+      id,
+      new AbortController().signal,
+    );
+    await flush();
+    env.data.resources.fenceBoard(id, true);
+    release(ok(owner));
+    await assert.rejects(pending);
+  } finally {
+    env.dispose();
+  }
+});
 test('archived OWNER resolves through restore settings; revocation never grants a link', async () => {
   const env = await integration();
   let restore = true;

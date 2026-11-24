@@ -62,7 +62,7 @@ export function savePrivateExport(
     directory.create();
     const file = new File(directory, filename);
     file.create();
-    file.write(bytes);
+    file.writeSync(bytes);
     if (file.size !== bytes.byteLength) throw new Error('short write');
     let disposed = false;
     return {

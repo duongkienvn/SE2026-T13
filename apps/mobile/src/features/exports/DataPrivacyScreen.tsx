@@ -91,7 +91,10 @@ function DataPrivacyContent({ identity }: { identity: SessionIdentity }) {
             label="Change email"
             variant="secondary"
             disabled={exporter.busy}
-            onPress={() => router.push('/change-email')}
+            onPress={() => {
+              exporter.remove();
+              router.push('/change-email');
+            }}
           />
         </Surface>
         <Surface>
@@ -136,7 +139,10 @@ function DataPrivacyContent({ identity }: { identity: SessionIdentity }) {
             label="Delete account"
             variant="destructive"
             disabled={exporter.busy}
-            onPress={() => router.push('/delete-account')}
+            onPress={() => {
+              exporter.remove();
+              router.push('/delete-account');
+            }}
           />
         </Surface>
       </ScrollView>
