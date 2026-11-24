@@ -1,4 +1,6 @@
 import type { ApiErrorResponse } from '@kanban/shared';
+import type { AccountDeletionBlocker } from '@kanban/shared';
+import { deletionBlockers } from './deletion-blockers.ts';
 
 export type ApiErrorKind =
   | 'http'
@@ -21,6 +23,7 @@ export class ApiError extends Error {
   readonly retryAfterMs?: number;
   /** Whether this attempt reached fetch. True does not prove server execution. */
   readonly requestStarted?: boolean;
+  readonly blockers: readonly AccountDeletionBlocker[];
 
   constructor(
     kind: ApiErrorKind,
@@ -32,6 +35,7 @@ export class ApiError extends Error {
       requestId?: string;
       retryAfterMs?: number;
       requestStarted?: boolean;
+      blockers?: readonly AccountDeletionBlocker[];
     } = {},
   ) {
     super(
@@ -56,6 +60,7 @@ export class ApiError extends Error {
     this.requestId = options.requestId;
     this.retryAfterMs = options.retryAfterMs;
     this.requestStarted = options.requestStarted;
+    this.blockers = options.blockers ?? [];
   }
 }
 
@@ -110,5 +115,9 @@ export function httpError(
     requestId:
       valid && safeString(value.requestId, 100) ? value.requestId : undefined,
     retryAfterMs,
+    blockers:
+      valid && status === 409 && value.code === 'ACCOUNT_DELETION_BLOCKED'
+        ? deletionBlockers((payload as { blockers?: unknown }).blockers)
+        : [],
   });
 }

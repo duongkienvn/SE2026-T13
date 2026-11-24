@@ -19,7 +19,9 @@ export type SignedOutReason =
   /** The server answered 401 for the current session. */
   | 'unauthorized'
   /** Password, email or account security change ended the session. */
-  | 'security-change';
+  | 'security-change'
+  | 'account-deleted'
+  | 'deletion-uncertain';
 
 /**
  * Public session state. It never contains the access token. `generation`
@@ -39,6 +41,7 @@ export type SessionSnapshot =
       readonly status: 'unauthenticated';
       readonly generation: number;
       readonly reason: SignedOutReason;
+      readonly storageCleared?: boolean;
     }
   | { readonly status: 'expired'; readonly generation: number }
   | {
@@ -55,6 +58,8 @@ export type SessionEndReason =
   | 'signed-out'
   | 'unauthorized'
   | 'security-change'
+  | 'account-deleted'
+  | 'deletion-uncertain'
   | 'expired'
   | 'replaced'
   | 'invalid-credential';
@@ -127,6 +132,13 @@ export interface SessionManager {
   handleUnauthorized(generation: number): boolean;
   /** Server-confirmed password/email/account change that revokes tokens. */
   handleSecurityInvalidation(generation: number): boolean;
+  /** Remove and verify the restorable JWT before an irreversible request starts. */
+  prepareAccountDeletion(generation: number): Promise<boolean>;
+  /** Synchronous identity fence and normal private teardown; never POST logout. */
+  endAccountDeletion(
+    generation: number,
+    confirmed: boolean,
+  ): Promise<{ ended: boolean; storageCleared: boolean }>;
   /** Adopt verified account metadata only; never replace or re-persist a JWT. */
   updateUser(generation: number, user: SessionUser): boolean;
   /** Re-checks absolute expiry against the wall clock now. */
@@ -545,6 +557,56 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     },
 
     checkExpiry,
+
+    async prepareAccountDeletion(generation) {
+      if (
+        checkExpiry() ||
+        snapshot.status !== 'authenticated' ||
+        snapshot.generation !== generation ||
+        !credential
+      )
+        return false;
+      const target = credential;
+      return enqueueStorage(async () => {
+        const current = () =>
+          !disposed &&
+          snapshot.generation === generation &&
+          credential === target &&
+          snapshot.status === 'authenticated';
+        if (!current()) return false;
+        try {
+          if (!(await store.clear())) return false;
+          const read = await store.read();
+          if (!current() || read.kind !== 'none') return false;
+          target.persisted = false;
+          return true;
+        } catch {
+          return false;
+        }
+      });
+    },
+
+    async endAccountDeletion(generation, confirmed) {
+      if (disposed || snapshot.generation !== generation || !credential)
+        return { ended: false, storageCleared: false };
+      const reason = confirmed
+        ? ('account-deleted' as const)
+        : ('deletion-uncertain' as const);
+      const clearing = endSession(reason, (next) => ({
+        status: 'unauthenticated',
+        generation: next,
+        reason,
+      }));
+      const endedGeneration = snapshot.generation;
+      const storageCleared = await clearing;
+      if (
+        snapshot.status === 'unauthenticated' &&
+        snapshot.generation === endedGeneration &&
+        snapshot.reason === reason
+      )
+        publish({ ...snapshot, storageCleared });
+      return { ended: true, storageCleared };
+    },
 
     updateUser(generation, user) {
       if (

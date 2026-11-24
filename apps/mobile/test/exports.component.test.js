@@ -12,6 +12,8 @@ import { SessionProvider } from '../src/infrastructure/auth/SessionProvider';
 import { DataProvider } from '../src/infrastructure/query/DataProvider';
 import { integration, json } from './realtime/integration-support';
 import { flush } from './auth/support';
+import { parsePath, destinationPath } from '../src/navigation/routes';
+const mockPush = jest.fn();
 
 jest.mock('expo-router', () => ({
   useFocusEffect: (fn) => jest.requireActual('react').useEffect(fn, [fn]),
@@ -19,6 +21,7 @@ jest.mock('expo-router', () => ({
     back: jest.fn(),
     canGoBack: () => true,
     replace: jest.fn(),
+    push: mockPush,
   }),
   useIsFocused: () => true,
 }));
@@ -77,7 +80,12 @@ jest.mock('expo-file-system', () => {
     create() {
       files.set(this.uri, { bytes: new Uint8Array() });
     }
-    write(bytes) {
+    write() {
+      throw new Error(
+        'Async File.write must not hand out an incomplete private file',
+      );
+    }
+    writeSync(bytes) {
       if (state.failWrite) throw new Error('device full /private/path');
       files.set(this.uri, { bytes: bytes.slice() });
     }
@@ -155,6 +163,27 @@ afterEach(async () => {
 });
 const press = (name) => fireEvent.press(screen.getByRole('button', { name }));
 
+test('Data & Privacy separates privacy, verified email and deletion from the existing export engine', async () => {
+  const env = await setup(
+    () => <DataPrivacyScreen />,
+    () => exportFile(),
+  );
+  expect(screen.getByRole('header', { name: 'Your privacy' })).toBeTruthy();
+  expect(screen.getByText(/Shared collaborative content remains/)).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: 'Export my data (JSON)' }),
+  ).toBeEnabled();
+  for (const [label, path] of [
+    ['Change email', '/change-email'],
+    ['Delete account', '/delete-account'],
+  ]) {
+    await press(label);
+    expect(mockPush).toHaveBeenLastCalledWith(path);
+    expect(destinationPath(parsePath(path))).toBe(path);
+  }
+  expect(env.requests).toHaveLength(0);
+});
+
 test('account export saves exact bytes privately, shares on request, never claims saved', async () => {
   const env = await setup(
     () => <DataPrivacyScreen />,
@@ -211,21 +240,83 @@ test('double tap sends one request; leaving the screen deletes the private file'
   expect(exportFiles()).toHaveLength(0);
 });
 
-test('session end removes the ready file and the screen', async () => {
-  const env = await setup(
-    () => <DataPrivacyScreen />,
-    () => exportFile(),
-  );
-  await press('Export my data (JSON)');
-  await screen.findByText(/File ready/);
-  expect(exportFiles()).toHaveLength(1);
-  await act(async () => {
-    await env.manager.logout();
-    await flush();
-  });
-  expect(exportFiles()).toHaveLength(0);
-  expect(screen.queryByText(/File ready/)).toBeNull();
-});
+test.each([
+  ['Change email', '/change-email'],
+  ['Delete account', '/delete-account'],
+])(
+  'opening %s removes the ready private export before pushing a new screen',
+  async (label, path) => {
+    await setup(
+      () => <DataPrivacyScreen />,
+      () => exportFile(),
+    );
+    await press('Export my data (JSON)');
+    await screen.findByText(/File ready/);
+    expect(exportFiles()).toHaveLength(1);
+    await press(label);
+    expect(exportFiles()).toHaveLength(0);
+    expect(mockPush).toHaveBeenLastCalledWith(path);
+    expect(shareAsync).not.toHaveBeenCalled();
+  },
+);
+
+test.each(['logout', 'account-deleted', 'deletion-uncertain'])(
+  'session end %s removes the ready file and the screen',
+  async (reason) => {
+    const env = await setup(
+      () => <DataPrivacyScreen />,
+      () => exportFile(),
+    );
+    await press('Export my data (JSON)');
+    await screen.findByText(/File ready/);
+    expect(exportFiles()).toHaveLength(1);
+    await act(async () => {
+      if (reason === 'logout') await env.manager.logout();
+      else
+        await env.manager.endAccountDeletion(
+          env.identity.generation,
+          reason === 'account-deleted',
+        );
+      await flush();
+    });
+    expect(exportFiles()).toHaveLength(0);
+    expect(screen.queryByText(/File ready/)).toBeNull();
+  },
+);
+
+test.each([
+  ['Change email', '/change-email'],
+  ['Delete account', '/delete-account'],
+])(
+  'failed cleanup requires acknowledgement before %s navigation',
+  async (label, path) => {
+    await setup(
+      () => <DataPrivacyScreen />,
+      () => exportFile(),
+    );
+    await press('Export my data (JSON)');
+    await screen.findByText(/File ready/);
+    __state.failDelete = true;
+    await press(label);
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(exportFiles()).toHaveLength(1);
+    expect(
+      screen.getByRole('header', { name: 'Private file could not be removed' }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText(/private copy was removed from this app/),
+    ).toBeNull();
+    await press('Stay here');
+    expect(mockPush).not.toHaveBeenCalled();
+    // The failed receipt must also survive a second navigation attempt.
+    await press(label);
+    expect(mockPush).not.toHaveBeenCalled();
+    await press('I understand, continue');
+    expect(mockPush).toHaveBeenLastCalledWith(path);
+    expect(exportFiles()).toHaveLength(1);
+    expect(shareAsync).not.toHaveBeenCalled();
+  },
+);
 
 test('413, wrong MIME and 429 leave zero files and show specific copy', async () => {
   let next = failure(413, 'EXPORT_TOO_LARGE');

@@ -90,7 +90,6 @@ export function createResourceAccess() {
   }
   function fenceBoard(id: string, denied = false) {
     const previous = boards.get(id);
-    if (denied && previous?.denied) return;
     boards.set(id, {
       version: (previous?.version ?? 0) + 1,
       read: false,
@@ -98,7 +97,8 @@ export function createResourceAccess() {
       denied: denied || previous?.denied === true,
       workspaceId: previous?.workspaceId,
     });
-    if (denied) for (const listener of boardTeardownListeners) listener(id);
+    if (denied && previous?.denied !== true)
+      for (const listener of boardTeardownListeners) listener(id);
   }
   function bumpKey(key: PrivateQueryKey) {
     const id = boardId(key);

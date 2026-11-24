@@ -136,6 +136,27 @@ export function SignInScreen() {
           </AuthText>
         )}
       {state.notice && <AuthText>{state.notice}</AuthText>}
+      {session.status === 'unauthenticated' &&
+        session.reason === 'account-deleted' && (
+          <AuthText>
+            Your account was deleted. Shared team work remains with Deleted user
+            attribution. A new account does not restore previous memberships.
+          </AuthText>
+        )}
+      {session.status === 'unauthenticated' &&
+        session.reason === 'deletion-uncertain' && (
+          <AuthText>
+            Account deletion could not be confirmed and may have completed. Sign
+            in again to check your account. Do not repeat deletion blindly.
+          </AuthText>
+        )}
+      {session.status === 'unauthenticated' &&
+        session.storageCleared === false && (
+          <AuthText error>
+            Device credential cleanup could not be fully confirmed. Protected
+            content remains locked. Unlock your device and sign in again.
+          </AuthText>
+        )}
       <TextField
         label="Email address"
         leading={<AuthIcon kind="mail" />}
