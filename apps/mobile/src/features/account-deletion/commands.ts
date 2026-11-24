@@ -103,6 +103,10 @@ function createCommands(
     unbind();
   });
   return {
+    leave() {
+      active?.abort();
+      if (!state.pending) publish({ error: '', blockers: [], providers: null });
+    },
     getSnapshot: () => state,
     subscribe(fn: () => void) {
       listeners.add(fn);
@@ -189,7 +193,6 @@ function createCommands(
           await manager.endAccountDeletion(identity.generation, false);
         else if (current()) publish({ error: failure(error, input.method) });
       } finally {
-        body = null;
         if (active === controller) active = null;
         if (current()) publish({ pending: false });
       }

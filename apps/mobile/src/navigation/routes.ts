@@ -24,7 +24,7 @@ export type ResourcePath =
   | `/boards/${ResourceId}/cards/${ResourceId}`
   | `/boards/${ResourceId}/${'calendar' | 'table' | 'settings' | 'members' | 'activity'}`;
 export type DestinationPath =
-  | `/${'home' | 'tasks' | 'boards' | 'inbox' | 'search' | 'settings' | 'appearance' | 'preferences' | 'profile' | 'change-email' | 'invitation' | 'notification-preferences' | 'push-schedule' | 'data-privacy' | 'security' | 'connected-accounts'}`
+  | `/${'home' | 'tasks' | 'boards' | 'inbox' | 'search' | 'settings' | 'appearance' | 'preferences' | 'profile' | 'change-email' | 'invitation' | 'notification-preferences' | 'push-schedule' | 'data-privacy' | 'delete-account' | 'security' | 'connected-accounts'}`
   | typeof invitationRecipientPath
   | ResourcePath;
 
@@ -57,6 +57,7 @@ export type Destination =
         | 'notification-preferences'
         | 'push-schedule'
         | 'data-privacy'
+        | 'delete-account'
         | 'security'
         | 'connected-accounts';
     };
@@ -93,6 +94,7 @@ export function parsePath(path: string): Destination | null {
       name === 'notification-preferences' ||
       name === 'push-schedule' ||
       name === 'data-privacy' ||
+      name === 'delete-account' ||
       name === 'security' ||
       name === 'connected-accounts'
     )

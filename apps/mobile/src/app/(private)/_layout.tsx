@@ -91,6 +91,7 @@ export default function PrivateLayout() {
         <Stack.Screen name="profile" options={{ headerShown: false }} />
         <Stack.Screen name="change-email" options={{ headerShown: false }} />
         <Stack.Screen name="data-privacy" options={{ headerShown: false }} />
+        <Stack.Screen name="delete-account" options={{ headerShown: false }} />
         <Stack.Screen name="security" options={{ headerShown: false }} />
         <Stack.Screen
           name="connected-accounts"
