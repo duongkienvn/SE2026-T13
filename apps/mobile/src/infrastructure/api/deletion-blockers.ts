@@ -37,8 +37,7 @@ export function deletionBlockers(value: unknown): AccountDeletionBlocker[] {
         ids.has(id) ||
         typeof row.name !== 'string' ||
         !row.name.trim() ||
-        row.name.length > 300 ||
-        /[\p{Cc}\p{Cf}]/u.test(row.name)
+        row.name.length > 300
       )
         return [];
       ids.add(id);

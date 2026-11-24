@@ -184,3 +184,33 @@ test('Google-only account without a native SDK is never offered an unusable dest
     0,
   );
 });
+
+test('Unicode blocker names keep emoji shaping while unsafe display controls are sanitized', async () => {
+  await setup(undefined, () =>
+    json(
+      {
+        success: false,
+        statusCode: 409,
+        code: 'ACCOUNT_DELETION_BLOCKED',
+        message: 'Resolve ownership',
+        blockers: [
+          {
+            type: 'BOARD_REQUIRES_ANOTHER_OWNER',
+            totalCount: 1,
+            resources: [{ id: USER_A, name: 'Engineering 👩‍💻\u0000\u202e' }],
+          },
+        ],
+      },
+      409,
+    ),
+  );
+  await fill();
+  await press('Review deletion');
+  await press('Delete my account');
+  expect(await screen.findByText('Engineering 👩‍💻')).toBeTruthy();
+  expect(
+    screen.getByRole('button', {
+      name: 'Review board ownership: Engineering 👩‍💻',
+    }),
+  ).toBeTruthy();
+});

@@ -26,7 +26,11 @@ import {
   typography,
   useTheme,
 } from '../../ui';
-import { blockerCopy, blockerDestination } from './blockers';
+import {
+  blockerCopy,
+  blockerDestination,
+  blockerResourceLabel,
+} from './blockers';
 import { useDeletion } from './useDeletion';
 
 export function DeleteAccountScreen() {
@@ -256,9 +260,9 @@ function DeletionContent({ identity }: { identity: SessionIdentity }) {
               )}
             {blocker.resources.map((resource) => (
               <View key={resource.id} style={{ gap: spacing.sm }}>
-                {text(resource.name)}
+                {text(blockerResourceLabel(resource.name))}
                 <Button
-                  label={`${blockerCopy[blocker.type].action}: ${resource.name}`}
+                  label={`${blockerCopy[blocker.type].action}: ${blockerResourceLabel(resource.name)}`}
                   variant="secondary"
                   disabled={checking || form.pending || !form.online}
                   onPress={() => void open(blocker.type, resource.id)}

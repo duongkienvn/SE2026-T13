@@ -5,6 +5,43 @@ import { blockerDestination } from '../../src/features/account-deletion/blockers
 import { boardDetail } from '../workspaces/kanban-fixtures.ts';
 import { workspace } from '../workspaces/fixtures.ts';
 import { loginResponse, USER_B, flush } from '../auth/support.ts';
+import { queryKeys } from '../../src/infrastructure/query/keys.ts';
+test('repeated denial invalidates a blocker probe captured while already denied', async () => {
+  const env = await integration(),
+    id = boardDetail.id;
+  let release!: (response: Response) => void;
+  env.respond(() => new Promise((r) => (release = r)));
+  env.data.resources.fenceBoard(id, true);
+  try {
+    const pending = blockerDestination(
+      env.data,
+      env.identity,
+      'BOARD_REQUIRES_ANOTHER_OWNER',
+      id,
+      new AbortController().signal,
+    );
+    await flush();
+    env.data.resources.fenceBoard(id, true);
+    release(
+      ok({
+        ...boardDetail,
+        currentUserRole: 'OWNER',
+        capabilities: {
+          ...boardDetail.capabilities,
+          canWriteBoard: true,
+          canManageMembers: true,
+        },
+      }),
+    );
+    await assert.rejects(pending, { code: 'RESOURCE_ACCESS_CHANGED' });
+    assert.equal(
+      env.data.resources.readable(queryKeys.board(env.identity, id)),
+      false,
+    );
+  } finally {
+    env.dispose();
+  }
+});
 test('a fresh probe recovers restored resource access and rejects an in-flight revocation', async () => {
   const env = await integration(),
     id = boardDetail.id,

@@ -68,6 +68,12 @@ test.each(['light', 'dark'])(
   async (mode) => {
     await setup(mode);
     await screen.findByText('alex@example.com');
+    await fireEvent.press(
+      screen.getByRole('button', {
+        name: 'Alex, alex@example.com, Edit profile',
+      }),
+    );
+    expect(mockPush).toHaveBeenLastCalledWith('/profile');
     for (const name of ['Account', 'Preferences', 'Security & Data'])
       expect(screen.getByRole('header', { name })).toBeTruthy();
     for (const [label, path] of [
@@ -93,6 +99,14 @@ test('account replacement removes A’s profile and Sign Out uses the secure lif
   await screen.findByText('alex@example.com');
   await act(() => env.manager.establishSession(loginResponse(USER_B)));
   await screen.findByText('b@example.com');
+  expect(
+    screen.getByRole('button', { name: 'Bea, b@example.com, Edit profile' }),
+  ).toBeTruthy();
+  expect(
+    screen.queryByRole('button', {
+      name: 'Alex, alex@example.com, Edit profile',
+    }),
+  ).toBeNull();
   expect(screen.queryByText('alex@example.com')).toBeNull();
   await fireEvent.press(screen.getByRole('button', { name: 'Sign out' }));
   expect(env.manager.getSnapshot().status).toBe('authenticated');

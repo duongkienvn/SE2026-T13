@@ -284,6 +284,40 @@ test.each(['logout', 'account-deleted', 'deletion-uncertain'])(
   },
 );
 
+test.each([
+  ['Change email', '/change-email'],
+  ['Delete account', '/delete-account'],
+])(
+  'failed cleanup requires acknowledgement before %s navigation',
+  async (label, path) => {
+    await setup(
+      () => <DataPrivacyScreen />,
+      () => exportFile(),
+    );
+    await press('Export my data (JSON)');
+    await screen.findByText(/File ready/);
+    __state.failDelete = true;
+    await press(label);
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(exportFiles()).toHaveLength(1);
+    expect(
+      screen.getByRole('header', { name: 'Private file could not be removed' }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText(/private copy was removed from this app/),
+    ).toBeNull();
+    await press('Stay here');
+    expect(mockPush).not.toHaveBeenCalled();
+    // The failed receipt must also survive a second navigation attempt.
+    await press(label);
+    expect(mockPush).not.toHaveBeenCalled();
+    await press('I understand, continue');
+    expect(mockPush).toHaveBeenLastCalledWith(path);
+    expect(exportFiles()).toHaveLength(1);
+    expect(shareAsync).not.toHaveBeenCalled();
+  },
+);
+
 test('413, wrong MIME and 429 leave zero files and show specific copy', async () => {
   let next = failure(413, 'EXPORT_TOO_LARGE');
   await setup(

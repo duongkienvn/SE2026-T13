@@ -19,6 +19,35 @@ const types = [
   'BOARD_REQUIRES_ANOTHER_OWNER',
   'TEAM_WORKSPACE_REQUIRES_ANOTHER_ADMIN',
 ];
+test('valid backend Unicode names retain the complete blocker projection', () => {
+  for (const name of [
+    'Engineering 👩‍💻',
+    'Team\u200cwork',
+    'Family 👨‍👩‍👧‍👦',
+    'Team\u0000\nwork',
+    'Team\u202ework',
+  ]) {
+    const blockers = types.map((type) => ({
+      type,
+      totalCount: 1,
+      resources: [{ id: USER_A, name }],
+    }));
+    assert.deepEqual(httpError(409, blocked(blockers)).blockers, blockers);
+  }
+  for (const resources of [
+    [{ id: USER_A, name: '  ' }],
+    [{ id: USER_A, name: 'x'.repeat(301) }],
+    [
+      { id: USER_A, name: 'one' },
+      { id: USER_A, name: 'two' },
+    ],
+  ])
+    assert.deepEqual(
+      httpError(409, blocked([{ type: types[0], totalCount: 2, resources }]))
+        .blockers,
+      [],
+    );
+});
 test('DELETE is exact, untrimmed and contains precisely one bounded proof', () => {
   assert.deepEqual(
     deletionBody({ confirmation: 'DELETE', currentPassword: ' pass ' }),

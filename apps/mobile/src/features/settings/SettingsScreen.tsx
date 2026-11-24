@@ -194,7 +194,7 @@ function SettingsContent({ identity }: { identity: SessionIdentity }) {
             <ListRow
               title={query.data.displayName}
               subtitle={query.data.email}
-              accessibilityLabel="Edit profile"
+              accessibilityLabel={`${query.data.displayName}, ${query.data.email}, Edit profile`}
               disabled={signingOut}
               onPress={() => router.push('/profile')}
               leading={

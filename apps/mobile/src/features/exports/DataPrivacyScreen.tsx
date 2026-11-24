@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { ScrollView, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { SessionIdentity } from '../../infrastructure/api/session-client';
@@ -6,6 +7,7 @@ import { useSessionSnapshot } from '../../infrastructure/auth/SessionProvider';
 import {
   AppHeader,
   Button,
+  ConfirmDialog,
   ScreenHeader,
   Surface,
   spacing,
@@ -31,6 +33,14 @@ function DataPrivacyContent({ identity }: { identity: SessionIdentity }) {
   const exporter = useExport(identity),
     router = useRouter(),
     c = useTheme();
+  const [pendingDestination, setPendingDestination] = useState<
+    '/change-email' | '/delete-account' | null
+  >(null);
+  function navigate(path: '/change-email' | '/delete-account') {
+    if (exporter.busy) return;
+    if (exporter.remove()) router.push(path);
+    else setPendingDestination(path);
+  }
   const text = (value: string) => (
     <Text style={[typography.body, { color: c.textSecondary }]}>{value}</Text>
   );
@@ -74,7 +84,7 @@ function DataPrivacyContent({ identity }: { identity: SessionIdentity }) {
             'Account exports include account information, preferences, sign-in methods and memberships. They do not include board contents or uploaded files. Board exports require an explicit Board OWNER role, even for Workspace admins.',
           )}
           {text(
-            'Temporary export files are removed when you leave this screen or end your session. Copies handed to another app are outside Kanvexa’s control.',
+            'Kanvexa attempts to remove temporary export files when you leave this screen or end your session. If cleanup fails, restart the app to retry. Copies handed to another app are outside Kanvexa’s control.',
           )}
         </Surface>
         <Surface>
@@ -91,10 +101,7 @@ function DataPrivacyContent({ identity }: { identity: SessionIdentity }) {
             label="Change email"
             variant="secondary"
             disabled={exporter.busy}
-            onPress={() => {
-              exporter.remove();
-              router.push('/change-email');
-            }}
+            onPress={() => navigate('/change-email')}
           />
         </Surface>
         <Surface>
@@ -139,13 +146,23 @@ function DataPrivacyContent({ identity }: { identity: SessionIdentity }) {
             label="Delete account"
             variant="destructive"
             disabled={exporter.busy}
-            onPress={() => {
-              exporter.remove();
-              router.push('/delete-account');
-            }}
+            onPress={() => navigate('/delete-account')}
           />
         </Surface>
       </ScrollView>
+      <ConfirmDialog
+        visible={pendingDestination !== null}
+        title="Private file could not be removed"
+        message="The private export may still be on this device. Restart the app to retry cleanup before exporting again. You can stay here or acknowledge this warning and continue. Copies shared with other apps are not affected."
+        confirmLabel="I understand, continue"
+        cancelLabel="Stay here"
+        onCancel={() => setPendingDestination(null)}
+        onConfirm={() => {
+          const path = pendingDestination;
+          setPendingDestination(null);
+          if (path) router.push(path);
+        }}
+      />
     </SafeAreaView>
   );
 }

@@ -33,6 +33,14 @@ export const blockerCopy: Record<
   },
 };
 
+/** Display-only sanitization: preserve stored names, Unicode joiners and emoji. */
+export function blockerResourceLabel(name: string) {
+  return (
+    name.replace(/[\p{Cc}\u202a-\u202e\u2066-\u2069]/gu, ' ').trim() ||
+    'Resource name unavailable'
+  );
+}
+
 /** Blocker summaries identify resources, never grant access. Fetch fresh ACL on every tap. */
 export async function blockerDestination(
   data: MobileDataLayer,

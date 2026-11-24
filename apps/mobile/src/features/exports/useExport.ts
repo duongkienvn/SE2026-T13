@@ -208,8 +208,11 @@ export function useExport(identity: SessionIdentity) {
       }
     },
     remove() {
-      if (handing || phase.kind !== 'ready') return;
-      setPhase({ kind: 'removed', failed: !drop() });
+      if (handing || phase.kind === 'downloading') return false;
+      if (phase.kind !== 'ready') return exportStorageAvailable();
+      const removed = drop();
+      setPhase({ kind: 'removed', failed: !removed });
+      return removed;
     },
   };
 }
