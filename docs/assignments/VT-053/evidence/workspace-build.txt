@@ -1,0 +1,31 @@
+
+> realtime-collaborative-kanban@ build D:\NAM_BON\KI_I\Software_Engineering\Projects\SE2026-T13
+> pnpm -r build
+
+Scope: 4 of 5 workspace projects
+packages/shared build$ node scripts/build.mjs
+packages/shared build: Done
+apps/frontend build$ tsc -b && vite build
+apps/mobile build$ pnpm typecheck
+apps/backend build$ nest build
+apps/mobile build: > @kanban/mobile@0.0.0 typecheck D:\NAM_BON\KI_I\Software_Engineering\Projects\SE2026-T13\apps\mobile
+apps/mobile build: > tsc --noEmit
+apps/mobile build: Done
+apps/backend build: Done
+apps/frontend build: NODE_ENV=production is not supported in the .env file. Only NODE_ENV=development is supported to create a development build of your project. If you need to set process.env.NODE_ENV, you can set it in the Vite config instead.
+apps/frontend build: vite v8.3.3 building client environment for production...
+apps/frontend build: transforming...
+apps/frontend build: ✓ 438 modules transformed.
+apps/frontend build: rendering chunks...
+apps/frontend build: computing gzip size...
+apps/frontend build: dist/index.html                     3.64 kB │ gzip:   1.32 kB
+apps/frontend build: dist/assets/index-B8fshmnk.css    152.38 kB │ gzip:  27.40 kB
+apps/frontend build: dist/assets/index-Dw1n_yo7.js   1,053.43 kB │ gzip: 297.77 kB
+apps/frontend build: [plugin builtin:vite-reporter]
+apps/frontend build: (!) Some chunks are larger than 500 kB after minification. Consider:
+apps/frontend build: - Using dynamic import() to code-split the application
+apps/frontend build: - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+apps/frontend build: - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+apps/frontend build: ✓ built in 717ms
+apps/frontend build: Done
+EXIT_CODE=0

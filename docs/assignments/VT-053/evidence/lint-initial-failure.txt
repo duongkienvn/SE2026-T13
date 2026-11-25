@@ -1,0 +1,13 @@
+
+> realtime-collaborative-kanban@ lint D:\NAM_BON\KI_I\Software_Engineering\Projects\SE2026-T13
+> eslint apps packages
+
+
+D:\NAM_BON\KI_I\Software_Engineering\Projects\SE2026-T13\apps\backend\test\search\verify-evidence.mjs
+  87:20  error  Spaces are hard to count. Use {4}  no-regex-spaces
+
+✖ 1 problem (1 error, 0 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+
+ ELIFECYCLE  Command failed with exit code 1.
+EXIT_CODE=1

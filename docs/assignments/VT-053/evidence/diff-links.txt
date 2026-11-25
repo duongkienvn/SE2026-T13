@@ -1,0 +1,15 @@
+COMMAND=git diff --check b7c1b97986e75d7d07bbed74b29f5ad3a53fcf30
+warning: in the working copy of 'docs/assignments/VT-053/README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/assignments/VT-053/evidence/README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/assignments/VT-053/evidence/history-green.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/assignments/VT-053/evidence/history-red.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/assignments/VT-053/evidence/mutation-mutant.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/assignments/VT-053/evidence/mutation-original.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/assignments/VT-053/evidence/mutation-restored.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/assignments/VT-053/evidence/mutation-summary.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/assignments/VT-053/evidence/user-request.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/assignments/VT-053/evidence/verification-context.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/assignments/VT-053/evidence/workspace-test.txt', LF will be replaced by CRLF the next time Git touches it
+DIFF_EXIT_CODE=0
+PASS: 46 local Markdown links; 7 tested source hashes match commit a9af8b0c549cfffd2528937a5f7d9f18d2f7486c; service blob unchanged from baseline f619c5a2774fb4645a5863a7439b6cfe96613dce; no mutation in submitted service.
+AUDIT_EXIT_CODE=0
