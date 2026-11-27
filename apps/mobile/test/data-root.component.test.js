@@ -54,10 +54,20 @@ jest.mock('../src/infrastructure/query/native-data', () => {
     },
   });
   const transport = createHttpClient({ baseUrl: null, fetch: jest.fn() });
+  const nativeData = createMobileDataLayer(nativeSession, transport);
+  // Logout removes queries before React detaches their observers. Those detached
+  // queries can schedule the production five-minute GC timer after cache removal.
+  nativeData.queryClient.setDefaultOptions({
+    ...nativeData.queryClient.getDefaultOptions(),
+    queries: {
+      ...nativeData.queryClient.getDefaultOptions().queries,
+      gcTime: Infinity,
+    },
+  });
   return {
     nativeSession,
     nativeTransport: transport,
-    nativeData: createMobileDataLayer(nativeSession, transport),
+    nativeData,
   };
 });
 jest.mock('../src/navigation/root-stack', () => ({

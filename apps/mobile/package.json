@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "expo start --go",
+    "dev:backend:local": "pnpm --filter @kanban/shared build && pnpm --filter @kanban/backend build && node scripts/local-backend.mjs",
     "android": "expo start --go --android",
     "ios": "expo start --go --ios",
     "android:native": "expo run:android",

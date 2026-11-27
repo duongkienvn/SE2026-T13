@@ -198,6 +198,15 @@ async function setup({
     }),
     time,
   );
+  // Access-loss tests detach observers after removing their queries. Keep the
+  // production GC delay out of this explicitly disposed component fixture.
+  data.queryClient.setDefaultOptions({
+    ...data.queryClient.getDefaultOptions(),
+    queries: {
+      ...data.queryClient.getDefaultOptions().queries,
+      gcTime: Infinity,
+    },
+  });
   const identity = data.getIdentity();
   const board = {
     ...boardDetail,
