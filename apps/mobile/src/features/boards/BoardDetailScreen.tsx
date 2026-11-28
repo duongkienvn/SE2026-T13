@@ -1,6 +1,14 @@
 import { hashKey, useQuery } from '@tanstack/react-query';
 import { useIsFocused, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../../infrastructure/api/errors';
@@ -71,6 +79,10 @@ import {
 } from './kanban-queries';
 import { boardStarKey } from './star';
 import { useBoardViewFilters } from './BoardViewFilters';
+import { AssigneeAvatarScope } from './members/assignee-avatars';
+
+/** An open Board filter sheet and its unapplied draft. */
+type FilterSheetState = { labels: boolean; draft: KanbanFilters };
 
 export function BoardDetailScreen({ boardId }: { boardId: ResourceId | null }) {
   const session = useSessionSnapshot();
@@ -109,6 +121,9 @@ function BoardEntry({
   const scroll = useRef<KanbanScroll>({ x: 0, cards: new Map() });
   const [filters, setFilters] = useBoardViewFilters(boardId);
   const [view, setView] = useState<'board' | 'table'>('board');
+  // Owned here, not by BoardContent, so ordinary revalidation (which unmounts
+  // the protected subtree) keeps an open sheet and its unapplied draft.
+  const [filterSheet, setFilterSheet] = useState<FilterSheetState | null>(null);
   const tableScroll = useRef({ y: 0 });
   const checking = room.status === 'checking';
   const revoked = room.status === 'unavailable';
@@ -178,6 +193,9 @@ function BoardEntry({
   });
   useEffect(() => {
     if (!revoked) return;
+    // Confirmed loss of access (404/403 and null reads revoke the room)
+    // discards the protected draft for good.
+    setFilterSheet(null);
     setFilters({});
     setView('board');
     tableScroll.current.y = 0;
@@ -217,6 +235,8 @@ function BoardEntry({
           focused={focused}
           filters={filters}
           onFilters={setFilters}
+          filterSheet={filterSheet}
+          onFilterSheet={setFilterSheet}
           scroll={scroll.current}
           view={view}
           onView={setView}
@@ -255,6 +275,8 @@ function BoardContent({
   focused,
   filters,
   onFilters,
+  filterSheet,
+  onFilterSheet,
   scroll,
   view,
   onView,
@@ -269,6 +291,8 @@ function BoardContent({
   focused: boolean;
   filters: KanbanFilters;
   onFilters: (filters: KanbanFilters) => void;
+  filterSheet: FilterSheetState | null;
+  onFilterSheet: Dispatch<SetStateAction<FilterSheetState | null>>;
   scroll: KanbanScroll;
   view: 'board' | 'table';
   onView: (view: 'board' | 'table') => void;
@@ -282,7 +306,9 @@ function BoardContent({
   const data = useMobileData();
   const online = useWorkspaceOnline();
   const api = createKanbanApi(data.api, identity, boardId);
-  const [sheet, setSheet] = useState<'filters' | 'labels' | null>(null);
+  const sheet = filterSheet && (filterSheet.labels ? 'labels' : 'filters');
+  const setSheet = (kind: 'filters' | 'labels' | null) =>
+    onFilterSheet(kind && { labels: kind === 'labels', draft: filters });
   const driftRepair = useRef(false);
   const [focusedView, setFocusedView] = useState<string | null>(null);
   const workspace = useQuery({
@@ -881,7 +907,11 @@ function BoardContent({
   );
 
   return (
-    <>
+    <AssigneeAvatarScope
+      identity={identity}
+      boardId={boardId}
+      enabled={focused && online}
+    >
       {view === 'table' ? (
         <BoardTable
           key={hashKey([normalizeKanbanFilters(filters)])}
@@ -972,9 +1002,12 @@ function BoardContent({
           {footer}
         </>
       )}
-      {sheet && focused && (
+      {filterSheet && focused && (
         <BoardFiltersSheet
-          initial={filters}
+          initial={filterSheet.draft}
+          onDraftChange={(draft) =>
+            onFilterSheet((current) => current && { ...current, draft })
+          }
           startWithLabels={sheet === 'labels'}
           catalogs={catalogs}
           timeZone={zone.data?.timeZone}
@@ -1021,7 +1054,7 @@ function BoardContent({
           }}
         />
       )}
-    </>
+    </AssigneeAvatarScope>
   );
 }
 

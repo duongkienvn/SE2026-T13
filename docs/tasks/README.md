@@ -99,6 +99,7 @@ chưa triển khai. Mục lục dưới đây liệt kê toàn bộ task documen
 
 ## Frontend tasks
 
+- [MOB-44 Private assignee avatars and filter draft preservation](frontend/mob-44-avatar-filter-drafts.md)
 - [MOB-40 Native account and OWNER-only Board export](frontend/mob-40-private-data-export.md)
 - [MOB-39 Native Security, password recovery entry and Connected Google](frontend/mob-39-security-connected-google.md)
 

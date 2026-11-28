@@ -9,6 +9,7 @@ import {
   typography,
   useTheme,
 } from '../../../ui';
+import { useAssigneeSource } from '../../boards/members/assignee-avatars';
 import type { KanbanAssignee, KanbanLabel } from '../../boards/kanban-api';
 import { workspaceErrorMessage } from '../../workspaces/status';
 import {
@@ -81,14 +82,15 @@ export function MetadataLabel({ label }: { label: KanbanLabel }) {
 export function AssigneeAvatar({
   member,
 }: {
-  member: Pick<KanbanAssignee, 'name' | 'avatarUrl'>;
+  member: Pick<KanbanAssignee, 'id' | 'name' | 'avatarUrl' | 'avatarRevision'>;
 }) {
   const { fontScale } = useWindowDimensions();
+  const source = useAssigneeSource(member);
   return (
     <Avatar
       size={Math.max(32, sizes.iconLarge * fontScale)}
       name={member.name}
-      source={member.avatarUrl ? { uri: member.avatarUrl } : undefined}
+      source={source}
     />
   );
 }

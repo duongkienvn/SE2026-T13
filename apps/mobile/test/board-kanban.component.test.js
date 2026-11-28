@@ -1746,3 +1746,229 @@ test.each(['logout', 'account', '401'])(
     }
   },
 );
+
+function images(node = screen.toJSON()) {
+  if (!node || typeof node !== 'object') return [];
+  if (Array.isArray(node)) return node.flatMap((child) => images(child));
+  return [
+    ...(node.type === 'Image' ? [node] : []),
+    ...(node.children ?? []).flatMap((child) => images(child)),
+  ];
+}
+
+function memberRow(id, displayName, avatarUrl, avatarRevision = 0) {
+  return {
+    userId: id,
+    role: 'MEMBER',
+    user: { id, displayName, avatarUrl, avatarRevision },
+  };
+}
+
+test('F03: managed assignee avatar paths render authorized photos; legacy HTTPS stays unauthenticated; malformed paths keep initials', async () => {
+  const other = uuid(61);
+  const legacy = uuid(62);
+  const managed = `/users/${USER_B}/avatar/${uuid(77)}`;
+  const env = await setup({
+    cards: [
+      { ...card(1), assignees: [{ userId: USER_B }] },
+      { ...card(2), assignees: [{ userId: legacy }] },
+      { ...card(3), assignees: [{ userId: other }] },
+    ],
+    override(url) {
+      if (url.pathname.endsWith('/members'))
+        return response(
+          page(
+            [
+              memberRow(USER_B, 'Bea Photo', managed, 3),
+              memberRow(legacy, 'Lee Legacy', 'https://images.example/l.png'),
+              // Another user's managed path is never trusted for this user.
+              memberRow(other, 'Oli Other', managed),
+            ],
+            1,
+            100,
+          ),
+        );
+      return null;
+    },
+  });
+  const binary = jest
+    .spyOn(env.data.api, 'binary')
+    .mockResolvedValue({ bytes: new Uint8Array([1, 2, 3]).buffer });
+  try {
+    await button(/^Card 1,/);
+    await waitFor(() =>
+      expect(images().map((image) => image.props.source?.uri)).toEqual(
+        expect.arrayContaining([
+          'data:image/webp;base64,AQID',
+          'https://images.example/l.png',
+        ]),
+      ),
+    );
+    expect(binary).toHaveBeenCalledTimes(1);
+    expect(binary).toHaveBeenCalledWith(
+      managed,
+      ['image/webp'],
+      expect.objectContaining({
+        identity: env.data.getIdentity(),
+        resourceKey: [
+          ...queryKeys.members(env.data.getIdentity(), boardId),
+          'avatar',
+          USER_B,
+          3,
+          managed,
+        ],
+      }),
+    );
+    expect(images().filter((image) => image.props.source?.uri)).toHaveLength(2);
+    // Logout clears every photo with the session.
+    await act(() => env.manager.logout());
+    expect(images()).toHaveLength(0);
+  } finally {
+    binary.mockRestore();
+    await env.dispose();
+  }
+});
+
+test('F04: background Board revalidation keeps an open filter sheet and its unapplied draft without showing it while unverified', async () => {
+  const slow = deferred();
+  let hold = false;
+  const env = await setup({
+    cards: [card(1), { ...card(2), title: 'Search hit' }],
+    override(url) {
+      if (url.pathname === `/api/boards/${boardId}` && hold)
+        return slow.promise;
+      return null;
+    },
+  });
+  try {
+    await screen.findByText('2 cards');
+    await fireEvent.press(await button('Filters'));
+    await fireEvent.changeText(
+      screen.getByLabelText('Search cards'),
+      ' Search ',
+    );
+    // An unrelated member addition triggers a background detail refetch.
+    hold = true;
+    await act(() => {
+      void env.data.queryClient.invalidateQueries({
+        queryKey: queryKeys.board(env.data.getIdentity(), boardId),
+        exact: true,
+      });
+    });
+    await waitFor(() =>
+      expect(screen.queryByLabelText('Search cards')).toBeNull(),
+    );
+    expect(screen.queryByText('Card 1')).toBeNull();
+    hold = false;
+    await act(async () => slow.resolve(result(boardDetail)));
+    const search = await screen.findByLabelText('Search cards');
+    expect(search.props.value).toBe(' Search ');
+    // The draft is still unapplied: no filtered read happened.
+    expect(env.reads('/cards').every(({ params }) => !params.get('q'))).toBe(
+      true,
+    );
+    await fireEvent.press(await button('Apply filters (1)'));
+    await button(/^Search hit,/);
+    expect(env.reads('/cards').at(-1).params.get('q')).toBe('Search');
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('F04: confirmed access loss discards the protected draft and never restores it', async () => {
+  let allowed = true;
+  const env = await setup({
+    cards: [card(1)],
+    override(url) {
+      if (url.pathname === `/api/boards/${boardId}` && !allowed)
+        return response({}, 404);
+      return null;
+    },
+  });
+  try {
+    await screen.findByText('1 card');
+    await fireEvent.press(await button('Filters'));
+    await fireEvent.changeText(screen.getByLabelText('Search cards'), 'Secret');
+    allowed = false;
+    await act(() =>
+      env.data.queryClient.invalidateQueries({
+        queryKey: queryKeys.board(env.data.getIdentity(), boardId),
+        exact: true,
+      }),
+    );
+    await screen.findByText('Board unavailable');
+    expect(screen.queryByLabelText('Search cards')).toBeNull();
+    allowed = true;
+    await env.focus(false);
+    await env.focus(true);
+    await act(() =>
+      env.data.queryClient.invalidateQueries({
+        queryKey: queryKeys.board(env.data.getIdentity(), boardId),
+        exact: true,
+      }),
+    );
+    await screen.findByText('1 card');
+    expect(screen.queryByLabelText('Search cards')).toBeNull();
+    await fireEvent.press(await button('Filters'));
+    expect(screen.getByLabelText('Search cards').props.value).toBe('');
+  } finally {
+    await env.dispose();
+  }
+});
+
+test('F03: roster denial never reads a private photo; a new revision replaces the cached one', async () => {
+  const managed = `/users/${USER_B}/avatar/${uuid(77)}`;
+  let roster = 'denied';
+  let revision = 1;
+  const env = await setup({
+    cards: [{ ...card(1), assignees: [{ userId: USER_B }] }],
+    override(url) {
+      if (url.pathname.endsWith('/members'))
+        return roster === 'denied'
+          ? response({}, 403)
+          : response(
+              page([memberRow(USER_B, 'Bea Photo', managed, revision)], 1, 100),
+            );
+      return null;
+    },
+  });
+  const binary = jest
+    .spyOn(env.data.api, 'binary')
+    .mockImplementation(async () => ({
+      bytes: new Uint8Array([revision]).buffer,
+    }));
+  try {
+    await button(/^Card 1,/);
+    await waitFor(() =>
+      expect(env.reads('/members').length).toBeGreaterThan(0),
+    );
+    expect(binary).not.toHaveBeenCalled();
+    expect(images().filter((image) => image.props.source?.uri)).toHaveLength(0);
+    roster = 'allowed';
+    const members = queryKeys.members(env.data.getIdentity(), boardId);
+    await act(() =>
+      env.data.queryClient.resetQueries({ queryKey: members, exact: true }),
+    );
+    await waitFor(() =>
+      expect(images().map((image) => image.props.source?.uri)).toContain(
+        'data:image/webp;base64,AQ==',
+      ),
+    );
+    revision = 2;
+    await act(() =>
+      env.data.queryClient.resetQueries({ queryKey: members, exact: true }),
+    );
+    await waitFor(() =>
+      expect(images().map((image) => image.props.source?.uri)).toContain(
+        'data:image/webp;base64,Ag==',
+      ),
+    );
+    expect(binary).toHaveBeenCalledTimes(2);
+    expect(
+      binary.mock.calls.map(([, , options]) => options.resourceKey.at(-2)),
+    ).toEqual([1, 2]);
+  } finally {
+    binary.mockRestore();
+    await env.dispose();
+  }
+});
