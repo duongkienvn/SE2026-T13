@@ -34,6 +34,11 @@ import {
   type DateField,
 } from './dates';
 import { AssigneesSheet, LabelsSheet } from './MetadataSheets';
+import {
+  AssigneeAvatarScope,
+  useAssigneeSources,
+  useAvatarScope,
+} from '../../boards/members/assignee-avatars';
 import { runMetadataMutation, type MetadataCommand } from './mutations';
 import {
   CardDateValue,
@@ -144,6 +149,12 @@ export function CardMetadata({ context }: CardDetailSectionProps) {
       ? catalogs.memberItems
       : [];
   const people = resolveAssignees(card.assignees, knownMembers);
+  const avatarScope = useAvatarScope({
+    identity,
+    boardId,
+    enabled: active && rosterAllowed,
+  });
+  const sources = useAssigneeSources(people, avatarScope);
   const unresolved = people.some(
     ({ id }) => !knownMembers.some((member) => member.id === id),
   );
@@ -299,9 +310,9 @@ export function CardMetadata({ context }: CardDetailSectionProps) {
             <AvatarStack
               size={sizes.iconLarge * Math.max(fontScale, 1)}
               accessibilityLabel={`Assignees: ${people.map(({ name }) => name).join(', ')}`}
-              people={people.map(({ name, avatarUrl }) => ({
+              people={people.map(({ name }, index) => ({
                 name,
-                source: avatarUrl ? { uri: avatarUrl } : undefined,
+                source: sources[index],
               }))}
             />
           ) : (
@@ -379,11 +390,17 @@ export function CardMetadata({ context }: CardDetailSectionProps) {
         </View>
       )}
       {inScope && rosterAllowed && editor?.kind === 'assignees' && (
-        <AssigneesSheet
-          {...controls}
-          catalogs={catalogs}
-          assigned={new Set(card.assignees.map(({ userId }) => userId))}
-        />
+        <AssigneeAvatarScope
+          identity={identity}
+          boardId={boardId}
+          enabled={avatarScope.enabled}
+        >
+          <AssigneesSheet
+            {...controls}
+            catalogs={catalogs}
+            assigned={new Set(card.assignees.map(({ userId }) => userId))}
+          />
+        </AssigneeAvatarScope>
       )}
       {inScope && editor?.kind === 'labels' && (
         <LabelsSheet {...controls} catalogs={catalogs} assignments={labels} />

@@ -29,6 +29,7 @@ import type {
   KanbanColumn,
   KanbanLabel,
 } from './kanban-api';
+import { useAssigneeSources } from './members/assignee-avatars';
 
 export type KanbanScroll = { x: number; cards: Map<string, number> };
 const emptyCards: KanbanCard[] = [];
@@ -64,17 +65,15 @@ const Preview = memo(function Preview({
   const labelFallback = unresolvedLabels
     ? `${unresolvedLabels} unresolved ${unresolvedLabels === 1 ? 'label' : 'labels'}`
     : '';
-  const people = card.assignees.flatMap(({ userId }) => {
+  const known = card.assignees.flatMap(({ userId }) => {
     const member = members.get(userId);
-    return member
-      ? [
-          {
-            name: member.name,
-            source: member.avatarUrl ? { uri: member.avatarUrl } : undefined,
-          },
-        ]
-      : [];
+    return member ? [member] : [];
   });
+  const sources = useAssigneeSources(known.slice(0, 3));
+  const people = known.map((member, index) => ({
+    name: member.name,
+    source: sources[index],
+  }));
   const checklist = summary?.checklist;
   const checked = checklist?.totalItems
     ? `${checklist.checkedItems}/${checklist.totalItems} checklist items`

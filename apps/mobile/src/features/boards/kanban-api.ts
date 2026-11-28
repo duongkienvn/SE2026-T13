@@ -20,6 +20,11 @@ import { decodeBoardAccess } from '../../infrastructure/realtime/rooms.ts';
 import { decodeWorkspace } from '../workspaces/decoder.ts';
 import { decodeBoard } from './api.ts';
 import { preferencesApi } from '../preferences/api.ts';
+import {
+  avatarRevision,
+  externalAvatarUrl,
+  managedAvatarPath,
+} from './members/avatar-source.ts';
 
 export type KanbanFilters = Omit<BoardCardFilters, 'page' | 'limit'>;
 export const kanbanPageSize = 100;
@@ -221,7 +226,22 @@ export interface KanbanLabel {
 export interface KanbanAssignee {
   id: string;
   name: string;
+  /** Backend-managed `/users/<id>/avatar/<asset>` path, legacy HTTPS URL, or null. */
   avatarUrl: string | null;
+  avatarRevision: number;
+}
+
+/** Keeps a managed path only for its own user; legacy HTTPS stays unauthenticated. */
+export function decodeAssigneeAvatar(
+  user: Record<string, unknown>,
+  id: string,
+) {
+  return {
+    avatarUrl:
+      managedAvatarPath(user.avatarUrl, id) ??
+      externalAvatarUrl(user.avatarUrl),
+    avatarRevision: avatarRevision(user.avatarRevision),
+  };
 }
 
 export function decodeKanbanLabel(
@@ -350,14 +370,11 @@ export function createKanbanApi(
           signal,
           (value): KanbanAssignee => {
             const user = row(row(value).user);
+            const userId = id(user.id);
             return {
-              id: id(user.id),
+              id: userId,
               name: name(user.displayName),
-              avatarUrl:
-                typeof user.avatarUrl === 'string' &&
-                /^https:\/\/[^/\s]+/i.test(user.avatarUrl)
-                  ? user.avatarUrl
-                  : null,
+              ...decodeAssigneeAvatar(user, userId),
             };
           },
         ),

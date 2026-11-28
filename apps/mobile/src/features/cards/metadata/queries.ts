@@ -40,5 +40,6 @@ export function resolveAssignees(
     id: userId,
     name: roster.get(userId)?.name ?? 'Assigned member',
     avatarUrl: roster.get(userId)?.avatarUrl ?? null,
+    avatarRevision: roster.get(userId)?.avatarRevision ?? 0,
   }));
 }
