@@ -1,6 +1,7 @@
 /* global jest, test, expect */
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { SearchSections } from '../src/features/search/SearchSections';
+import { scrollList } from './virtual-list';
 import { ThemeContext } from '../src/ui';
 import { results, cardHit } from './search/fixtures';
 
@@ -54,8 +55,22 @@ test('specific type renders long Unicode text and 50 ordered rows without All sh
       disabled
     />,
   );
-  expect(screen.getAllByRole('button')).toHaveLength(50);
-  expect(screen.getAllByText('<b>literal</b> _% \\')).toHaveLength(50);
+  // 50 retained rows, about one page mounted, in server order (P01).
+  const labels = () =>
+    screen.getAllByRole('button').map((row) => row.props.accessibilityLabel);
+  const order = (label) => Number(/ (\d+),/.exec(label)[1]);
+  const first = labels();
+  expect(first.length).toBeLessThanOrEqual(20);
+  expect(first.map(order)).toEqual(first.map((_, i) => i));
+  await scrollList('search-scroll');
+  await screen.findByRole('button', {
+    name: 'Open カード 😀 49, Design board',
+  });
+  const later = labels()
+    .map(order)
+    .filter((n) => n >= first.length);
+  expect(later).toEqual(later.map((_, i) => 50 - later.length + i));
+  expect(screen.getAllByText(/^<b>literal<\/b>/)).toHaveLength(labels().length);
   await fireEvent.press(
     screen.getByRole('button', { name: 'Open カード 😀 49, Design board' }),
   );

@@ -8,6 +8,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { focusManager, onlineManager } from '@tanstack/react-query';
+import { scrollList } from './virtual-list';
 import { MyTasksScreen } from '../src/features/tasks/MyTasksScreen';
 import { createHttpClient } from '../src/infrastructure/api/client';
 import { SessionProvider } from '../src/infrastructure/auth/SessionProvider';
@@ -285,6 +286,11 @@ test('explicit pagination loads 101 Cards without duplicate requests and resets 
     expect(
       screen.queryByRole('button', { name: 'Load more tasks' }),
     ).toBeNull();
+    // All 101 rows are retained, but only about one page is mounted (P01).
+    expect(screen.getByText('No due date · 101 loaded')).toBeTruthy();
+    expect(
+      screen.getAllByRole('button', { name: /^Open Task / }).length,
+    ).toBeLessThanOrEqual(30);
     expect(
       env.requests
         .filter(({ url }) => url.pathname.endsWith('/tasks'))
@@ -318,8 +324,12 @@ test('a failed next page keeps earlier tasks and Retry loads that page once', as
     expect(screen.getByText('Task 0')).toBeTruthy();
     failed = false;
     await press('Retry load more');
+    // Row 21 is loaded but virtualized until scrolled near (P01).
+    await screen.findByText('21 loaded · 21 matching tasks');
+    expect(screen.getByText('No due date · 21 loaded')).toBeTruthy();
+    expect(screen.getByText('Task 0')).toBeTruthy();
+    await scrollList('my-tasks-scroll');
     await screen.findByText('Task 20');
-    expect(screen.getByText('21 loaded · 21 matching tasks')).toBeTruthy();
   } finally {
     await env.dispose();
   }

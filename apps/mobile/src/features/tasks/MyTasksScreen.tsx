@@ -276,9 +276,12 @@ function TaskList({ identity }: { identity: SessionIdentity }) {
       edges={['top', 'left', 'right']}
       style={{ flex: 1, backgroundColor: c.background }}
     >
-      <ScrollView
-        testID="my-tasks-scroll"
-        contentContainerStyle={{ padding: spacing.xl, gap: spacing.lg }}
+      <TaskSections
+        rows={rows}
+        preferences={dates}
+        disabled={!eligible || !!opening || permissionRisk}
+        opening={opening}
+        open={(task) => void open(task)}
         refreshControl={
           <RefreshControl
             testID="tasks-refresh"
@@ -287,132 +290,137 @@ function TaskList({ identity }: { identity: SessionIdentity }) {
             tintColor={c.primary}
           />
         }
-      >
-        <TabHeader search />
-        <View style={{ gap: spacing.xs }}>
-          <Text
-            accessibilityRole="header"
-            style={[typography.display, { color: c.text }]}
-          >
-            My Tasks
-          </Text>
-          <Text style={[typography.body, { color: c.textSecondary }]}>
-            All tasks assigned to you, across workspaces.
-          </Text>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{
-            gap: spacing.sm,
-            paddingVertical: spacing.xs,
-          }}
-        >
-          {(['ALL', ...taskGroups] as const).map((value) => {
-            const count = value === 'ALL' ? total : counts?.[value];
-            return (
-              <FilterChip
-                key={value}
-                selected={group === value}
-                label={
-                  groupLabels[value] +
-                  (count === undefined ? '' : ' · ' + count)
-                }
-                onPress={() => {
-                  setNotice('');
-                  changeSelection(selection, value);
-                }}
-              />
-            );
-          })}
-        </ScrollView>
-        <Button
-          label="Filter and sort tasks"
-          variant="secondary"
-          onPress={() => setSheet(true)}
-        />
-        <Text style={[typography.supporting, { color: c.textSecondary }]}>
-          Dates in {dates.timeZone}
-        </Text>
-        {preferences.isError && (
-          <Text style={{ color: c.textSecondary }}>
-            Couldn’t refresh date preferences. Dates use {dates.timeZone}.
-          </Text>
-        )}
-        {!!notice && (
-          <Text
-            accessibilityLiveRegion="polite"
-            style={[typography.body, { color: c.text }]}
-          >
-            {notice}
-          </Text>
-        )}
-        {!!filters.error && (
-          <Text accessibilityLiveRegion="polite" style={{ color: c.danger }}>
-            {filters.error}
-          </Text>
-        )}
-        {!!message && (
-          <View style={{ gap: spacing.sm }}>
-            <Text
-              accessibilityLiveRegion="polite"
-              style={[typography.body, { color: c.text }]}
+        header={
+          <View style={{ gap: spacing.lg, paddingBottom: spacing.sm }}>
+            <TabHeader search />
+            <View style={{ gap: spacing.xs }}>
+              <Text
+                accessibilityRole="header"
+                style={[typography.display, { color: c.text }]}
+              >
+                My Tasks
+              </Text>
+              <Text style={[typography.body, { color: c.textSecondary }]}>
+                All tasks assigned to you, across workspaces.
+              </Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{
+                gap: spacing.sm,
+                paddingVertical: spacing.xs,
+              }}
             >
-              {message}
-            </Text>
+              {(['ALL', ...taskGroups] as const).map((value) => {
+                const count = value === 'ALL' ? total : counts?.[value];
+                return (
+                  <FilterChip
+                    key={value}
+                    selected={group === value}
+                    label={
+                      groupLabels[value] +
+                      (count === undefined ? '' : ' · ' + count)
+                    }
+                    onPress={() => {
+                      setNotice('');
+                      changeSelection(selection, value);
+                    }}
+                  />
+                );
+              })}
+            </ScrollView>
             <Button
-              label={
-                tasks.isFetchNextPageError ? 'Retry load more' : 'Retry tasks'
-              }
-              disabled={!eligible || !retry || tasks.isFetching}
-              onPress={
-                tasks.isFetchNextPageError ? () => void loadMore() : refresh
-              }
+              label="Filter and sort tasks"
+              variant="secondary"
+              onPress={() => setSheet(true)}
             />
+            <Text style={[typography.supporting, { color: c.textSecondary }]}>
+              Dates in {dates.timeZone}
+            </Text>
+            {preferences.isError && (
+              <Text style={{ color: c.textSecondary }}>
+                Couldn’t refresh date preferences. Dates use {dates.timeZone}.
+              </Text>
+            )}
+            {!!notice && (
+              <Text
+                accessibilityLiveRegion="polite"
+                style={[typography.body, { color: c.text }]}
+              >
+                {notice}
+              </Text>
+            )}
+            {!!filters.error && (
+              <Text
+                accessibilityLiveRegion="polite"
+                style={{ color: c.danger }}
+              >
+                {filters.error}
+              </Text>
+            )}
+            {!!message && (
+              <View style={{ gap: spacing.sm }}>
+                <Text
+                  accessibilityLiveRegion="polite"
+                  style={[typography.body, { color: c.text }]}
+                >
+                  {message}
+                </Text>
+                <Button
+                  label={
+                    tasks.isFetchNextPageError
+                      ? 'Retry load more'
+                      : 'Retry tasks'
+                  }
+                  disabled={!eligible || !retry || tasks.isFetching}
+                  onPress={
+                    tasks.isFetchNextPageError ? () => void loadMore() : refresh
+                  }
+                />
+              </View>
+            )}
+            {!tasks.data && tasks.isFetching && (
+              <View testID="tasks-skeleton" style={{ gap: spacing.md }}>
+                <Skeleton width="90%" height={70} />
+                <Skeleton width="90%" height={70} />
+                <Skeleton width="90%" height={70} />
+              </View>
+            )}
+            {usable && !!pages.length && !rows.length && (
+              <Text style={[typography.body, { color: c.textSecondary }]}>
+                {group === 'ALL'
+                  ? 'No assigned tasks match these filters.'
+                  : 'No tasks in this group.'}
+              </Text>
+            )}
           </View>
-        )}
-        {!tasks.data && tasks.isFetching && (
-          <View testID="tasks-skeleton" style={{ gap: spacing.md }}>
-            <Skeleton width="90%" height={70} />
-            <Skeleton width="90%" height={70} />
-            <Skeleton width="90%" height={70} />
+        }
+        footer={
+          <View style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
+            {usable && !!pages.length && (
+              <Text
+                accessibilityLiveRegion="polite"
+                style={[typography.supporting, { color: c.textSecondary }]}
+              >
+                {rows.length} loaded · {pages.at(-1)!.meta.total} matching tasks
+              </Text>
+            )}
+            {tasks.hasNextPage && usable && (
+              <Button
+                label="Load more tasks"
+                variant="secondary"
+                loading={tasks.isFetchingNextPage}
+                disabled={!eligible || !retry || tasks.isFetching}
+                onPress={() => void loadMore()}
+              />
+            )}
+            {tasks.isFetchingNextPage && (
+              <LoadingState label="Loading next task page" />
+            )}
           </View>
-        )}
-        {usable && !!pages.length && !rows.length && (
-          <Text style={[typography.body, { color: c.textSecondary }]}>
-            {group === 'ALL'
-              ? 'No assigned tasks match these filters.'
-              : 'No tasks in this group.'}
-          </Text>
-        )}
-        <TaskSections
-          rows={rows}
-          preferences={dates}
-          disabled={!eligible || !!opening || permissionRisk}
-          opening={opening}
-          open={(task) => void open(task)}
-        />
-        {usable && !!pages.length && (
-          <Text
-            accessibilityLiveRegion="polite"
-            style={[typography.supporting, { color: c.textSecondary }]}
-          >
-            {rows.length} loaded · {pages.at(-1)!.meta.total} matching tasks
-          </Text>
-        )}
-        {tasks.hasNextPage && usable && (
-          <Button
-            label="Load more tasks"
-            variant="secondary"
-            loading={tasks.isFetchingNextPage}
-            disabled={!eligible || !retry || tasks.isFetching}
-            onPress={() => void loadMore()}
-          />
-        )}
-        {tasks.isFetchingNextPage && (
-          <LoadingState label="Loading next task page" />
-        )}
-      </ScrollView>
+        }
+      />
       {sheet && (
         <TaskFiltersSheet
           identity={identity}

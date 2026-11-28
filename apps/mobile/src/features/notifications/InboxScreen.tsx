@@ -1,7 +1,7 @@
 import type { NotificationResponse } from '@kanban/shared';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { RefreshControl, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSessionSnapshot } from '../../infrastructure/auth/SessionProvider';
 import {
@@ -197,10 +197,18 @@ function Inbox({ identity }: { identity: SessionIdentity }) {
       edges={['top', 'left', 'right']}
       style={{ flex: 1, backgroundColor: c.background }}
     >
-      <ScrollView
-        testID="inbox-scroll"
-        automaticallyAdjustKeyboardInsets
-        contentContainerStyle={{ padding: spacing.xl, gap: spacing.lg }}
+      <InboxSections
+        rows={rows}
+        preferences={inbox.dates}
+        now={inbox.now}
+        disabled={disabled}
+        pending={mutation.pending}
+        opening={opening}
+        onOpen={(item) => void open(item)}
+        onRead={(item) => {
+          cancelOpen();
+          void commands.read(item.id).catch(() => undefined);
+        }}
         refreshControl={
           <RefreshControl
             refreshing={list.isRefetching}
@@ -208,211 +216,214 @@ function Inbox({ identity }: { identity: SessionIdentity }) {
             tintColor={c.primary}
           />
         }
-      >
-        <TabHeader search={false} />
-        <Button
-          label="Notification preferences"
-          variant="link"
-          onPress={() => router.push('/notification-preferences')}
-        />
-        <View style={{ gap: spacing.xs }}>
-          <Text
-            accessibilityRole="header"
-            style={[typography.display, { color: c.text }]}
-          >
-            Inbox
-          </Text>
-          <Text style={[typography.body, { color: c.textSecondary }]}>
-            Updates from your boards, tasks, and team.
-          </Text>
-        </View>
-        <View
-          style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: spacing.sm,
-          }}
-        >
-          <FilterChip
-            label="All"
-            selected={inbox.filter === 'all'}
-            disabled={!!mutation.pending}
-            onPress={() => {
-              cancelOpen();
-              setNotice('');
-              inbox.changeFilter('all');
-            }}
-          />
-          <FilterChip
-            label={
-              'Unread' +
-              (count === undefined ? '' : ' · ' + compactUnread(count))
-            }
-            accessibilityLabel={
-              count === undefined
-                ? 'Unread'
-                : `Unread, ${count} unread notifications`
-            }
-            selected={inbox.filter === 'unread'}
-            disabled={!!mutation.pending}
-            onPress={() => {
-              cancelOpen();
-              setNotice('');
-              inbox.changeFilter('unread');
-            }}
-          />
-          <Button
-            label="Mark all as read"
-            variant="secondary"
-            loading={mutation.pending === 'all'}
-            disabled={
-              !eligible ||
-              !count ||
-              !!mutation.pending ||
-              mutation.mustReview ||
-              !inbox.writesReady ||
-              !!opening
-            }
-            onPress={() => {
-              cancelOpen();
-              void commands.readAll().catch(() => undefined);
-            }}
-          />
-        </View>
-        <Text style={[typography.supporting, { color: c.textSecondary }]}>
-          Dates in {inbox.dates.timeZone}
-        </Text>
-        {inbox.preferences.isError && (
-          <Text
-            accessibilityLiveRegion="polite"
-            style={[typography.supporting, { color: c.textSecondary }]}
-          >
-            Could not refresh date preferences. Dates use {inbox.dates.timeZone}
-            .
-          </Text>
-        )}
-        {!!message && (
-          <View style={{ gap: spacing.sm }}>
-            <Text
-              accessibilityLiveRegion="polite"
-              style={[typography.body, { color: c.text }]}
-            >
-              {message}
-            </Text>
+        header={
+          <View style={{ gap: spacing.lg, paddingBottom: spacing.sm }}>
+            <TabHeader search={false} />
             <Button
-              label={
-                mutation.mustReview
-                  ? 'Review Inbox'
-                  : list.isFetchNextPageError
-                    ? 'Retry load more'
-                    : 'Retry Inbox'
-              }
-              disabled={
-                list.isFetchNextPageError
-                  ? !eligible || !inbox.listReady || !!mutation.pending
-                  : !canRefresh
-              }
-              loading={mutation.pending === 'review'}
-              onPress={
-                list.isFetchNextPageError && !mutation.mustReview
-                  ? () => void loadMore()
-                  : () => void refresh()
-              }
+              label="Notification preferences"
+              variant="link"
+              onPress={() => router.push('/notification-preferences')}
             />
-          </View>
-        )}
-        {!!mutation.error && !mutation.mustReview && (
-          <View style={{ gap: spacing.sm }}>
-            <Text accessibilityLiveRegion="polite" style={{ color: c.text }}>
-              {inboxErrorMessage(mutation.error)}
-            </Text>
-            {!!rows.length && !notice && !message && (
+            <View style={{ gap: spacing.xs }}>
+              <Text
+                accessibilityRole="header"
+                style={[typography.display, { color: c.text }]}
+              >
+                Inbox
+              </Text>
+              <Text style={[typography.body, { color: c.textSecondary }]}>
+                Updates from your boards, tasks, and team.
+              </Text>
+            </View>
+            <View
+              style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: spacing.sm,
+              }}
+            >
+              <FilterChip
+                label="All"
+                selected={inbox.filter === 'all'}
+                disabled={!!mutation.pending}
+                onPress={() => {
+                  cancelOpen();
+                  setNotice('');
+                  inbox.changeFilter('all');
+                }}
+              />
+              <FilterChip
+                label={
+                  'Unread' +
+                  (count === undefined ? '' : ' · ' + compactUnread(count))
+                }
+                accessibilityLabel={
+                  count === undefined
+                    ? 'Unread'
+                    : `Unread, ${count} unread notifications`
+                }
+                selected={inbox.filter === 'unread'}
+                disabled={!!mutation.pending}
+                onPress={() => {
+                  cancelOpen();
+                  setNotice('');
+                  inbox.changeFilter('unread');
+                }}
+              />
               <Button
-                label="Refresh Inbox"
-                disabled={!canRefresh}
-                onPress={() => void refresh()}
+                label="Mark all as read"
+                variant="secondary"
+                loading={mutation.pending === 'all'}
+                disabled={
+                  !eligible ||
+                  !count ||
+                  !!mutation.pending ||
+                  mutation.mustReview ||
+                  !inbox.writesReady ||
+                  !!opening
+                }
+                onPress={() => {
+                  cancelOpen();
+                  void commands.readAll().catch(() => undefined);
+                }}
+              />
+            </View>
+            <Text style={[typography.supporting, { color: c.textSecondary }]}>
+              Dates in {inbox.dates.timeZone}
+            </Text>
+            {inbox.preferences.isError && (
+              <Text
+                accessibilityLiveRegion="polite"
+                style={[typography.supporting, { color: c.textSecondary }]}
+              >
+                Could not refresh date preferences. Dates use{' '}
+                {inbox.dates.timeZone}.
+              </Text>
+            )}
+            {!!message && (
+              <View style={{ gap: spacing.sm }}>
+                <Text
+                  accessibilityLiveRegion="polite"
+                  style={[typography.body, { color: c.text }]}
+                >
+                  {message}
+                </Text>
+                <Button
+                  label={
+                    mutation.mustReview
+                      ? 'Review Inbox'
+                      : list.isFetchNextPageError
+                        ? 'Retry load more'
+                        : 'Retry Inbox'
+                  }
+                  disabled={
+                    list.isFetchNextPageError
+                      ? !eligible || !inbox.listReady || !!mutation.pending
+                      : !canRefresh
+                  }
+                  loading={mutation.pending === 'review'}
+                  onPress={
+                    list.isFetchNextPageError && !mutation.mustReview
+                      ? () => void loadMore()
+                      : () => void refresh()
+                  }
+                />
+              </View>
+            )}
+            {!!mutation.error && !mutation.mustReview && (
+              <View style={{ gap: spacing.sm }}>
+                <Text
+                  accessibilityLiveRegion="polite"
+                  style={{ color: c.text }}
+                >
+                  {inboxErrorMessage(mutation.error)}
+                </Text>
+                {!!rows.length && !notice && !message && (
+                  <Button
+                    label="Refresh Inbox"
+                    disabled={!canRefresh}
+                    onPress={() => void refresh()}
+                  />
+                )}
+              </View>
+            )}
+            {!!notice && (
+              <View style={{ gap: spacing.sm }}>
+                <Text
+                  accessibilityLiveRegion="polite"
+                  style={{ color: c.text }}
+                >
+                  {notice}
+                </Text>
+                <Button
+                  label="Refresh Inbox"
+                  disabled={!canRefresh}
+                  onPress={() => void refresh()}
+                />
+              </View>
+            )}
+            {unread.isError && !mutation.mustReview && (
+              <View style={{ gap: spacing.sm }}>
+                <Text
+                  accessibilityLiveRegion="polite"
+                  style={{ color: c.text }}
+                >
+                  Unread count unavailable. {inboxErrorMessage(unread.error)}
+                </Text>
+                <Button
+                  label="Retry unread count"
+                  disabled={
+                    !eligible ||
+                    !inbox.countReady ||
+                    !!mutation.pending ||
+                    unread.isFetching
+                  }
+                  onPress={() => {
+                    void unread.refetch({ cancelRefetch: false });
+                  }}
+                />
+              </View>
+            )}
+            {list.isFetching && !list.isFetchingNextPage && (
+              <View testID="inbox-skeleton" style={{ gap: spacing.sm }}>
+                <Skeleton height={70} />
+                <Skeleton height={70} />
+                <Skeleton height={70} />
+              </View>
+            )}
+            {usable && !rows.length && !!list.data && (
+              <View style={{ gap: spacing.sm }}>
+                <Text
+                  accessibilityLiveRegion="polite"
+                  style={[typography.body, { color: c.textSecondary }]}
+                >
+                  {inbox.filter === 'all'
+                    ? 'No notifications yet.'
+                    : 'No unread notifications.'}
+                </Text>
+                <Button
+                  label="Refresh Inbox"
+                  disabled={!canRefresh}
+                  onPress={() => void refresh()}
+                />
+              </View>
+            )}
+          </View>
+        }
+        footer={
+          <View style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
+            {usable && list.hasNextPage && !list.isFetchNextPageError && (
+              <Button
+                label="Load more notifications"
+                loading={list.isFetchingNextPage}
+                disabled={!inbox.listReady || !!mutation.pending}
+                onPress={() => void loadMore()}
               />
             )}
           </View>
-        )}
-        {!!notice && (
-          <View style={{ gap: spacing.sm }}>
-            <Text accessibilityLiveRegion="polite" style={{ color: c.text }}>
-              {notice}
-            </Text>
-            <Button
-              label="Refresh Inbox"
-              disabled={!canRefresh}
-              onPress={() => void refresh()}
-            />
-          </View>
-        )}
-        {unread.isError && !mutation.mustReview && (
-          <View style={{ gap: spacing.sm }}>
-            <Text accessibilityLiveRegion="polite" style={{ color: c.text }}>
-              Unread count unavailable. {inboxErrorMessage(unread.error)}
-            </Text>
-            <Button
-              label="Retry unread count"
-              disabled={
-                !eligible ||
-                !inbox.countReady ||
-                !!mutation.pending ||
-                unread.isFetching
-              }
-              onPress={() => {
-                void unread.refetch({ cancelRefetch: false });
-              }}
-            />
-          </View>
-        )}
-        {list.isFetching && !list.isFetchingNextPage && (
-          <View testID="inbox-skeleton" style={{ gap: spacing.sm }}>
-            <Skeleton height={70} />
-            <Skeleton height={70} />
-            <Skeleton height={70} />
-          </View>
-        )}
-        {usable && !rows.length && !!list.data && (
-          <View style={{ gap: spacing.sm }}>
-            <Text
-              accessibilityLiveRegion="polite"
-              style={[typography.body, { color: c.textSecondary }]}
-            >
-              {inbox.filter === 'all'
-                ? 'No notifications yet.'
-                : 'No unread notifications.'}
-            </Text>
-            <Button
-              label="Refresh Inbox"
-              disabled={!canRefresh}
-              onPress={() => void refresh()}
-            />
-          </View>
-        )}
-        <InboxSections
-          rows={rows}
-          preferences={inbox.dates}
-          now={inbox.now}
-          disabled={disabled}
-          pending={mutation.pending}
-          opening={opening}
-          onOpen={(item) => void open(item)}
-          onRead={(item) => {
-            cancelOpen();
-            void commands.read(item.id).catch(() => undefined);
-          }}
-        />
-        {usable && list.hasNextPage && !list.isFetchNextPageError && (
-          <Button
-            label="Load more notifications"
-            loading={list.isFetchingNextPage}
-            disabled={!inbox.listReady || !!mutation.pending}
-            onPress={() => void loadMore()}
-          />
-        )}
-      </ScrollView>
+        }
+      />
     </SafeAreaView>
   );
 }

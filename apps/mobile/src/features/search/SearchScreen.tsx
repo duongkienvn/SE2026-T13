@@ -1,7 +1,7 @@
 import type { GlobalSearchItem } from '@kanban/shared';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../../infrastructure/api/errors';
 import {
@@ -154,156 +154,163 @@ function SearchContent({ identity }: { identity: SessionIdentity }) {
       edges={['left', 'right', 'bottom']}
       style={{ flex: 1, backgroundColor: c.background }}
     >
-      <ScrollView
-        automaticallyAdjustKeyboardInsets
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        contentContainerStyle={{ padding: spacing.xl, gap: spacing.lg }}
-      >
-        <AppHeader subtitle="Search Kanvexa" />
-        <SearchField
-          label="Search workspaces, boards and cards"
-          placeholder="Search workspaces, boards, cards…"
-          autoFocus
-          autoCorrect={false}
-          autoCapitalize="none"
-          value={search.input}
-          onChangeText={(text) => change(text)}
-          onSubmitEditing={search.submit}
-          error={search.validation.error}
-          trailing={
-            search.input ? (
-              <Button
-                label="Clear search"
-                variant="link"
-                onPress={() => change('')}
-              />
-            ) : undefined
-          }
-        />
-        <View
-          style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}
-        >
-          {searchTypes.map((type) => {
-            const count =
-              type === 'all'
-                ? search.type === 'all'
-                  ? total
-                  : undefined
-                : groups && (search.type === 'all' || search.type === type)
-                  ? groups[type].total
-                  : undefined;
-            return (
-              <FilterChip
-                key={type}
-                label={
-                  searchLabels[type] +
-                  (count === undefined ? '' : ' · ' + count)
-                }
-                selected={type === search.type}
-                onPress={() => change(search.input, type)}
-              />
-            );
-          })}
-        </View>
-        {!search.validation.query && (
-          <View style={{ gap: spacing.md }}>
-            <Text style={[typography.body, { color: c.textSecondary }]}>
-              Find workspaces, boards and cards you can access.
-            </Text>
-            <Text
-              accessibilityRole="header"
-              style={[typography.section, { color: c.text }]}
+      <SearchSections
+        pages={pages}
+        type={search.type}
+        open={(item) => void open(item)}
+        disabled={!usable || !!opening || query.isFetching}
+        opening={opening}
+        viewAll={(type) => change(search.input, type)}
+        header={
+          <View style={{ gap: spacing.lg, paddingBottom: spacing.sm }}>
+            <AppHeader subtitle="Search Kanvexa" />
+            <SearchField
+              label="Search workspaces, boards and cards"
+              placeholder="Search workspaces, boards, cards…"
+              autoFocus
+              autoCorrect={false}
+              autoCapitalize="none"
+              value={search.input}
+              onChangeText={(text) => change(text)}
+              onSubmitEditing={search.submit}
+              error={search.validation.error}
+              trailing={
+                search.input ? (
+                  <Button
+                    label="Clear search"
+                    variant="link"
+                    onPress={() => change('')}
+                  />
+                ) : undefined
+              }
+            />
+            <View
+              style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                gap: spacing.sm,
+              }}
             >
-              Try searching for
-            </Text>
-            {(['cards', 'boards', 'workspaces'] as const).map((type) => (
-              <Button
-                key={type}
-                label={'Try searching ' + searchLabels[type]}
-                variant="secondary"
-                onPress={() => change(search.input, type)}
-              />
-            ))}
-          </View>
-        )}
-        {!!notice && (
-          <View style={{ gap: spacing.sm }}>
-            <Text
-              accessibilityLiveRegion="polite"
-              style={[typography.body, { color: c.text }]}
-            >
-              {notice}
-            </Text>
-            {!message && (
-              <Button
-                label="Retry search"
-                disabled={
-                  !eligible || !current || !retryReady || query.isFetching
-                }
-                onPress={refresh}
-              />
+              {searchTypes.map((type) => {
+                const count =
+                  type === 'all'
+                    ? search.type === 'all'
+                      ? total
+                      : undefined
+                    : groups && (search.type === 'all' || search.type === type)
+                      ? groups[type].total
+                      : undefined;
+                return (
+                  <FilterChip
+                    key={type}
+                    label={
+                      searchLabels[type] +
+                      (count === undefined ? '' : ' · ' + count)
+                    }
+                    selected={type === search.type}
+                    onPress={() => change(search.input, type)}
+                  />
+                );
+              })}
+            </View>
+            {!search.validation.query && (
+              <View style={{ gap: spacing.md }}>
+                <Text style={[typography.body, { color: c.textSecondary }]}>
+                  Find workspaces, boards and cards you can access.
+                </Text>
+                <Text
+                  accessibilityRole="header"
+                  style={[typography.section, { color: c.text }]}
+                >
+                  Try searching for
+                </Text>
+                {(['cards', 'boards', 'workspaces'] as const).map((type) => (
+                  <Button
+                    key={type}
+                    label={'Try searching ' + searchLabels[type]}
+                    variant="secondary"
+                    onPress={() => change(search.input, type)}
+                  />
+                ))}
+              </View>
+            )}
+            {!!notice && (
+              <View style={{ gap: spacing.sm }}>
+                <Text
+                  accessibilityLiveRegion="polite"
+                  style={[typography.body, { color: c.text }]}
+                >
+                  {notice}
+                </Text>
+                {!message && (
+                  <Button
+                    label="Retry search"
+                    disabled={
+                      !eligible || !current || !retryReady || query.isFetching
+                    }
+                    onPress={refresh}
+                  />
+                )}
+              </View>
+            )}
+            {!!message && (
+              <View style={{ gap: spacing.sm }}>
+                <Text
+                  accessibilityLiveRegion="polite"
+                  style={[typography.body, { color: c.text }]}
+                >
+                  {message}
+                </Text>
+                <Button
+                  label={
+                    query.isFetchNextPageError
+                      ? 'Retry load more'
+                      : 'Retry search'
+                  }
+                  disabled={
+                    !eligible || !current || !retryReady || query.isFetching
+                  }
+                  onPress={
+                    query.isFetchNextPageError ? () => void loadMore() : refresh
+                  }
+                />
+              </View>
+            )}
+            {current && query.isFetching && !query.isFetchingNextPage && (
+              <View testID="search-skeleton" style={{ gap: spacing.md }}>
+                <Skeleton height={70} />
+                <Skeleton height={70} />
+                <Skeleton height={70} />
+              </View>
+            )}
+            {total !== undefined && (
+              <Text
+                accessibilityLiveRegion="polite"
+                style={[typography.supporting, { color: c.textSecondary }]}
+              >
+                {total === 0
+                  ? 'No results. Try another search.'
+                  : `${total} ${total === 1 ? 'result' : 'results'} for “${search.validation.query}”`}
+              </Text>
             )}
           </View>
-        )}
-        {!!message && (
-          <View style={{ gap: spacing.sm }}>
-            <Text
-              accessibilityLiveRegion="polite"
-              style={[typography.body, { color: c.text }]}
-            >
-              {message}
-            </Text>
-            <Button
-              label={
-                query.isFetchNextPageError ? 'Retry load more' : 'Retry search'
-              }
-              disabled={
-                !eligible || !current || !retryReady || query.isFetching
-              }
-              onPress={
-                query.isFetchNextPageError ? () => void loadMore() : refresh
-              }
-            />
+        }
+        footer={
+          <View style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
+            {usable &&
+              search.type !== 'all' &&
+              query.hasNextPage &&
+              !query.isFetchNextPageError && (
+                <Button
+                  label="Load more results"
+                  loading={query.isFetchingNextPage}
+                  disabled={!retryReady}
+                  onPress={() => void loadMore()}
+                />
+              )}
           </View>
-        )}
-        {current && query.isFetching && !query.isFetchingNextPage && (
-          <View testID="search-skeleton" style={{ gap: spacing.md }}>
-            <Skeleton height={70} />
-            <Skeleton height={70} />
-            <Skeleton height={70} />
-          </View>
-        )}
-        {total !== undefined && (
-          <Text
-            accessibilityLiveRegion="polite"
-            style={[typography.supporting, { color: c.textSecondary }]}
-          >
-            {total === 0
-              ? 'No results. Try another search.'
-              : `${total} ${total === 1 ? 'result' : 'results'} for “${search.validation.query}”`}
-          </Text>
-        )}
-        <SearchSections
-          pages={pages}
-          type={search.type}
-          open={(item) => void open(item)}
-          disabled={!usable || !!opening || query.isFetching}
-          opening={opening}
-          viewAll={(type) => change(search.input, type)}
-        />
-        {usable &&
-          search.type !== 'all' &&
-          query.hasNextPage &&
-          !query.isFetchNextPageError && (
-            <Button
-              label="Load more results"
-              loading={query.isFetchingNextPage}
-              disabled={!retryReady}
-              onPress={() => void loadMore()}
-            />
-          )}
-      </ScrollView>
+        }
+      />
     </SafeAreaView>
   );
 }
