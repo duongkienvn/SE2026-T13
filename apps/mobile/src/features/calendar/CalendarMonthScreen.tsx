@@ -70,6 +70,7 @@ import { MonthGrid } from './MonthGrid';
 import { calendarToday, cardsByDueDay } from './due-groups';
 import { dayCaption, shiftSelectedMonth } from './month-grid';
 import { shiftSelectedWeek } from './week';
+import { monthWindow, visibleDueInterval } from './interval';
 import { calendarCardOptions, calendarFilters } from './queries';
 import { useCalendarClock } from './useCalendarClock';
 
@@ -179,13 +180,28 @@ function CalendarEntry({
     !board.isFetching &&
     !board.isError &&
     data.resources.readable(boardKey);
+  // Every civil day the selected month can show, adjacent grid days included,
+  // in the saved zone. Week view always lies inside it, so Month/Week switches,
+  // day selection within the month and week-start changes reuse one request.
+  const visibleDay = selected ?? calendarToday(prefs.timeZone, Date.now());
+  const [firstVisible, lastVisible] = monthWindow(visibleDay.slice(0, 7));
+  const interval = useMemo(
+    () => visibleDueInterval([firstVisible, lastVisible], prefs.timeZone),
+    [firstVisible, lastVisible, prefs.timeZone],
+  );
+  const prefsSettled = preferences.isSuccess || preferences.isError;
   const cardsOptions = calendarCardOptions(
     data.api,
     identity,
     boardId,
     filters,
+    interval,
   );
-  const cards = useQuery({ ...cardsOptions, enabled: focused && verified });
+  // Wait for the saved zone: a UTC-fallback window would be a wasted walk.
+  const cards = useQuery({
+    ...cardsOptions,
+    enabled: focused && verified && prefsSettled,
+  });
   const cardsKeyHash = hashKey(cardsOptions.queryKey);
   useEffect(() => {
     if (!focused) return;
@@ -202,30 +218,9 @@ function CalendarEntry({
     if (filters.dueStatus && focused && verified)
       void cards.refetch({ cancelRefetch: false });
   }, [filters.dueStatus, focused, verified, cards.refetch]);
-  const previousZone = useRef(prefs.timeZone);
-  useEffect(() => {
-    const changed = previousZone.current !== prefs.timeZone;
-    previousZone.current = prefs.timeZone;
-    // The server evaluates dueStatus in account timeZone, so regrouping alone
-    // is insufficient when the saved zone changes under an active due filter.
-    if (changed && filters.dueStatus && focused) {
-      // Cancel even while Board verification disables the query: re-enabling
-      // must start a new-zone walk rather than reusing the old request.
-      void data.queryClient.cancelQueries({
-        queryKey: cardsOptions.queryKey,
-        exact: true,
-      });
-      if (verified) void cards.refetch();
-    }
-  }, [
-    prefs.timeZone,
-    filters.dueStatus,
-    focused,
-    verified,
-    cards.refetch,
-    cardsKeyHash,
-    data.queryClient,
-  ]);
+  // A saved timezone change moves the visible interval, so it is a new query
+  // identity: the old walk is cancelled by the effect above and a new-zone walk
+  // starts (including under an active due filter) without a manual refetch.
   const now = useCalendarClock(focused, boundary);
   const today = calendarToday(prefs.timeZone, now);
   const day = selected ?? today;
@@ -380,7 +375,8 @@ function CalendarEntry({
     const active = calendarFilters(next);
     if (
       hashKey(
-        calendarCardOptions(data.api, identity, boardId, active).queryKey,
+        calendarCardOptions(data.api, identity, boardId, active, interval)
+          .queryKey,
       ) === cardsKeyHash
     )
       return;

@@ -7,6 +7,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
+import { scrollList } from './virtual-list';
 import { focusManager, onlineManager } from '@tanstack/react-query';
 import { InboxScreen } from '../src/features/notifications/InboxScreen';
 import { createHttpClient } from '../src/infrastructure/api/client';
@@ -255,6 +256,7 @@ test('All/Unread pagination resets and a confirmed read removes its row from Unr
     await screen.findByText('Update 0');
     expect(screen.queryByText('Update 20')).toBeNull();
     await press('Load more notifications');
+    await scrollList('inbox-scroll');
     await screen.findByText('Update 20');
     await press('Unread, 21 unread notifications');
     await waitFor(() => expect(screen.queryByText('Update 20')).toBeNull());
@@ -263,6 +265,7 @@ test('All/Unread pagination resets and a confirmed read removes its row from Unr
       name: 'Unread, 20 unread notifications',
     });
     await waitFor(() => expect(screen.queryByText('Update 0')).toBeNull());
+    await scrollList('inbox-scroll');
     await screen.findByText('Update 20');
     expect(
       screen.queryByRole('button', { name: 'Load more notifications' }),
@@ -598,6 +601,7 @@ test('partial pagination failure retains loaded rows and retries only the reques
     expect(screen.getByText('Page item 0')).toBeTruthy();
     fail = false;
     await press('Retry load more');
+    await scrollList('inbox-scroll');
     await screen.findByText('Page item 20');
     expect(
       env.requests.filter((r) => r.url.searchParams.get('page') === '2'),

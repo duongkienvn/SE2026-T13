@@ -1,9 +1,13 @@
 import type { NotificationResponse } from '@kanban/shared';
-import { Text, View } from 'react-native';
+import type { ReactElement } from 'react';
+import { Text, type RefreshControlProps } from 'react-native';
 import { spacing, typography, useTheme } from '../../ui';
+import { VirtualSections } from '../../ui/sections';
 import type { DatePreferences } from '../cards/metadata/dates';
 import { groupNotifications } from './grouping';
 import { NotificationRow } from './NotificationRow';
+
+/** Day-grouped notifications in a virtualized list (P01); grouping is unchanged. */
 export function InboxSections({
   rows,
   preferences,
@@ -13,6 +17,9 @@ export function InboxSections({
   now,
   onOpen,
   onRead,
+  header,
+  footer,
+  refreshControl,
 }: {
   rows: readonly NotificationResponse[];
   preferences: DatePreferences;
@@ -22,19 +29,31 @@ export function InboxSections({
   now: Date;
   onOpen: (item: NotificationResponse) => void;
   onRead: (item: NotificationResponse) => void;
+  header: ReactElement;
+  footer: ReactElement;
+  refreshControl?: ReactElement<RefreshControlProps>;
 }) {
   const c = useTheme();
-  return groupNotifications(rows, preferences, now).map((group) => (
-    <View key={group.key} style={{ gap: spacing.sm }}>
+  const sections = groupNotifications(rows, preferences, now).map((group) => ({
+    key: group.key,
+    data: group.items,
+    header: (
       <Text
         accessibilityRole="header"
         style={[typography.strong, { color: c.text }]}
       >
         {group.label}
       </Text>
-      {group.items.map((item) => (
+    ),
+  }));
+  return (
+    <VirtualSections
+      testID="inbox-scroll"
+      automaticallyAdjustKeyboardInsets
+      sections={sections}
+      keyExtractor={(item) => item.id}
+      renderItem={(item) => (
         <NotificationRow
-          key={item.id}
           item={item}
           preferences={preferences}
           disabled={disabled}
@@ -43,7 +62,11 @@ export function InboxSections({
           onOpen={onOpen}
           onRead={onRead}
         />
-      ))}
-    </View>
-  ));
+      )}
+      header={header}
+      footer={footer}
+      refreshControl={refreshControl}
+      contentContainerStyle={{ padding: spacing.xl }}
+    />
+  );
 }

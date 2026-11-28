@@ -265,12 +265,28 @@ test('real Month route, due-only counts, selected day, canonical Card push and f
     await openCard();
     expect(screen.getByText('1 Card')).toBeTruthy();
     expect(screen.getByText('17/11/2026 · 16:00')).toBeTruthy();
+    // P02: only the visible Bangkok grid window (Oct 26 – Dec 6) is requested.
+    const window = () =>
+      env.requests
+        .filter(({ url }) => url.pathname.endsWith('/cards'))
+        .map(({ url }) => [
+          url.searchParams.get('dueFrom'),
+          url.searchParams.get('dueTo'),
+        ]);
+    expect(window().at(-1)).toEqual([
+      '2026-10-25T17:00:00.000Z',
+      '2026-12-06T17:00:00.000Z',
+    ]);
     expect(screen.queryByText('Card 2')).toBeNull();
     await fireEvent.press(
       await screen.findByRole('button', { name: 'Next month' }),
     );
     expect(screen.getByText('December 2026')).toBeTruthy();
     await pick('2026-12-18');
+    expect(window().at(-1)).toEqual([
+      '2026-11-28T17:00:00.000Z',
+      '2027-01-03T17:00:00.000Z',
+    ]);
     await env.focus(false);
     await env.focus(true);
     await waitFor(() =>
@@ -288,7 +304,10 @@ test('real Month route, due-only counts, selected day, canonical Card push and f
     expect(mockRouter.push).toHaveBeenCalledWith(
       `/boards/${boardId}/cards/${dated(1).id}`,
     );
+    const beforeWeek = window().length;
     await fireEvent.press(screen.getByRole('radio', { name: 'Week' }));
+    // Week view lies inside the month window: no new walk.
+    expect(window()).toHaveLength(beforeWeek);
     expect(
       screen.getByRole('radio', { name: 'Week' }).props.accessibilityState
         .checked,

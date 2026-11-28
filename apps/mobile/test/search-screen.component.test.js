@@ -8,6 +8,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { focusManager, onlineManager } from '@tanstack/react-query';
+import { scrollList } from './virtual-list';
 import { SearchScreen } from '../src/features/search/SearchScreen';
 import { createHttpClient } from '../src/infrastructure/api/client';
 import { SessionProvider } from '../src/infrastructure/auth/SessionProvider';
@@ -278,6 +279,7 @@ test('View all starts at page one, duplicate taps fetch one next page, and chang
     await fireEvent.press(
       screen.getByRole('button', { name: 'Load more results' }),
     );
+    await scrollList('search-scroll');
     await screen.findByText('Paged card 200');
     expect(
       screen.queryByRole('button', { name: 'Load more results' }),
@@ -441,6 +443,7 @@ test('pagination failure keeps verified rows and explicit retry recovers without
     const value = results('cards', 'design');
     value.groups.cards.total = 21;
     await act(async () => finish(wire(value)));
+    await scrollList('search-scroll');
     await screen.findByText('Design card');
     expect(
       env.requests.filter((r) => r.url.searchParams.get('page') === '2'),
