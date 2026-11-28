@@ -29,6 +29,7 @@ import {
 } from '../../ui';
 import { BoardArtwork } from './BoardArtwork';
 import { dueLabel, formatHomeDate } from './presentation';
+import type { DatePreferences } from '../cards/metadata/dates';
 
 function HomePressable({
   style,
@@ -256,10 +257,12 @@ function PreviewMeta({ children }: { children: ReactNode }) {
 export function UpNext({
   tasks,
   now,
+  preferences,
   openCard,
 }: {
   tasks: TaskCardSummary[];
   now: Date;
+  preferences: DatePreferences;
   openCard: (task: TaskCardSummary) => void;
 }) {
   const c = useTheme();
@@ -272,7 +275,7 @@ export function UpNext({
   return (
     <Panel>
       {tasks.map((task, index) => {
-        const due = dueLabel(task, now);
+        const due = dueLabel(task, now, preferences);
         const labelNames = task.labels.map((label) => label.name);
         const dueColor =
           task.group === TaskGroup.OVERDUE
@@ -334,10 +337,12 @@ export function UpNext({
 export function BoardCollection({
   kind,
   boards,
+  preferences,
   openBoard,
 }: {
   kind: 'starred' | 'recent';
   boards: HomeBoardSummary[];
+  preferences: DatePreferences;
   openBoard: (board: HomeBoardSummary) => void;
 }) {
   const c = useTheme();
@@ -361,7 +366,7 @@ export function BoardCollection({
         {boards.map((board, index) => {
           const viewed =
             !starred && board.lastViewedAt
-              ? `Viewed ${formatHomeDate(new Date(board.lastViewedAt))}`
+              ? `Viewed ${formatHomeDate(new Date(board.lastViewedAt), preferences)}`
               : '';
           const metadata = [board.isStarred && 'Starred', viewed]
             .filter(Boolean)

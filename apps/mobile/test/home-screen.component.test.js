@@ -1,4 +1,4 @@
-/* global jest, test, expect, afterEach */
+/* global jest, test, expect, afterEach, structuredClone */
 import { URL } from 'node:url';
 import {
   act,
@@ -7,6 +7,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
+import { AppState } from 'react-native';
 import { focusManager, onlineManager } from '@tanstack/react-query';
 import { HomeScreen } from '../src/features/home/HomeScreen';
 import { BoardArtwork } from '../src/features/home/BoardArtwork';
@@ -91,7 +92,26 @@ function response(data, status = 200, retryAfter = null) {
   };
 }
 
-async function setup(fetch, { authenticated = true, theme = 'light' } = {}) {
+const prefs = (timeZone, dateFormat = 'YYYY-MM-DD') => ({
+  theme: 'light',
+  timeZone,
+  dateFormat,
+  weekStartsOn: 'monday',
+});
+
+async function setup(
+  fetch,
+  {
+    authenticated = true,
+    theme = 'light',
+    preferences = jest.fn(async () => response(prefs('Asia/Bangkok'))),
+  } = {},
+) {
+  // Home's own requests stay on `fetch`, so its call counts remain exact.
+  const routed = (url, init) =>
+    String(url).endsWith('/users/me/preferences')
+      ? preferences(url, init)
+      : fetch(url, init);
   const clock = new FakeTime();
   const api = new FakeSessionApi();
   api.auto = (token) => ({
@@ -112,7 +132,7 @@ async function setup(fetch, { authenticated = true, theme = 'light' } = {}) {
   });
   const transport = createHttpClient({
     baseUrl: new URL('https://home.example.test/api'),
-    fetch,
+    fetch: routed,
   });
   const layer = createMobileDataLayer(manager, transport);
   layer.queryClient.setDefaultOptions({
@@ -330,4 +350,103 @@ test('photo decode failure keeps the local preset background', async () => {
   expect(photos()).toHaveLength(0);
   expect(view.root).toHaveStyle({ backgroundColor: '#315C49' });
   await view.unmount();
+});
+
+function onForeground() {
+  const original = AppState.addEventListener.getMockImplementation();
+  const listeners = new Set();
+  const state = AppState.currentState;
+  const app = {
+    original,
+    restore() {
+      AppState.addEventListener.mockImplementation(original);
+      AppState.currentState = state;
+    },
+    // Several hooks subscribe; drive every live listener like the OS would.
+    listener(next) {
+      AppState.currentState = next;
+      [...listeners].forEach((callback) => callback(next));
+    },
+  };
+  AppState.addEventListener.mockImplementation((_, callback) => {
+    listeners.add(callback);
+    return { remove: () => listeners.delete(callback) };
+  });
+  return app;
+}
+
+test('F01: greeting, relative and absolute due labels use the saved account timezone and format', async () => {
+  jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+  // Device (UTC or Asia/Saigon) is already on Nov 28; the account is still on Nov 27.
+  jest.setSystemTime(new Date('2026-11-28T06:30:00.000Z'));
+  const app = onForeground();
+  const home = fixture();
+  home.upNext[0].dueDate = '2026-11-28T09:00:00.000Z';
+  home.recentBoards[0] = { ...home.recentBoards[0], isStarred: false };
+  const env = await setup(jest.fn().mockResolvedValue(response(home)), {
+    preferences: jest.fn(async () =>
+      response(prefs('America/Los_Angeles', 'MM/DD/YYYY')),
+    ),
+  });
+  try {
+    await act(() => app.listener('active'));
+    await screen.findByText('Good evening, Taylor');
+    expect(
+      screen.getByRole('button', {
+        name: /Open Review release notes, .*Tomorrow/,
+      }),
+    ).toBeTruthy();
+    expect(screen.getByText('Viewed 11/13/2026')).toBeTruthy();
+  } finally {
+    await env.dispose();
+    app.restore();
+    jest.useRealTimers();
+  }
+});
+
+test('account midnight reconciles Home once (empty Overdue becomes populated), with no polling or background work', async () => {
+  jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+  jest.setSystemTime(new Date('2026-11-27T16:59:30.000Z')); // 23:59:30 Bangkok
+  const app = onForeground();
+  const before = fixture();
+  before.summary.overdueCount = 0;
+  before.upNext[0].dueDate = '2026-11-27T12:00:00.000Z';
+  const after = structuredClone(before);
+  after.summary.overdueCount = 1;
+  after.summary.dueNext7DaysCount = 3;
+  after.upNext[0].group = 'OVERDUE';
+  const fetch = jest
+    .fn()
+    .mockResolvedValueOnce(response(before))
+    .mockResolvedValue(response(after));
+  const preferences = jest.fn(async () => response(prefs('Asia/Bangkok')));
+  const env = await setup(fetch, { preferences });
+  try {
+    await screen.findByRole('button', { name: 'Due soon, 4. Open My Tasks' });
+    await act(() => app.listener('active'));
+    expect(screen.getByRole('button', { name: /Today/ })).toBeTruthy();
+    await act(() => jest.advanceTimersByTime(20_000));
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await act(() => jest.advanceTimersByTime(10_500));
+    await screen.findByRole('button', { name: 'Due soon, 3. Open My Tasks' });
+    expect(
+      screen.getByRole('button', { name: /Overdue · 2026-11-27/ }),
+    ).toBeTruthy();
+    expect(fetch).toHaveBeenCalledTimes(2);
+    await act(() => jest.advanceTimersByTime(3_600_000));
+    expect(fetch).toHaveBeenCalledTimes(2);
+    // Backgrounded across the next midnight: nothing until resume, then one read.
+    await act(() => app.listener('background'));
+    jest.setSystemTime(new Date('2026-11-28T18:00:00.000Z'));
+    await act(() => jest.advanceTimersByTime(600_000));
+    expect(fetch).toHaveBeenCalledTimes(2);
+    await act(() => app.listener('active'));
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
+    // Preferences refetch once on resume (existing focus refresh), never per tick.
+    expect(preferences).toHaveBeenCalledTimes(2);
+  } finally {
+    await env.dispose();
+    app.restore();
+    jest.useRealTimers();
+  }
 });
