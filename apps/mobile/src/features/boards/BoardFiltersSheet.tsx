@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import {
   BottomSheet,
@@ -154,7 +154,10 @@ export function BoardFiltersSheet({
   calendar = false,
   columns,
   assigneesAvailable = true,
+  onDraftChange,
 }: {
+  /** Lets an owner outside this sheet keep the unapplied draft across remounts. */
+  onDraftChange?: (draft: KanbanFilters) => void;
   assigneesAvailable?: boolean;
   calendar?: boolean;
   columns?: readonly { id: string; name: string }[];
@@ -170,6 +173,10 @@ export function BoardFiltersSheet({
     calendar ? calendarFilters(initial) : initial,
   );
   const [error, setError] = useState('');
+  useEffect(() => {
+    onDraftChange?.(draft);
+    // Report draft edits only; the callback identity may change every render.
+  }, [draft]);
   const [labelsOpen, setLabelsOpen] = useState(startWithLabels);
   const [membersOpen, setMembersOpen] = useState(false);
   const c = useTheme();
