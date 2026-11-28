@@ -13,6 +13,7 @@ import {
   type KanbanCard,
   type KanbanFilters,
 } from '../boards/kanban-api.ts';
+import { intersectDueRange, type DueInterval } from './interval.ts';
 
 export function calendarFilters(filters: KanbanFilters): KanbanFilters {
   // Calendar is always active; ordering within a day is independent of Board sort.
@@ -103,8 +104,13 @@ export function calendarCardOptions(
   identity: SessionIdentity,
   boardId: string,
   filters: KanbanFilters,
+  interval?: DueInterval,
 ) {
-  const params = normalizeKanbanFilters(calendarFilters(filters));
+  const active = calendarFilters(filters);
+  // Only Cards due inside the visible grid can be shown (P02): undated and
+  // out-of-window Cards are never downloaded. An empty overlap needs no request.
+  const ranged = interval ? intersectDueRange(active, interval) : active;
+  const params = normalizeKanbanFilters(ranged ?? active);
   const board = createKanbanApi(api, identity, boardId);
   return queryOptions({
     // Keep the existing Board Card prefix for every mutation/socket/access eviction.
@@ -112,12 +118,15 @@ export function calendarCardOptions(
     queryKey: [
       ...queryKeys.cards(identity, boardId, params),
       'complete-calendar',
+      interval ? [interval.dueFrom, interval.dueTo] : 'unbounded',
     ] as const,
     queryFn: ({ signal }) =>
-      loadCalendarCards(
-        (page, signal) => board.cards(params, page, signal),
-        signal,
-      ),
+      ranged
+        ? loadCalendarCards(
+            (page, signal) => board.cards(params, page, signal),
+            signal,
+          )
+        : Promise.resolve([] as KanbanCard[]),
     staleTime: 0,
     retry: false,
     gcTime: 0,
