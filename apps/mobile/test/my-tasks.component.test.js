@@ -7,6 +7,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
+import { AppState } from 'react-native';
 import { focusManager, onlineManager } from '@tanstack/react-query';
 import { MyTasksScreen } from '../src/features/tasks/MyTasksScreen';
 import { createHttpClient } from '../src/infrastructure/api/client';
@@ -660,5 +661,49 @@ test('reopening a selected Board hides cached label names until fresh access is 
     expect(screen.queryByRole('button', { name: 'Review' })).toBeNull();
   } finally {
     await env.dispose();
+  }
+});
+
+test('account midnight refreshes server groups once: an empty Overdue group becomes populated without polling', async () => {
+  jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+  // 23:59:30 in the saved America/New_York zone (device zone is irrelevant).
+  jest.setSystemTime(new Date('2026-11-28T04:59:30.000Z'));
+  const original = AppState.addEventListener.getMockImplementation();
+  const state = AppState.currentState;
+  const listeners = new Set();
+  AppState.addEventListener.mockImplementation((_, callback) => {
+    listeners.add(callback);
+    return { remove: () => listeners.delete(callback) };
+  });
+  const rows = [row(1, 'NEXT_7_DAYS')];
+  const env = await setup(rows);
+  const taskReads = () =>
+    env.requests.filter(({ url }) => url.pathname.endsWith('/tasks')).length;
+  try {
+    await press('Overdue · 0');
+    await screen.findByText('No tasks in this group.');
+    AppState.currentState = 'active';
+    await act(() => listeners.forEach((callback) => callback('active')));
+    const before = taskReads();
+    // The server reclassifies at its account midnight.
+    rows[0].group = 'OVERDUE';
+    await act(() => jest.advanceTimersByTime(20_000));
+    expect(taskReads()).toBe(before);
+    await act(() => jest.advanceTimersByTime(10_500));
+    await screen.findByText('Task 1');
+    expect(screen.getByRole('button', { name: 'Overdue · 1' })).toBeTruthy();
+    expect(taskReads()).toBe(before + 1);
+    await act(() => jest.advanceTimersByTime(3_600_000));
+    expect(taskReads()).toBe(before + 1);
+    // Background across the next midnight: no reads until resume.
+    await act(() => listeners.forEach((callback) => callback('background')));
+    jest.setSystemTime(new Date('2026-11-29T06:00:00.000Z'));
+    await act(() => jest.advanceTimersByTime(600_000));
+    expect(taskReads()).toBe(before + 1);
+  } finally {
+    await env.dispose();
+    expect(listeners.size).toBe(0);
+    AppState.addEventListener.mockImplementation(original);
+    AppState.currentState = state;
   }
 });
