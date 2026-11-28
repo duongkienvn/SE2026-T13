@@ -157,32 +157,96 @@ test('route builders use only canonical IDs and never use response hyperlinks', 
   assert.equal(boardPath({ id: 'https://another.test' }), null);
 });
 
-test('uses device calendar days for presentation without reclassifying server due groups', () => {
-  const now = new Date(2026, 10, 13, 16);
-  const today = new Date(2026, 10, 13, 0).toISOString();
-  const tomorrow = new Date(2026, 10, 14, 0).toISOString();
-  assert.equal(greeting('  Taylor Morgan ', now), 'Good afternoon, Taylor');
-  assert.equal(greeting('', new Date(2026, 10, 13, 8)), 'Good morning');
+const bangkok = { timeZone: 'Asia/Bangkok', dateFormat: 'DD/MM/YYYY' } as const;
+const losAngeles = {
+  timeZone: 'America/Los_Angeles',
+  dateFormat: 'MM/DD/YYYY',
+} as const;
+const upcoming = (dueDate: string) => ({
+  dueDate,
+  group: TaskGroup.NEXT_7_DAYS,
+});
+
+test('F01: relative and absolute due labels use the saved account timezone, never the device', () => {
+  // Device America/Los_Angeles sees Nov 27 vs Nov 28; both are Nov 28 in Bangkok.
+  const now = new Date('2026-11-27T17:30:00.000Z');
+  const due = '2026-11-28T08:00:00.000Z';
+  assert.equal(dueLabel(upcoming(due), now, bangkok), 'Today');
+  assert.equal(dueLabel(upcoming(due), now, losAngeles), 'Tomorrow');
   assert.equal(
-    dueLabel({ dueDate: today, group: TaskGroup.NEXT_7_DAYS }, now),
-    'Today',
-  );
-  assert.equal(
-    dueLabel({ dueDate: tomorrow, group: TaskGroup.NEXT_7_DAYS }, now),
+    dueLabel(upcoming('2026-11-28T17:00:00.000Z'), now, bangkok),
     'Tomorrow',
   );
+  assert.equal(
+    dueLabel(upcoming('2026-12-01T08:00:00.000Z'), now, bangkok),
+    'Next 7 days · 01/12/2026',
+  );
+  assert.equal(
+    dueLabel(upcoming('2026-12-01T08:00:00.000Z'), now, losAngeles),
+    'Next 7 days · 12/01/2026',
+  );
+  assert.equal(
+    dueLabel(upcoming('2026-12-01T08:00:00.000Z'), now, {
+      timeZone: 'UTC',
+      dateFormat: 'YYYY-MM-DD',
+    }),
+    'Next 7 days · 2026-12-01',
+  );
+});
+
+test('account midnight and DST transitions move Today/Tomorrow on the account calendar', () => {
+  const due = '2026-11-28T08:00:00.000Z';
+  // 23:59:59 and 00:00 Bangkok (UTC+7) straddle the account midnight.
+  assert.equal(
+    dueLabel(upcoming(due), new Date('2026-11-27T16:59:59.000Z'), bangkok),
+    'Tomorrow',
+  );
+  assert.equal(
+    dueLabel(upcoming(due), new Date('2026-11-27T17:00:00.000Z'), bangkok),
+    'Today',
+  );
+  // US DST ends 2026-11-01: the 25-hour day still yields exactly one "Tomorrow".
+  const dstNow = new Date('2026-11-01T06:30:00.000Z'); // 23:30 PDT Oct 31
+  assert.equal(
+    dueLabel(upcoming('2026-11-02T07:30:00.000Z'), dstNow, losAngeles),
+    'Tomorrow', // 23:30 PST Nov 1
+  );
+  assert.equal(
+    dueLabel(upcoming('2026-11-02T08:30:00.000Z'), dstNow, losAngeles),
+    'Next 7 days · 11/02/2026',
+  );
+});
+
+test('server groups are never reclassified and the greeting uses the account hour', () => {
+  const now = new Date('2026-11-27T17:30:00.000Z');
+  const due = '2026-11-28T08:00:00.000Z';
   assert.match(
-    dueLabel({ dueDate: tomorrow, group: TaskGroup.OVERDUE }, now),
-    /^Overdue/,
+    dueLabel({ dueDate: due, group: TaskGroup.OVERDUE }, now, bangkok),
+    /^Overdue · 28\/11\/2026$/,
   );
   assert.match(
-    dueLabel({ dueDate: tomorrow, group: TaskGroup.LATER }, now),
+    dueLabel({ dueDate: due, group: TaskGroup.LATER }, now, bangkok),
     /^Later/,
   );
   assert.equal(
-    dueLabel({ dueDate: null, group: TaskGroup.NO_DUE_DATE }, now),
+    dueLabel({ dueDate: null, group: TaskGroup.NO_DUE_DATE }, now, bangkok),
     'No due date',
   );
+  // 00:30 in Bangkok, 09:30 the previous day in Los Angeles.
+  assert.equal(
+    greeting('  Taylor Morgan ', now, bangkok),
+    'Good evening, Taylor',
+  );
+  assert.equal(greeting('Taylor', now, losAngeles), 'Good morning, Taylor');
+  assert.equal(
+    greeting('', new Date('2026-11-27T08:00:00.000Z'), bangkok),
+    'Good afternoon',
+  );
+  assert.equal(greeting('Taylor', now, undefined), 'Welcome, Taylor');
+  assert.equal(greeting('', now, undefined), 'Welcome');
+});
+
+test('route and preset helpers', () => {
   assert.equal(isBoardPreset('forest'), true);
   assert.equal(isBoardPreset('toString'), false);
   assert.equal(boardPresetColor(null, '#fff'), '#fff');

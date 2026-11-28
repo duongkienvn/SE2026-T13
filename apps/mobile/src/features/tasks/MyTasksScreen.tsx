@@ -50,6 +50,8 @@ import { taskGroups } from './decoder';
 import { groupLabels, TaskSections } from './TaskSections';
 import { TaskFiltersSheet } from './TaskFiltersSheet';
 import { verifyTaskDestination } from './navigation';
+import { accountDay } from '../preferences/temporal';
+import { useTemporalReconciler } from '../preferences/useTemporalReconciler';
 
 const subscribeFocus = focusManager.subscribe.bind(focusManager);
 const foregroundSnapshot = () => focusManager.isFocused();
@@ -109,6 +111,21 @@ function TaskList({ identity }: { identity: SessionIdentity }) {
       canRetryWorkspace(state.error, state.errorUpdatedAt),
   });
   const retry = useWorkspaceRetryReady(tasks.error, tasks.errorUpdatedAt);
+  const savedZone = preferences.data?.timeZone;
+  // Server groups (OVERDUE = before today) move at the saved timezone's midnight.
+  useTemporalReconciler({
+    active: eligible,
+    fetchedAt: tasks.data ? tasks.dataUpdatedAt : undefined,
+    signature: (at) => (savedZone ? accountDay(at, savedZone) : null),
+    onStale: () => {
+      if (
+        !filters.error &&
+        canRetryWorkspace(tasks.error, tasks.errorUpdatedAt) &&
+        sameIdentity(identity, data.getIdentity())
+      )
+        void tasks.refetch({ cancelRefetch: false });
+    },
+  });
   const error = tasks.error instanceof ApiError ? tasks.error : null;
   const permissionRisk =
     error?.kind === 'session-changed' ||

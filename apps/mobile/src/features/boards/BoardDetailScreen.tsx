@@ -892,6 +892,8 @@ function BoardContent({
           members={catalogs.memberItems}
           preferences={zone.data}
           active={focused}
+          dueStatus={filters.dueStatus}
+          fetchedAt={cardQuery.dataUpdatedAt}
           onDueBoundary={filters.dueStatus ? refreshDueFilter : undefined}
           ready={cards.total !== undefined}
           complete={complete}
@@ -939,6 +941,10 @@ function BoardContent({
               labels={catalogs.labelItems}
               members={catalogs.memberItems}
               timeZone={zone.data?.timeZone}
+              active={focused}
+              dueStatus={filters.dueStatus}
+              fetchedAt={cardQuery.dataUpdatedAt}
+              onDueBoundary={filters.dueStatus ? refreshDueFilter : undefined}
               scroll={scroll}
               onOpen={onOpen}
               onAddCard={

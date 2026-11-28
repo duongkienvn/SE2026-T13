@@ -28,6 +28,10 @@ import {
   tasksPath,
 } from './presentation';
 import { homeOptions } from './query';
+import { datePreferencesOptions } from '../cards/metadata/queries';
+import { utcPreferences } from '../cards/metadata/dates';
+import { accountDay } from '../preferences/temporal';
+import { useTemporalReconciler } from '../preferences/useTemporalReconciler';
 import { PrivateAvatar } from '../profile/PrivateAvatar';
 import {
   BoardCollection,
@@ -65,11 +69,18 @@ function VerifiedHome({
   const focused = useIsFocused();
   const online = useSyncExternalStore(subscribeOnline, isOnline);
   const foreground = useSyncExternalStore(subscribeFocus, isForeground);
-  const now = useHomeClock(focused && foreground);
   const router = useRouter();
   const c = useTheme();
   const options = homeOptions(data, identity);
   const query = useQuery({ ...options, enabled: focused });
+  const preferences = useQuery({
+    ...datePreferencesOptions(data.api, identity),
+    enabled: focused,
+  });
+  const saved = preferences.data;
+  // Documented fallback: a failed preference read presents UTC/ISO.
+  const dates = saved ?? utcPreferences;
+  const zone = saved?.timeZone ?? (preferences.isError ? dates.timeZone : null);
   const lastManualRefresh = useRef(-Infinity);
   const [waiting, setWaiting] = useState(false);
   const error = query.error instanceof ApiError ? query.error : null;
@@ -77,6 +88,33 @@ function VerifiedHome({
     error?.status === 429 && error.retryAfterMs
       ? query.errorUpdatedAt + error.retryAfterMs
       : 0;
+
+  // Server groups and counts move only at the saved timezone's midnight.
+  const reconcile = () => {
+    if (
+      focused &&
+      isOnline() &&
+      sameIdentity(identity, data.getIdentity()) &&
+      Date.now() >= retryAt
+    )
+      void query.refetch({ cancelRefetch: false });
+  };
+  const now = new Date(
+    useTemporalReconciler({
+      active: focused && foreground,
+      fetchedAt: query.data ? query.dataUpdatedAt : undefined,
+      signature: (at) => (zone ? accountDay(at, zone) : null),
+      onStale: reconcile,
+    }),
+  );
+  const savedZone = saved?.timeZone;
+  const previousZone = useRef(savedZone);
+  useEffect(() => {
+    const previous = previousZone.current;
+    previousZone.current = savedZone;
+    // The Home key has no timezone; a saved change regroups server-side.
+    if (previous && savedZone && previous !== savedZone) reconcile();
+  }, [savedZone]);
 
   useEffect(() => {
     const delay = retryAt - Date.now();
@@ -161,7 +199,7 @@ function VerifiedHome({
             accessibilityRole="header"
             style={[typography.display, { color: c.text }]}
           >
-            {greeting(user.displayName, now)}
+            {greeting(user.displayName, now, saved)}
           </Text>
           <Text style={[typography.body, { color: c.textSecondary }]}>
             Here’s what needs your attention.
@@ -199,6 +237,7 @@ function VerifiedHome({
               <UpNext
                 tasks={dashboard.upNext}
                 now={now}
+                preferences={dates}
                 openCard={(task) => go(cardPath(task), true)}
               />
             </View>
@@ -211,11 +250,13 @@ function VerifiedHome({
               <BoardCollection
                 kind="starred"
                 boards={dashboard.starredBoards}
+                preferences={dates}
                 openBoard={(board) => go(boardPath(board), true)}
               />
               <BoardCollection
                 kind="recent"
                 boards={dashboard.recentBoards}
+                preferences={dates}
                 openBoard={(board) => go(boardPath(board), true)}
               />
             </View>
@@ -251,18 +292,6 @@ function HomeAvatar({ user }: { user: SessionUser }) {
       size={36}
     />
   );
-}
-
-function useHomeClock(active: boolean) {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    if (!active) return;
-    const tick = () => setNow(new Date());
-    tick();
-    const timer = setInterval(tick, 30_000);
-    return () => clearInterval(timer);
-  }, [active]);
-  return now;
 }
 
 const styles = StyleSheet.create({

@@ -9,7 +9,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
-import type { CardPreviewSummary } from '@kanban/shared';
+import type { CardDueStatus, CardPreviewSummary } from '@kanban/shared';
 import {
   AvatarStack,
   Button,
@@ -29,6 +29,7 @@ import type {
   KanbanColumn,
   KanbanLabel,
 } from './kanban-api';
+import { useDueReconciler } from './useDueReconciler';
 
 export type KanbanScroll = { x: number; cards: Map<string, number> };
 const emptyCards: KanbanCard[] = [];
@@ -39,6 +40,7 @@ const Preview = memo(function Preview({
   labels,
   members,
   dateFormat,
+  overdue,
   onOpen,
   onCardActions,
   cardActionsDisabled,
@@ -48,6 +50,8 @@ const Preview = memo(function Preview({
   labels: ReadonlyMap<string, KanbanLabel>;
   members: ReadonlyMap<string, KanbanAssignee>;
   dateFormat?: Intl.DateTimeFormat;
+  /** From the shared due clock, so the badge flips at the instant. */
+  overdue: boolean;
   onOpen: (card: KanbanCard) => void;
   onCardActions?: (card: KanbanCard) => void;
   cardActionsDisabled?: boolean;
@@ -130,9 +134,7 @@ const Preview = memo(function Preview({
               <DueChip
                 label={`Due ${due}`}
                 compact
-                tone={
-                  Date.parse(card.dueDate!) < Date.now() ? 'danger' : 'info'
-                }
+                tone={overdue ? 'danger' : 'info'}
               />
             )}
           </View>
@@ -258,6 +260,7 @@ const ColumnPanel = memo(function ColumnPanel({
   labels,
   members,
   dateFormat,
+  now,
   scroll,
   onOpen,
   onColumnActions,
@@ -277,6 +280,7 @@ const ColumnPanel = memo(function ColumnPanel({
   labels: ReadonlyMap<string, KanbanLabel>;
   members: ReadonlyMap<string, KanbanAssignee>;
   dateFormat?: Intl.DateTimeFormat;
+  now: number;
   scroll: KanbanScroll;
   onOpen: (card: KanbanCard) => void;
   onColumnActions?: (column: KanbanColumn) => void;
@@ -377,6 +381,7 @@ const ColumnPanel = memo(function ColumnPanel({
             </Text>
           ) : undefined
         }
+        extraData={now}
         renderItem={({ item }) => (
           <Preview
             card={item}
@@ -384,6 +389,7 @@ const ColumnPanel = memo(function ColumnPanel({
             labels={labels}
             members={members}
             dateFormat={dateFormat}
+            overdue={!!item.dueDate && Date.parse(item.dueDate) < now}
             onOpen={onOpen}
             onCardActions={onCardActions}
             cardActionsDisabled={cardActionsDisabled}
@@ -421,6 +427,10 @@ export function BoardKanban({
   columnActionsDisabled,
   revealColumnIndex = -1,
   onColumnRevealed,
+  active = true,
+  dueStatus,
+  fetchedAt,
+  onDueBoundary,
 }: {
   columns: readonly KanbanColumn[];
   columnsComplete: boolean;
@@ -441,7 +451,20 @@ export function BoardKanban({
   columnActionsDisabled?: boolean;
   revealColumnIndex?: number;
   onColumnRevealed?: () => void;
+  active?: boolean;
+  dueStatus?: CardDueStatus;
+  fetchedAt?: number;
+  onDueBoundary?: () => void;
 }) {
+  const loaded = useMemo(() => [...groups.values()].flat(), [groups]);
+  const now = useDueReconciler({
+    cards: loaded,
+    dueStatus,
+    timeZone,
+    fetchedAt,
+    active,
+    onDueBoundary,
+  });
   const { width } = useWindowDimensions();
   const panelWidth = Math.min(280, Math.max(180, Math.round(width * 0.65)));
   const saveOffset = useCallback(
@@ -552,6 +575,7 @@ export function BoardKanban({
           labels={labelMap}
           members={memberMap}
           dateFormat={dateFormat}
+          now={now}
           scroll={scroll}
           onOpen={onOpen}
           onColumnActions={onColumnActions}
