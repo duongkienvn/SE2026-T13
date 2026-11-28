@@ -1,20 +1,6 @@
-import type { CardPreviewSummary } from '@kanban/shared';
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactElement,
-} from 'react';
-import {
-  AppState,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import type { CardDueStatus, CardPreviewSummary } from '@kanban/shared';
+import { memo, useCallback, useMemo, useState, type ReactElement } from 'react';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   Button,
   EmptyState,
@@ -26,10 +12,7 @@ import {
   typography,
   useTheme,
 } from '../../../ui';
-import {
-  dueClockDelay,
-  type DatePreferences,
-} from '../../cards/metadata/dates';
+import type { DatePreferences } from '../../cards/metadata/dates';
 import {
   AssigneeAvatar,
   CardDateValue,
@@ -37,6 +20,7 @@ import {
 } from '../../cards/metadata/presentation';
 import { resolveAssignees } from '../../cards/metadata/queries';
 import { useScrollRestore } from '../BoardKanban';
+import { useDueReconciler } from '../useDueReconciler';
 import type {
   KanbanAssignee,
   KanbanCard,
@@ -221,6 +205,8 @@ export function BoardTable({
   onActions,
   actionsDisabled,
   active,
+  dueStatus,
+  fetchedAt,
   onDueBoundary,
 }: {
   cards: readonly KanbanCard[];
@@ -239,40 +225,18 @@ export function BoardTable({
   onActions?: (card: KanbanCard) => void;
   actionsDisabled?: boolean;
   active: boolean;
+  dueStatus?: CardDueStatus;
+  fetchedAt?: number;
   onDueBoundary?: () => void;
 }) {
-  const [now, setNow] = useState(Date.now);
-  useEffect(() => {
-    if (!active) return;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    function schedule() {
-      const clock = Date.now();
-      setNow(clock);
-      const delay = cards.reduce(
-        (next, card) => {
-          const due = card.dueDate
-            ? dueClockDelay(card.dueDate, clock)
-            : undefined;
-          return Math.min(next, due ?? Infinity);
-        },
-        onDueBoundary ? 60_000 - (clock % 60_000) : Infinity,
-      );
-      if (Number.isFinite(delay))
-        timer = setTimeout(() => {
-          onDueBoundary?.();
-          schedule();
-        }, delay);
-    }
-    if (AppState.currentState === 'active') schedule();
-    const subscription = AppState.addEventListener('change', (state) => {
-      clearTimeout(timer);
-      if (state === 'active') schedule();
-    });
-    return () => {
-      clearTimeout(timer);
-      subscription.remove();
-    };
-  }, [active, cards, onDueBoundary]);
+  const now = useDueReconciler({
+    cards,
+    dueStatus,
+    timeZone: preferences?.timeZone,
+    fetchedAt,
+    active,
+    onDueBoundary,
+  });
   const labelMap = useMemo(
     () => new Map(labels.map((label) => [label.id, label])),
     [labels],

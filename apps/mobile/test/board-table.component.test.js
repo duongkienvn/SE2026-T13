@@ -142,13 +142,29 @@ test('one Table clock updates the due boundary, pauses in background and removes
       return { remove };
     });
   const mounted = await render(
-    <BoardTable {...input} onDueBoundary={boundary} />,
+    <BoardTable
+      {...input}
+      dueStatus="DUE_TODAY"
+      fetchedAt={Date.now()}
+      onDueBoundary={boundary}
+    />,
   );
   try {
     await act(() => onState('active'));
     expect(screen.getByText('Due today')).toBeTruthy();
     await act(() => jest.advanceTimersByTime(1002));
     expect(screen.getByText('Overdue')).toBeTruthy();
+    expect(boundary).toHaveBeenCalledTimes(1);
+    // The refreshed result is current again: minute ticks stay local.
+    await mounted.rerender(
+      <BoardTable
+        {...input}
+        dueStatus="DUE_TODAY"
+        fetchedAt={Date.now()}
+        onDueBoundary={boundary}
+      />,
+    );
+    await act(() => jest.advanceTimersByTime(600_000));
     expect(boundary).toHaveBeenCalledTimes(1);
     await act(() => onState('background'));
     await act(() => jest.advanceTimersByTime(120000));
